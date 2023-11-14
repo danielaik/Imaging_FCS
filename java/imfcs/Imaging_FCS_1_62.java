@@ -1,5 +1,12 @@
 package imfcs;
 
+import ai.onnxruntime.OnnxTensor;
+import ai.onnxruntime.OrtEnvironment;
+import ai.onnxruntime.OrtException;
+import ai.onnxruntime.OrtSession;
+import ai.onnxruntime.OrtSession.Result;
+import ai.onnxruntime.OrtSession.SessionOptions;
+import ai.onnxruntime.OrtSession.SessionOptions.OptLevel;
 import java.awt.Color;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
@@ -110,6 +117,8 @@ import javax.swing.JPanel;
 import static version.VERSION.*;
 
 import imfcs.TimerFit;
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
 
 
 /* *
@@ -786,6 +795,12 @@ public class Imaging_FCS_1_62 implements PlugIn {
     private JRadioButton rbtnHoldFtrip;
     private JRadioButton rbtnHoldTtrip;
 
+    // CNN buttons
+    private JButton btnCNNImage;
+    private JButton btnCNNACF;
+    private JRadioButton rbtnCNNImage;
+    private JRadioButton rbtnCNNACF;
+
     // Parameter determining whether a simulation, from the program is used instead of a file
     private boolean simFile = false;
     private boolean simDomainFlag = false;
@@ -965,6 +980,55 @@ public class Imaging_FCS_1_62 implements PlugIn {
 
     // DC-FCCS
     private boolean isNormalizeQwithObsVol = true;             // normalize N to observation volume. Use RMS of obs1 and obs2 to normalize Nccf
+
+    // CNN 
+    // ACF-based CNN variables.
+    private static String modelPathCNNACF = "./acfnet.onnx";
+    private static String modelPathCNNImage = "./model_trained_opset11.onnx";
+    private float[][][] cnnRawAcfInput; // ACF array to store all FCS functions for the pixels in the image for CNNs;dimensions [width*height][1][chanum]
+    private double[][][][] fitresCnnAcf; // fit parameter results; [ccf: ACF1, ACF2, CCF][width][height][noparam]
+    private double[][][] pixvalidCnnAcf; // filtering mask, 1 if pixel valid, NaN if not
+    private boolean[][][] pixfittedCnnAcf; // whether pixel has been successfully fitted or not; in the absence of user-defined thresholds, this array determines pixvalid[][][] 
+
+    // Image-based CNN variables
+    private float[][][][] cnnRawImageInput; // ACF array to store all FCS functions for the pixels in the image for CNNs; dimensions [width*height][1][chanum]
+    private double[][][][] fitresCnnImage; // fit parameter results; [ccf: ACF1, ACF2, CCF][width][height][noparam]
+    private double[][][] pixvalidCnnImage; // filtering mask, 1 if pixel valid, NaN if not
+    private boolean[][][] pixfittedCnnImage; // whether pixel has been successfully fitted or not; in the absence of user-defined thresholds, this array determines pixvalid[][][]
+
+    private int noparamCnnAcf = 1; // number of fit parameters; at the moment there are two fit models with a maximum of 11 parameters
+    private String $paramCnnAcf[] = {"D"}; // parameter names; has to contain noparam number of parameter names
+    private int noparamCnnImage = 1; // number of fit parameters; at the moment there are two fit models with a  maximum of 11 parameters
+    private String $paramCnnImage[] = {"D"}; // parameter names; has to contain noparam number of parameter names
+
+    // CNN parameters
+    private boolean cnnImageLoaded = false; // Whether the Image CNN model is loaded
+    private boolean cnnACFLoaded = false; // Whether the ACF CNN model is loaded
+
+    // CNN Parameter map stack window; in this window the fitted parameters are
+    // depicted (e.g. diffusion coefficient maps)
+    ImagePlus impParaCnnAcf1;
+    ImageCanvas impParaCnnAcf1Can;
+    ImageWindow impParaCnnAcf1Win;
+    private String $impParaCnnAcf1Title;
+    boolean impParaCnnAcf1exists = false;
+
+    HistogramWindow histWinCnnAcf;
+
+    private final int paraCnnAcf1PosX = acfWindowPosX + acfWindowDimX + 160; // parameter map window positions
+    private final int paraCnnAcf1PosY = panelPosY;
+
+    // CNN Image-based Parameter map
+    ImagePlus impParaCnnImage1;
+    ImageCanvas impParaCnnImage1Can;
+    ImageWindow impParaCnnImage1Win;
+    private String $impParaCnnImage1Title;
+    boolean impParaCnnImage1exists = false;
+
+    HistogramWindow histWinCnnImage;
+
+    private final int paraCnnImage1PosX = acfWindowPosX + acfWindowDimX + 160; // parameter map window positions
+    private final int paraCnnImage1PosY = panelPosY;
 
     public Imaging_FCS_1_62() {
         try {
@@ -2288,8 +2352,37 @@ public class Imaging_FCS_1_62 implements PlugIn {
 
             checkroi = true;
             if (setParameters()) {
+
                 correlateRoiWorker correlateRoiInstant = new correlateRoiWorker(impRoi1);
                 correlateRoiInstant.execute();
+
+                // TODO: perform dimensionality checl e.g., matching correlator scheme as trained
+                // This loop executes the ACF CNN fitting on a btnAll press
+                if (isgpupresent == 1 || isgpupresent == 0) {
+                    if (rbtnCNNACF.isSelected() == true && cnnACFLoaded == true) {
+                        correlateRoiInstant.addPropertyChangeListener((PropertyChangeEvent event) -> {
+                            if (event.getPropertyName().equals("state")) {
+                                if (event.getNewValue() == SwingWorker.StateValue.DONE) {
+                                    executeCnnAcf(impRoi1);
+                                }
+                            }
+                        });
+                    }
+                }
+
+                // This loop executes the Image CNN fitting on a btnAll press
+                if (isgpupresent == 0) {
+                    if (rbtnCNNImage.isSelected() == true && cnnImageLoaded == true) {
+                        correlateRoiInstant.addPropertyChangeListener((PropertyChangeEvent event) -> {
+                            if (event.getPropertyName().equals("state")) {
+                                if (event.getNewValue() == SwingWorker.StateValue.DONE) {
+                                    executeCnnImage(impRoi1);
+                                }
+                            }
+                        });
+                    }
+                }
+
             } else {
                 imp.getOverlay().clear();
                 imp.deleteRoi();
@@ -3295,14 +3388,15 @@ public class Imaging_FCS_1_62 implements PlugIn {
 	 * btnSetParPressed()
 	 * cbBleachCorChanged()
 	 * cbFilterChanged()
-	 * 
+	 * btnCNNImagePressed(): loading ImFCSNet model.
+         * btnCNNACFPressed(): loading FCSNet model.
      */
 // create the FCS fit panel
     public void createImFCSFit() {
 
         fitframe.setFocusable(true);
         fitframe.setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
-        fitframe.setLayout(new GridLayout(16, 6));
+        fitframe.setLayout(new GridLayout(17, 6));
         fitframe.setLocation(new Point(fitPanelPosX, fitPanelPosY));
         fitframe.setSize(new Dimension(fitPanelDimX, fitPanelDimY));
         fitframe.setResizable(false);
@@ -3362,6 +3456,15 @@ public class Imaging_FCS_1_62 implements PlugIn {
         rbtnHoldG = new JRadioButton("Hold");
         rbtnHoldFtrip = new JRadioButton("Hold");
         rbtnHoldTtrip = new JRadioButton("Hold");
+
+        btnCNNImage = new JButton("ImFCSNet");
+        btnCNNImage.setFont(new java.awt.Font($panelFont, java.awt.Font.BOLD, 8));
+        btnCNNACF = new JButton("FCSNet");
+        btnCNNACF.setFont(new java.awt.Font($panelFont, java.awt.Font.BOLD, 8));
+        rbtnCNNImage = new JRadioButton("ImFCSNet");
+        rbtnCNNImage.setFont(new java.awt.Font($panelFont, java.awt.Font.BOLD, 8));
+        rbtnCNNACF = new JRadioButton("FCSNet");
+        rbtnCNNACF.setFont(new java.awt.Font($panelFont, java.awt.Font.BOLD, 8));
 
         // row 1
         fitframe.add(new JLabel("Fit Model: "));
@@ -3506,6 +3609,17 @@ public class Imaging_FCS_1_62 implements PlugIn {
         fitframe.add(new JLabel("Model 3"));
         fitframe.add(tfModProb3);
 
+        // row 17 - CNN related settings
+        fitframe.add(btnCNNImage);
+        fitframe.add(rbtnCNNImage);
+        fitframe.add(btnCNNACF);
+        fitframe.add(rbtnCNNACF);
+        // Both buttons default to inactive. Will only be activated upon model loading.
+        rbtnCNNImage.setEnabled(false);
+        rbtnCNNACF.setEnabled(false);
+        fitframe.add(new JLabel(""));
+        fitframe.add(new JLabel(""));
+
         // initial paramter settings
         initparam = new double[noparam];
         initparam[0] = 1.0;		// remember starting values
@@ -3526,6 +3640,8 @@ public class Imaging_FCS_1_62 implements PlugIn {
         btnTest.addActionListener(btnTestPressed);
         tbFixPar.addItemListener(tbFixParPressed);
         btnSetPar.addActionListener(btnSetParPressed);
+        btnCNNImage.addActionListener(btnCNNImagePressed);
+        btnCNNACF.addActionListener(btnCNNACFPressed);
 
         tfParamN.addKeyListener(fitTfCursorMove);
         tfParamD.addKeyListener(fitTfCursorMove);
@@ -3888,6 +4004,58 @@ public class Imaging_FCS_1_62 implements PlugIn {
             }
         }
         filterMem = (String) cbFilter.getSelectedItem();
+    };
+
+    // ImFCSNet loading model.
+    ActionListener btnCNNImagePressed = (ActionEvent ev) -> {
+
+        // Tentatively, just load from the home folder.
+        JFileChooser fc = new JFileChooser();
+
+        // Filter only onnx files
+        FileNameExtensionFilter filter = new FileNameExtensionFilter("ONNX model files.", "onnx");
+        fc.setFileSelectionMode(JFileChooser.FILES_ONLY);
+        fc.setFileFilter(filter);
+
+        int returnVal = fc.showOpenDialog(btnLoad);
+
+        // int returnVal = chooser.showOpenDialog(parent);
+        if (returnVal == JFileChooser.APPROVE_OPTION) {
+            modelPathCNNImage = fc.getSelectedFile().toString();
+            cnnImageLoaded = true;
+            rbtnCNNImage.setEnabled(true);
+            System.out.println(fc.getSelectedFile());
+            IJ.log("You chose to open this file: " + fc.getSelectedFile().getName());
+        }
+    };
+
+    // FCSNet loading model.
+    ActionListener btnCNNACFPressed = (ActionEvent ev) -> {
+
+        // if (isgpupresent == 1) {
+        // // TODO: Make it so the code can get the ACFs from the GPU.
+        // JOptionPane.showMessageDialog(null, "GPU Mode might need to be deactivated
+        // for CNN calculation to work.");
+        // }
+        // Tentatively, just load from the home folder.
+        JFileChooser fc = new JFileChooser();
+
+        // Filter only onnx files
+        FileNameExtensionFilter filter = new FileNameExtensionFilter("ONNX model files.", "onnx");
+        fc.setFileSelectionMode(JFileChooser.FILES_ONLY);
+        fc.setFileFilter(filter);
+
+        int returnVal = fc.showOpenDialog(btnLoad);
+
+        // int returnVal = chooser.showOpenDialog(parent);
+        if (returnVal == JFileChooser.APPROVE_OPTION) {
+            modelPathCNNACF = fc.getSelectedFile().toString();
+            cnnACFLoaded = true;
+            rbtnCNNACF.setEnabled(true);
+            System.out.println(fc.getSelectedFile());
+            IJ.log("You chose to open this file: " + fc.getSelectedFile().getName());
+        }
+
     };
 
 
@@ -21171,4 +21339,649 @@ public class Imaging_FCS_1_62 implements PlugIn {
 
     }
 
+    /*
+        * Methods needed to execute CNN inference from pre-trained model
+        * executeCnnAcf(): 
+        * initializeCNNAcfArrays():
+        * createCnnAcfParaImp: create FCSNet parameter map (currently a D map)
+        * executeCnnImage(): 
+        * initializeCNNImageArrays():
+        * createCnnImageParaImp(): create ImFCSNet parameter map (currently a D map)
+        * printDimension(): debugging purposes
+     */
+    public void executeCnnAcf(Roi impRoi1) {
+        // For CNN fitting, we use the final batch of ACFs in post.
+        // This is because the ONNX model takes in batches of any size.
+        // Running the full batch of ACFs is faster than doing passes 1 at a time.
+        // We create the ACF batch using the acf[3][][][] array
+        Rectangle imprect = impRoi1.getBounds();
+        int startXmap = (int) Math.ceil(imprect.getX() / pixbinX);
+        int startYmap = (int) Math.ceil(imprect.getY() / pixbinY);
+        // int startX = startXmap * pixbinX;
+        // int startY = startYmap * pixbinY;
+        int endXmap = (int) Math.floor((imprect.getX() + imprect.getWidth() - binningX) / pixbinX);
+        int endYmap = (int) Math.floor((imprect.getY() + imprect.getHeight() - binningY) / pixbinY);
+        // int endX = endXmap * pixbinX;
+        // int endY = endYmap * pixbinY;
+        int pixcount = 0;
+
+        // Creating input matrix for CNN, in dimensions (width*height, ACF)
+        initializeCNNAcfArrays();
+        for (int x = startXmap; x <= endXmap; x++) {
+            for (int y = startYmap; y <= endYmap; y++) {
+                for (int pt = 1; pt < chanum; pt++) { // calculate the normalized acf and
+                    // its standard deviation
+                    cnnRawAcfInput[pixcount][0][pt - 1] = (float) acf[0][x][y][pt];
+                }
+                // System.out.println(x);
+                // System.out.println(y);
+                // System.out.println(pixcount);
+                // System.out.println("----------");
+                pixcount++;
+            }
+        }
+
+        // Initializing ONNX fitting environment
+        // bool doOnnxFitting = rbtnCNNACF.isEnabled()
+        OrtEnvironment env = OrtEnvironment.getEnvironment();
+
+        try (OrtSession.SessionOptions opts = new SessionOptions()) {
+            opts.setOptimizationLevel(OptLevel.BASIC_OPT);
+
+            try (OrtSession session = env.createSession(modelPathCNNACF, opts)) {
+                // Initializing input container that holds input name and values.
+                Map<String, OnnxTensor> inputContainer = new HashMap<>();
+                System.out.println("Input container initialized.");
+
+                // Creating the test tensor.
+                OnnxTensor inputTensor = OnnxTensor.createTensor(env, cnnRawAcfInput);
+                System.out.println("ONNX tensor created.");
+                inputContainer.put("input", inputTensor);
+
+                // Running model on test tensor.
+                // long startTimeCNN = System.nanoTime();
+                Result results = session.run(inputContainer);
+                // long totalTime = System.nanoTime() - startTimeCNN;
+                // System.out.println(totalTime);
+                // System.out.println("CNN Runtime ===============");
+                float[][] outputPredictions = (float[][]) results.get(0).getValue();
+                System.out.println("Model run and results returned!!");
+                System.out.println(results.get(0));
+                System.out.println(results.get(0).getValue().toString());
+                System.out.println(Arrays.deepToString(outputPredictions));
+                // System.out.println(outputPredictions[306][0]);
+                // System.out.println(endYmap - startYmap);
+
+                int _pixcount = 0;
+                for (int x = startXmap; x <= endXmap; x++) {
+                    for (int y = startYmap; y <= endYmap; y++) {
+                        // System.out.println(x);
+                        // System.out.println(y);
+                        // // System.out.println((endXmap - startXmap));
+                        // System.out.println(_pixcount);
+                        // System.out.println("----------");
+                        fitresCnnAcf[0][x][y][0] = (double) outputPredictions[_pixcount][0];
+                        _pixcount++;
+                    }
+                    // IJ.showProgress(y - startXmap, startXmap - endXmap);
+                }
+
+                // Creating Parameter map
+                if (doFit) { // create parameter map window
+                    createCnnAcfParaImp(maxcposx - mincposx + 1, maxcposy - mincposy + 1);
+                }
+
+            } catch (OrtException orte) {
+                IJ.log("Model failed to initialized. 2");
+                IJ.log(orte.getMessage());
+            }
+        } catch (OrtException orte) {
+            IJ.log("Model failed to initialized.");
+            IJ.log("Model failed to initialized.");
+        }
+    }
+
+    public void initializeCNNAcfArrays() {
+        // Initialize the CNN-related arrays. This includes the fit result arrays as
+        // well.
+        System.out.println("Num of channels");
+        System.out.println(chanum);
+        cnnRawAcfInput = new float[width * height][1][chanum - 1];
+        fitresCnnAcf = new double[3][width][height][noparam];
+
+        pixfittedCnnAcf = new boolean[3][width][height];
+        for (int q = 0; q < 3; q++) {
+            for (int r = 0; r < width; r++) {
+                for (int s = 0; s < height; s++) {
+                    chi2[q][r][s] = Double.NaN;
+                    pixfitted[q][r][s] = false;
+                    pixfittedCnnAcf[q][r][s] = false;
+                    for (int t = 0; t < noparam; t++) {
+                        fitresCnnAcf[q][r][s][t] = Double.NaN;
+                        fitres[q][r][s][t] = Double.NaN;
+                    }
+                }
+            }
+        }
+
+        pixvalidCnnAcf = new double[3][width][height];
+        for (int q = 0; q < 3; q++) {
+            for (int r = 0; r < width; r++) {
+                for (int s = 0; s < height; s++) {
+                    pixvalid[q][r][s] = Double.NaN;
+                    pixvalidCnnAcf[q][r][s] = Double.NaN;
+                }
+            }
+        }
+
+    }
+
+    public void createCnnAcfParaImp(int wx, int hy) {
+        // wx, hy: image width and height
+        int nochannels = 1; // number of correlation channels; 1 for FCS, 3 for DC-FCCS (for
+        // cross-correlation and autocorrelation in the 2 channels respectively)
+        int xm = mincposx; // introducing pixel shifts in order to align all channels
+        int ym = mincposy;
+        int cshift = 0; // index shift for renumbering the correlation channels so that
+        // cross-correlation parameter maps are in the upper slices of the stack
+        int cm; // index of the correlation channel in the loop
+        int cq = 0; // additional one frame for q map in DC-FCCS mode
+
+        impParaCnnAcf1exists = true;
+
+        if (impParaCnnAcf1 != null) { // close parameter window if it exists
+            impParaCnnAcf1.close();
+        }
+        if (histWinCnnAcf != null) { // close parameter window if it exists
+            histWinCnnAcf.close();
+        }
+
+        System.out.println(nochannels * (noparamCnnAcf + 3) + cq);
+        impParaCnnAcf1 = IJ.createImage("FCSNet Output", "GRAY32", wx, hy, nochannels * (noparamCnnAcf + 3) + cq); // create a stack for the fit parameter
+
+        for (int m = 0; m < nochannels; m++) { // loop over individual correlation channels and the cross-correlation
+            cm = (m + cshift) % 3;
+            for (int x = 0; x < wx; x++) {
+                for (int y = 0; y < hy; y++) {
+                    if (doFiltering) { // if thresholding on, apply the thresholds
+                        if (filterPix(cm, x + xm, y + ym)) {
+                            pixvalidCnnAcf[cm][x + xm][y + ym] = 1.0;
+                        } else {
+                            pixvalidCnnAcf[cm][x + xm][y + ym] = Double.NaN;
+                        }
+                    } else {
+                        if (pixfitted[cm][x + xm][y + ym]) {
+                            pixvalidCnnAcf[cm][x + xm][y + ym] = 1.0;
+                        } else {
+                            pixvalidCnnAcf[cm][x + xm][y + ym] = Double.NaN;
+                        }
+                    }
+                }
+            }
+        }
+
+        for (int m = 0; m < nochannels; m++) { // loop over individual correlation channels and the cross-correlation
+            cm = (m + cshift) % 3;
+
+            for (int p = 0; p < noparamCnnAcf; p++) { // put pixel values for fit parameters in the maps
+                System.out.println(fitresCnnAcf);
+                System.out.println(pixvalidCnnAcf);
+                ImageProcessor ipParaCnnAcf1 = impParaCnnAcf1.getStack().getProcessor((m * noparamCnnAcf) + p + 1);
+                for (int x = 0; x < wx; x++) {
+                    for (int y = 0; y < hy; y++) {
+                        ipParaCnnAcf1.putPixelValue(x, y, fitresCnnAcf[cm][x + xm][y + ym][p]);
+                    }
+                }
+            }
+
+            ImageProcessor ipParaCnnAcf1 = impParaCnnAcf1.getStack().getProcessor(nochannels * (noparamCnnAcf + 2) + m + 1); // set the stack to the frame for filtering mask
+
+            for (int x = 0; x < wx; x++) { // fill the frame with filtering mask
+                for (int y = 0; y < hy; y++) {
+                    ipParaCnnAcf1.putPixelValue(x, y, pixvalidCnnAcf[cm][x + xm][y + ym]);
+                }
+            }
+
+            impParaCnnAcf1.show();
+            impParaCnnAcf1Win = impParaCnnAcf1.getWindow();
+            impParaCnnAcf1Win.setLocation(paraCnnAcf1PosX, paraCnnAcf1PosY);
+
+            for (int i = noparamCnnAcf; i >= 1; i--) { // set label for each parameter map
+                impParaCnnAcf1.setSlice(i + m * noparamCnnAcf);
+                IJ.run("Set Label...", "label=" + $paramCnnAcf[i - 1] + $channel[m]);
+            }
+
+            // impParaCnnAcf1.setSlice(nochannels * noparamCnnAcf + m + 1); // set label for
+            // Chi2
+            // IJ.run("Set Label...", "label=" + $paramCnnAcf[noparamCnnAcf] + $channel[m]);
+            // impParaCnnAcf1.setSlice(nochannels * (noparamCnnAcf + 1) + m + 1); // set
+            // label for blocking success
+            // IJ.run("Set Label...", "label=" + $paramCnnAcf[noparamCnnAcf + 1] +
+            // $channel[m]);
+            // impParaCnnAcf1.setSlice(nochannels * (noparamCnnAcf + 3) + cq); // set label
+            // for q map
+            // IJ.run("Set Label...", "label=" + $paramCnnAcf[noparamCnnAcf + 3]);
+            // impParaCnnAcf1.setSlice(nochannels * (noparamCnnAcf + 2) + m + 1); // set
+            // label for filtering mask
+            // IJ.run("Set Label...", "label=" + $paramCnnAcf[noparamCnnAcf + 2] +
+            // $channel[m]);
+        }
+
+        IJ.run(impParaCnnAcf1, "Red Hot", ""); // apply "Fire" LUT
+        IJ.run(impParaCnnAcf1, "Original Scale", ""); // first set image to original scale
+        IJ.run(impParaCnnAcf1, "Set... ", "zoom=" + scimp + " x=" + (int) Math.floor(wx / 2) + " y=" + (int) Math.floor(hy / 2)); // then zoom to fit within application
+        IJ.run("In [+]", ""); // This needs to be used since ImageJ 1.48v to set the window to the right size; this might be a bug and is an ad hoc solution for the moment; before only the "Set" command was necessary
+
+        impParaCnnAcf1.setSlice(1); // set back to slice 1 for viewing
+        IJ.run(impParaCnnAcf1, "Enhance Contrast", "saturated=0.35"); // autoscaling the contrast for slice 1
+        // Component[] impParaCnnAcf1comp = impParaCnnAcf1Win.getComponents(); // check
+        // which component is the scrollbar and add an AdjustmentListener
+        // ScrollbarWithLabel impParaCnnAcf1scrollbar;
+        // for (int i = 0; i < impParaCnnAcf1comp.length; i++) {
+        // if (impParaCnnAcf1comp[i] instanceof ScrollbarWithLabel) {
+        // impParaCnnAcf1scrollbar = (ScrollbarWithLabel)
+        // impParaCnnAcf1Win.getComponent(i);
+        // impParaCnnAcf1scrollbar.addAdjustmentListener(impPara1Adjusted);
+        // }
+        // }
+
+        // create histogram window
+        impParaCnnAcf1.setSlice(1);
+        double histMin = impParaCnnAcf1.getStatistics().min;
+        double histMax = impParaCnnAcf1.getStatistics().max;
+        int histYMax = impParaCnnAcf1.getStatistics().histYMax;
+        int pixelCount = impParaCnnAcf1.getStatistics().pixelCount;
+        double stdDev = impParaCnnAcf1.getStatistics().stdDev;
+        double mean = impParaCnnAcf1.getStatistics().mean;
+
+        System.out.println("stDev");
+        System.out.println(stdDev);
+        System.out.println("mean");
+        System.out.println(mean);
+
+        int q1 = 0; // determine first quartile
+        int countQ = 0;
+        while (countQ < Math.ceil(pixelCount / 4.0)) {
+            countQ += impParaCnnAcf1.getStatistics().getHistogram()[q1++];
+        }
+        int q3 = 0; // determine third quartile
+        countQ = 0;
+        while (countQ < Math.ceil(3.0 * pixelCount / 4.0)) {
+            countQ += impParaCnnAcf1.getStatistics().getHistogram()[q3++];
+        }
+        double iqr = (q3 - q1) * impParaCnnAcf1.getStatistics().binSize; // calculate interquartile distance
+        int nBins;
+        if (iqr > 0) {
+            nBins = (int) Math.ceil(Math.cbrt(pixelCount) * (histMax - histMin) / (2.0 * iqr)); // Freedman-Diaconis
+            // rule for number of
+            // bins in histogram
+        } else {
+            nBins = 10;
+        }
+
+        $histWindowTitle = "CNN ACF predicted D";
+        histWinCnnAcf = new HistogramWindow($histWindowTitle, impParaCnnAcf1, nBins, histMin, histMax, histYMax);
+        histWinCnnAcf.setLocationAndSize(histPosX, histPosY, histDimX, histDimY);
+
+        impParaCnnAcf1.setSlice(1);
+        impParaCnnAcf1Can = impParaCnnAcf1.getCanvas(); // get canvas
+        impParaCnnAcf1Can.setFocusable(true); // set focusable
+
+        // add listeners
+        // impParaCnnAcf1Can.addMouseListener(para1MouseClicked);
+    }
+
+    public void executeCnnImage(Roi impRoi1) {
+        // For CNN fitting, we use the final batch of ACFs in post.
+        // This is because the ONNX model takes in batches of any size.
+        // Running the full batch of ACFs is faster than doing passes 1 at a time.
+        // We create the ACF batch using the acf[3][][][] array
+        Rectangle imprect = impRoi1.getBounds();
+        int startXmap = (int) Math.ceil(imprect.getX() / pixbinX);
+        int startYmap = (int) Math.ceil(imprect.getY() / pixbinY);
+        // int startX = startXmap * pixbinX;
+        // int startY = startYmap * pixbinY;
+        int endXmap = (int) Math.floor((imprect.getX() + imprect.getWidth() - binningX) / pixbinX);
+        int endYmap = (int) Math.floor((imprect.getY() + imprect.getHeight() - binningY) / pixbinY);
+        // int endX = endXmap * pixbinX;
+        // int endY = endYmap * pixbinY;
+        // int pixcount = 0;
+
+        // Calculate the number of overlapping channels, we assume that the max needed number of frames is the window defined by first frame and last frame from the panel
+        // We also assume that the ImFCSNet uses 2500 frames as its input window. This can be made into a variable in the future.
+        int num_chunks = (int) Math.floor((lastframe - firstframe + 1) / 2500);
+        System.out.println("Num of frame chunks.");
+        System.out.println(num_chunks);
+        initializeCNNImageArrays(num_chunks);
+
+        // Note that the flow for the Image-based CNNs are a bit different from the ACF-based CNNs.
+        // While we can directly batch all ACFs into a single input for processing for the ACF-based CNNs.
+        // This is not feasible for the Image-based CNNs.
+        // Since these are much higher in memory use, we execute things on a pixel-by-pixel basis.
+        // In other words, we will be looping through each pixel within the ONNX code block.
+        // Initializing ONNX fitting environment
+        OrtEnvironment env = OrtEnvironment.getEnvironment();
+
+        try (OrtSession.SessionOptions opts = new SessionOptions()) {
+            opts.setOptimizationLevel(OptLevel.BASIC_OPT);
+
+            try (OrtSession session = env.createSession(modelPathCNNImage, opts)) {
+                // Initializing input container that holds input name and values.
+                Map<String, OnnxTensor> inputContainer = new HashMap<>();
+                System.out.println("Input container initialized.");
+
+                // Now, generate the inputs.
+                // Unlike the ACF-based networks, we use overlapping with stride 1 with a window of 3x3.
+                // Thus, a file that can be loaded into memory might exponentially increase in size.
+                // Due to the use of the window, we skip the first row and column, as well as the last.
+                // This is reflected in the +1 and -1 of the loop.
+                // This is because we cannot make predictions for those pixels, as they are on the border.
+                // And border pixels cannot be padded for our case.
+                // Instead of confusingly producing an output that is smaller, we leave the outer pixels as default NaN values.
+                // This corresponds to the normal convention of NaN = fitting failed for NLS.
+                for (int x = startXmap + 1; x <= endXmap - 1; x++) {
+                    for (int y = startYmap + 1; y <= endYmap - 1; y++) {
+                        // For each x and y, we need to extract a 3x3 window with 2500 points.
+                        for (int x_offset = 0; x_offset < 3; x_offset++) {
+                            for (int y_offset = 0; y_offset < 3; y_offset++) {
+                                int x_pix = (int) x + x_offset - 1;
+                                int y_pix = (int) y + y_offset - 1;
+                                // System.out.println(x_pix);
+                                // System.out.println(y_pix);
+                                // System.out.println("--------------");
+
+                                // Perform getIntensity, which also conducts bleach correction.
+                                // We perform bleach correction based on the total amount of available frames, not the window.
+                                // perform background subtraction before bleach correction
+                                double[] pix_intensity_trace = getIntensity(imp, x_pix, y_pix, 0, firstframe, lastframe, true);
+
+                                // Now, perform windowing over the 2500 frame chunks.
+                                for (int t = 0; t < num_chunks; t++) {
+                                    int start_frame = (int) firstframe + t * 2500;
+                                    // int end_frame = (int) firstframe+(t+1)*2500;
+
+                                    // printDimension(pix_intensity_trace);
+                                    // printDimension(cnnRawImageInput);
+                                    // System.out.println(start_frame);
+                                    // System.out.println(x_offset);
+                                    // System.out.println(y_offset);
+                                    // System.out.println("______________________");
+                                    // Now, construct the raw CNN input.
+                                    // Note that we need to force the values into float, as the expected inputs are 32 bit, not 64.
+                                    for (int f = 0; f < 2500; f++) {
+                                        // System.out.println(f);
+                                        // System.out.println(start_frame + f);
+                                        cnnRawImageInput[t][f][x_offset][y_offset] = (float) pix_intensity_trace[start_frame + f];
+                                    }
+                                }
+                            }
+                        }
+
+                        // Now we've constructed the N_chunksx2500x3x3 window for this specific pixel.
+                        // Creating the ONNX tensor.
+                        OnnxTensor inputTensor = OnnxTensor.createTensor(env, cnnRawImageInput);
+                        // System.out.println("ONNX tensor created.");
+                        inputContainer.put("input", inputTensor);
+
+                        // Running model on test tensor.
+                        // long startTimeCNN = System.nanoTime();
+                        Result results = session.run(inputContainer);
+                        // long totalTime = System.nanoTime() - startTimeCNN;
+                        // System.out.println(totalTime);
+                        // System.out.println("CNN Runtime ===============");
+                        float[][] outputPredictions = (float[][]) results.get(0).getValue();
+                        // System.out.println("Model run and results returned!!");
+                        // System.out.println(results.get(0));
+                        // System.out.println(results.get(0).getValue().toString());
+                        // System.out.println(Arrays.deepToString(outputPredictions));
+                        // System.out.println(outputPredictions[306][0]);
+                        // System.out.println(endYmap - startYmap);
+
+                        // Now, the output predictions have an additional first dimension.
+                        // This corresponds to the number of 2500 chunks we needed to average over.
+                        // Let's get the mean of these outputs.
+                        double sum = 0;
+                        for (int chunk_ind = 0; chunk_ind < num_chunks; chunk_ind++) {
+                            sum += (double) outputPredictions[chunk_ind][0];
+                        }
+
+                        fitresCnnImage[0][x][y][0] = sum / num_chunks;
+
+                        // Put the result prediction into the parameter map.
+                    }
+                    // IJ.showProgress(y - startXmap, startXmap - endXmap);
+                }
+                // Creating Parameter map
+                if (doFit) { // create parameter map window
+                    createCnnImageParaImp(maxcposx - mincposx + 1, maxcposy - mincposy + 1);
+                }
+            } catch (OrtException orte) {
+                System.out.println("Model failed to initialized. 2");
+                System.out.println(orte.getMessage());
+            }
+        } catch (OrtException orte) {
+            IJ.showMessage("Model failed to initialized.");
+            System.out.println("Model failed to initialized.");
+        }
+    }
+
+    public void initializeCNNImageArrays(int num_chunks) {
+        // Initialize the CNN-related arrays. This includes the fit result arrays as
+        // well.
+        // This input array will be designed as:
+        // Batch size 1
+        // 2500 frames as per the expected input
+        // number of overlapping frames: calculated above. If 50000 frame input, this
+        // should be 20.
+        // Input shape width 3
+        // Input shape height 3
+        // This is not an efficient
+        cnnRawImageInput = new float[num_chunks][2500][3][3];
+        fitresCnnImage = new double[3][width][height][noparam];
+
+        pixfittedCnnImage = new boolean[3][width][height];
+        for (int q = 0; q < 3; q++) {
+            for (int r = 0; r < width; r++) {
+                for (int s = 0; s < height; s++) {
+                    pixfitted[q][r][s] = false;
+                    pixfittedCnnImage[q][r][s] = false;
+                    for (int t = 0; t < noparam; t++) {
+                        fitresCnnImage[q][r][s][t] = Double.NaN;
+                    }
+                }
+            }
+        }
+
+        pixvalidCnnImage = new double[3][width][height];
+        for (int q = 0; q < 3; q++) {
+            for (int r = 0; r < width; r++) {
+                for (int s = 0; s < height; s++) {
+                    pixvalidCnnImage[q][r][s] = Double.NaN;
+                }
+            }
+        }
+    }
+
+    public void createCnnImageParaImp(int wx, int hy) {
+        // wx, hy: image width and height
+        int nochannels = 1; // number of correlation channels; 1 for FCS, 3 for DC-FCCS (for
+        // cross-correlation and autocorrelation in the 2 channels respectively)
+        int xm = mincposx; // introducing pixel shifts in order to align all channels
+        int ym = mincposy;
+        int cshift = 0; // index shift for renumbering the correlation channels so that
+        // cross-correlation parameter maps are in the upper slices of the stack
+        int cm; // index of the correlation channel in the loop
+        int cq = 0; // additional one frame for q map in DC-FCCS mode
+
+        impParaCnnImage1exists = true;
+
+        if (impParaCnnImage1 != null) { // close parameter window if it exists
+            impParaCnnImage1.close();
+        }
+        if (histWinCnnImage != null) { // close parameter window if it exists
+            histWinCnnImage.close();
+        }
+
+        System.out.println(nochannels * (noparamCnnImage + 3) + cq);
+        impParaCnnImage1 = IJ.createImage("ImFCSNet Output", "GRAY32", wx, hy, nochannels * (noparamCnnImage + 3) + cq); // create a stack for the fit parameter                               
+
+        for (int m = 0; m < nochannels; m++) { // loop over individual correlation channels and the cross-correlation
+            cm = (m + cshift) % 3;
+            for (int x = 0; x < wx; x++) {
+                for (int y = 0; y < hy; y++) {
+                    if (doFiltering) { // if thresholding on, apply the thresholds
+                        if (filterPix(cm, x + xm, y + ym)) {
+                            pixvalidCnnImage[cm][x + xm][y + ym] = 1.0;
+                        } else {
+                            pixvalidCnnImage[cm][x + xm][y + ym] = Double.NaN;
+                        }
+                    } else {
+                        if (pixfitted[cm][x + xm][y + ym]) {
+                            pixvalidCnnImage[cm][x + xm][y + ym] = 1.0;
+                        } else {
+                            pixvalidCnnImage[cm][x + xm][y + ym] = Double.NaN;
+                        }
+                    }
+                }
+            }
+        }
+
+        for (int m = 0; m < nochannels; m++) { // loop over individual correlation channels and the cross-correlation
+            cm = (m + cshift) % 3;
+
+            for (int p = 0; p < noparamCnnImage; p++) { // put pixel values for fit parameters in the maps
+                System.out.println(fitresCnnImage);
+                System.out.println(pixvalidCnnImage);
+                ImageProcessor ipParaCnnImage1 = impParaCnnImage1.getStack().getProcessor((m * noparamCnnImage) + p + 1);
+                for (int x = 0; x < wx; x++) {
+                    for (int y = 0; y < hy; y++) {
+                        ipParaCnnImage1.putPixelValue(x, y, fitresCnnImage[cm][x + xm][y + ym][p]);
+                    }
+                }
+            }
+
+            ImageProcessor ipParaCnnImage1 = impParaCnnImage1.getStack().getProcessor(nochannels * (noparamCnnImage + 2) + m + 1); // set the stack to the frame for filtering
+            // mask
+            for (int x = 0; x < wx; x++) { // fill the frame with filtering mask
+                for (int y = 0; y < hy; y++) {
+                    ipParaCnnImage1.putPixelValue(x, y, pixvalidCnnImage[cm][x + xm][y + ym]);
+                }
+            }
+
+            impParaCnnImage1.show();
+            impParaCnnImage1Win = impParaCnnImage1.getWindow();
+            impParaCnnImage1Win.setLocation(paraCnnImage1PosX, paraCnnImage1PosY);
+
+            for (int i = noparamCnnImage; i >= 1; i--) { // set label for each parameter map
+                impParaCnnImage1.setSlice(i + m * noparamCnnImage);
+                IJ.run("Set Label...", "label=" + $paramCnnImage[i - 1] + $channel[m]);
+            }
+
+            // impParaCnnImage1.setSlice(nochannels * noparamCnnImage + m + 1); // set label for
+            // Chi2
+            // IJ.run("Set Label...", "label=" + $paramCnnImage[noparamCnnImage] + $channel[m]);
+            // impParaCnnImage1.setSlice(nochannels * (noparamCnnImage + 1) + m + 1); // set
+            // label for blocking success
+            // IJ.run("Set Label...", "label=" + $paramCnnImage[noparamCnnImage + 1] +
+            // $channel[m]);
+            // impParaCnnImage1.setSlice(nochannels * (noparamCnnImage + 3) + cq); // set label
+            // for q map
+            // IJ.run("Set Label...", "label=" + $paramCnnImage[noparamCnnImage + 3]);
+            // impParaCnnImage1.setSlice(nochannels * (noparamCnnImage + 2) + m + 1); // set
+            // label for filtering mask
+            // IJ.run("Set Label...", "label=" + $paramCnnImage[noparamCnnImage + 2] +
+            // $channel[m]);
+        }
+
+        IJ.run(impParaCnnImage1, "Red Hot", ""); // apply "Fire" LUT
+        IJ.run(impParaCnnImage1, "Original Scale", ""); // first set image to original scale
+        IJ.run(impParaCnnImage1, "Set... ", "zoom=" + scimp + " x=" + (int) Math.floor(wx / 2) + " y=" + (int) Math.floor(hy / 2)); // then zoom to fit within application
+        IJ.run("In [+]", ""); // This needs to be used since ImageJ 1.48v to set the window to the right size;
+        // this might be a bug and is an ad hoc solution for the moment; before only the
+        // "Set" command was necessary
+
+        impParaCnnImage1.setSlice(1); // set back to slice 1 for viewing
+        IJ.run(impParaCnnImage1, "Enhance Contrast", "saturated=0.35"); // autoscaling the contrast for slice 1
+        // Component[] impParaCnnImage1comp = impParaCnnImage1Win.getComponents(); // check
+        // which component is the scrollbar and add an AdjustmentListener
+        // ScrollbarWithLabel impParaCnnImage1scrollbar;
+        // for (int i = 0; i < impParaCnnImage1comp.length; i++) {
+        // if (impParaCnnImage1comp[i] instanceof ScrollbarWithLabel) {
+        // impParaCnnImage1scrollbar = (ScrollbarWithLabel)
+        // impParaCnnImage1Win.getComponent(i);
+        // impParaCnnImage1scrollbar.addAdjustmentListener(impPara1Adjusted);
+        // }
+        // }
+
+        // create histogram window
+        impParaCnnImage1.setSlice(1);
+        double histMin = impParaCnnImage1.getStatistics().min;
+        double histMax = impParaCnnImage1.getStatistics().max;
+        int histYMax = impParaCnnImage1.getStatistics().histYMax;
+        int pixelCount = impParaCnnImage1.getStatistics().pixelCount;
+        double stdDev = impParaCnnImage1.getStatistics().stdDev;
+        double mean = impParaCnnImage1.getStatistics().mean;
+
+        System.out.println("stDev");
+        System.out.println(stdDev);
+        System.out.println("mean");
+        System.out.println(mean);
+
+        int q1 = 0; // determine first quartile
+        int countQ = 0;
+        while (countQ < Math.ceil(pixelCount / 4.0)) {
+            countQ += impParaCnnImage1.getStatistics().getHistogram()[q1++];
+        }
+        int q3 = 0; // determine third quartile
+        countQ = 0;
+        while (countQ < Math.ceil(3.0 * pixelCount / 4.0)) {
+            countQ += impParaCnnImage1.getStatistics().getHistogram()[q3++];
+        }
+        double iqr = (q3 - q1) * impParaCnnImage1.getStatistics().binSize; // calculate interquartile distance
+        int nBins;
+        if (iqr > 0) {
+            nBins = (int) Math.ceil(Math.cbrt(pixelCount) * (histMax - histMin) / (2.0 * iqr)); // Freedman-Diaconis
+            // rule for number of
+            // bins in histogram
+        } else {
+            nBins = 10;
+        }
+
+        $histWindowTitle = "CNN ACF predicted D";
+        histWinCnnImage = new HistogramWindow($histWindowTitle, impParaCnnImage1, nBins, histMin, histMax, histYMax);
+        histWinCnnImage.setLocationAndSize(histPosX, histPosY, histDimX, histDimY);
+
+        impParaCnnImage1.setSlice(1);
+        impParaCnnImage1Can = impParaCnnImage1.getCanvas(); // get canvas
+        impParaCnnImage1Can.setFocusable(true); // set focusable
+
+        // add listeners
+        // impParaCnnImage1Can.addMouseListener(para1MouseClicked);
+    }
+
+    public static void printDimension(Object array) {
+        if (array == null) {
+            System.out.println("Object is null!");
+            return;
+        }
+
+        if (!array.getClass().isArray()) {
+            System.out.println("Object is not array!");
+            return;
+        }
+
+        String ans = "";
+        Object cur = array;
+        while (cur != null && cur.getClass().isArray()) {
+            ans += "x" + java.lang.reflect.Array.getLength(cur);
+
+            if (!cur.getClass().getComponentType().isPrimitive()) {
+                cur = ((Object[]) cur)[0];
+            } else {
+                break;
+            }
+        }
+
+        System.out.println(ans.substring(1));
+    }
 }

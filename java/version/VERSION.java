@@ -2,7 +2,7 @@ package version;
 
 public class VERSION {
 
-    public static final String IMFCS_VERSION = "v.162";               // increment for any changes in post-processing software 
+    public static final String IMFCS_VERSION = "v.1_62_1";               // increment for any changes in post-processing software 
     public static final String GPUFIT_VERSION = "v1_1_1";           // increment for any changes in gpufit
     public static final String DCR_VERSION = "v1.29";            // increment for any changes in live readout feature
     public static final String SDK2_VERSION = "v1_1_2";         // increment for any changes in c++ codebase
