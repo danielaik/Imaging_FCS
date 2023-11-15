@@ -12,5 +12,16 @@ This version includes ImFCSNet and FCSNet inference. ImFCSNet predicts diffusion
 ## ImFCS documentation 1_62.pdf
 This manual contains the basic instructions on using the program, the definition of all items in the control and fit panels, the file formats of the saved data, and the theoretical functions used for fitting.
 
+# References
+
+Deep learning:
+1. Tang W H, et al. "Deep learning reduces data requirements and allows real-time measurements in Imaging Fluorescence Correlation Spectroscopy." bioRxiv. 2023. https://doi.org/10.1101/2023.08.07.552352
+
+Direct camera readout:
+2. Aik DYK, Wohland T. "Microscope alignment using real-time Imaging FCS." Biophys J. 2022. https://doi.org/10.1016/j.bpj.2022.06.009
+
+GPU capabilities:
+3. Sankaran J, et al. "Simultaneous spatiotemporal super-resolution and multi-parametric fluorescence microscopy." Nat Commun. 2021. https://doi.org/10.1038/s41467-021-22002-9
+
 ## Disclaimer
 The software and data on this site are provided for personal or academic use only and may not be used in any commercial venture or distributions. All files have been virus scanned, however, for your own protection; you should scan these files again. You assume the entire risk related to your use of this software and data. By using the software and data on this site your expressly assume all risks of data loss or damage alleged to have been caused by the software and data. The Biophysical Fluorescence Laboratory at NUS is providing this data "as is," and disclaims any and all warranties, whether express or implied, including (without limitation) any implied warranties of merchantability or fitness for a particular purpose. In no event will the Biophysical Fluorescence Laboratory at NUS and/or NUS be liable to you or to any third party for any direct, indirect, incidental, consequential, special or exemplary damages or lost profit resulting from any use or misuse of this software and data.
