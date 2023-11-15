@@ -15,12 +15,15 @@ This manual contains the basic instructions on using the program, the definition
 # References
 
 Deep learning:
+
 Tang W H, et al. "Deep learning reduces data requirements and allows real-time measurements in Imaging Fluorescence Correlation Spectroscopy." bioRxiv. 2023. https://doi.org/10.1101/2023.08.07.552352
 
 Direct camera readout:
+
 Aik DYK, Wohland T. "Microscope alignment using real-time Imaging FCS." Biophys J. 2022. https://doi.org/10.1016/j.bpj.2022.06.009
 
 GPU capabilities:
+
 Sankaran J, et al. "Simultaneous spatiotemporal super-resolution and multi-parametric fluorescence microscopy." Nat Commun. 2021. https://doi.org/10.1038/s41467-021-22002-9
 
 ## Disclaimer
