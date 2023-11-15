@@ -1,13 +1,13 @@
 This repository contains the source code for Imaging FCS 1.62 
 
-## What's new?
-This version includes ImFCSNet and FCSNet inference. ImFCSNet predicts diffusion coefficient directly from intensity traces. FCSNet predicts diffusion coefficient from autocorrelation function.
-
 Imaging FCS 1.62 is an ImageJ plugin featuring post-processing tools to calculate and view spatio-temporal correlation functions from 16 bit grey tiff stack files as well as data acquisition software for real-time image analysis. It was written as a FIJI plugin (ImageJ 1.53f; Java 1.8.0_281) and required Imagescience for statistics (simulator) and Apache Poi for file reading and writing.
 
 ImagingFCS 1.62 provides a comprehensive software tool to calculate and evaluate spatiotemporal correlation functions. It includes the calculation of all auto- or cross-correlation functions for arbitrary pixel binning and regions of interest within an image, provides fit functions for total internal reflection fluorescence (TIRF) and single plane illumination microscopy (SPIM) based FCS measurements, can calculate the FCS diffusion laws and contains an essential simulator to create simulated data for different diffusive modes.
 
 ImagingFCS runs under ImageJ, FIJI and Micromanager, and it runs on PC, Linux, and Mac OS. We will always use FIJI in the following text, but it should be understood that the same is true for ImageJ and Micromanager.
+
+## What's new?
+This version includes ImFCSNet and FCSNet inference. ImFCSNet predicts diffusion coefficient directly from intensity traces. FCSNet predicts diffusion coefficient from autocorrelation function.
 
 ## ImFCS documentation 1_62.pdf
 This manual contains the basic instructions on using the program, the definition of all items in the control and fit panels, the file formats of the saved data, and the theoretical functions used for fitting.
