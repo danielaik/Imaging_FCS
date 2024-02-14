@@ -62,7 +62,6 @@ nbdist/
 
 # Other common build directories
 bin/
-out/
 
 # Ignore Gradle GUI config
 gradle-app.setting

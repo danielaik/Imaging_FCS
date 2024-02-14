@@ -1,3 +1,4 @@
+package fiji.plugin.imaging_fcs;
 
 import ij.ImageJ;
 import fiji.plugin.imaging_fcs.imfcs.Imaging_FCS;
