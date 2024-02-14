@@ -1,4 +1,4 @@
-This repository contains the source code for Imaging FCS 1.62 
+This repository contains the source code for Imaging FCS
 
 Imaging FCS 1.62 is an ImageJ plugin featuring post-processing tools to calculate and view spatio-temporal correlation functions from 16 bit grey tiff stack files as well as data acquisition software for real-time image analysis. It was written as a FIJI plugin (ImageJ 1.53f; Java 1.8.0_281) and required Imagescience for statistics (simulator) and Apache Poi for file reading and writing.
 
