@@ -1,0 +1,99 @@
+# Compiled class file
+*.class
+
+# Log file
+*.log
+
+# BlueJ files
+*.ctxt
+
+# Mobile Tools for Java (J2ME)
+.mtj.tmp/
+
+# Package Files #
+*.jar
+*.war
+*.nar
+*.ear
+*.zip
+*.tar.gz
+*.rar
+
+# virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
+hs_err_pid*
+
+# Maven
+target/
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+dependency-reduced-pom.xml
+buildNumber.properties
+.mvn/timing.properties
+.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/maven-wrapper.jar
+
+# Eclipse
+.classpath
+.project
+.settings/
+.springBeans
+
+# IntelliJ IDEA
+.idea
+*.iws
+*.iml
+*.ipr
+out/
+
+# NetBeans
+nbproject/private/
+build/
+nbbuild/
+dist/
+nbdist/
+.nb-gradle/
+
+# Gradle
+.gradle
+/build/
+
+# Other common build directories
+bin/
+out/
+
+# Ignore Gradle GUI config
+gradle-app.setting
+
+# Avoid ignoring Gradle wrapper jar file (.jar files are usually ignored)
+!gradle-wrapper.jar
+
+# SonarQube Scanner
+.scannerwork/
+
+# Sonatype Nexus
+/nexus/
+
+# Eclipse Tycho
+.target/
+
+# OSGI Bundle Repository
+.osgi-repository/
+
+# JRebel
+rebel.xml
+
+# Checkstyle: configuration file and the checkstyle cache
+checkstyle.xml
+.checkstyle
+
+# Avoid ignoring Eclipse JDT Annotation Generated files
+.processing/
+
+# RoboVM (iOS development with Java)
+.robovm/
+
+## MacOSX
+.DS_Store
