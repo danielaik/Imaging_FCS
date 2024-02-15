@@ -2035,37 +2035,37 @@ public class Imaging_FCS implements PlugIn {
                 IJ.showMessage("Plotting of SD and/or Residuals without the ACF is not supported.");
             }
             if (!plotACFCurves) {
-                if (acfWindow != null && acfWindow.isClosed() == false) {	// close ACF window
+                if (acfWindow != null && !acfWindow.isClosed()) {	// close ACF window
                     acfWindow.close();
                 }
             }
             if (!plotSDCurves) {
-                if (sdWindow != null && sdWindow.isClosed() == false) {	// close SD window
+                if (sdWindow != null && !sdWindow.isClosed()) {	// close SD window
                     sdWindow.close();
                 }
             }
             if (!plotIntensityCurves) {
-                if (intWindow != null && intWindow.isClosed() == false) {	// close intensity trace window
+                if (intWindow != null && !intWindow.isClosed()) {	// close intensity trace window
                     intWindow.close();
                 }
             }
             if (!plotResCurves) {
-                if (resWindow != null && resWindow.isClosed() == false) {	// close fit residuals window
+                if (resWindow != null && !resWindow.isClosed()) {	// close fit residuals window
                     resWindow.close();
                 }
             }
             if (!plotParaHist) {
-                if (histWin != null && histWin.isClosed() == false) {
+                if (histWin != null && !histWin.isClosed()) {
                     histWin.close();
                 }
             }
             if (!plotBlockingCurve) {
-                if (blockingWindow != null && blockingWindow.isClosed() == false) {	// close blocking window
+                if (blockingWindow != null && !blockingWindow.isClosed()) {	// close blocking window
                     blockingWindow.close();
                 }
             }
             if (!plotCovmats) {
-                if (impCovWin != null && impCovWin.isClosed() == false) {	// close covariance window
+                if (impCovWin != null && !impCovWin.isClosed()) {	// close covariance window
                     impCovWin.close();
                 }
             }
@@ -2290,7 +2290,7 @@ public class Imaging_FCS implements PlugIn {
                 // TODO: perform dimensionality checl e.g., matching correlator scheme as trained
                 // This loop executes the ACF CNN fitting on a btnAll press
                 if (isgpupresent == 1 || isgpupresent == 0) {
-                    if (rbtnCNNACF.isSelected() == true && cnnACFLoaded == true) {
+                    if (rbtnCNNACF.isSelected() && cnnACFLoaded) {
                         correlateRoiInstant.addPropertyChangeListener((PropertyChangeEvent event) -> {
                             if (event.getPropertyName().equals("state")) {
                                 if (event.getNewValue() == SwingWorker.StateValue.DONE) {
@@ -2303,7 +2303,7 @@ public class Imaging_FCS implements PlugIn {
 
                 // This loop executes the Image CNN fitting on a btnAll press
                 if (isgpupresent == 0) {
-                    if (rbtnCNNImage.isSelected() == true && cnnImageLoaded == true) {
+                    if (rbtnCNNImage.isSelected() && cnnImageLoaded) {
                         correlateRoiInstant.addPropertyChangeListener((PropertyChangeEvent event) -> {
                             if (event.getPropertyName().equals("state")) {
                                 if (event.getNewValue() == SwingWorker.StateValue.DONE) {
@@ -2757,10 +2757,10 @@ public class Imaging_FCS implements PlugIn {
                 bgrf = bgrimp.getStackSize();
                 bgrw = bgrimp.getWidth();
                 bgrh = bgrimp.getHeight();
-                if (impwin != null && impwin.isClosed() == false) {
+                if (impwin != null && !impwin.isClosed()) {
                     if (width != bgrw || height != bgrh || frames != bgrf) {
                         IJ.showMessage("Background image is not the same size as Image. Background image not loaded.");
-                        if (bgrWin != null && bgrWin.isClosed() == false) {	// close N&B B window
+                        if (bgrWin != null && !bgrWin.isClosed()) {	// close N&B B window
                             bgrWin.close();
                         }
                         return false;
@@ -2861,11 +2861,7 @@ public class Imaging_FCS implements PlugIn {
 
         // Definition of listeners
         ItemListener tbBackgroundPressed = (ItemEvent ev) -> {
-            if (ev.getStateChange() == ItemEvent.SELECTED) {
-                setVisible(true);
-            } else {
-                setVisible(false);
-            }
+            setVisible(ev.getStateChange() == ItemEvent.SELECTED);
         };
 
         ActionListener cbBackgroundSubtractionMethodChanged = (ActionEvent event) -> {
@@ -4592,7 +4588,7 @@ public class Imaging_FCS implements PlugIn {
     };
 
     ActionListener btnNBPressed = (ActionEvent event) -> {
-        if (setImp == false) {
+        if (!setImp) {
             IJ.showMessage("No image loaded or assigned.");
             tbNB.setSelected(false); //this makes NB frame invisible and resets the toggle button to off
             return;
@@ -6767,98 +6763,98 @@ public class Imaging_FCS implements PlugIn {
         t = 0;
         row = ReconParaSheet.createRow(t++);
         row.createCell(0).setCellValue("ACF Window");
-        if ((acfWindow != null && acfWindow.isClosed() == false) || batchCorrelateAll) {
+        if ((acfWindow != null && !acfWindow.isClosed()) || batchCorrelateAll) {
             row.createCell(1).setCellValue(1);
         } else {
             row.createCell(1).setCellValue(0);
         }
         row = ReconParaSheet.createRow(t++);
         row.createCell(0).setCellValue("Intensity Trace Window");
-        if ((intWindow != null && intWindow.isClosed() == false) || batchCorrelateAll) {	// intensity trace window
+        if ((intWindow != null && !intWindow.isClosed()) || batchCorrelateAll) {	// intensity trace window
             row.createCell(1).setCellValue(1);
         } else {
             row.createCell(1).setCellValue(0);
         }
         row = ReconParaSheet.createRow(t++);
         row.createCell(0).setCellValue("Residual Window");
-        if ((resWindow != null && resWindow.isClosed() == false) || batchCorrelateAll) {	// fit residuals window
+        if ((resWindow != null && !resWindow.isClosed()) || batchCorrelateAll) {	// fit residuals window
             row.createCell(1).setCellValue(1);
         } else {
             row.createCell(1).setCellValue(0);
         }
         row = ReconParaSheet.createRow(t++);
         row.createCell(0).setCellValue("SD Window");
-        if ((sdWindow != null && sdWindow.isClosed() == false) || batchCorrelateAll) {	// SD window
+        if ((sdWindow != null && !sdWindow.isClosed()) || batchCorrelateAll) {	// SD window
             row.createCell(1).setCellValue(1);
         } else {
             row.createCell(1).setCellValue(0);
         }
         row = ReconParaSheet.createRow(t++);
         row.createCell(0).setCellValue("MSD Window");
-        if (msdWindow != null && msdWindow.isClosed() == false) {	// MSD window
+        if (msdWindow != null && !msdWindow.isClosed()) {	// MSD window
             row.createCell(1).setCellValue(1);
         } else {
             row.createCell(1).setCellValue(0);
         }
         row = ReconParaSheet.createRow(t++);
         row.createCell(0).setCellValue("Difusion Law Window");
-        if ((difflawWindow != null && difflawWindow.isClosed() == false) || batchDiffLaw) {	// diffusion law window
+        if ((difflawWindow != null && !difflawWindow.isClosed()) || batchDiffLaw) {	// diffusion law window
             row.createCell(1).setCellValue(1);
         } else {
             row.createCell(1).setCellValue(0);
         }
         row = ReconParaSheet.createRow(t++);
         row.createCell(0).setCellValue("PSF Window");
-        if ((PSFWindow != null && PSFWindow.isClosed() == false) || batchPSF) {	// PSF window
+        if ((PSFWindow != null && !PSFWindow.isClosed()) || batchPSF) {	// PSF window
             row.createCell(1).setCellValue(1);
         } else {
             row.createCell(1).setCellValue(0);
         }
         row = ReconParaSheet.createRow(t++);
         row.createCell(0).setCellValue("Para Cor Window");
-        if (paraCorWindow != null && paraCorWindow.isClosed() == false) {	// paraCor window
+        if (paraCorWindow != null && !paraCorWindow.isClosed()) {	// paraCor window
             row.createCell(1).setCellValue(1);
         } else {
             row.createCell(1).setCellValue(0);
         }
         row = ReconParaSheet.createRow(t++);
         row.createCell(0).setCellValue("Blocking Window");
-        if (blockingWindow != null && blockingWindow.isClosed() == false) {	// blocking window
+        if (blockingWindow != null && !blockingWindow.isClosed()) {	// blocking window
             row.createCell(1).setCellValue(1);
         } else {
             row.createCell(1).setCellValue(0);
         }
         row = ReconParaSheet.createRow(t++);
         row.createCell(0).setCellValue("Covariance Window");
-        if (impCovWin != null && impCovWin.isClosed() == false) {	// covariance window
+        if (impCovWin != null && !impCovWin.isClosed()) {	// covariance window
             row.createCell(1).setCellValue(1);
         } else {
             row.createCell(1).setCellValue(0);
         }
         row = ReconParaSheet.createRow(t++);
         row.createCell(0).setCellValue("N Window (N&B)");
-        if (impNWin != null && impNWin.isClosed() == false) {	// N&B N window
+        if (impNWin != null && !impNWin.isClosed()) {	// N&B N window
             row.createCell(1).setCellValue(1);
         } else {
             row.createCell(1).setCellValue(0);
         }
         row = ReconParaSheet.createRow(t++);
         row.createCell(0).setCellValue("B Window (N&B)");
-        if (impBWin != null && impBWin.isClosed() == false) {	// N&B B window
+        if (impBWin != null && !impBWin.isClosed()) {	// N&B B window
             row.createCell(1).setCellValue(1);
         } else {
             row.createCell(1).setCellValue(0);
         }
         row = ReconParaSheet.createRow(t++);
         row.createCell(0).setCellValue("Num Window (N&B)");
-        if (impNumWin != null && impNumWin.isClosed() == false) {	// N&B n window
+        if (impNumWin != null && !impNumWin.isClosed()) {	// N&B n window
             row.createCell(1).setCellValue(1);
         } else {
             row.createCell(1).setCellValue(0);
         }
         row = ReconParaSheet.createRow(t++);
         row.createCell(0).setCellValue("Epsilon Window (N&B)");
-        if (impEpsWin != null && impEpsWin.isClosed() == false) {	// N&B epsilon window
+        if (impEpsWin != null && !impEpsWin.isClosed()) {	// N&B epsilon window
             row.createCell(1).setCellValue(1);
         } else {
             row.createCell(1).setCellValue(0);
@@ -6872,7 +6868,7 @@ public class Imaging_FCS implements PlugIn {
         }
         row = ReconParaSheet.createRow(t++);
         row.createCell(0).setCellValue("Histogram Window");
-        if ((histWin != null && histWin.isClosed() == false) || batchFit) {					// histogram windows
+        if ((histWin != null && !histWin.isClosed()) || batchFit) {					// histogram windows
             row.createCell(1).setCellValue(1);
         } else {
             row.createCell(1).setCellValue(0);
@@ -6927,7 +6923,7 @@ public class Imaging_FCS implements PlugIn {
         for (int x = 0; x < dccfMax; x++) {
             row = ReconParaSheet.createRow(t++);
             row.createCell(0).setCellValue("DCCF Window " + x);
-            if ((impDCCFWin[x] != null && impDCCFWin[x].isClosed() == false) || x < dccfcount) {	// dCCF windows
+            if ((impDCCFWin[x] != null && !impDCCFWin[x].isClosed()) || x < dccfcount) {	// dCCF windows
                 row.createCell(1).setCellValue(1);
                 row.createCell(2).setCellValue(impDCCFWin[x].getHeight());
                 row.createCell(3).setCellValue(impDCCFWin[x].getWidth());
@@ -6939,7 +6935,7 @@ public class Imaging_FCS implements PlugIn {
         for (int x = 0; x < dccfMax; x++) {
             row = ReconParaSheet.createRow(t++);
             row.createCell(0).setCellValue("DCCF Histogram Window " + x);
-            if (histDCCFWin[x] != null && histDCCFWin[x].isClosed() == false) {	// dCCF historgram windows
+            if (histDCCFWin[x] != null && !histDCCFWin[x].isClosed()) {	// dCCF historgram windows
                 row.createCell(1).setCellValue(1);
                 row.createCell(2).setCellValue($histDCCFWinTitle[x]);
             } else {
@@ -7046,11 +7042,7 @@ public class Imaging_FCS implements PlugIn {
         tfCorrelatorQ.setText(sheet.getRow(t++).getCell(1).getStringCellValue());
         cbFitModel.setSelectedItem(sheet.getRow(t++).getCell(1).getStringCellValue());
         tbFCCSDisplay.setText(sheet.getRow(t++).getCell(1).getStringCellValue());
-        if (tbFCCSDisplay.getText().equals("FCCS Disp On")) {
-            tbFCCSDisplay.setSelected(true);
-        } else {
-            tbFCCSDisplay.setSelected(false);
-        }
+        tbFCCSDisplay.setSelected(tbFCCSDisplay.getText().equals("FCCS Disp On"));
         tfPixelSize.setText(sheet.getRow(t++).getCell(1).getStringCellValue());
         tbOverlap.setText(sheet.getRow(t++).getCell(1).getStringCellValue());
         if (tbOverlap.getText().equals("Overlap On")) {
@@ -8395,7 +8387,7 @@ public class Imaging_FCS implements PlugIn {
 
     // EXIT the program 
     public void exitImFCS() {
-        if (impwin != null && impwin.isClosed() == false) {	// remove listeners and overlays from image window
+        if (impwin != null && !impwin.isClosed()) {	// remove listeners and overlays from image window
             if (imp.getOverlay() != null) {
                 imp.deleteRoi();
                 imp.getOverlay().clear();
@@ -8427,55 +8419,55 @@ public class Imaging_FCS implements PlugIn {
     }
 
     public void closeWindows() {
-        if (acfWindow != null && acfWindow.isClosed() == false) {	// close ACF window
+        if (acfWindow != null && !acfWindow.isClosed()) {	// close ACF window
             acfWindow.close();
         }
-        if (intWindow != null && intWindow.isClosed() == false) {	// close intensity trace window
+        if (intWindow != null && !intWindow.isClosed()) {	// close intensity trace window
             intWindow.close();
         }
-        if (resWindow != null && resWindow.isClosed() == false) {	// close fit residuals window
+        if (resWindow != null && !resWindow.isClosed()) {	// close fit residuals window
             resWindow.close();
         }
-        if (sdWindow != null && sdWindow.isClosed() == false) {	// close SD window
+        if (sdWindow != null && !sdWindow.isClosed()) {	// close SD window
             sdWindow.close();
         }
-        if (msdWindow != null && msdWindow.isClosed() == false) {	// close MSD window
+        if (msdWindow != null && !msdWindow.isClosed()) {	// close MSD window
             msdWindow.close();
         }
-        if (difflawWindow != null && difflawWindow.isClosed() == false) {	// close diffusion law window
+        if (difflawWindow != null && !difflawWindow.isClosed()) {	// close diffusion law window
             difflawWindow.close();
         }
-        if (PSFWindow != null && PSFWindow.isClosed() == false) {	// close PSF window
+        if (PSFWindow != null && !PSFWindow.isClosed()) {	// close PSF window
             PSFWindow.close();
         }
-        if (paraCorWindow != null && paraCorWindow.isClosed() == false) {	// close paraCor window
+        if (paraCorWindow != null && !paraCorWindow.isClosed()) {	// close paraCor window
             paraCorWindow.close();
         }
-        if (blockingWindow != null && blockingWindow.isClosed() == false) {	// close blocking window
+        if (blockingWindow != null && !blockingWindow.isClosed()) {	// close blocking window
             blockingWindow.close();
         }
-        if (impCovWin != null && impCovWin.isClosed() == false) {	// close covariance window
+        if (impCovWin != null && !impCovWin.isClosed()) {	// close covariance window
             impCovWin.close();
         }
-        if (impNWin != null && impNWin.isClosed() == false) {	// close N&B N window
+        if (impNWin != null && !impNWin.isClosed()) {	// close N&B N window
             impNWin.close();
         }
-        if (impBWin != null && impBWin.isClosed() == false) {	// close N&B B window
+        if (impBWin != null && !impBWin.isClosed()) {	// close N&B B window
             impBWin.close();
         }
-        if (impNumWin != null && impNumWin.isClosed() == false) {	// close N&B n window
+        if (impNumWin != null && !impNumWin.isClosed()) {	// close N&B n window
             impNumWin.close();
         }
-        if (impEpsWin != null && impEpsWin.isClosed() == false) {	// close N&B epsilon window
+        if (impEpsWin != null && !impEpsWin.isClosed()) {	// close N&B epsilon window
             impEpsWin.close();
         }
         for (int x = 0; x < dccfMax; x++) {
-            if (impDCCFWin[x] != null && impDCCFWin[x].isClosed() == false) {	// close dCCF windows
+            if (impDCCFWin[x] != null && !impDCCFWin[x].isClosed()) {	// close dCCF windows
                 impDCCFWin[x].close();
             }
         }
         for (int x = 0; x < dccfMax; x++) {
-            if (histDCCFWin[x] != null && histDCCFWin[x].isClosed() == false) {	// close dCCF historgram windows
+            if (histDCCFWin[x] != null && !histDCCFWin[x].isClosed()) {	// close dCCF historgram windows
                 histDCCFWin[x].close();
             }
         }
@@ -8483,7 +8475,7 @@ public class Imaging_FCS implements PlugIn {
             impPara1.close();
         }
 
-        if (histWin != null && histWin.isClosed() == false) {		// close histogram windows
+        if (histWin != null && !histWin.isClosed()) {		// close histogram windows
             histWin.close();
         }
 
@@ -8671,7 +8663,7 @@ public class Imaging_FCS implements PlugIn {
      */
     public void obtainImage() {
 
-        if (impwin != null && impwin.isClosed() == false) {	// remove listeners and overlays from image window if a previous one existed
+        if (impwin != null && !impwin.isClosed()) {	// remove listeners and overlays from image window if a previous one existed
             if (imp.getOverlay() != null) {
                 imp.deleteRoi();
                 imp.getOverlay().clear();
@@ -8716,7 +8708,7 @@ public class Imaging_FCS implements PlugIn {
         // check whether a background file has been loaded and whether this is to be used 
         if (bgrloaded && JBackgroundSubtractionComponentObj.tfBGRloadStatus.getText().equals(JBackgroundSubtractionComponentObj.$BGFfileLoaded)) {
             if (width != bgrw || height != bgrh || frames != bgrf) {
-                if (impwin != null && impwin.isClosed() == false) {	// remove listeners and overlays from image window if a previous one existed
+                if (impwin != null && !impwin.isClosed()) {	// remove listeners and overlays from image window if a previous one existed
                     if (imp.getOverlay() != null) {
                         imp.deleteRoi();
                         imp.getOverlay().clear();
@@ -8868,7 +8860,7 @@ public class Imaging_FCS implements PlugIn {
 
     // check whether an image was either loaded or an existing image assigned to the plugin for treatment
     public void checkImp() {
-        if (setImp == false) {
+        if (!setImp) {
             IJ.showMessage("Image not loaded or assigned.\nPlease use \"Load\" or \"Use\" button.");
             throw new RuntimeException("No Image loaded/assigned");
         }
@@ -9054,7 +9046,7 @@ public class Imaging_FCS implements PlugIn {
                 }
             }
 
-            if (cfXDistance % pixbinX != 0 || cfXDistance % pixbinX != 0) {
+            if (cfXDistance % pixbinX != 0) {
                 IJ.log("Warning: CF distance is not a multiple of pixel bin.");//TODO set conditions how often it is shown
             }
 
@@ -9514,18 +9506,18 @@ public class Imaging_FCS implements PlugIn {
         }
 
         // close existing windows
-        if (impNWin != null && impNWin.isClosed() == false) {	// close N&B N window
+        if (impNWin != null && !impNWin.isClosed()) {	// close N&B N window
             impNWin.close();
         }
-        if (impBWin != null && impBWin.isClosed() == false) {	// close N&B B window
+        if (impBWin != null && !impBWin.isClosed()) {	// close N&B B window
             impBWin.close();
         }
 
         // close existing windows
-        if (impNumWin != null && impNumWin.isClosed() == false) {	// close N&B Num window
+        if (impNumWin != null && !impNumWin.isClosed()) {	// close N&B Num window
             impNumWin.close();
         }
-        if (impEpsWin != null && impEpsWin.isClosed() == false) {	// close N&B Eps window
+        if (impEpsWin != null && !impEpsWin.isClosed()) {	// close N&B Eps window
             impEpsWin.close();
         }
 
@@ -9966,7 +9958,7 @@ public class Imaging_FCS implements PlugIn {
         }
         plot.draw();
 
-        if (PSFWindow == null || PSFWindow.isClosed() == true) {
+        if (PSFWindow == null || PSFWindow.isClosed()) {
             PSFWindow = plot.show();
             PSFWindow.setLocation(PSFWindowPosX, PSFWindowPosY);
         } else {
@@ -10094,7 +10086,7 @@ public class Imaging_FCS implements PlugIn {
         plot.addPoints(dldata[0], dldata[1], dldata[2], Plot.CIRCLE);
         plot.draw();
 
-        if (difflawWindow == null || difflawWindow.isClosed() == true) {
+        if (difflawWindow == null || difflawWindow.isClosed()) {
             difflawWindow = plot.show();
             plot.setLimitsToFit(true);
             difflawWindow.setLocation(difflawWindowPosX, difflawWindowPosY);
@@ -10325,21 +10317,21 @@ public class Imaging_FCS implements PlugIn {
                     }
                     correlateRoiWorker correlateRoiInstant = new correlateRoiWorker(impRoi1);
                     correlateRoiInstant.execute();
-                    while (correlateRoiInstant.isDone() == false) {
+                    while (!correlateRoiInstant.isDone()) {
                     }
                 }
 
                 if (batchPSF) {
                     correlatePSFWorker correlatePSFInstant = new correlatePSFWorker();
                     correlatePSFInstant.execute();
-                    while (correlatePSFInstant.isDone() == false) {
+                    while (!correlatePSFInstant.isDone()) {
                     }
                 }
 
                 if (batchDiffLaw) {
                     correlateDiffLawWorker correlateDiffLawInstant = new correlateDiffLawWorker();
                     correlateDiffLawInstant.execute();
-                    while (correlateDiffLawInstant.isDone() == false) {
+                    while (!correlateDiffLawInstant.isDone()) {
                     }
                     diffLawFitLim[0] = 1;
                     diffLawFitLim[1] = 5;
@@ -10354,7 +10346,7 @@ public class Imaging_FCS implements PlugIn {
                     mode = 2;
                     correlateDCCFWorker correlateDCCFInstant = new correlateDCCFWorker(mode, wx, hy);
                     correlateDCCFInstant.execute();
-                    while (correlateDCCFInstant.isDone() == false) {
+                    while (!correlateDCCFInstant.isDone()) {
                     }
                 }
 
@@ -10366,7 +10358,7 @@ public class Imaging_FCS implements PlugIn {
                     mode = 1;
                     correlateDCCFWorker correlateDCCFInstant = new correlateDCCFWorker(mode, wx, hy);
                     correlateDCCFInstant.execute();
-                    while (correlateDCCFInstant.isDone() == false) {
+                    while (!correlateDCCFInstant.isDone()) {
                     }
                 }
 
@@ -10378,7 +10370,7 @@ public class Imaging_FCS implements PlugIn {
                     mode = 3;
                     correlateDCCFWorker correlateDCCFInstant = new correlateDCCFWorker(mode, wx, hy);
                     correlateDCCFInstant.execute();
-                    while (correlateDCCFInstant.isDone() == false) {
+                    while (!correlateDCCFInstant.isDone()) {
                     }
                 }
 
@@ -10390,7 +10382,7 @@ public class Imaging_FCS implements PlugIn {
                     mode = 4;
                     correlateDCCFWorker correlateDCCFInstant = new correlateDCCFWorker(mode, wx, hy);
                     correlateDCCFInstant.execute();
-                    while (correlateDCCFInstant.isDone() == false) {
+                    while (!correlateDCCFInstant.isDone()) {
                     }
                 }
 
@@ -10500,49 +10492,49 @@ public class Imaging_FCS implements PlugIn {
                 }
 
                 // clean up and close all windows
-                if (acfWindow != null && acfWindow.isClosed() == false) {	// close ACF window
+                if (acfWindow != null && !acfWindow.isClosed()) {	// close ACF window
                     acfWindow.close();
                 }
-                if (intWindow != null && intWindow.isClosed() == false) {	// close intensity trace window
+                if (intWindow != null && !intWindow.isClosed()) {	// close intensity trace window
                     intWindow.close();
                 }
-                if (resWindow != null && resWindow.isClosed() == false) {	// close fit residuals window
+                if (resWindow != null && !resWindow.isClosed()) {	// close fit residuals window
                     resWindow.close();
                 }
-                if (sdWindow != null && sdWindow.isClosed() == false) {	// close SD window
+                if (sdWindow != null && !sdWindow.isClosed()) {	// close SD window
                     sdWindow.close();
                 }
-                if (msdWindow != null && msdWindow.isClosed() == false) {	// close SD window
+                if (msdWindow != null && !msdWindow.isClosed()) {	// close SD window
                     msdWindow.close();
                 }
-                if (difflawWindow != null && difflawWindow.isClosed() == false) {	// close diffusion law window
+                if (difflawWindow != null && !difflawWindow.isClosed()) {	// close diffusion law window
                     difflawWindow.close();
                 }
-                if (PSFWindow != null && PSFWindow.isClosed() == false) {	// close PSF window
+                if (PSFWindow != null && !PSFWindow.isClosed()) {	// close PSF window
                     PSFWindow.close();
                 }
-                if (paraCorWindow != null && paraCorWindow.isClosed() == false) {	// close paraCor window
+                if (paraCorWindow != null && !paraCorWindow.isClosed()) {	// close paraCor window
                     paraCorWindow.close();
                 }
-                if (blockingWindow != null && blockingWindow.isClosed() == false) {	// close blocking window
+                if (blockingWindow != null && !blockingWindow.isClosed()) {	// close blocking window
                     blockingWindow.close();
                 }
-                if (impCovWin != null && impCovWin.isClosed() == false) {	// close covariance window
+                if (impCovWin != null && !impCovWin.isClosed()) {	// close covariance window
                     impCovWin.close();
                 }
-                if (impNWin != null && impNWin.isClosed() == false) {	// close covariance window
+                if (impNWin != null && !impNWin.isClosed()) {	// close covariance window
                     impNWin.close();
                 }
-                if (impBWin != null && impBWin.isClosed() == false) {	// close covariance window
+                if (impBWin != null && !impBWin.isClosed()) {	// close covariance window
                     impBWin.close();
                 }
                 for (int x = 0; x < dccfMax; x++) {
-                    if (impDCCFWin[x] != null && impDCCFWin[x].isClosed() == false) {	// close DCCF windows
+                    if (impDCCFWin[x] != null && !impDCCFWin[x].isClosed()) {	// close DCCF windows
                         impDCCFWin[x].close();
                     }
                 }
                 for (int x = 0; x < dccfMax; x++) {
-                    if (histDCCFWin[x] != null && histDCCFWin[x].isClosed() == false) {	// close dCCF historgram windows
+                    if (histDCCFWin[x] != null && !histDCCFWin[x].isClosed()) {	// close dCCF historgram windows
                         histDCCFWin[x].close();
                     }
                 }
@@ -10550,7 +10542,7 @@ public class Imaging_FCS implements PlugIn {
                     impPara1.close();
                 }
                 // close histogram windows
-                if (histWin != null && histWin.isClosed() == false) {
+                if (histWin != null && !histWin.isClosed()) {
                     histWin.close();
                 }
 
@@ -10594,7 +10586,7 @@ public class Imaging_FCS implements PlugIn {
         String plotfilepath = $sfile + $label + $suffix + ".png";
         IJ.saveAs(histimp, "PNG", plotfilepath);
         // close histogram windows
-        if (hWin != null && hWin.isClosed() == false) {
+        if (hWin != null && !hWin.isClosed()) {
             hWin.close();
         }
     }
@@ -10727,7 +10719,7 @@ public class Imaging_FCS implements PlugIn {
         plot.addLabel(0.5, 0, $paracor);
 
         // either create a new plot window or plot within the existing window
-        if (paraCorWindow == null || paraCorWindow.isClosed() == true) {
+        if (paraCorWindow == null || paraCorWindow.isClosed()) {
             paraCorWindow = plot.show();
             paraCorWindow.setLocation(paraCorWindowPosX, paraCorWindowPosY);
         } else {
@@ -10832,10 +10824,10 @@ public class Imaging_FCS implements PlugIn {
     public void createDCCFWindow(int dw, int dh, String $imagetitle, String $histtitle, int mode) {
         // dw, dh are width and height for the window to be plotted
         // the strings are the title for the image and histograms
-        if (impDCCFWin[mode] != null && impDCCFWin[mode].isClosed() == false) {	// close DCCF window for the given direction if it exists
+        if (impDCCFWin[mode] != null && !impDCCFWin[mode].isClosed()) {	// close DCCF window for the given direction if it exists
             impDCCFWin[mode].close();
         }
-        if (histDCCFWin[mode] != null && histDCCFWin[mode].isClosed() == false) {	// close dCCF historgram window for the given direction if it exists
+        if (histDCCFWin[mode] != null && !histDCCFWin[mode].isClosed()) {	// close dCCF historgram window for the given direction if it exists
             histDCCFWin[mode].close();
         }
 
@@ -12055,7 +12047,7 @@ public class Imaging_FCS implements PlugIn {
         ind = (int) Math.max(ind, correlatorq - 1);				// block at least until maximum sample time
 
         // Plot the blocking curve if selected
-        if (plotBlockingCurve == true) {
+        if (plotBlockingCurve) {
             minblock = varblock[1][0];
             maxblock = varblock[1][0];
             for (int x = 0; x < blocknum; x++) {
@@ -12092,7 +12084,7 @@ public class Imaging_FCS implements PlugIn {
             }
             plot.draw();
             // either create a new plot window or plot within the existing window
-            if (blockingWindow == null || blockingWindow.isClosed() == true) {
+            if (blockingWindow == null || blockingWindow.isClosed()) {
                 blockingWindow = plot.show();
                 blockingWindow.setLocation(blockingWindowPosX, blockingWindowPosY);
             } else {
@@ -12292,7 +12284,7 @@ public class Imaging_FCS implements PlugIn {
             }
 
             // Plot covariance matrix if selected
-            if (plotCovmats == true) {
+            if (plotCovmats) {
                 if (impCov != null) {		// close covariance window if it exists
                     impCov.close();
                 }
@@ -13597,7 +13589,7 @@ public class Imaging_FCS implements PlugIn {
 
             int numparfit = 0;		// count how many paramters will be fit
             for (i = 0; i < noparam; i++) {
-                if (paramfit[i] == true) {
+                if (paramfit[i]) {
                     numparfit++;
                 }
             }
@@ -13607,7 +13599,7 @@ public class Imaging_FCS implements PlugIn {
             initialGuess = new double[numfreefitpar];	// setup the initial guesses for the parameters
             int num = 0;
             for (i = 0; i < noparam; i++) {
-                if (paramfit[i] == true) {
+                if (paramfit[i]) {
                     initialGuess[num] = paraminitval[i];
                     num++;
                 }
@@ -13720,7 +13712,7 @@ public class Imaging_FCS implements PlugIn {
 
                 int num = 0;										// store the fit results 
                 for (int i = 0; i < noparam; i++) {
-                    if (paramfit[i] == true) {
+                    if (paramfit[i]) {
                         fitres[kcf][cpx][cpy][i] = result[num];		// for free parameters use the fit results
                         num++;
                     } else {
@@ -13756,7 +13748,7 @@ public class Imaging_FCS implements PlugIn {
                 Arrays.fill(tsig, 1);
                 int num = 0;
                 for (int i = 0; i < noparam; i++) {
-                    if (paramfit[i] == true) {
+                    if (paramfit[i]) {
                         fitres[kcf][cpx][cpy][i] = Double.NaN;
                         result.add(initparam[i]);		// return the initial values
                         num++;
@@ -13807,7 +13799,7 @@ public class Imaging_FCS implements PlugIn {
 
             int numparfit = 0;		// count how many paramters will be fit
             for (i = 0; i < noparam; i++) {
-                if (paramfit[i] == true) {
+                if (paramfit[i]) {
                     numparfit++;
                 }
             }
@@ -13817,7 +13809,7 @@ public class Imaging_FCS implements PlugIn {
             initialGuess = new double[numfreefitpar];	// setup the initial guesses for the parameters
             int num = 0;
             for (i = 0; i < noparam; i++) {
-                if (paramfit[i] == true) {
+                if (paramfit[i]) {
                     initialGuess[num] = paraminitval[i];
                     num++;
                 }
@@ -13832,13 +13824,10 @@ public class Imaging_FCS implements PlugIn {
                     fitfunction = new FCS_3p_SPIM();
                     break;
                 default:
-                    switch (kcf) {
-                        case 2:
-                            fitfunction = new FCCS_2p();// fit average CF
-                            break;
-                        default:
-                            fitfunction = new FCS_3p(kcf); // fit average ACF green/red
-                            break;
+                    if (kcf == 2) {
+                        fitfunction = new FCCS_2p();// fit average CF
+                    } else {
+                        fitfunction = new FCS_3p(kcf); // fit average ACF green/red
                     }
                     break;
             }
@@ -13871,13 +13860,10 @@ public class Imaging_FCS implements PlugIn {
                     fitfunction = new FCS_3p_SPIM();
                     break;
                 default:
-                    switch (kcf) {
-                        case 2:
-                            fitfunction = new FCCS_2p();// fit average CF
-                            break;
-                        default:
-                            fitfunction = new FCS_3p(kcf); // fit average ACF green/red
-                            break;
+                    if (kcf == 2) {
+                        fitfunction = new FCCS_2p();// fit average CF
+                    } else {
+                        fitfunction = new FCS_3p(kcf); // fit average ACF green/red
                     }
                     break;
             }
@@ -13932,7 +13918,7 @@ public class Imaging_FCS implements PlugIn {
                 int num = 0;										// store the fit results
                 double[] avefitres = new double[noparam];
                 for (int i = 0; i < noparam; i++) {
-                    if (paramfit[i] == true) {
+                    if (paramfit[i]) {
                         avefitres[i] = result[num];		// for free parameters use the fit results
                         num++;
                     } else {
@@ -13963,7 +13949,7 @@ public class Imaging_FCS implements PlugIn {
                 ArrayList<Double> result = new ArrayList<>();
                 int num = 0;
                 for (int i = 0; i < noparam; i++) {
-                    if (paramfit[i] == true) {
+                    if (paramfit[i]) {
                         result.add(initparam[i]);		// return the initial values
                         num++;
                     }
@@ -14003,7 +13989,7 @@ public class Imaging_FCS implements PlugIn {
 
             int numparfit = 0;		// count how many paramters will be fit
             for (i = 0; i < noparam; i++) {
-                if (paramfit[i] == true) {
+                if (paramfit[i]) {
                     numparfit++;
                 }
             }
@@ -14013,7 +13999,7 @@ public class Imaging_FCS implements PlugIn {
             initialGuess = new double[numparfit];	// setup the initial guesses for the parameters
             int num = 0;
             for (i = 0; i < noparam; i++) {
-                if (paramfit[i] == true) {
+                if (paramfit[i]) {
                     initialGuess[num] = paraminitval[i];
                     num++;
                 }
@@ -14088,7 +14074,7 @@ public class Imaging_FCS implements PlugIn {
 
                 int num = 0;							// store the fit results 
                 for (int i = 0; i < noparam; i++) {
-                    if (paramfit[i] == true) {
+                    if (paramfit[i]) {
                         fitres[kcf][cpx][cpy][i] = result[num];		// for free parameters use the fit results
                         num++;
                     } else {
@@ -14125,7 +14111,7 @@ public class Imaging_FCS implements PlugIn {
                 int num = 0;
 
                 for (int i = 0; i < noparam; i++) {
-                    if (paramfit[i] == true) {
+                    if (paramfit[i]) {
                         fitres[kcf][cpx][cpy][i] = Double.NaN;
                         result.add(initparam[i]);		// return the initial values
                         num++;
@@ -14800,7 +14786,7 @@ public class Imaging_FCS implements PlugIn {
         }
 
         Rectangle plotrect = plotroi.getBounds();
-        if (map == true) {										// if the ROI is selected in the parameter map
+        if (map) {										// if the ROI is selected in the parameter map
             cpx1 = (int) plotrect.getX();
             cpy1 = (int) plotrect.getY();
             if (cfXDistance < 0) {
@@ -14812,17 +14798,15 @@ public class Imaging_FCS implements PlugIn {
 
             cpxf = (int) (cpx1 + plotrect.getWidth());
             cpyf = (int) (cpy1 + plotrect.getHeight());
-            cpx2 = (cpx1 * pixbinX + cfXDistance);
-            cpy2 = (cpy1 * pixbinY + cfYDistance);
 
         } else {
             cpx1 = (int) Math.ceil(plotrect.getX() / pixbinX);
             cpy1 = (int) Math.ceil(plotrect.getY() / pixbinY);
             cpxf = (int) Math.floor((plotrect.getX() + plotrect.getWidth() - binningX) / pixbinX);
             cpyf = (int) Math.floor((plotrect.getY() + plotrect.getHeight() - binningY) / pixbinY);
-            cpx2 = (cpx1 * pixbinX + cfXDistance);
-            cpy2 = (cpy1 * pixbinY + cfYDistance);
         }
+        cpx2 = (cpx1 * pixbinX + cfXDistance);
+        cpy2 = (cpy1 * pixbinY + cfYDistance);
 
         maxsc = acf[ct][cpx1][cpy1][1];		// minimum and maximum setting for plot window
         minsc = 1000;						// set minsc to a high value to make sure it is not 0
@@ -14847,7 +14831,7 @@ public class Imaging_FCS implements PlugIn {
             }
 
             // either create a new plot window or plot within the existing window
-            if (acfWindow == null || acfWindow.isClosed() == true) {
+            if (acfWindow == null || acfWindow.isClosed()) {
                 acfWindow = plot.show();
                 acfWindow.setLocation(acfWindowPosX, acfWindowPosY);
             } else {
@@ -14935,7 +14919,7 @@ public class Imaging_FCS implements PlugIn {
             }
 
             // either create a new plot window or plot within the existing window
-            if (acfWindow == null || acfWindow.isClosed() == true) {
+            if (acfWindow == null || acfWindow.isClosed()) {
                 acfWindow = plot.show();
                 acfWindow.setLocation(acfWindowPosX, acfWindowPosY);
             } else {
@@ -14983,7 +14967,7 @@ public class Imaging_FCS implements PlugIn {
                 for (int x = cpx1; x <= cpxf; x++) {
                     for (int y = cpy1; y <= cpyf; y++) {
                         for (int z = 1; z <= (chanum - 1); z++) {
-                            if ((!map && plotroi.contains(x * pixbinX, y * pixbinY) && plotroi.contains(x * pixbinX, y * pixbinY + binningY - 1) && plotroi.contains(x * pixbinX + binningX - 1, y * pixbinY) && plotroi.contains(x * pixbinX + binningX - 1, y * pixbinY + binningY - 1)) || (map == true && plotroi.contains(x, y))) {
+                            if ((!map && plotroi.contains(x * pixbinX, y * pixbinY) && plotroi.contains(x * pixbinX, y * pixbinY + binningY - 1) && plotroi.contains(x * pixbinX + binningX - 1, y * pixbinY) && plotroi.contains(x * pixbinX + binningX - 1, y * pixbinY + binningY - 1)) || (map && plotroi.contains(x, y))) {
                                 if (maxsc < acf[i][x][y][z]) {
                                     maxsc = acf[i][x][y][z];
                                 }
@@ -15029,7 +15013,7 @@ public class Imaging_FCS implements PlugIn {
             if (doFit) {// Fit has been performed; plot fitted CFs or CFs or both depending on the imageType
                 for (int y = cpy1; y <= cpyf; y++) {
                     for (int x = cpx1; x <= cpxf; x++) {
-                        if ((!map && plotroi.contains(x * pixbinX, y * pixbinY) && plotroi.contains(x * pixbinX, y * pixbinY + binningY - 1) && plotroi.contains(x * pixbinX + binningX - 1, y * pixbinY) && plotroi.contains(x * pixbinX + binningX - 1, y * pixbinY + binningY - 1)) || (map == true && plotroi.contains(x, y))) {
+                        if ((!map && plotroi.contains(x * pixbinX, y * pixbinY) && plotroi.contains(x * pixbinX, y * pixbinY + binningY - 1) && plotroi.contains(x * pixbinX + binningX - 1, y * pixbinY) && plotroi.contains(x * pixbinX + binningX - 1, y * pixbinY + binningY - 1)) || (map && plotroi.contains(x, y))) {
                             for (int i = indexPair.get(submode).get(0); i < indexPair.get(submode).get(1); i++) {
                                 if (submode == 1) {
                                     switch (i) {
@@ -15103,7 +15087,7 @@ public class Imaging_FCS implements PlugIn {
             } else {
                 for (int y = cpy1; y <= cpyf; y++) {// plot all CFs depending on the imageType
                     for (int x = cpx1; x <= cpxf; x++) {
-                        if ((!map && plotroi.contains(x * pixbinX, y * pixbinY) && plotroi.contains(x * pixbinX, y * pixbinY + binningY - 1) && plotroi.contains(x * pixbinX + binningX - 1, y * pixbinY) && plotroi.contains(x * pixbinX + binningX - 1, y * pixbinY + binningY - 1)) || (map == true && plotroi.contains(x, y))) {
+                        if ((!map && plotroi.contains(x * pixbinX, y * pixbinY) && plotroi.contains(x * pixbinX, y * pixbinY + binningY - 1) && plotroi.contains(x * pixbinX + binningX - 1, y * pixbinY) && plotroi.contains(x * pixbinX + binningX - 1, y * pixbinY + binningY - 1)) || (map && plotroi.contains(x, y))) {
                             for (int i = indexPair.get(submode).get(0); i < indexPair.get(submode).get(1); i++) {
                                 if (submode == 1) {
                                     switch (i) {
@@ -15130,7 +15114,7 @@ public class Imaging_FCS implements PlugIn {
             plot.setColor(java.awt.Color.BLUE);
 
             // either create a new plot window or plot within the existing window
-            if (acfWindow == null || acfWindow.isClosed() == true) {
+            if (acfWindow == null || acfWindow.isClosed()) {
                 acfWindow = plot.show();
                 acfWindow.setLocation(acfWindowPosX, acfWindowPosY);
             } else {
@@ -15195,7 +15179,7 @@ public class Imaging_FCS implements PlugIn {
             }
 
             // either create a new plot window or plot within the existing window
-            if (acfWindow == null || acfWindow.isClosed() == true) {
+            if (acfWindow == null || acfWindow.isClosed()) {
                 acfWindow = plot.show();
                 acfWindow.setLocation(acfWindowPosX, acfWindowPosY);
             } else {
@@ -15293,7 +15277,7 @@ public class Imaging_FCS implements PlugIn {
             }
 
             // either create a new plot window or plot within the existing window
-            if (acfWindow == null || acfWindow.isClosed() == true) {
+            if (acfWindow == null || acfWindow.isClosed()) {
                 acfWindow = plot.show();
                 acfWindow.setLocation(acfWindowPosX, acfWindowPosY);
             } else {
@@ -15317,7 +15301,7 @@ public class Imaging_FCS implements PlugIn {
             for (int x = cpx1; x <= cpxf; x++) {		// find minimum and maximum values in correlation functions that will be plotted
                 for (int y = cpy1; y <= cpyf; y++) {
                     for (int z = 1; z <= (chanum - 1); z++) {
-                        if ((!map && plotroi.contains(x * pixbinX, y * pixbinY) && plotroi.contains(x * pixbinX, y * pixbinY + binningY - 1) && plotroi.contains(x * pixbinX + binningX - 1, y * pixbinY) && plotroi.contains(x * pixbinX + binningX - 1, y * pixbinY + binningY - 1)) || (map == true && plotroi.contains(x, y))) {
+                        if ((!map && plotroi.contains(x * pixbinX, y * pixbinY) && plotroi.contains(x * pixbinX, y * pixbinY + binningY - 1) && plotroi.contains(x * pixbinX + binningX - 1, y * pixbinY) && plotroi.contains(x * pixbinX + binningX - 1, y * pixbinY + binningY - 1)) || (map && plotroi.contains(x, y))) {
                             if (pixvalid[cftype][x][y] == 1.0) {
                                 if (maxsc < acf[cftype][x][y][z]) {
                                     maxsc = acf[cftype][x][y][z];
@@ -15356,7 +15340,7 @@ public class Imaging_FCS implements PlugIn {
             if (doFit) {
                 for (int y = cpy1; y <= cpyf; y++) {
                     for (int x = cpx1; x <= cpxf; x++) {
-                        if ((!map && plotroi.contains(x * pixbinX, y * pixbinY) && plotroi.contains(x * pixbinX, y * pixbinY + binningY - 1) && plotroi.contains(x * pixbinX + binningX - 1, y * pixbinY) && plotroi.contains(x * pixbinX + binningX - 1, y * pixbinY + binningY - 1)) || (map == true && plotroi.contains(x, y))) {
+                        if ((!map && plotroi.contains(x * pixbinX, y * pixbinY) && plotroi.contains(x * pixbinX, y * pixbinY + binningY - 1) && plotroi.contains(x * pixbinX + binningX - 1, y * pixbinY) && plotroi.contains(x * pixbinX + binningX - 1, y * pixbinY + binningY - 1)) || (map && plotroi.contains(x, y))) {
 
                             if (pixvalid[cftype][x][y] == 1.0) {
                                 plot.setColor(java.awt.Color.BLUE);
@@ -15374,13 +15358,11 @@ public class Imaging_FCS implements PlugIn {
 
                                     double[] parameters = new double[num1];
                                     ParametricUnivariateFunction theofunction;
-                                    switch ($fitmode) {
-                                        case "SPIM-FCS (3D)":
-                                            theofunction = new FCS_3p_SPIM();
-                                            break;
-                                        default: //DC-FCCS plots CCF only; ACF plot ACF; sCCF plot CCF
-                                            theofunction = new FCS_3p(cftype);
-                                            break;
+                                    //DC-FCCS plots CCF only; ACF plot ACF; sCCF plot CCF
+                                    if ($fitmode.equals("SPIM-FCS (3D)")) {
+                                        theofunction = new FCS_3p_SPIM();
+                                    } else {
+                                        theofunction = new FCS_3p(cftype);
                                     }
                                     num1 = 0;
 
@@ -15405,7 +15387,7 @@ public class Imaging_FCS implements PlugIn {
             } else {
                 for (int y = cpy1; y <= cpyf; y++) {
                     for (int x = cpx1; x <= cpxf; x++) {
-                        if ((!map && plotroi.contains(x * pixbinX, y * pixbinY) && plotroi.contains(x * pixbinX, y * pixbinY + binningY - 1) && plotroi.contains(x * pixbinX + binningX - 1, y * pixbinY) && plotroi.contains(x * pixbinX + binningX - 1, y * pixbinY + binningY - 1)) || (map == true && plotroi.contains(x, y))) {
+                        if ((!map && plotroi.contains(x * pixbinX, y * pixbinY) && plotroi.contains(x * pixbinX, y * pixbinY + binningY - 1) && plotroi.contains(x * pixbinX + binningX - 1, y * pixbinY) && plotroi.contains(x * pixbinX + binningX - 1, y * pixbinY + binningY - 1)) || (map && plotroi.contains(x, y))) {
                             plot.setColor(java.awt.Color.BLUE);
                             plot.addPoints(lagtime, acf[cftype][x][y], Plot.LINE);
                         }
@@ -15414,7 +15396,7 @@ public class Imaging_FCS implements PlugIn {
             }
 
             // either create a new plot window or plot within the existing window
-            if (acfWindow == null || acfWindow.isClosed() == true) {
+            if (acfWindow == null || acfWindow.isClosed()) {
                 acfWindow = plot.show();
                 acfWindow.setLocation(acfWindowPosX, acfWindowPosY);
             } else {
@@ -15477,7 +15459,7 @@ public class Imaging_FCS implements PlugIn {
                 for (int x = cpx1; x <= cpxf; x++) {
                     for (int y = cpy1; y <= cpyf; y++) {
                         for (int z = 1; z <= (chanum - 1); z++) {
-                            if ((!map && plotroi.contains(x * pixbinX, y * pixbinY) && plotroi.contains(x * pixbinX, y * pixbinY + binningY - 1) && plotroi.contains(x * pixbinX + binningX - 1, y * pixbinY) && plotroi.contains(x * pixbinX + binningX - 1, y * pixbinY + binningY - 1)) || (map == true && plotroi.contains(x, y))) {
+                            if ((!map && plotroi.contains(x * pixbinX, y * pixbinY) && plotroi.contains(x * pixbinX, y * pixbinY + binningY - 1) && plotroi.contains(x * pixbinX + binningX - 1, y * pixbinY) && plotroi.contains(x * pixbinX + binningX - 1, y * pixbinY + binningY - 1)) || (map && plotroi.contains(x, y))) {
 
                                 //check for pixel validity before plotting. Only plot valid pixels depedning on the settings
                                 boolean proceed = true;
@@ -15543,7 +15525,7 @@ public class Imaging_FCS implements PlugIn {
             if (doFit) {// Fit has been performed; plot fitted CFs or CFs or both depending on the imageType
                 for (int y = cpy1; y <= cpyf; y++) {
                     for (int x = cpx1; x <= cpxf; x++) {
-                        if ((!map && plotroi.contains(x * pixbinX, y * pixbinY) && plotroi.contains(x * pixbinX, y * pixbinY + binningY - 1) && plotroi.contains(x * pixbinX + binningX - 1, y * pixbinY) && plotroi.contains(x * pixbinX + binningX - 1, y * pixbinY + binningY - 1)) || (map == true && plotroi.contains(x, y))) {
+                        if ((!map && plotroi.contains(x * pixbinX, y * pixbinY) && plotroi.contains(x * pixbinX, y * pixbinY + binningY - 1) && plotroi.contains(x * pixbinX + binningX - 1, y * pixbinY) && plotroi.contains(x * pixbinX + binningX - 1, y * pixbinY + binningY - 1)) || (map && plotroi.contains(x, y))) {
                             for (int i = indexPair.get(submode).get(0); i < indexPair.get(submode).get(1); i++) {
                                 if (submode == 1) {
                                     switch (i) {
@@ -15654,7 +15636,7 @@ public class Imaging_FCS implements PlugIn {
             } else {
                 for (int y = cpy1; y <= cpyf; y++) {// plot all CFs depending on the imageType
                     for (int x = cpx1; x <= cpxf; x++) {
-                        if ((!map && plotroi.contains(x * pixbinX, y * pixbinY) && plotroi.contains(x * pixbinX, y * pixbinY + binningY - 1) && plotroi.contains(x * pixbinX + binningX - 1, y * pixbinY) && plotroi.contains(x * pixbinX + binningX - 1, y * pixbinY + binningY - 1)) || (map == true && plotroi.contains(x, y))) {
+                        if ((!map && plotroi.contains(x * pixbinX, y * pixbinY) && plotroi.contains(x * pixbinX, y * pixbinY + binningY - 1) && plotroi.contains(x * pixbinX + binningX - 1, y * pixbinY) && plotroi.contains(x * pixbinX + binningX - 1, y * pixbinY + binningY - 1)) || (map && plotroi.contains(x, y))) {
                             for (int i = indexPair.get(submode).get(0); i < indexPair.get(submode).get(1); i++) {
                                 if (submode == 1) {
                                     switch (i) {
@@ -15700,7 +15682,7 @@ public class Imaging_FCS implements PlugIn {
             plot.setColor(java.awt.Color.BLUE);
 
             // either create a new plot window or plot within the existing window
-            if (acfWindow == null || acfWindow.isClosed() == true) {
+            if (acfWindow == null || acfWindow.isClosed()) {
                 acfWindow = plot.show();
                 acfWindow.setLocation(acfWindowPosX, acfWindowPosY);
             } else {
@@ -15713,7 +15695,7 @@ public class Imaging_FCS implements PlugIn {
 
     // plot a theretical ACF usng the parameters in the Fit Panel
     public void plotTheoreticalCF() {
-        if (acfWindow == null || acfWindow.isClosed() == true) {
+        if (acfWindow == null || acfWindow.isClosed()) {
             JOptionPane.showMessageDialog(null, "No correlation window open");
             return;
         }
@@ -15726,103 +15708,103 @@ public class Imaging_FCS implements PlugIn {
         int cpy2 = cpy1 * pixbinY + cfYDistance;
         if (tfFitModel.getText().equals("ITIR-FCS (2D)")) {	// select the fit model to be used; extra fit models can be added here  
             theofunction = new FCS_3p(0);
-            if (paramfit[0] == true) {
+            if (paramfit[0]) {
                 paralist.add(Double.parseDouble(tfParamN.getText()));
             }
-            if (paramfit[1] == true) {
+            if (paramfit[1]) {
                 paralist.add(Double.parseDouble(tfParamD.getText()) / Math.pow(10, 12));
             }
-            if (paramfit[2] == true) {
+            if (paramfit[2]) {
                 paralist.add(Double.parseDouble(tfParamVx.getText()) / Math.pow(10, 6));
             }
-            if (paramfit[3] == true) {
+            if (paramfit[3]) {
                 paralist.add(Double.parseDouble(tfParamVy.getText()) / Math.pow(10, 6));
             }
-            if (paramfit[4] == true) {
+            if (paramfit[4]) {
                 paralist.add(Double.parseDouble(tfParamG.getText()));
             }
-            if (paramfit[5] == true) {
+            if (paramfit[5]) {
                 paralist.add(Double.parseDouble(tfParamF2.getText()));
             }
-            if (paramfit[6] == true) {
+            if (paramfit[6]) {
                 paralist.add(Double.parseDouble(tfParamD2.getText()) / Math.pow(10, 12));
             }
-            if (paramfit[7] == true) {
+            if (paramfit[7]) {
                 paralist.add(Double.parseDouble(tfParamF3.getText()));
             }
-            if (paramfit[8] == true) {
+            if (paramfit[8]) {
                 paralist.add(Double.parseDouble(tfParamD3.getText()) / Math.pow(10, 12));
             }
-            if (paramfit[9] == true) {
+            if (paramfit[9]) {
                 paralist.add(Double.parseDouble(tfParamFtrip.getText()));
             }
-            if (paramfit[10] == true) {
+            if (paramfit[10]) {
                 paralist.add(Double.parseDouble(tfParamTtrip.getText()) / Math.pow(10, 6));
             }
         } else if (tfFitModel.getText().equals("SPIM-FCS (3D)")) {
             theofunction = new FCS_3p_SPIM();
-            if (paramfit[0] == true) {
+            if (paramfit[0]) {
                 paralist.add(Double.parseDouble(tfParamN.getText()));
             }
-            if (paramfit[1] == true) {
+            if (paramfit[1]) {
                 paralist.add(Double.parseDouble(tfParamD.getText()) / Math.pow(10, 12));
             }
-            if (paramfit[2] == true) {
+            if (paramfit[2]) {
                 paralist.add(Double.parseDouble(tfParamVx.getText()) / Math.pow(10, 6));
             }
-            if (paramfit[3] == true) {
+            if (paramfit[3]) {
                 paralist.add(Double.parseDouble(tfParamVy.getText()) / Math.pow(10, 6));
             }
-            if (paramfit[4] == true) {
+            if (paramfit[4]) {
                 paralist.add(Double.parseDouble(tfParamG.getText()));
             }
-            if (paramfit[5] == true) {
+            if (paramfit[5]) {
                 paralist.add(Double.parseDouble(tfParamF2.getText()));
             }
-            if (paramfit[6] == true) {
+            if (paramfit[6]) {
                 paralist.add(Double.parseDouble(tfParamD2.getText()) / Math.pow(10, 12));
             }
-            if (paramfit[7] == true) {
+            if (paramfit[7]) {
                 paralist.add(Double.parseDouble(tfParamF3.getText()));
             }
-            if (paramfit[8] == true) {
+            if (paramfit[8]) {
                 paralist.add(Double.parseDouble(tfParamD3.getText()) / Math.pow(10, 12));
             }
-            if (paramfit[9] == true) {
+            if (paramfit[9]) {
                 paralist.add(Double.parseDouble(tfParamFtrip.getText()));
             }
-            if (paramfit[10] == true) {
+            if (paramfit[10]) {
                 paralist.add(Double.parseDouble(tfParamTtrip.getText()) / Math.pow(10, 6));
             }
         } else {
             theofunction = new FCCS_2p();
-            if (paramfit[0] == true) {
+            if (paramfit[0]) {
                 paralist.add(Double.parseDouble(tfParamN.getText()));
             }
-            if (paramfit[1] == true) {
+            if (paramfit[1]) {
                 paralist.add(Double.parseDouble(tfParamD.getText()) / Math.pow(10, 12));
             }
             paramfit[2] = false;
             paraminitval[2] = 0;
             paramfit[3] = false;
             paraminitval[3] = 0;
-            if (paramfit[4] == true) {
+            if (paramfit[4]) {
                 paralist.add(Double.parseDouble(tfParamG.getText()));
             }
-            if (paramfit[5] == true) {
+            if (paramfit[5]) {
                 paralist.add(Double.parseDouble(tfParamF2.getText()));
             }
-            if (paramfit[6] == true) {
+            if (paramfit[6]) {
                 paralist.add(Double.parseDouble(tfParamD2.getText()) / Math.pow(10, 12));
             }
             paramfit[7] = false;
             paraminitval[7] = 0;
             paramfit[8] = false;
             paraminitval[8] = 0;
-            if (paramfit[9] == true) {
+            if (paramfit[9]) {
                 paralist.add(Double.parseDouble(tfParamFtrip.getText()));
             }
-            if (paramfit[10] == true) {
+            if (paramfit[10]) {
                 paralist.add(Double.parseDouble(tfParamTtrip.getText()) / Math.pow(10, 6));
             }
         }
@@ -15962,7 +15944,7 @@ public class Imaging_FCS implements PlugIn {
                 iplot.setColor(java.awt.Color.GREEN);
             }
 
-            if (intWindow == null || intWindow.isClosed() == true) {	// create new plot if window doesn't exist, or reuse existing window
+            if (intWindow == null || intWindow.isClosed()) {	// create new plot if window doesn't exist, or reuse existing window
                 intWindow = iplot.show();
                 intWindow.setLocation(intWindowPosX, intWindowPosY);
             } else {
@@ -15993,7 +15975,7 @@ public class Imaging_FCS implements PlugIn {
             iplot.setColor(java.awt.Color.BLUE);
             iplot.draw();
 
-            if (intWindow == null || intWindow.isClosed() == true) {	// create new plot if window doesn't exist, or reuse existing window
+            if (intWindow == null || intWindow.isClosed()) {	// create new plot if window doesn't exist, or reuse existing window
                 intWindow = iplot.show();
                 intWindow.setLocation(intWindowPosX, intWindowPosY);
             } else {
@@ -16036,7 +16018,7 @@ public class Imaging_FCS implements PlugIn {
             iplot.setJustification(Plot.LEFT);
             iplot.draw();
 
-            if (intWindow == null || intWindow.isClosed() == true) {	// create new plot if window doesn't exist, or reuse existing window
+            if (intWindow == null || intWindow.isClosed()) {	// create new plot if window doesn't exist, or reuse existing window
                 intWindow = iplot.show();
                 intWindow.setLocation(intWindowPosX, intWindowPosY);
             } else {
@@ -16124,7 +16106,7 @@ public class Imaging_FCS implements PlugIn {
             rplot.addPoints(lagtime, res[2][rpx1][rpy1], Plot.LINE);
         }
 
-        if (resWindow == null || resWindow.isClosed() == true) {	// create new plot if window doesn't exist, or reuse existing window
+        if (resWindow == null || resWindow.isClosed()) {	// create new plot if window doesn't exist, or reuse existing window
             resWindow = rplot.show();
             resWindow.setLocation(resWindowPosX, resWindowPosY);
         } else {
@@ -16192,7 +16174,7 @@ public class Imaging_FCS implements PlugIn {
             sdplot.addPoints(lagtime, sdacf[1][sdpx1][sdpy1], Plot.LINE);
         }
 
-        if (sdWindow == null || sdWindow.isClosed() == true) {	// create new plot if window doesn't exist, or reuse existing window
+        if (sdWindow == null || sdWindow.isClosed()) {	// create new plot if window doesn't exist, or reuse existing window
             sdWindow = sdplot.show();
             sdWindow.setLocation(sdWindowPosX, sdWindowPosY);
         } else {
@@ -16219,7 +16201,7 @@ public class Imaging_FCS implements PlugIn {
         int msdpy1 = (int) Math.ceil(MSDrect.getY() / pixbinY);
         int msdpxf = (int) Math.floor((MSDrect.getX() + MSDrect.getWidth() - binningX) / pixbinX);
         int msdpyf = (int) Math.floor((MSDrect.getY() + MSDrect.getHeight() - binningY) / pixbinY);
-        if (map == true) {										// if the ROI is selected in the parameter map
+        if (map) {										// if the ROI is selected in the parameter map
             msdpx1 = (int) MSDrect.getX();
             msdpy1 = (int) MSDrect.getY();
             if (cfXDistance < 0) {
@@ -16268,7 +16250,7 @@ public class Imaging_FCS implements PlugIn {
             msdplot.addLabel(0.5, 0, " MSD (" + msdpx1 * pixbinX + ", " + msdpy1 * pixbinY + ")");
             msdplot.draw();
 
-            if (msdWindow == null || msdWindow.isClosed() == true) {	// create new plot if window doesn't exist, or reuse existing window
+            if (msdWindow == null || msdWindow.isClosed()) {	// create new plot if window doesn't exist, or reuse existing window
                 msdWindow = msdplot.show();
                 msdWindow.setLocation(msdWindowPosX, msdWindowPosY);
             } else {
@@ -16301,7 +16283,7 @@ public class Imaging_FCS implements PlugIn {
             for (int x = msdpx1; x <= msdpxf; x++) {		// find minimum and maximum values in MSD plots that will be plotted
                 for (int y = msdpy1; y <= msdpyf; y++) {
                     for (int z = 1; z < cutoff; z++) {
-                        if ((!map && MSDroi.contains(x * pixbinX, y * pixbinY) && MSDroi.contains(x * pixbinX, y * pixbinY + binningY - 1) && MSDroi.contains(x * pixbinX + binningX - 1, y * pixbinY) && MSDroi.contains(x * pixbinX + binningX - 1, y * pixbinY + binningY - 1)) || (map == true && MSDroi.contains(x, y))) {
+                        if ((!map && MSDroi.contains(x * pixbinX, y * pixbinY) && MSDroi.contains(x * pixbinX, y * pixbinY + binningY - 1) && MSDroi.contains(x * pixbinX + binningX - 1, y * pixbinY) && MSDroi.contains(x * pixbinX + binningX - 1, y * pixbinY + binningY - 1)) || (map && MSDroi.contains(x, y))) {
                             if (msdmaxsc < msd[ct][x][y][z]) {
                                 msdmaxsc = msd[ct][x][y][z];
                             }
@@ -16325,7 +16307,7 @@ public class Imaging_FCS implements PlugIn {
             msdplot.addLabel(0.5, 0, "MSDs of pixels in the ROIs at " + binningX + "x" + binningY + "binning");
             msdplot.draw();
 
-            if (msdWindow == null || msdWindow.isClosed() == true) {	// create new plot if window doesn't exist, or reuse existing window
+            if (msdWindow == null || msdWindow.isClosed()) {	// create new plot if window doesn't exist, or reuse existing window
                 msdWindow = msdplot.show();
                 msdWindow.setLocation(msdWindowPosX, msdWindowPosY);
             } else {
@@ -16335,7 +16317,7 @@ public class Imaging_FCS implements PlugIn {
 
             for (int y = msdpy1; y <= msdpyf; y++) {
                 for (int x = msdpx1; x <= msdpxf; x++) {
-                    if ((!map && MSDroi.contains(x * pixbinX, y * pixbinY) && MSDroi.contains(x * pixbinX, y * pixbinY + binningY - 1) && MSDroi.contains(x * pixbinX + binningX - 1, y * pixbinY) && MSDroi.contains(x * pixbinX + binningX - 1, y * pixbinY + binningY - 1)) || (map == true && MSDroi.contains(x, y))) {
+                    if ((!map && MSDroi.contains(x * pixbinX, y * pixbinY) && MSDroi.contains(x * pixbinX, y * pixbinY + binningY - 1) && MSDroi.contains(x * pixbinX + binningX - 1, y * pixbinY) && MSDroi.contains(x * pixbinX + binningX - 1, y * pixbinY + binningY - 1)) || (map && MSDroi.contains(x, y))) {
                         msdvalue = Arrays.copyOfRange(msd[ct][x][y], 0, cutoff);
                         msdplot.setColor(java.awt.Color.BLUE);
                         msdplot.addPoints(msdtime, msdvalue, Plot.LINE);
@@ -16399,7 +16381,7 @@ public class Imaging_FCS implements PlugIn {
             msdplot.setColor(java.awt.Color.BLUE);
             msdplot.addPoints(msdtime, msdvalue[2], Plot.LINE);
 
-            if (msdWindow == null || msdWindow.isClosed() == true) {	// create new plot if window doesn't exist, or reuse existing window
+            if (msdWindow == null || msdWindow.isClosed()) {	// create new plot if window doesn't exist, or reuse existing window
                 msdWindow = msdplot.show();
                 msdWindow.setLocation(msdWindowPosX, msdWindowPosY);
             } else {
@@ -16442,7 +16424,7 @@ public class Imaging_FCS implements PlugIn {
             msdplot.addLabel(0.5, 0, " MSD of average ACF");
             msdplot.draw();
 
-            if (msdWindow == null || msdWindow.isClosed() == true) {	// create new plot if window doesn't exist, or reuse existing window
+            if (msdWindow == null || msdWindow.isClosed()) {	// create new plot if window doesn't exist, or reuse existing window
                 msdWindow = msdplot.show();
                 msdWindow.setLocation(msdWindowPosX, msdWindowPosY);
             } else {
@@ -16474,7 +16456,7 @@ public class Imaging_FCS implements PlugIn {
             impPara1.close();
         }
 
-        if (histWin != null && histWin.isClosed() == false) {		// close histogram window if it exists
+        if (histWin != null && !histWin.isClosed()) {		// close histogram window if it exists
             histWin.close();
         }
 
@@ -16683,7 +16665,7 @@ public class Imaging_FCS implements PlugIn {
         }
         if (plotParaHist) {
             $histWindowTitle = $param[par] + $channel[chan] + " - " + $impTitle;
-            if (histWin.isClosed() == true) {
+            if (histWin.isClosed()) {
                 histWin = new HistogramWindow($histWindowTitle, impPara1, nBins, histMin, histMax, histYMax);
                 histWin.setLocationAndSize(histPosX, histPosY, histDimX, histDimY);
             } else {
@@ -16981,7 +16963,7 @@ public class Imaging_FCS implements PlugIn {
             }
             if (plotParaHist) {
                 $histWindowTitle = $param[par] + $channel[chan] + " - " + $impTitle;
-                if (histWin.isClosed() == true) {
+                if (histWin.isClosed()) {
                     histWin = new HistogramWindow($histWindowTitle, impPara1, nBins, histMin, histMax, histYMax);
                     histWin.setLocationAndSize(histPosX, histPosY, histDimX, histDimY);
                 } else {
@@ -17387,7 +17369,7 @@ public class Imaging_FCS implements PlugIn {
             double[] gradret = new double[num]; // return the gradients of the fit model in respect to the fit parameters
             num = 0;
             for (int i = 0; i < noparam; i++) {
-                if (paramfit[i] == true) {
+                if (paramfit[i]) {
                     gradret[num] = grad[i];
                     num++;
                 }
@@ -17660,7 +17642,7 @@ public class Imaging_FCS implements PlugIn {
             double[] gradret = new double[num]; // return the gradients of the fit model in respect to the fit parameters
             num = 0;
             for (int i = 0; i < noparam; i++) {
-                if (paramfit[i] == true) {
+                if (paramfit[i]) {
                     gradret[num] = grad[i];
                     num++;
                 }
@@ -18166,7 +18148,7 @@ public class Imaging_FCS implements PlugIn {
             double[] pareq = new double[noparam];
             int num = 0;
             for (int i = 0; i < noparam; i++) {
-                if (paramfit[i] == true) {
+                if (paramfit[i]) {
                     pareq[i] = params[num];
                     num++;
                 } else {
@@ -18237,7 +18219,7 @@ public class Imaging_FCS implements PlugIn {
             double[] gradret = new double[num]; // return the gradients of the fit model in respect to the fit parameters
             num = 0;
             for (int i = 0; i < noparam; i++) {
-                if (paramfit[i] == true) {
+                if (paramfit[i]) {
                     gradret[num] = grad[i];
                     num++;
                 }
@@ -18251,7 +18233,7 @@ public class Imaging_FCS implements PlugIn {
             double[] pareq = new double[noparam];
             int num = 0;
             for (int i = 0; i < noparam; i++) {
-                if (paramfit[i] == true) {
+                if (paramfit[i]) {
                     pareq[i] = params[num];
                     num++;
                 } else {
@@ -18484,7 +18466,7 @@ double szeff = sz;
             double[] gradret = new double[num]; // return the gradients of the fit model in respect to the fit parameters
             num = 0;
             for (int i = 0; i < noparam; i++) {
-                if (paramfit[i] == true) {
+                if (paramfit[i]) {
                     gradret[num] = grad[i];
                     num++;
                 }
@@ -18693,16 +18675,14 @@ double szeff = sz;
                     transTheoreticalACF[y] = solution.getEntry(y);
                 }
 
-                retval = transTheoreticalACF[sol];
-
             } else {
                 for (int g = 2; g < chanum; g++) {
                     if (lagtime[g] == x) {
                         sol = g - 1;
                     }
                 }
-                retval = transTheoreticalACF[sol];
             }
+            retval = transTheoreticalACF[sol];
 
             return retval;
         }
@@ -18802,12 +18782,7 @@ double szeff = sz;
         double perfy0 = 2 * p1y0 * Erf.erf(p1y0 / p00);
 
         //return (p00/sqrpi * pexpx0 + perfx0) * (p00/sqrpi * pexpy0 + perfy0) * Math.pow(sz, 2);
-        if (dim == 2) {
-            return 4 * Math.pow(ax * ay, 2) / ((p00 / sqrpi * pexpx0 + perfx0) * (p00 / sqrpi * pexpy0 + perfy0)); //2D fit, DC-FCCS fit
-        } else {
-            return 4 * Math.pow(ax * ay, 2) / ((p00 / sqrpi * pexpx0 + perfx0) * (p00 / sqrpi * pexpy0 + perfy0));
-//            return sqrpi * szeff * 4 * Math.pow(ax * ay, 2) / ((p00 / sqrpi * pexpx0 + perfx0) * (p00 / sqrpi * pexpy0 + perfy0)); //ASHWIN 3D fit
-        }
+        return 4 * Math.pow(ax * ay, 2) / ((p00 / sqrpi * pexpx0 + perfx0) * (p00 / sqrpi * pexpy0 + perfy0)); //2D fit, DC-FCCS fit
 
     }
 
@@ -18883,7 +18858,7 @@ double szeff = sz;
                     tfSimF2.setText(Double.toString(batchF2Start + k * batchF2Step));
                     simulateACFInstant = new simulateACFWorker(ask3D);
                     simulateACFInstant.execute();
-                    while (simulateACFInstant.isDone() == false) {
+                    while (!simulateACFInstant.isDone()) {
                     }
                 }
             }
@@ -19324,11 +19299,7 @@ double szeff = sz;
                             dy = rgg3.next();
                         }
 
-                        boolean hoptrue = false;
-
-                        if (simHopProbability > rugphop.next() || simHopProbability == 1) {
-                            hoptrue = true;
-                        }
+                        boolean hoptrue = simHopProbability > rugphop.next() || simHopProbability == 1;
 
                         if (!hoptrue) {	// if hop is not true, step inside the mesh only
                             while ((Math.floor(particles[m][0] / simMeshworkSize) != Math.floor((particles[m][0] + dx) / simMeshworkSize))) {
@@ -20497,7 +20468,7 @@ double szeff = sz;
 
             int parfitcounters = 0;
             for (int i = 0; i < noparam; i++) {
-                if (paramfit[i] == true) {
+                if (paramfit[i]) {
                     parfitcounters++;
                 }
             }
