@@ -1,6 +1,6 @@
 /*
  *  Supported camera
- *  1) Andor iXon "DU860_BV" "DU888_BV" "DU897_BV", Sona "SONA-4BV11"  
+ *  1) Andor iXon "DU860_BV" "DU888_BV" "DU897_BV", Sona "SONA-4BV11"
  *  2) Photometrics "EVOLVE- 512" "GS144BSI" "TMP-Kinetix"
  *  3) Hamamatsu Orca Flash 4.0 "C11440-22CU" "C11440-22C" "C13440-20CU" "C13440-20C" "C15550-20UP"
  */
@@ -274,7 +274,7 @@ public class DirectCapture {
     }
 
     private void TRYmultiplecamera() {
-        //Start ixon860 
+        //Start ixon860
         if (UserSelectedCameraModel == "DU860_BV") {
             // if program alrady running iXon860
             if (isEMCCDpreviouslyConnected) {
