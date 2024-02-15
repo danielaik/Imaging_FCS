@@ -185,7 +185,7 @@ public class Imaging_FCS implements PlugIn {
     private boolean plotParaHist = true;
     private boolean plotCovmats = false;						// Regularized covariance matrix will not be plotted by default
     private boolean plotBlockingCurve = false;						// blocking curve will not be plotted by default	
-    private boolean plotAverageTrace = false;                                               // remove plotting average intensity trace; time consuming; 14 sec for 128x128x50,000
+    private final boolean plotAverageTrace = false;                                               // remove plotting average intensity trace; time consuming; 14 sec for 128x128x50,000
 
     // Image window
     ImagePlus imp;
@@ -232,7 +232,7 @@ public class Imaging_FCS implements PlugIn {
     ImageWindow[] impDCCFWin = new ImageWindow[dccfMax];                                                        // Windows to display the dCCF images
     private String $dccfTitle;											// titles of ImageWindows for dCCF
     private final String[] $histDCCFWinTitle = new String[dccfMax];                                             // titles of HistogramWindows for dCCF
-    private boolean[] dccfCalculated = new boolean[dccfMax];                                                    // an array to remember in which direction has been dCCF calculated
+    private final boolean[] dccfCalculated = new boolean[dccfMax];                                                    // an array to remember in which direction has been dCCF calculated
     //private final int[] histDCCFBin = new int[dccfMax];                                                       // This is an array to remember which dCCF window was produced with which binning
 
     // N&B windows
@@ -388,10 +388,10 @@ public class Imaging_FCS implements PlugIn {
     private final int filteringPanelDimX = 420;
     private final int filteringPanelDimY = 300;
 
-    private int histDimX = 350;										// histogran windows positions and size
-    private int histDimY = 250;										// the maximum number of parameters is defined in histnum
-    private int histPosX = para1PosX + 280;
-    private int histPosY = para1PosY;
+    private final int histDimX = 350;										// histogran windows positions and size
+    private final int histDimY = 250;										// the maximum number of parameters is defined in histnum
+    private final int histPosX = para1PosX + 280;
+    private final int histPosY = para1PosY;
 
     private final int histDCCFDimX = 350;
     private final int histDCCFDimY = 250;
@@ -453,9 +453,9 @@ public class Imaging_FCS implements PlugIn {
     private int isdlawcalculatedingpu = 0;
     private int isgpupresentmem = 0;
     // variables to remember last settings in the ImFCS control panel
-    private int noSettings = 33;				// number of individual setting parameters 
-    private String[] panelSettings = new String[noSettings];	// array to store the individual settings, the settings are stored in the same order as used to create the results table
-    private boolean[] keyParam = {true, true, true, true, true, true, true, true, true, true, false, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, false, true, true};
+    private final int noSettings = 33;				// number of individual setting parameters
+    private final String[] panelSettings = new String[noSettings];	// array to store the individual settings, the settings are stored in the same order as used to create the results table
+    private final boolean[] keyParam = {true, true, true, true, true, true, true, true, true, true, false, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, false, true, true};
     private int parcormode;
     // whether a change in the respective setting requires resetting of results arrays
     private boolean askOnRewrite = false; 		// whether setParameters should ask before Results arrays
@@ -466,8 +466,8 @@ public class Imaging_FCS implements PlugIn {
     private boolean recalculatefits = true;          // whether to recalculate fits from fitted results
 
     // variables to remember the last settings in Simulation Panel
-    private int nosimsettings = 36;								// number of settings in the Simulation panel
-    private String[] simSettings = new String[nosimsettings];                                   // array to store the last used settings
+    private final int nosimsettings = 36;								// number of settings in the Simulation panel
+    private final String[] simSettings = new String[nosimsettings];                                   // array to store the last used settings
 
     // parameters for cursor position in window for correlations
     private int cposx;				// actual positions where the current correlation is calculated
@@ -491,10 +491,10 @@ public class Imaging_FCS implements PlugIn {
     private int roi2StartY = 0;
     private int roi2WidthX = 0;
     private int roi2HeightY = 0;
-    private char keyMoveRight = '6';            // control keys for cursor position used by this program
-    private char keyMoveLeft = '4';             // they keys can be changed if required; they are then used by the key listener for the image window as defined below
-    private char keyMoveUp = '8';               // the keys work on the number block of a PC but not on the general keyboard as some of the keys are already used by ImageJ
-    private char keyMoveDown = '2';             // potentially this could be removed as the keys are not often used
+    private final char keyMoveRight = '6';            // control keys for cursor position used by this program
+    private final char keyMoveLeft = '4';             // they keys can be changed if required; they are then used by the key listener for the image window as defined below
+    private final char keyMoveUp = '8';               // the keys work on the number block of a PC but not on the general keyboard as some of the keys are already used by ImageJ
+    private final char keyMoveDown = '2';             // potentially this could be removed as the keys are not often used
 
     // arrays and parameters used for computation of correlations and storage of results
     private double[][] datac;				// temporary array which stores the values along two pixel columns to be correlated through the imsPVideoNDave
@@ -530,9 +530,9 @@ public class Imaging_FCS implements PlugIn {
     private double[] transTheoreticalACF;               // temporary array with transformed theoretical model function L\y(x)
     private double[][] transTheoreticalGradientACF;	// temporary array with transformed theoretical model function L\y(x)
 
-    private int noparam = 11;							// number of fit parameters; at the moment there are two fit models with a maximum of 11 parameters
-    private String $param[] = {"N", "D", "vx", "vy", "G", "F2", "D2", "F3", "D3", "Ftrip", "Ttrip", "reduced Chi2", "blocked", "valid pixels", "q map"}; 	// parameter names; has to contain noparam number of parameter names
-    private String $channel[] = {"", "g", "r"};                                 //names of correlation channels in DC-FCCS
+    private final int noparam = 11;							// number of fit parameters; at the moment there are two fit models with a maximum of 11 parameters
+    private final String[] $param = {"N", "D", "vx", "vy", "G", "F2", "D2", "F3", "D3", "Ftrip", "Ttrip", "reduced Chi2", "blocked", "valid pixels", "q map"}; 	// parameter names; has to contain noparam number of parameter names
+    private final String[] $channel = {"", "g", "r"};                                 //names of correlation channels in DC-FCCS
     private final int histnum = 10;						// number of parameters for which histograms will be created;
     HistogramWindow histWin;							// define Histogram Windows
     private String $histWindowTitle;
@@ -543,7 +543,7 @@ public class Imaging_FCS implements PlugIn {
     private boolean[] paramfilter;			// array with information whether a filter is applied on the parameter
     private boolean[] userThreshold;                            // settings for filtering: whether user has defined any thresholds, whether that was for DC-FCCS and whether the filter has been applied on current file + whether to use the same thresholds for ACFs and CCFs and whether to set q=0 for pixels where ACF valid and CCF invalid
     private int[] lag;						// lag for each correlation kcf counted as multiples of the smallest basic time; independent of time; lagtime = lag * frametime
-    private final double empty[] = {0.0};			// dummy array used for initilizing plot (should be removed later on)
+    private final double[] empty = {0.0};			// dummy array used for initilizing plot (should be removed later on)
     private double[][] difflaw = new double[3][1];	// diffusion law values for each pixel binning case for D and its standard deviation
     private double[][][][] difflawarray = new double[1][1][3][1];          // store all points for all subregions of an image for which the diffusion law was calculated 
     private final double[] difflawfit = {0.0, 0.0};	// store the intercept and the slope for the diffusion law
@@ -912,7 +912,7 @@ public class Imaging_FCS implements PlugIn {
     private Correlate correlateObj;
 
     // DC-FCCS
-    private boolean isNormalizeQwithObsVol = true;             // normalize N to observation volume. Use RMS of obs1 and obs2 to normalize Nccf
+    private final boolean isNormalizeQwithObsVol = true;             // normalize N to observation volume. Use RMS of obs1 and obs2 to normalize Nccf
 
     // CNN 
     // ACF-based CNN variables.
@@ -929,10 +929,10 @@ public class Imaging_FCS implements PlugIn {
     private double[][][] pixvalidCnnImage; // filtering mask, 1 if pixel valid, NaN if not
     private boolean[][][] pixfittedCnnImage; // whether pixel has been successfully fitted or not; in the absence of user-defined thresholds, this array determines pixvalid[][][]
 
-    private int noparamCnnAcf = 1; // number of fit parameters; at the moment there are two fit models with a maximum of 11 parameters
-    private String $paramCnnAcf[] = {"D"}; // parameter names; has to contain noparam number of parameter names
-    private int noparamCnnImage = 1; // number of fit parameters; at the moment there are two fit models with a  maximum of 11 parameters
-    private String $paramCnnImage[] = {"D"}; // parameter names; has to contain noparam number of parameter names
+    private final int noparamCnnAcf = 1; // number of fit parameters; at the moment there are two fit models with a maximum of 11 parameters
+    private final String[] $paramCnnAcf = {"D"}; // parameter names; has to contain noparam number of parameter names
+    private final int noparamCnnImage = 1; // number of fit parameters; at the moment there are two fit models with a  maximum of 11 parameters
+    private final String[] $paramCnnImage = {"D"}; // parameter names; has to contain noparam number of parameter names
 
     // CNN parameters
     private boolean cnnImageLoaded = false; // Whether the Image CNN model is loaded
@@ -2929,7 +2929,7 @@ public class Imaging_FCS implements PlugIn {
 
     public static class modeBGR {
 
-        public static enum modeBGREnum {
+        public enum modeBGREnum {
             CONSTANT_BACKGROUND(0),
             MIN_FRAME_BY_FRAME(1),
             MIN_PER_IMAGESTACK(2),
@@ -4951,8 +4951,6 @@ public class Imaging_FCS implements PlugIn {
         }
     }
 
-    ;
-
     public void SetThresholds() {	// sets the Thresholds and other settings to their default values in case no user defined values are vailable or they need to be reset
         double Min;
         double Max;
@@ -5327,8 +5325,6 @@ public class Imaging_FCS implements PlugIn {
 
     }
 
-    ;
-    
     public boolean isValidFiltermap(ImagePlus impfilter) {
 
         if (impPara1.getWidth() != impfilter.getWidth() || impPara1.getHeight() != impfilter.getHeight()) {
@@ -5349,9 +5345,8 @@ public class Imaging_FCS implements PlugIn {
 
         return true;
     }
-    ;
-        
-        
+
+
     ActionListener btnFilterPressed = (ActionEvent event) -> {
         if (impPara1 != null) {
             updateParaImp();
@@ -5368,7 +5363,7 @@ public class Imaging_FCS implements PlugIn {
             updateParaImp();
         } else {
             JOptionPane.showMessageDialog(null, "No parameter map available. Perform a correlation or load an experiment.");
-        };
+        }
 
     };
 
@@ -5900,7 +5895,7 @@ public class Imaging_FCS implements PlugIn {
         for (int k = 0; k < 3; k++) {
             for (int h = 0; h < height; h++) {
                 for (int w = 0; w < width; w++) {
-                    acfcolnames[h * width + w] = Integer.toString(h) + "x" + Integer.toString(w);
+                    acfcolnames[h * width + w] = h + "x" + w;
                     for (int i = 0; i < chanum; i++) {
                         acfvalue[k][i][h * width + w] = acf[k][w][h][i];
                         sdvalue[k][i][h * width + w] = sdacf[k][w][h][i];
@@ -5923,7 +5918,7 @@ public class Imaging_FCS implements PlugIn {
             }
             for (int h = 0; h < height; h++) {
                 for (int w = 0; w < width; w++) {
-                    fitrescolnames[h * width + w + 1] = Integer.toString(h) + "x" + Integer.toString(w);
+                    fitrescolnames[h * width + w + 1] = h + "x" + w;
                     for (int i = 0; i < noparam; i++) {
                         fitresvalue[k][i][h * width + w + 1] = fitres[k][w][h][i];
                     }
@@ -5964,7 +5959,7 @@ public class Imaging_FCS implements PlugIn {
         }
         for (int h = 0; h < diffLawMapheight; h++) {
             for (int w = 0; w < diffLawMapwidth; w++) {
-                diffLawMapcolnames[h * diffLawMapwidth + w + 1] = Integer.toString(h) + "x" + Integer.toString(w);
+                diffLawMapcolnames[h * diffLawMapwidth + w + 1] = h + "x" + w;
                 for (int k = 0; k < difflawmapbin; k++) {
                     diffLawMapDatavalue[k][h * diffLawMapwidth + w + 1] = difflawarray[w][h][1][k];
                     diffLawMapSDvalue[k][h * diffLawMapwidth + w + 1] = difflawarray[w][h][2][k];
@@ -5978,7 +5973,7 @@ public class Imaging_FCS implements PlugIn {
         diffLawMapFitvalue[1][0] = "Slope";
         for (int h = 0; h < diffLawMapheight; h++) {
             for (int w = 0; w < diffLawMapwidth; w++) {
-                diffLawMapFitcolnames[h * diffLawMapwidth + w + 1] = Integer.toString(h) + "x" + Integer.toString(w);
+                diffLawMapFitcolnames[h * diffLawMapwidth + w + 1] = h + "x" + w;
                 diffLawMapFitvalue[0][h * diffLawMapwidth + w + 1] = diffLawFitMap[w][h][0];
                 diffLawMapFitvalue[1][h * diffLawMapwidth + w + 1] = diffLawFitMap[w][h][1];
             }
@@ -5987,8 +5982,8 @@ public class Imaging_FCS implements PlugIn {
         // add PSF data
         for (int i = 0; i < numofpsf; i++) {
             psfDatacolnames[0 + i * 3] = "Bin";
-            psfDatacolnames[1 + i * 3] = "D (bin " + Integer.toString(i + 1) + ")";
-            psfDatacolnames[2 + i * 3] = "SD (bin " + Integer.toString(i + 1) + ")";
+            psfDatacolnames[1 + i * 3] = "D (bin " + (i + 1) + ")";
+            psfDatacolnames[2 + i * 3] = "SD (bin " + (i + 1) + ")";
         }
 
         for (int i = 0; i < numofpsf; i++) {
@@ -6010,7 +6005,7 @@ public class Imaging_FCS implements PlugIn {
 
         for (int h = 0; h < height; h++) {
             for (int w = 0; w < width; w++) {
-                dccfcolnames[h * width + w + 1] = Integer.toString(h) + "x" + Integer.toString(w);
+                dccfcolnames[h * width + w + 1] = h + "x" + w;
                 for (int i = 0; i < dccfMax; i++) {
                     dccfvalue[i][h * width + w + 1] = dccf[i][w][h];
                 }
@@ -6026,7 +6021,7 @@ public class Imaging_FCS implements PlugIn {
 
         for (int h = 0; h < height; h++) {
             for (int w = 0; w < width; w++) {
-                NBcolnames[h * width + w + 1] = Integer.toString(h) + "x" + Integer.toString(w);
+                NBcolnames[h * width + w + 1] = h + "x" + w;
                 NBvalue[0][h * width + w + 1] = NBN[w][h];
                 NBvalue[1][h * width + w + 1] = NBB[w][h];
                 NBvalue[2][h * width + w + 1] = NBNum[w][h];
@@ -6505,7 +6500,7 @@ public class Imaging_FCS implements PlugIn {
 
         for (int h = 0; h < height; h++) {
             for (int w = 0; w < width; w++) {
-                String $tmp = "(" + Integer.toString(w) + ", " + Integer.toString(h) + ")";
+                String $tmp = "(" + w + ", " + h + ")";
                 rowacf0.createCell(w + h * width).setCellValue($tmp);
                 rowacf1.createCell(w + h * width).setCellValue($tmp);
                 rowacf2.createCell(w + h * width).setCellValue($tmp);
@@ -6583,9 +6578,9 @@ public class Imaging_FCS implements PlugIn {
 
         for (int h = 0; h < height; h++) {
             for (int w = 0; w < width; w++) {
-                fitres0Sheet.getRow(0).createCell(w + h * width + 1).setCellValue("(" + Integer.toString(w) + ", " + Integer.toString(h) + ")");
-                fitres1Sheet.getRow(0).createCell(w + h * width + 1).setCellValue("(" + Integer.toString(w) + ", " + Integer.toString(h) + ")");
-                fitres2Sheet.getRow(0).createCell(w + h * width + 1).setCellValue("(" + Integer.toString(w) + ", " + Integer.toString(h) + ")");
+                fitres0Sheet.getRow(0).createCell(w + h * width + 1).setCellValue("(" + w + ", " + h + ")");
+                fitres1Sheet.getRow(0).createCell(w + h * width + 1).setCellValue("(" + w + ", " + h + ")");
+                fitres2Sheet.getRow(0).createCell(w + h * width + 1).setCellValue("(" + w + ", " + h + ")");
                 fitres0Sheet.getRow(1).createCell(w + h * width + 1).setCellValue(Boolean.toString(pixfitted[0][w][h]));
                 fitres1Sheet.getRow(1).createCell(w + h * width + 1).setCellValue(Boolean.toString(pixfitted[1][w][h]));
                 fitres2Sheet.getRow(1).createCell(w + h * width + 1).setCellValue(Boolean.toString(pixfitted[2][w][h]));
@@ -6644,7 +6639,7 @@ public class Imaging_FCS implements PlugIn {
 
         for (int w = 0; w < diffLawMapwidth; w++) {
             for (int h = 0; h < diffLawMapheight; h++) {
-                row.createCell(w + h * diffLawMapwidth + 1).setCellValue("(" + Integer.toString(w) + ", " + Integer.toString(h) + ")");
+                row.createCell(w + h * diffLawMapwidth + 1).setCellValue("(" + w + ", " + h + ")");
             }
         }
         for (int k = 0; k < difflawmapbin; k++) {
@@ -6662,7 +6657,7 @@ public class Imaging_FCS implements PlugIn {
         row.createCell(0).setCellValue("");
         for (int w = 0; w < diffLawMapwidth; w++) {
             for (int h = 0; h < diffLawMapheight; h++) {
-                row.createCell(w + h * diffLawMapwidth).setCellValue("(" + Integer.toString(w) + ", " + Integer.toString(h) + ")");
+                row.createCell(w + h * diffLawMapwidth).setCellValue("(" + w + ", " + h + ")");
             }
         }
 
@@ -6680,7 +6675,7 @@ public class Imaging_FCS implements PlugIn {
         row.createCell(0).setCellValue("Parameter");
         for (int w = 0; w < diffLawMapwidth; w++) {
             for (int h = 0; h < diffLawMapheight; h++) {
-                row.createCell(w + h * diffLawMapwidth + 1).setCellValue("(" + Integer.toString(w) + ", " + Integer.toString(h) + ")");
+                row.createCell(w + h * diffLawMapwidth + 1).setCellValue("(" + w + ", " + h + ")");
             }
         }
         row1 = diffLawMapFitSheet.createRow(1);
@@ -6698,8 +6693,8 @@ public class Imaging_FCS implements PlugIn {
         row = psfDataSheet.createRow(0);
         for (int i = 0; i < numofpsf; i++) {
             row.createCell(i * 3).setCellValue("Bin");
-            row.createCell(1 + i * 3).setCellValue("D (bin " + Integer.toString(i + 1) + ")");
-            row.createCell(2 + i * 3).setCellValue("SD (bin " + Integer.toString(i + 1) + ")");
+            row.createCell(1 + i * 3).setCellValue("D (bin " + (i + 1) + ")");
+            row.createCell(2 + i * 3).setCellValue("SD (bin " + (i + 1) + ")");
         }
 
         for (int k = 0; k < psfmaxbin; k++) {
@@ -6739,7 +6734,7 @@ public class Imaging_FCS implements PlugIn {
 
         for (int h = 0; h < height; h++) {
             for (int w = 0; w < width; w++) {
-                dCCFDataSheet.getRow(0).createCell(w + h * width + 2).setCellValue("(" + Integer.toString(w) + ", " + Integer.toString(h) + ")");
+                dCCFDataSheet.getRow(0).createCell(w + h * width + 2).setCellValue("(" + w + ", " + h + ")");
                 for (int i = 0; i < dccfMax; i++) {
                     dCCFDataSheet.getRow(i + 1).createCell(w + h * width + 2).setCellValue(dccf[i][w][h]);
                 }
@@ -6760,7 +6755,7 @@ public class Imaging_FCS implements PlugIn {
 
         for (int h = 0; h < height; h++) {
             for (int w = 0; w < width; w++) {
-                NBDataSheet.getRow(0).createCell(w + h * width + 2).setCellValue("(" + Integer.toString(w) + ", " + Integer.toString(h) + ")");
+                NBDataSheet.getRow(0).createCell(w + h * width + 2).setCellValue("(" + w + ", " + h + ")");
                 NBDataSheet.getRow(1).createCell(w + h * width + 2).setCellValue(NBN[w][h]);
                 NBDataSheet.getRow(2).createCell(w + h * width + 2).setCellValue(NBB[w][h]);
                 NBDataSheet.getRow(3).createCell(w + h * width + 2).setCellValue(NBNum[w][h]);
@@ -6931,7 +6926,7 @@ public class Imaging_FCS implements PlugIn {
 
         for (int x = 0; x < dccfMax; x++) {
             row = ReconParaSheet.createRow(t++);
-            row.createCell(0).setCellValue("DCCF Window " + Integer.toString(x));
+            row.createCell(0).setCellValue("DCCF Window " + x);
             if ((impDCCFWin[x] != null && impDCCFWin[x].isClosed() == false) || x < dccfcount) {	// dCCF windows
                 row.createCell(1).setCellValue(1);
                 row.createCell(2).setCellValue(impDCCFWin[x].getHeight());
@@ -6943,7 +6938,7 @@ public class Imaging_FCS implements PlugIn {
         }
         for (int x = 0; x < dccfMax; x++) {
             row = ReconParaSheet.createRow(t++);
-            row.createCell(0).setCellValue("DCCF Histogram Window " + Integer.toString(x));
+            row.createCell(0).setCellValue("DCCF Histogram Window " + x);
             if (histDCCFWin[x] != null && histDCCFWin[x].isClosed() == false) {	// dCCF historgram windows
                 row.createCell(1).setCellValue(1);
                 row.createCell(2).setCellValue($histDCCFWinTitle[x]);
@@ -10418,14 +10413,14 @@ public class Imaging_FCS implements PlugIn {
                     JOptionPane.showMessageDialog(null, "A file with name " + newFile + " already exists.");
                 } else {
                     writeExperiment(newFile, "Failed to write data files", false);
-                    IJ.log(currentFile.toString() + " processed. Data saved in " + newFile.toString());
+                    IJ.log(currentFile + " processed. Data saved in " + newFile);
 
                     //Saving parameter maps
                     if (batchSaveParameterMaps) {
                         try {
                             String mapfilepath = $sfile + "-Maps-" + $suffix + ".tif";
                             IJ.saveAsTiff(impPara1, mapfilepath);
-                            IJ.log(currentFile.toString() + " processed. Parameter maps saved in " + mapfilepath);
+                            IJ.log(currentFile + " processed. Parameter maps saved in " + mapfilepath);
                         } catch (Exception e) {
                             IJ.log("Error saving parameter maps: " + e);
                         }
@@ -13694,8 +13689,8 @@ public class Imaging_FCS implements PlugIn {
                     timerObj.toc();
                 }
 
-                double result[] = topt.getPoint().toArray();
-                double tmpres[] = topt.getResiduals().toArray();
+                double[] result = topt.getPoint().toArray();
+                double[] tmpres = topt.getResiduals().toArray();
                 double[] tres = new double[chanum - 1];
 
                 // store results and create fit and residual function for the plot
@@ -13753,7 +13748,7 @@ public class Imaging_FCS implements PlugIn {
                 map.put("sigma", topt.getSigma(1).toArray());
 
             } catch (Exception e) {
-                IJ.log(e.getClass().getName() + " at pixel " + Integer.toString(cpy) + " - " + Integer.toString(cpx));
+                IJ.log(e.getClass().getName() + " at pixel " + cpy + " - " + cpx);
                 ArrayList<Double> result = new ArrayList<>();
                 double[] tres = new double[chanum - 1];
                 Arrays.fill(tres, 1);
@@ -13911,8 +13906,8 @@ public class Imaging_FCS implements PlugIn {
             try {
 
                 final Optimum topt = getOptimizer().optimize(getProblem(points));
-                double result[] = topt.getPoint().toArray();
-                double tmpres[] = topt.getResiduals().toArray();
+                double[] result = topt.getPoint().toArray();
+                double[] tmpres = topt.getResiduals().toArray();
 
                 // store results and create fit and residual function for the plot
                 for (int i = 0; i < chanum; i++) {
@@ -14071,8 +14066,8 @@ public class Imaging_FCS implements PlugIn {
             Map<String, Object> map = new HashMap<>();
             try {
                 final Optimum topt = getOptimizer().optimize(getProblem(points));
-                double result[] = topt.getPoint().toArray();
-                double tmpres[] = topt.getResiduals().toArray();
+                double[] result = topt.getPoint().toArray();
+                double[] tmpres = topt.getResiduals().toArray();
                 double[] tres = new double[chanum - 1];
 
                 // store results and create fit and residual function for the plot
@@ -14121,7 +14116,7 @@ public class Imaging_FCS implements PlugIn {
                 map.put("sigma", topt.getSigma(1).toArray());
 
             } catch (Exception e) {
-                IJ.log(e.getClass().getName() + " at pixel " + Integer.toString(cpy) + " - " + Integer.toString(cpx));
+                IJ.log(e.getClass().getName() + " at pixel " + cpy + " - " + cpx);
                 ArrayList<Double> result = new ArrayList<>();
                 double[] tres = new double[chanum - 1];
                 Arrays.fill(tres, 1);
@@ -14204,7 +14199,7 @@ public class Imaging_FCS implements PlugIn {
                 points.add(point);
             }
 
-            double result[] = fitter.fit(points);
+            double[] result = fitter.fit(points);
             return (result);
         }
     }
@@ -14257,7 +14252,7 @@ public class Imaging_FCS implements PlugIn {
                 points.add(point);
             }
 
-            double result[] = fitter.fit(points);
+            double[] result = fitter.fit(points);
             return (result);
         }
     }
@@ -14312,7 +14307,7 @@ public class Imaging_FCS implements PlugIn {
                 points.add(point);
             }
 
-            double result[] = fitter.fit(points);
+            double[] result = fitter.fit(points);
             return (result);
         }
     }
@@ -14366,7 +14361,7 @@ public class Imaging_FCS implements PlugIn {
                 points.add(point);
             }
 
-            double result[] = fitter.fit(points);
+            double[] result = fitter.fit(points);
             return (result);
         }
     }
@@ -19513,7 +19508,7 @@ double szeff = sz;
             closeWindows();
         } else {
             // save the simulation file
-            String $fs = simBatchPath.getAbsolutePath().toString() + "/" + "sim" + Double.toString(simD1 * Math.pow(10, 12)) + "-" + Double.toString(simD2 * Math.pow(10, 12)) + "-" + Double.toString(simF2) + ".tif";
+            String $fs = simBatchPath.getAbsolutePath().toString() + "/" + "sim" + simD1 * Math.pow(10, 12) + "-" + simD2 * Math.pow(10, 12) + "-" + simF2 + ".tif";
             IJ.saveAsTiff(impSim, $fs);
         }
     }
@@ -19843,7 +19838,7 @@ double szeff = sz;
      */
     // calculate determinant of a subarray; required for the Bayes model probabilities
     // this was adapted from http://stackoverflow.com/questions/16602350/calculating-matrix-determinant
-    public double determinant(double A[][], int N) {
+    public double determinant(double[][] A, int N) {
         double res;
         double[][] m;
 
@@ -19864,7 +19859,7 @@ double szeff = sz;
         return res;
     }
 
-    public double[][] generateSubArray(double A[][], int N, int j1) {
+    public double[][] generateSubArray(double[][] A, int N, int j1) {
         double[][] m = new double[N - 1][];
         for (int k = 0; k < (N - 1); k++) {
             m[k] = new double[N - 1];
@@ -19907,9 +19902,9 @@ double szeff = sz;
     /*
     arrays pixels1, blockvararray, NBmeanGPU, and NBcovarianceGPU are passed by reference.
      */
-    private boolean GPU_Calculate_ACF(float pixels[], double pixels1[], double blockvararray[],
-            double NBmeanGPU[], double NBcovarianceGPU[],
-            double bleachcorr_params[], ACFParameters GPUparams) {
+    private boolean GPU_Calculate_ACF(float[] pixels, double[] pixels1, double[] blockvararray,
+                                      double[] NBmeanGPU, double[] NBcovarianceGPU,
+                                      double[] bleachcorr_params, ACFParameters GPUparams) {
 
         boolean IsGPUCalculationOK = true;
 
