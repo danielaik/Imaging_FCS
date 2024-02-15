@@ -1730,7 +1730,7 @@ public class Imaging_FCS implements PlugIn {
 
         int[] val = new int[2];
         val = parserTf(tfset);
-        if (m1 != val[0] || m2 != val[1] || tfset.getText().equals("")) {
+        if (m1 != val[0] || m2 != val[1] || tfset.getText().isEmpty()) {
             tfset.setText(val[0] + " x " + val[1]);
         }
 
@@ -3817,7 +3817,7 @@ public class Imaging_FCS implements PlugIn {
                 }
             }
         }
-        if (tmpmod == "DC-FCCS (2D)") {
+        if (Objects.equals(tmpmod, "DC-FCCS (2D)")) {
             tfParamRx.setText(IJ.d2s(0, decformat));
             tfParamRy.setText(IJ.d2s(0, decformat));
             tfParamRz.setText(IJ.d2s(0, decformat));
@@ -5976,7 +5976,7 @@ public class Imaging_FCS implements PlugIn {
 
         // add PSF data
         for (int i = 0; i < numofpsf; i++) {
-            psfDatacolnames[0 + i * 3] = "Bin";
+            psfDatacolnames[i * 3] = "Bin";
             psfDatacolnames[1 + i * 3] = "D (bin " + (i + 1) + ")";
             psfDatacolnames[2 + i * 3] = "SD (bin " + (i + 1) + ")";
         }
@@ -9975,7 +9975,7 @@ public class Imaging_FCS implements PlugIn {
 
         results = dlfit(difflawbin, -1);
 
-        if (tbDLROI.getText() == "All") {
+        if (tbDLROI.getText().equals("All")) {
             difflawallbin = difflawbin;							// remember the bins used for DL for the whole image
             for (int u = 1; u <= difflawbin; u++) {			// convert the fitted D into the diffusion law plot								
                 difflaw[0][u - 1] = results[0][0][0][u - 1];
@@ -10375,7 +10375,7 @@ public class Imaging_FCS implements PlugIn {
                 }
 
                 // save the results
-                if ($batchSuffix.equals("")) {
+                if ($batchSuffix.isEmpty()) {
                     $suffix = new SimpleDateFormat("yyyy_MM_dd-HH_mm_ss").format(new Date());
                 } else {
                     $suffix = $batchSuffix;
@@ -13460,8 +13460,8 @@ public class Imaging_FCS implements PlugIn {
         det = determinant(covpar, numel);
 
         prodsigma = 1;
-        for (int i = 0; i < sigma.length; i++) {
-            prodsigma *= sigma[i];
+        for (double v : sigma) {
+            prodsigma *= v;
         }
 
         modprob[0] = Math.exp(0.5 * numel * Math.log(2 * pi) + 0.5 * Math.log(det) + logresid - Math.log(prodsigma * Math.pow(2 * boxsize, numel)));
@@ -13535,16 +13535,16 @@ public class Imaging_FCS implements PlugIn {
         det = determinant(covpar, numel);
 
         prodsigma = 1;
-        for (int i = 0; i < sigma.length; i++) {
-            prodsigma *= sigma[i];
+        for (double v : sigma) {
+            prodsigma *= v;
         }
 
         modprob[1] = Math.exp(0.5 * numel * Math.log(2 * pi) + 0.5 * Math.log(det) + logresid - Math.log(prodsigma * Math.pow(2 * boxsize, numel)));
 
         normprob = 0;
-        for (int i = 0; i < modprob.length; i++) // calculate the normalization for the modle probabilities
-        {
-            normprob += modprob[i];
+        // calculate the normalization for the modle probabilities
+        for (double v : modprob) {
+            normprob += v;
         }
 
         tfModProb1.setText(IJ.d2s(modprob[0] / normprob));
@@ -15798,7 +15798,7 @@ public class Imaging_FCS implements PlugIn {
         double[] plotdat = new double[chanum];
         double[] parameters = new double[paralist.size()];
         for (int i = 0; i < paralist.size(); i++) {
-            parameters[i] = paralist.toArray(new Double[paralist.size()])[i];
+            parameters[i] = paralist.toArray(new Double[0])[i];
         }
         for (int i = 0; i < chanum; i++) {
             plotdat[i] = theofunction.value(lagtime[i], parameters);
@@ -17119,9 +17119,7 @@ public class Imaging_FCS implements PlugIn {
         public double value(double x, double[] params) {
             int maxord = polyOrder;
             double[] A = new double[maxord + 1];
-            for (int i = 0; i <= maxord; i++) {
-                A[i] = params[i];
-            }
+            System.arraycopy(params, 0, A, 0, maxord + 1);
 
             double val = 0;
             for (int i = 0; i <= maxord; i++) {
@@ -18348,9 +18346,8 @@ double szeff = sz;
         // corav: correlation function
         // covmats: covariance matrix
         double[] cortmp = new double[chanum - 1];
-        for (int x = 0; x < chanum - 1; x++) {					// remove zero lagtime kcf from the correlation as it is not fit along
-            cortmp[x] = corav[x + 1];
-        }
+        // remove zero lagtime kcf from the correlation as it is not fit along
+        System.arraycopy(corav, 1, cortmp, 0, chanum - 1);
 
         RealMatrix mat = MatrixUtils.createRealMatrix(covmats);	// lower triangular matrix of the CholeskyDecomposition of covmats
         RealMatrix matL;
@@ -19846,7 +19843,7 @@ double szeff = sz;
                     for (int p = 0; p < GPUparams.bleachcorr_order; p++) {
                         corfunc += bleachcorr_params[(y * GPUparams.w_temp + x) * GPUparams.bleachcorr_order + p] * Math.pow(GPUparams.frametime * (z + 1.5), p);
                     }
-                    pixels[z * GPUparams.w_temp * GPUparams.h_temp + y * GPUparams.w_temp + x] = (float) (pixels[z * GPUparams.w_temp * GPUparams.h_temp + y * GPUparams.w_temp + x] / Math.sqrt(corfunc / (float) bleachcorr_params[(y * GPUparams.w_temp + x) * GPUparams.bleachcorr_order + 0]) + (float) bleachcorr_params[(y * GPUparams.w_temp + x) * GPUparams.bleachcorr_order + 0] * (1 - Math.sqrt(corfunc / (float) bleachcorr_params[(y * GPUparams.w_temp + x) * GPUparams.bleachcorr_order + 0])));
+                    pixels[z * GPUparams.w_temp * GPUparams.h_temp + y * GPUparams.w_temp + x] = (float) (pixels[z * GPUparams.w_temp * GPUparams.h_temp + y * GPUparams.w_temp + x] / Math.sqrt(corfunc / (float) bleachcorr_params[(y * GPUparams.w_temp + x) * GPUparams.bleachcorr_order]) + (float) bleachcorr_params[(y * GPUparams.w_temp + x) * GPUparams.bleachcorr_order] * (1 - Math.sqrt(corfunc / (float) bleachcorr_params[(y * GPUparams.w_temp + x) * GPUparams.bleachcorr_order])));
                 }
             }
         }
@@ -19906,9 +19903,8 @@ double szeff = sz;
             for (int i = 0; i < numberFits; i++) {
                 int offset = i * model.numberParameters;
                 // System.arraycopy(trueParameters, 0, initialParameters, offset, model.numberParameters);
-                for (int j = 0; j < model.numberParameters; j++) {
-                    initialParameters[offset + j] = trueParameters[j];
-                }
+                if (model.numberParameters >= 0)
+                    System.arraycopy(trueParameters, 0, initialParameters, offset + 0, model.numberParameters);
             }
 
             float[] user_info = new float[numberPoints];
@@ -19961,9 +19957,7 @@ double szeff = sz;
 
             float[] userinfo2 = new float[numberPoints];
             // System.arraycopy(user_info, 0, userinfo2, 0, numberPoints);
-            for (int i = 0; i < numberPoints; i++) {
-                userinfo2[i] = user_info[i];
-            }
+            System.arraycopy(user_info, 0, userinfo2, 0, numberPoints);
 
             FitModel fitModel = new FitModel(numberFits, numberPoints, true, model, tolerance, maxNumberIterations, GPUparams.bleachcorr_order, parameters_to_fit, estimator, (numberPoints) * Float.SIZE / 8);
             fitModel.weights.clear();
@@ -21181,10 +21175,10 @@ double szeff = sz;
             return;
         }
 
-        String ans = "";
+        StringBuilder ans = new StringBuilder();
         Object cur = array;
         while (cur != null && cur.getClass().isArray()) {
-            ans += "x" + java.lang.reflect.Array.getLength(cur);
+            ans.append("x").append(java.lang.reflect.Array.getLength(cur));
 
             if (!cur.getClass().getComponentType().isPrimitive()) {
                 cur = ((Object[]) cur)[0];
