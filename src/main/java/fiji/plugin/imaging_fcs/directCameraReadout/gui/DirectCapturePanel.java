@@ -5765,7 +5765,7 @@ public class DirectCapturePanel {
         int binningY = 1;
 
         // general parameters
-        double pi = 3.14159265359;
+        double pi = Math.PI;
         double sqrpi = Math.sqrt(pi);
         double ax = pixeldimx;
 //        IJ.log("pixeldimx: " + pixeldimx);

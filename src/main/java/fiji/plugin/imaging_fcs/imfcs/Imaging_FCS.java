@@ -64,7 +64,7 @@ import static fiji.plugin.imaging_fcs.version.VERSION.IMFCS_VERSION;
  *  Imaging_FCS is a program to calculate and display spatio-temporal 
  *  correlation functions from a 16 bit imsPVideoNDave file.
  *  
- *  Acknowldegements: 
+ *  Acknowledgements:
  *  The original program was written by Thorsten Wohland. 
  *  Radek Machan was responsible for many bug fixes in the newer versions and work on the DC-FCCS part. 
  *  Jagadish Sankaran wrote the MSD calculation algorithm and improved the data fitting part of the program. 
@@ -492,7 +492,7 @@ public class Imaging_FCS implements PlugIn {
     private int roi2WidthX = 0;
     private int roi2HeightY = 0;
     private final char keyMoveRight = '6';            // control keys for cursor position used by this program
-    private final char keyMoveLeft = '4';             // they keys can be changed if required; they are then used by the key listener for the image window as defined below
+    private final char keyMoveLeft = '4';             // the keys can be changed if required; they are then used by the key listener for the image window as defined below
     private final char keyMoveUp = '8';               // the keys work on the number block of a PC but not on the general keyboard as some of the keys are already used by ImageJ
     private final char keyMoveDown = '2';             // potentially this could be removed as the keys are not often used
 
@@ -898,7 +898,7 @@ public class Imaging_FCS implements PlugIn {
     private boolean isSaveAveragePVideo = false;                         // flag to compute average of all CF, perform standard fit and display D and N values in the form of imagestack (32-bit)
     private ArrayList<ArrayList<Double>> averageFitParamList = null;             // store average N and D values is (0-N, 1-D) // currently store only ACF //TODO: expand to store DC-FCCS
     private final int totalfitp = 2;
-    private boolean isSaveCFandFitPvideo = false;                                    // flag to save CF and fit values for all data analyzed to an text file (to be further analyzed with external program)
+    private boolean isSaveCFandFitPvideo = false;                                    // flag to save CF and fit values for all data analyzed to a text file (to be further analyzed with external program)
 
     // Direct Camera Readout
     private DirectCapture dcrobj;
@@ -1580,9 +1580,9 @@ public class Imaging_FCS implements PlugIn {
         expSettingsFrame.add(tfNA);
 
         // row 3
-        expSettingsFrame.add(new JLabel("\u03bb\u2081 [nm]:"));
+        expSettingsFrame.add(new JLabel("λ₁ [nm]:"));
         expSettingsFrame.add(tfEmLambda);
-        expSettingsFrame.add(new JLabel("\u03bb\u2082 [nm]:"));
+        expSettingsFrame.add(new JLabel("λ₂ [nm]:"));
         expSettingsFrame.add(tfEmLambda2);
 
         // row 4
@@ -3802,7 +3802,6 @@ public class Imaging_FCS implements PlugIn {
         if (cbFitModel.getSelectedItem() == "ITIR-FCS (2D)" || cbFitModel.getSelectedItem() == "SPIM-FCS (3D)") {
             tfFitModel.setText(tmpmod);
             String strccf = tfCCFDistance.getText();
-            int strlen = strccf.length();
             ccfrx = Integer.parseInt(strccf.substring(0, strccf.indexOf(" x ")));
             tfParamRx.setText(IJ.d2s(pixelsize * 1000 / objmag * ccfrx, decformat));
             ccfry = Integer.parseInt(strccf.substring(strccf.indexOf(" x ") + 3));
@@ -6241,9 +6240,6 @@ public class Imaging_FCS implements PlugIn {
         Row row0;
         Row row1;
         Row row2;
-        Row row3;
-        Row row4;
-        Row row5;
 
         // write Imaging FCS Panel parameters
         t = 0;
@@ -6962,7 +6958,6 @@ public class Imaging_FCS implements PlugIn {
         XSSFWorkbook wb;
         int PARAM = 0;
         int THRESHOLD = 1;
-        int LAGTIME = 2;
         int ACF0 = 3;
         int SD0 = 4;
         int FITACF0 = 5;
@@ -9056,7 +9051,7 @@ public class Imaging_FCS implements PlugIn {
                 return false;
             } else if (background > impmin) {
                 IJ.log("Warning: Background 1 value is larger than smallest pixel value");
-//                JOptionPane.showMessageDialog(null, "Warning: Background 1 value is larger than smallest pixel value");
+//                JOptionPane.showMessageDialog(null, "Warning: Background 1 value is larger than the smallest pixel value");
             }
 
             // check that background2 value is sensible
@@ -9065,7 +9060,7 @@ public class Imaging_FCS implements PlugIn {
                 return false;
             } else if (background2 > impmin) {
                 IJ.log("Warning: Background 2 value is larger than smallest pixel value");
-//                JOptionPane.showMessageDialog(null, "Warning: Background 2 value is larger than smallest pixel value");
+//                JOptionPane.showMessageDialog(null, "Warning: Background 2 value is larger than the smallest pixel value");
             }
 
             // check whether correlator Q is sensible
@@ -9805,7 +9800,6 @@ public class Imaging_FCS implements PlugIn {
         String $cd = $imagePath;
         int returnVal;
         ImagePlus tmpimp;
-        ImageProcessor tmpip;
         int tmpwidth;
         int tmpheight;
         int tmpframes;
@@ -9821,8 +9815,6 @@ public class Imaging_FCS implements PlugIn {
         }
 
         // open a set of calibration measurements
-        String $suffix;
-        String $sfile;
 
         Bmean = new double[2];
         BStdDev = new double[2];
@@ -10339,7 +10331,6 @@ public class Imaging_FCS implements PlugIn {
                 }
 
                 if (batchHorDCCF) {
-                    String $dccf = (String) cbDCCF.getSelectedItem();
                     int mode;
                     int wx = pixelWidthX;
                     int hy = pixelHeightY;
@@ -10351,7 +10342,6 @@ public class Imaging_FCS implements PlugIn {
                 }
 
                 if (batchVerDCCF) {
-                    String $dccf = (String) cbDCCF.getSelectedItem();
                     int mode;
                     int wx = pixelWidthX;
                     int hy = pixelHeightY;
@@ -10363,7 +10353,6 @@ public class Imaging_FCS implements PlugIn {
                 }
 
                 if (batchDiaUpDCCF) {
-                    String $dccf = (String) cbDCCF.getSelectedItem();
                     int mode;
                     int wx = pixelWidthX;
                     int hy = pixelHeightY;
@@ -10375,7 +10364,6 @@ public class Imaging_FCS implements PlugIn {
                 }
 
                 if (batchDiaDownDCCF) {
-                    String $dccf = (String) cbDCCF.getSelectedItem();
                     int mode;
                     int wx = pixelWidthX;
                     int hy = pixelHeightY;
@@ -12122,7 +12110,6 @@ public class Imaging_FCS implements PlugIn {
         double[][] covmat = new double[chanum][chanum];
         double[][] covmats = new double[chanum - 1][chanum - 1];	//the final results does not contain information about the zero lagtime kcf
         double[][] cormat = new double[chanum][chanum];
-        double[][] denomshrink = new double[chanum][chanum];
         double numerator = 0;
         double denominator = 0;
         double median = 0;
@@ -13377,8 +13364,6 @@ public class Imaging_FCS implements PlugIn {
         // cpx, cpy: pixel coordinates
         // kcf (0, 1, 2): ACF1, ACF2, CCF
         // model: which fit model to be used; the models are defined below
-        ParametricUnivariateFunction fitfunction;
-        ParametricUnivariateFunction plotfunction;
         double[] paramem = new double[noparam];
         boolean[] paramfitmem = new boolean[noparam];
         double[][] covpar;
@@ -13390,7 +13375,7 @@ public class Imaging_FCS implements PlugIn {
         double logresid;
         double prodsigma;
         double det;
-        double pi = 3.14159265359;
+        double pi = Math.PI;
         int boxsize = 200;
         int numel;
 
@@ -13910,7 +13895,7 @@ public class Imaging_FCS implements PlugIn {
                     }
                 }
 
-                chi2aveacf = 0; // initialize chi2 value for this pixel	
+                chi2aveacf = 0; // initialize chi2 value for this pixel
                 for (int i = fitstart; i <= fitend; i++) {
                     chi2aveacf += Math.pow(resaveacf[kcf][i], 2) / ((fitend - fitstart) - numfreefitpar - 1);	// calculate chi2 value; do not include the 0 lagtime kcf which contains shot noise
                 }
@@ -14575,7 +14560,7 @@ public class Imaging_FCS implements PlugIn {
         // corrfunc: correlation fucntion to be inverted
         // pszie: pixel size in um
         // psfwidth: pixelwidth in um
-        double pi = 3.14159265359;
+        double pi = Math.PI;
         double a = -17.0 * 1260.0 / 29.0 / 180.0;
         double b = 1260.0 / 29.0 / 3.0;
         double c = -1260.0 / 29.0;
@@ -14630,7 +14615,7 @@ public class Imaging_FCS implements PlugIn {
         for (int i = 2; i < cutoffInd; i++) {
             final double temp_msd_3d = corrfunc[i];
             UnivariateFunction f = (double x) -> {
-                double pi = 3.14159265359;
+                double pi = Math.PI;
                 double sqrpi = Math.sqrt(pi);
 
                 double p = 1 - Math.pow(temp_psfwidth, 2.0) / Math.pow(temp_psfwidthz, 2.0);
@@ -14670,10 +14655,11 @@ public class Imaging_FCS implements PlugIn {
 
     //This calculates the solution to a third order polynomial which is obtained from the fourth order polynomial. The cubic which appears is called resolvent cubic equation
     public double cubicrootFunction(double a, double b, double c) {
-        double pi = 3.14159265359;
-        double root = 0.0;
+        double pi = Math.PI;
         double qq, pp;
-        double Qa, y1 = 0.0, y2, y3 = 0.0;
+        double Qa;
+        double y1 = 0.0;
+        double y2;
         double AA = 0.0, BB = 0.0, sQ = 0.0;
         double cosA, alpha;
 
@@ -16583,7 +16569,6 @@ public class Imaging_FCS implements PlugIn {
         double histMax = impPara1.getStatistics().max;
         int histYMax = impPara1.getStatistics().histYMax;
         int pixelCount = impPara1.getStatistics().pixelCount;
-        double stdDev = impPara1.getStatistics().stdDev;
         int q1 = 0;			// determine first quartile
         int countQ = 0;
         while (countQ < Math.ceil(pixelCount / 4.0)) {
@@ -16645,7 +16630,6 @@ public class Imaging_FCS implements PlugIn {
         double histMax = impPara1.getStatistics().max;
         int histYMax = impPara1.getStatistics().histYMax;
         int pixelCount = impPara1.getStatistics().pixelCount;
-        double stdDev = impPara1.getStatistics().stdDev;
         int q1 = 0;			// determine first quartile
         int countQ = 0;
         while (countQ < Math.ceil(pixelCount / 4.0)) {
@@ -16752,11 +16736,9 @@ public class Imaging_FCS implements PlugIn {
                 int nochannels = 1;
                 int cshift = 0;			// index shift for renumbering the correlation channels so that cross-correlation parameter maps are in the upper slices of the imsPVideoNDave
                 int cm;					// index of the correlation kcf in the loop
-                int cq = 0;				// additional one frame for q map in DC-FCCS imageType
                 if (cbFitModel.getSelectedItem() == "DC-FCCS (2D)") {
                     nochannels = 3;
                     cshift = 2;
-                    cq = 1;
                 }
 
                 ArrayList<Boolean> proceed = new ArrayList<Boolean>(nochannels);
@@ -16943,7 +16925,6 @@ public class Imaging_FCS implements PlugIn {
             double histMax = impPara1.getStatistics().max;
             int histYMax = impPara1.getStatistics().histYMax;
             int pixelCount = impPara1.getStatistics().pixelCount;
-            double stdDev = impPara1.getStatistics().stdDev;
             int q1 = 0;			// determine first quartile
             int countQ = 0;
             while (countQ < Math.ceil(pixelCount / 4.0)) {
@@ -17044,8 +17025,6 @@ public class Imaging_FCS implements PlugIn {
 
         @Override
         public double[] gradient(double x, double[] params) {
-            double t0 = params[0];
-            double b = params[1];
 
             double[] grad = new double[]{
                 1,
@@ -17070,7 +17049,6 @@ public class Imaging_FCS implements PlugIn {
         public double[] gradient(double x, double[] params) {
             double A = params[0];
             double t1 = params[1];
-            double C = params[2];
 
             double[] grad = new double[]{
                 Math.exp(-x / t1),
@@ -17099,7 +17077,6 @@ public class Imaging_FCS implements PlugIn {
             double t1 = params[1];
             double B = params[2];
             double t2 = params[3];
-            double C = params[4];
 
             double[] grad = new double[]{
                 Math.exp(-x / t1),
@@ -17171,7 +17148,7 @@ public class Imaging_FCS implements PlugIn {
     class FCS_3p implements ParametricUnivariateFunction {
 
         // general parameters
-        double pi = 3.14159265359;
+        double pi = Math.PI;
         double sqrpi = Math.sqrt(pi);
         double ax = pixeldimx;
         double ay = pixeldimy;
@@ -17214,18 +17191,6 @@ public class Imaging_FCS implements PlugIn {
                 }
             }
 
-            // note that x is used here as the time variable instead of t; that can be come confusing as x and y are used in the names for the paramaters to indicate spatial directions
-            // pareq[0] = N
-            // pareq[1] = D
-            // pareq[2] = vx
-            // pareq[3] = vy
-            // pareq[4] = G
-            // pareq[5] = F2
-            // pareq[6] = D2
-            // pareq[7] = F3
-            // pareq[8] = D3
-            // pareq[9] = Ftrip
-            // pareq[10] = Ttrip
             //COMPONENT1
             // help variables, which are dependent on time, to write the full function
             double p0t = Math.sqrt(4 * pareq[1] * x + Math.pow(s, 2));
@@ -17391,18 +17356,6 @@ public class Imaging_FCS implements PlugIn {
                 }
             }
 
-            // note that x is used here as the time variable instead of t; that can be come confusing as x and y are used in the names for the paramaters to indicate spatial directions
-            // pareq[0] = N
-            // pareq[1] = D
-            // pareq[2] = vx
-            // pareq[3] = vy
-            // pareq[4] = G
-            // pareq[5] = F2
-            // pareq[6] = D2
-            // pareq[7] = F3
-            // pareq[8] = D3
-            // pareq[9] = Ftrip
-            // pareq[10] = Dtrip
             //q2 and q3, the brightness of the second and third components are fixed parameters and have been globaly defined; see prepareFit()
             // COMPONENT 1
             // help variables, which are dependent on time, to write the full function
@@ -17470,7 +17423,7 @@ public class Imaging_FCS implements PlugIn {
     class FCS_3p_SPIM implements ParametricUnivariateFunction {
 
         // general parameters
-        double pi = 3.14159265359;
+        double pi = Math.PI;
         double sqrpi = Math.sqrt(pi);
         double const1 = Math.sqrt(1 / pi);
         double ridx = 1.3333; // refractive index of mounting medium, here water
@@ -17497,9 +17450,7 @@ public class Imaging_FCS implements PlugIn {
         public double[] gradient(double x, double[] params) {
             double p00 = s;
             double p1x0 = ax;
-            double p2x0 = ax;
             double p1y0 = ay;
-            double p2y0 = ay;
             double pexpx0 = 2 * Math.exp(-Math.pow(p1x0 / p00, 2)) - 2;
             double perfx0 = 2 * p1x0 * Erf.erf(p1x0 / p00);
             double pexpy0 = 2 * Math.exp(-Math.pow(p1y0 / p00, 2)) - 2;
@@ -17510,9 +17461,7 @@ public class Imaging_FCS implements PlugIn {
             double z1;
             double z2;
             double sum1;
-            double sum2;
             double sumd1;
-            double sumd2;
             double[] pareq = new double[noparam];
             int num = 0;
 
@@ -17524,21 +17473,7 @@ public class Imaging_FCS implements PlugIn {
                     pareq[i] = paraminitval[i];
                 }
             }
-            // note that x is used here as the time variable instead of t; that can be come confusing as x and y are used in the names for the paramaters to indicate spatial directions
-
-            // pareq[0] = N
-            // pareq[1] = D
-            // pareq[2] = vx
-            // pareq[3] = vy
-            // pareq[4] = G
-            // pareq[5] = F2
-            // pareq[6] = D2
-            // pareq[7] = F3
-            // pareq[8] = D3
-            // pareq[9] = Ftrip
-            // pareq[10] = Ttrip
             double sdt = Math.sqrt(pareq[1] * x);
-            double adt = (pareq[1] * x);
 
             sum1 = 0;
             sumd1 = 0;
@@ -17759,9 +17694,7 @@ public class Imaging_FCS implements PlugIn {
             //		double modfitobvol=(fitobsvol1/(sqrpi*sz));
             double p00 = s;
             double p1x0 = ax;
-            double p2x0 = ax;
             double p1y0 = ay;
-            double p2y0 = ay;
             double pexpx0 = 2 * Math.exp(-Math.pow(p1x0 / p00, 2)) - 2;
             double perfx0 = 2 * p1x0 * Erf.erf(p1x0 / p00);
             double pexpy0 = 2 * Math.exp(-Math.pow(p1y0 / p00, 2)) - 2;
@@ -17769,36 +17702,9 @@ public class Imaging_FCS implements PlugIn {
             double volume3d = sqrpi * szeff * 4 * Math.pow(ax * ay, 2) / ((p00 / sqrpi * pexpx0 + perfx0) * (p00 / sqrpi * pexpy0 + perfy0));
             double modfitobvol = (volume3d / (sqrpi * sz));
             // obtain fit parameters
-            // note that x is used here as the time variable instead of t; that can be come confusing as x and y are used in the names for the paramaters to indicate spatial directions
-            // pareq[0] = N
-            // pareq[1] = D
-            // pareq[2] = vx
-            // pareq[3] = vy
-            // pareq[4] = G
-            // pareq[5] = F2
-            // pareq[6] = D2
-            // pareq[7] = F3
-            // pareq[8] = D3
-            // pareq[9] = Ftrip
-            // pareq[10] = Ttrip
 
             double sdt = Math.sqrt(pareq[1] * x);
-            double adt = (pareq[1] * x);
 
-            // numerical integration for z and z' components in the ACF. Thsi is required as no analytical solutions were found
-            //		for( int i = -40; i < 41; i++ ) {
-            //			z1 = (sz*i) / 20;	
-            //		    double psfxz1 = s + (NA * Math.abs(z1)) / srn;
-            //			for(int j = -40; j < 41; j++) {
-            //				    z2 = (sz*j) / 20;	
-            //					double psfxz2 = s + (NA * Math.abs(z2)) / srn;
-            // numerical integration for z and z' components in the ACF. Thsi is required as no analytical solutions were found
-            //		for( int i = -40; i < 41; i++ ) {
-            //			z1 = (sz*i) / 20;	
-            //		    double psfxz1 = s + (NA * Math.abs(z1)) / srn;
-            //			for(int j = -40; j < 41; j++) {
-            //				    z2 = (sz*j) / 20;	
-            //					double psfxz2 = s + (NA * Math.abs(z2)) / srn;
             for (int i = 0; i < 6401; i++) {
                 int counter = i;
                 int outerloop = counter / 80;
@@ -17806,13 +17712,8 @@ public class Imaging_FCS implements PlugIn {
                 z1 = (sz * z1calculator) / 20;
                 int z2calculator = (i % 80) - 40;
 
-                //		for( int i = -40; i < 41; i++ ) {
-                //			z1=(sz*i)/20;	
                 double psfxz1 = s + (NA * Math.abs(z1)) / srn;
-                //		sum1 = 0;
-                //		sumd1 = 0;
 
-                //		for(int j = -40; j < 41; j++){
                 z2 = (sz * z2calculator) / 20;
                 double psfxz2 = s + (NA * Math.abs(z2)) / srn;
 
@@ -17820,8 +17721,6 @@ public class Imaging_FCS implements PlugIn {
                 // help variables, which are dependent on time, to write the full function
                 double p0t = ((8 * pareq[1] * x) + Math.pow(psfxz1, 2) + Math.pow(psfxz2, 2)) / 2;
                 double sp0t = Math.sqrt(p0t);
-                double tsp0t = Math.pow(sp0t, 3);
-                double qp0t = Math.pow(p0t, 2);
 
                 double p10xt = p1xt / sp0t;
                 double p20xt = p2xt / sp0t;
@@ -17861,276 +17760,13 @@ public class Imaging_FCS implements PlugIn {
         }
     }
 
-//    class FCS_3p_SPIM_X implements ParametricUnivariateFunction { 
-//
-//        // general parameters
-//        double pi = 3.14159265359;
-//        double sqrpi = Math.sqrt(pi);
-//        double const1 = Math.sqrt(1 / pi);
-//        double ridx = 1.3333; // refractive index of mounting medium, here water
-//        double ax = pixeldimx;
-//        double ay = pixeldimy;
-//        double s = psfsize;
-//        double sz = lsthickness;
-//        double psfz = 2 * emlambda / Math.pow(10, 9.0) * ridx / Math.pow(NA, 2.0); // size of PSF in axial direction
-//        double szeff = Math.sqrt(1 / (Math.pow(sz, -2.0) + Math.pow(psfz, -2.0))); // convolution of two Gaussians depending on illumination profile and detection PSF
-//        double rx = ax * cfXshift / binningX;
-//        double ry = ay * cfYshift / binningY;
-//        double srn = Math.sqrt(Math.pow(ridx, 2) - Math.pow(NA, 2));
-//        double z1;
-//        double z2;
-//
-//        double modfitobvol = (fitobsvol / (sqrpi * sz));
-//
-//        double p1xt = ax + rx;
-//        double p2xt = ax - rx;
-//        double p3xt = rx;
-//        double p1yt = ay + ry;
-//        double p2yt = ay - ry;
-//        double p3yt = ry;
-//
-//        @Override
-//        public double[] gradient(double x, double[] params) {
-//
-//            double z1;
-//            double z2;
-//            double sum1;
-//            double sum2;
-//            double sumd1;
-//            double sumd2;
-//            double[] pareq = new double[noparam];
-//            int num = 0;
-//
-//            for (int i = 0; i < noparam; i++) {
-//                if (paramfit[i]) {
-//                    pareq[i] = params[num];
-//                    num++;
-//                } else {
-//                    pareq[i] = paraminitval[i];
-//                }
-//            }
-//            // note that x is used here as the time variable instead of t; that can be come confusing as x and y are used in the names for the paramaters to indicate spatial directions
-//
-//            // pareq[0] = N
-//            // pareq[1] = D
-//            // pareq[2] = vx
-//            // pareq[3] = vy
-//            // pareq[4] = G
-//            // pareq[5] = F2
-//            // pareq[6] = D2
-//            // pareq[7] = F3
-//            // pareq[8] = D3
-//            // pareq[9] = Ftrip
-//            // pareq[10] = Ttrip
-//            double sdt = Math.sqrt(pareq[1] * x);
-//            double adt = (pareq[1] * x);
-//
-//            sum2 = 0;
-//            sumd2 = 0;
-//
-//            // numerical integration for z and z' components in the ACF. Thsi is required as no analytical solutions were found			
-//            for (int i = -40; i < 41; i++) {
-//
-//                z1 = (sz * i) / 20;
-//                double psfxz1 = s + (NA * Math.abs(z1)) / srn;
-//                sum1 = 0;
-//                sumd1 = 0;
-//
-//                for (int j = -40; j < 41; j++) {
-//
-//                    z2 = (sz * j) / 20;
-//                    double psfxz2 = s + (NA * Math.abs(z2)) / srn;
-//
-//                    //COMPONENT1
-//                    // help variables, which are dependent on time, to write the full function
-//                    double p0t = ((8 * pareq[1] * x) + Math.pow(psfxz1, 2) + Math.pow(psfxz2, 2)) / 2;
-//                    double sp0t = Math.sqrt(p0t);
-//                    double tsp0t = Math.pow(sp0t, 3);
-//                    double qp0t = Math.pow(p0t, 2);
-//
-//                    double p10xt = p1xt / sp0t;
-//                    double p20xt = p2xt / sp0t;
-//                    double p30xt = p3xt / sp0t;
-//                    double p1expxt = Math.exp(-Math.pow(p10xt, 2));
-//                    double p2expxt = Math.exp(-Math.pow(p20xt, 2));
-//                    double p3expxt = Math.exp(-Math.pow(p30xt, 2));
-//                    double pexpxt = p1expxt + p2expxt - (2 * p3expxt);
-//                    double perfxt = (p1xt * Erf.erf(p10xt)) + (p2xt * Erf.erf(p20xt)) - (2 * p3xt * Erf.erf(p30xt));
-//                    double d1expx = 4 * x * (p1expxt * Math.pow(p1xt, 2));
-//                    double d2expx = 4 * x * (p2expxt * Math.pow(p2xt, 2));
-//                    double d3expx = 4 * x * (p3expxt * Math.pow(p3xt, 2));
-//                    double d0expx = 2 * x * (pexpxt);
-//                    double dexpx = d1expx + d2expx - (2 * d3expx);
-//                    double xpart = ((pexpxt * sp0t) / sqrpi) + perfxt;
-//                    double xder = (1 / sdt) * (const1 * ((d0expx / sp0t) - (dexpx / tsp0t)) + (dexpx / sqrpi) * (sp0t / qp0t));
-//
-//                    double p10yt = p1yt / sp0t;
-//                    double p20yt = p2yt / sp0t;
-//                    double p30yt = p3yt / sp0t;
-//                    double p1expyt = Math.exp(-Math.pow(p10yt, 2));
-//                    double p2expyt = Math.exp(-Math.pow(p20yt, 2));
-//                    double p3expyt = Math.exp(-Math.pow(p30yt, 2));
-//                    double pexpyt = p1expyt + p2expyt - (2 * p3expyt);
-//                    double perfyt = (p1yt * Erf.erf(p10yt)) + (p2yt * Erf.erf(p20yt)) - (2 * p3yt * Erf.erf(p30yt));
-//                    double d1expy = 4 * x * (p1expyt * Math.pow(p1yt, 2));
-//                    double d2expy = 4 * x * (p2expyt * Math.pow(p2yt, 2));
-//                    double d3expy = 4 * x * (p3expyt * Math.pow(p3yt, 2));
-//                    double d0expy = 2 * x * (pexpyt);
-//                    double dexpy = d1expy + d2expy - (2 * d3expy);
-//                    double ypart = ((pexpyt * sp0t) / sqrpi) + perfyt;
-//                    double yder = (1 / sdt) * (const1 * ((d0expy / sp0t) - (dexpy / tsp0t)) + (dexpy / sqrpi) * (sp0t / qp0t));
-//
-//                    double zdiff = (z1 - z2);
-//                    double z1exp = (2 / Math.pow(sz, 2)) * (Math.pow(z1, 2) + Math.pow(z2, 2));
-//                    double z2exp = (Math.pow(zdiff, 2)) / (4 * pareq[1] * x);
-//                    double zexp = Math.exp(-(z1exp + z2exp));
-//
-//                    double dt1 = -(0.5 * x) / (Math.pow(sdt, 3));
-//                    double dt2 = (0.25 * (Math.pow((zdiff), 2))) / (x * sdt * Math.pow(pareq[1], 2));
-//
-//                    //ASHWIN:check that the two are correct
-//                    sum1 += ((zexp * xpart * ypart) * ((sz * sz) / 400)) / sdt;
-//                    sumd1 += zexp * ((dt1 + dt2) * xpart * ypart + xpart * yder + ypart * xder) * (sz * sz / 400);
-//                }
-//
-//                sum2 += sum1;
-//                sumd2 += sumd1;
-//            }
-//
-//            double acf1 = (sum2 * 1000000) / (4 * Math.pow(ax * ay, 2) / (modfitobvol));
-//            double Dpspim = (sumd2 * 1000000) / (4 * Math.pow(ax * ay, 2) / (modfitobvol));
-//
-//            // TRIPLET
-//            //	double triplet = 1 + pareq[9] / ( 1 - pareq[9] ) * Math.exp( -x/pareq[10] );
-//            //	double dtripletFtrip = Math.exp( -x/pareq[10] ) * ( 1/(1-pareq[9]) + pareq[9]/Math.pow(1-pareq[9], 2) );
-//            //	double dtripletTtrip =  Math.exp( -x/pareq[10] ) * (pareq[9] * x)/((1-pareq[9]) * Math.pow(pareq[10], 2));
-//            //double pf1 = (1 - pareq[5] - pareq[7]) / (1 - pareq[5] - pareq[7] + q2 * pareq[5] + q3 * pareq[7]);
-//            double pacf = ((1 / pareq[0]) * acf1) + pareq[4];
-//
-//            double[] grad = new double[]{
-//                (-1 / Math.pow(pareq[0], 2)) * acf1,
-//                (1 / pareq[0]) * (Dpspim),
-//                0,
-//                0,
-//                1,
-//                0,
-//                0,
-//                0,
-//                0,
-//                0,
-//                0
-//            };
-//
-//            double[] gradret = new double[num]; // return the gradients of the fit model in respect to the fit parameters
-//            num = 0;
-//            for (int i = 0; i < noparam; i++) {
-//                if (paramfit[i] == true) {
-//                    gradret[num] = grad[i];
-//                    num++;
-//                }
-//            }
-//
-//            return gradret;
-//        }
-//
-//        @Override
-//        public double value(double x, double[] params) {
-//
-//            double z1;
-//            double z2;
-//            double sum1 = 0;
-//            double sum2 = 0;
-//            double[] pareq = new double[noparam];
-//            int num = 0;
-//            double modfitobvol = (fitobsvol / (sqrpi * sz));
-//            // obtain fit parameters
-//            // note that x is used here as the time variable instead of t; that can be come confusing as x and y are used in the names for the paramaters to indicate spatial directions
-//            // pareq[0] = N
-//            // pareq[1] = D
-//            // pareq[2] = vx
-//            // pareq[3] = vy
-//            // pareq[4] = G
-//            // pareq[5] = F2
-//            // pareq[6] = D2
-//            // pareq[7] = F3
-//            // pareq[8] = D3
-//            // pareq[9] = Ftrip
-//            // pareq[10] = Ttrip
-//
-//            for (int i = 0; i < noparam; i++) {
-//                if (paramfit[i]) {
-//                    pareq[i] = params[num];
-//                    num++;
-//                } else {
-//                    pareq[i] = paraminitval[i];
-//                }
-//            }
-//
-//            double sdt = Math.sqrt(pareq[1] * x);
-//            double adt = (pareq[1] * x);
-//
-//            // numerical integration for z and z' components in the ACF. Thsi is required as no analytical solutions were found
-//            for (int i = -40; i < 41; i++) {
-//
-//                z1 = (sz * i) / 20;
-//                double psfxz1 = s + (NA * Math.abs(z1)) / srn;
-//
-//                for (int j = -40; j < 41; j++) {
-//
-//                    z2 = (sz * j) / 20;
-//                    double psfxz2 = s + (NA * Math.abs(z2)) / srn;
-//
-//                    //COMPONENT1
-//                    // help variables, which are dependent on time, to write the full function
-//                    double p0t = ((8 * pareq[1] * x) + Math.pow(psfxz1, 2) + Math.pow(psfxz2, 2)) / 2;
-//                    double sp0t = Math.sqrt(p0t);
-//                    double tsp0t = Math.pow(sp0t, 3);
-//                    double qp0t = Math.pow(p0t, 2);
-//
-//                    double p10xt = p1xt / sp0t;
-//                    double p20xt = p2xt / sp0t;
-//                    double p30xt = p3xt / sp0t;
-//                    double p1expxt = Math.exp(-Math.pow(p10xt, 2));
-//                    double p2expxt = Math.exp(-Math.pow(p20xt, 2));
-//                    double p3expxt = Math.exp(-Math.pow(p30xt, 2));
-//                    double pexpxt = p1expxt + p2expxt - (2 * p3expxt);
-//                    double perfxt = (p1xt * Erf.erf(p10xt)) + (p2xt * Erf.erf(p20xt)) - (2 * p3xt * Erf.erf(p30xt));
-//                    double xpart = ((pexpxt * sp0t) / sqrpi) + perfxt;
-//
-//                    double p10yt = p1yt / sp0t;
-//                    double p20yt = p2yt / sp0t;
-//                    double p30yt = p3yt / sp0t;
-//                    double p1expyt = Math.exp(-Math.pow(p10yt, 2));
-//                    double p2expyt = Math.exp(-Math.pow(p20yt, 2));
-//                    double p3expyt = Math.exp(-Math.pow(p30yt, 2));
-//                    double pexpyt = p1expyt + p2expyt - (2 * p3expyt);
-//                    double perfyt = (p1yt * Erf.erf(p10yt)) + (p2yt * Erf.erf(p20yt)) - (2 * p3yt * Erf.erf(p30yt));
-//                    double ypart = ((pexpyt * sp0t) / sqrpi) + perfyt;
-//                    double zdiff = (z1 - z2);
-//                    double z1exp = (2 / Math.pow(sz, 2)) * (Math.pow(z1, 2) + Math.pow(z2, 2));
-//                    double z2exp = (Math.pow(zdiff, 2)) / (4 * pareq[1] * x);
-//                    double zexp = Math.exp(-(z1exp + z2exp));
-//
-//                    sum1 += ((zexp * xpart * ypart) * ((sz * sz) / 400)) / sdt;
-//                }
-//
-//                sum2 += sum1;
-//                sum1 = 0;
-//            }
-//
-//            double acf1 = (sum2 * 1000000) / (4 * Math.pow(ax * ay, 2) / (modfitobvol));
-//
-//            return ((1 / pareq[0]) * acf1) + pareq[4];
-//
-//        }
-//    }
 // DC-FCCS model, applicabale for ITIR-FCCS //TODO: SPIM-FCCS
 // the models and their derivation are provided on our website in CDF files (http://staff.science.nus.edu.sg/~chmwt/)
 // TODO: D(cross) < D(ACF); temporary solution --> PSF cross = RMS of PSF green and red see class FCCS_2p
     class FCCS_2p_todebug implements ParametricUnivariateFunction {
 
         // general parameters
-        double pi = 3.14159265359;
+        double pi = Math.PI;
         double sqrpi = Math.sqrt(pi);
         double a = pixeldimx;
         double s1 = psfsize;
@@ -18287,7 +17923,7 @@ public class Imaging_FCS implements PlugIn {
     class FCCS_2p implements ParametricUnivariateFunction {
         // general parameters
 
-        double pi = 3.14159265359;
+        double pi = Math.PI;
         double sqrpi = Math.sqrt(pi);
         double ax = pixeldimx;
         double ay = pixeldimy;
@@ -18311,18 +17947,6 @@ double szeff = sz;
                 }
             }
 
-            // note that x is used here as the time variable instead of t; that can be come confusing as x and y are used in the names for the paramaters to indicate spatial directions
-            // pareq[0] = N
-            // pareq[1] = D
-            // pareq[2] = vx
-            // pareq[3] = vy
-            // pareq[4] = G
-            // pareq[5] = F2
-            // pareq[6] = D2
-            // pareq[7] = F3
-            // pareq[8] = D3
-            // pareq[9] = Ftrip
-            // pareq[10] = Ttrip
             //COMPONENT1
             // help variables, which are dependent on time, to write the full function
             double p0t = Math.sqrt(4 * pareq[1] * x + Math.pow(s, 2));
@@ -18488,20 +18112,6 @@ double szeff = sz;
                 }
             }
 
-            // note that x is used here as the time variable instead of t; that can be come confusing as x and y are used in the names for the paramaters to indicate spatial directions
-            // pareq[0] = N
-            // pareq[1] = D
-            // pareq[2] = vx
-            // pareq[3] = vy
-            // pareq[4] = G
-            // pareq[5] = F2
-            // pareq[6] = D2
-            // pareq[7] = F3
-            // pareq[8] = D3
-            // pareq[9] = Ftrip
-            // pareq[10] = Dtrip
-            //q2 and q3, the brightness of the second and third components are fixed parameters and have been globaly defined; see prepareFit()
-            // COMPONENT 1
             // help variables, which are dependent on time, to write the full function
             double p0t = Math.sqrt(4 * pareq[1] * x + Math.pow(s, 2));
             double p1xt = ax + rx - pareq[2] * x;
@@ -18688,57 +18298,10 @@ double szeff = sz;
         }
     }
 
-//    // calculation of the observation area; this is used in the Diffusion Law Plot as the y-axis
-//    // the calculation of the observation area/volume is provided on our website in CDF files (http://www.dbs.nus.edu.sg/lab/BFL/index.html)
-//    public double obsvolFCS_ST2D1p(int dim) {
-//
-//        // general parameters
-//        double pi = 3.14159265359;
-//        double sqrpi = Math.sqrt(pi);
-//        double ax = pixeldimx;
-//        double ay = pixeldimy;
-//        double s = psfsize;
-//        double sz = lsthickness;
-//        double psfz = 2 * emlambda / Math.pow(10, 9.0) * 1.33 / Math.pow(NA, 2.0); // size of PSF in axial direction
-//        double szeff = Math.sqrt(1 / (Math.pow(sz, -2.0) + Math.pow(psfz, -2.0))); // convolution of two Gaussians depending on illumination profile and detection PSF
-//        double rx = ax * cfXshift / binningX;
-//        double ry = ay * cfYshift / binningY;
-//        
-//        IJ.log("psfsize1: " + psfsize + ", psfsize2: " + psfsize2 + ", psfsize for obsvol: " + s);
-//
-//        // help variables, for t = 0, to write the full fit function
-//        double p00 = s;
-//        double p1x0 = ax;
-//        double p2x0 = ax;
-//        double p1y0 = ay;
-//        double p2y0 = ay;
-//        double pexpx0 = 2 * Math.exp(-Math.pow(p1x0 / p00, 2)) - 2;
-//        double perfx0 = 2 * p1x0 * Erf.erf(p1x0 / p00);
-//        double pexpy0 = 2 * Math.exp(-Math.pow(p1y0 / p00, 2)) - 2;
-//        double perfy0 = 2 * p1y0 * Erf.erf(p1y0 / p00);
-//
-//        //return (p00/sqrpi * pexpx0 + perfx0) * (p00/sqrpi * pexpy0 + perfy0) * Math.pow(sz, 2);
-//        if (dim == 2) {
-//            return 4 * Math.pow(ax * ay, 2) / ((p00 / sqrpi * pexpx0 + perfx0) * (p00 / sqrpi * pexpy0 + perfy0)); //2D fit, DC-FCCS fit
-//        } else {
-//            //return sqrpi * szeff * 4 * Math.pow(ax*ay, 2)/( (p00/sqrpi * pexpx0 + perfx0) * (p00/sqrpi * pexpy0 + perfy0) );
-//            return sqrpi * szeff * 4 * Math.pow(ax * ay, 2) / ((p00 / sqrpi * pexpx0 + perfx0) * (p00 / sqrpi * pexpy0 + perfy0)); //ASHWIN 3D fit
-//        }
-//
-//    }
-// calculation of the observation area; this is used in the Diffusion Law Plot as the y-axis
-// the calculation of the observation area/volume is provided on our website in CDF files (http://www.dbs.nus.edu.sg/lab/BFL/index.html)
-// Return observation volume from the following list: 
-//2D green (dim = 2, psfIdx = 0)
-//2D red (dim = 2, psfIdx = 1)
-//2D CCF (dim = 2, psfIdx = 2)
-//3D green (dim = 3, psfIdx = 0) (numerical)
-//3D red (dim = 3, psfIdx = 1) (numerical)
-//3D CCF (dim = 3, psfIdx = 2) (numerical) 
     public double getObsvolFCS(int dim, int psfIdx) {
 
         // general parameters
-        double pi = 3.14159265359;
+        double pi = Math.PI;
         double sqrpi = Math.sqrt(pi);
         double ax = pixeldimx;
         double ay = pixeldimy;
@@ -18766,16 +18329,10 @@ double szeff = sz;
                 break;
         }
 
-        double szeff = Math.sqrt(1 / (Math.pow(sz, -2.0) + Math.pow(psfz, -2.0))); // convolution of two Gaussians depending on illumination profile and detection PSF
-        double rx = ax * cfXshift / binningX;
-        double ry = ay * cfYshift / binningY;
-
         // help variables, for t = 0, to write the full fit function
         double p00 = s;
         double p1x0 = ax;
-        double p2x0 = ax;
         double p1y0 = ay;
-        double p2y0 = ay;
         double pexpx0 = 2 * Math.exp(-Math.pow(p1x0 / p00, 2)) - 2;
         double perfx0 = 2 * p1x0 * Erf.erf(p1x0 / p00);
         double pexpy0 = 2 * Math.exp(-Math.pow(p1y0 / p00, 2)) - 2;
@@ -19061,7 +18618,6 @@ double szeff = sz;
         double simSizeLL = -simExtFactor * simGridSize; 					// lower limit of the simulation area
         double simSizeUL = simExtFactor * simGridSize; 						// upper limit of the simulation area
         double simDetectorSize = simGridSize / 2.0; 							// the detector extends from -simDetectorSize to simDetectorSize, i.e. it is the same as simGridSize
-        double simPhotonsPerStep = Math.floor(simCPS * simTStep + 0.5); 	// number of photons per particle and time step
         double bleachFactor = 2.0;											// the 2.0 ensures that no bleaching happens if simTauBleach is 0
         if (simTauBleach != 0) {
             bleachFactor = Math.exp(-simTStep / simTauBleach);
@@ -19083,7 +18639,6 @@ double szeff = sz;
         int[][] dctr = new int[subgridnum][subgridnum];									// temporary counter
         int num1 = (int) Math.round(simNoParticles * (1 - simF2 - simF3));				// divide particle into their types according to their fractions (1- F2 - F3), F2, F3
         int num2 = (int) Math.round(simNoParticles * simF2);
-        int num3 = (int) Math.round(simNoParticles * simF3);
         double[][] particles = new double[simNoParticles][5]; 							// array for particle positions (0:x, 1:y), whether particle is bleached (2) or in dark state (4) and if particle is in domain then (3) contains domain number
         ImagePlus impSim = IJ.createImage("2D Simulation", "GRAY16", simPixelnum, simPixelnum, simNoTStep);
 
@@ -19499,14 +19054,12 @@ double szeff = sz;
             return result;
         }
         boolean indomain = false;
-        boolean onborder = false;
         int ct = 0;
         while (domainsorted[xt][yt][ct] > 0 && ct < maxct && !indomain) {	// check whether particle is in domain, and if yes, remember the domain number
             if (Math.pow(px - domains[domainsorted[xt][yt][ct]][0], 2.0) + Math.pow(py - domains[domainsorted[xt][yt][ct]][1], 2.0) - Math.pow(domains[domainsorted[xt][yt][ct]][2], 2.0) <= 0.0) {
                 result = domainsorted[xt][yt][ct];	//remember number of domain in which particle resides
                 indomain = true;
                 if (Math.pow(px - domains[domainsorted[xt][yt][ct]][0], 2.0) + Math.pow(py - domains[domainsorted[xt][yt][ct]][1], 2.0) - Math.pow(domains[domainsorted[xt][yt][ct]][2], 2.0) == 0.0) {
-                    onborder = true;
                 }
             }
             ct++;
@@ -19533,8 +19086,6 @@ double szeff = sz;
         double simKoff = 0.0;							// off-rate for triplet
         int simCameraOffset = 100;						// offset of CCD camera
         double simCameraNoiseFactor = 3.0;				// noise of CCD camera
-        double simBleachRadius = 3.0;					// bleach radius
-        int simBleachFrame = 10000000;					// frame at which bleach happens
         double simPixelSizeRS = 24 / Math.pow(10, 6);		// pixel size in real space
         double simMag = 63.0;							// objective maginification
         double simWavelength = 614.0 / Math.pow(10, 9);	// observation wavelegnth
@@ -19599,8 +19150,6 @@ double szeff = sz;
             simKoff = Double.parseDouble(newSimSettings[19]);						// off-rate for triplet
             simCameraOffset = Integer.parseInt(newSimSettings[20]);					// offset of CCD camera
             simCameraNoiseFactor = Integer.parseInt(newSimSettings[21]);			// noise of CCD camera
-            simBleachRadius = Double.parseDouble(newSimSettings[22]) / Math.pow(10, 6);		// bleach radius
-            simBleachFrame = Integer.parseInt(newSimSettings[23]);							// frame at which bleach happens
             simPixelSizeRS = Double.parseDouble(newSimSettings[30]) / Math.pow(10, 6);		// pixel size in real space
             simMag = Double.parseDouble(newSimSettings[31]);								// objective maginification
             simWavelength = Double.parseDouble(newSimSettings[32]) / Math.pow(10, 9);			// observation wavelegnth
@@ -19624,7 +19173,6 @@ double szeff = sz;
         double simSizeLL = -simExtFactor * simGridSize; 				// lower limit of the simulation area
         double simSizeUL = simExtFactor * simGridSize; 					// upper limit of the simulation area
         double simDetectorSize = simGridSize / 2.0; 						// size of the observation areas
-        double simPhotonsPerStep = Math.floor(simCPS * simTStep + 0.5); // number of photons per particle and time step
         double bleachFactor = 2.0;									// the 2.0 ensures that no bleaching happens
         if (simTauBleach != 0) {
             bleachFactor = Math.exp(-simTStep / simTauBleach);
@@ -19641,7 +19189,6 @@ double szeff = sz;
         // divide particle in to their types according to their fractions (1- F2 - F3), F2, F3
         int num1 = (int) Math.ceil(simNoParticles * (1 - simF2 - simF3));
         int num2 = (int) Math.ceil(simNoParticles * simF2);
-        int num3 = simNoParticles - num1 - num2;
         double[][] particles = new double[simNoParticles][5];	// array for particle positions and whether particle is bleached or in the dark state
         double zcor;
         //	double zfac = Math.tan( Math.asin(simNA/1.333) );			// factor describing the spread of the PSF cross-section on the camera if the particle is not in the focal plane
@@ -19660,12 +19207,10 @@ double szeff = sz;
         UniformGenerator rugxpos = new UniformGenerator(simSizeLL, simSizeUL, simSeedArray[cs++]);
         UniformGenerator rugypos = new UniformGenerator(simSizeLL, simSizeUL, simSeedArray[cs++]);
         UniformGenerator rugzpos = new UniformGenerator(simThicknessLL, simThicknessUL, simSeedArray[cs++]);
-        UniformGenerator ruig = new UniformGenerator(simSeedArray[cs++]);
         UniformGenerator rugblink = new UniformGenerator(simSeedArray[cs++]);
         GaussianGenerator rgg1 = new GaussianGenerator(0, Math.sqrt(2 * simD1 * simTStep), simSeedArray[cs++]);
         GaussianGenerator rgg2 = new GaussianGenerator(0, Math.sqrt(2 * simD2 * simTStep), simSeedArray[cs++]);
         GaussianGenerator rgg3 = new GaussianGenerator(0, Math.sqrt(2 * simD3 * simTStep), simSeedArray[cs++]);
-        GaussianGenerator rggpsf = new GaussianGenerator(0, simPSFSize, simSeedArray[cs++]);
         PoissonGenerator rpgphoton = new PoissonGenerator(simTStep * simCPS, simSeedArray[cs++]);
         GaussianGenerator rggnoise = new GaussianGenerator(0, Math.sqrt(simCameraNoiseFactor), simSeedArray[cs++]);
         UniformGenerator dug1 = new UniformGenerator(0, 3, simSeedArray[cs++]);
@@ -19712,8 +19257,6 @@ double szeff = sz;
             for (int s = 0; s < simStepsPerFrame; s++) {
                 for (int m = 0; m < simNoParticles; m++) {	// change positions of all particles for each time step
                     int numOfSeeds1 = m + 1;
-                    int[] simSeedArray1 = new int[numOfSeeds1];
-                    int ks = 0;
                     if (m < num1) {
                         particles[m][0] += rgg1.next();
                         particles[m][1] += rgg1.next();
@@ -19779,8 +19322,8 @@ double szeff = sz;
                         nop = 0;
                     }
                     for (int p = 0; p < nop; p++) { // runCPU over emitted photons
-                        double cordx = particles[m][0] + zcor * (Math.sqrt(-2 * Math.log(BMU1.next()))) * Math.cos(2 * 3.1415 * BMU2.next());
-                        double cordy = particles[m][1] + zcor * (Math.sqrt(-2 * Math.log(BMU3.next()))) * Math.cos(2 * 3.1415 * BMU4.next());
+                        double cordx = particles[m][0] + zcor * (Math.sqrt(-2 * Math.log(BMU1.next()))) * Math.cos(2 * Math.PI * BMU2.next());
+                        double cordy = particles[m][1] + zcor * (Math.sqrt(-2 * Math.log(BMU3.next()))) * Math.cos(2 * Math.PI * BMU4.next());
                         if (cordx < simDetectorSize && cordy < simDetectorSize && cordx > -simDetectorSize && cordy > -simDetectorSize) {
                             int tpx = (int) Math.floor((cordx + simMidPos) / simPixelSize);
                             int tpy = (int) Math.floor((cordy + simMidPos) / simPixelSize);
