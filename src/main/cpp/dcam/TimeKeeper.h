@@ -1,9 +1,11 @@
 #ifndef _TIMEKEEPER_H__
 #define _TIMEKEEPER_H__
 
+#include <iostream>
+
 class TimeKeeper {
 private:
-	int timestart;
+	std::chrono::steady_clock::time_point timestart;
 public:
 	TimeKeeper();
 	~TimeKeeper();
