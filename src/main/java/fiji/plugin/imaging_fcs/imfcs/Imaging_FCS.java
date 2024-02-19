@@ -449,9 +449,12 @@ public class Imaging_FCS implements PlugIn {
     private double fitobsvol;           // normalization factor including the observation volume; for ACFs this is correct; note that N for spatial cross-correaltions has no physical meaning
     private double fitobsvol2;          // valid under DC-FCCS for ACF2
     private double fitobsvol3;
-    private static int isgpupresent = 0;
+
+    // GPU variables
+    private static boolean isCuda = false;
+    private boolean useGpu = false;
+
     private int isdlawcalculatedingpu = 0;
-    private int isgpupresentmem = 0;
     // variables to remember last settings in the ImFCS control panel
     private final int noSettings = 33;				// number of individual setting parameters
     private final String[] panelSettings = new String[noSettings];	// array to store the individual settings, the settings are stored in the same order as used to create the results table
@@ -993,14 +996,14 @@ public class Imaging_FCS implements PlugIn {
         String tempmsg;
         try {
             if (GpufitImFCS.isCudaAvailable()) {
-                isgpupresent = 1;
-                isgpupresentmem = 1;
+                isCuda = true;
+                useGpu = true;
                 tempmsg = "NVIDIA GPU is detected.";
             } else {
                 tempmsg = GpufitImFCS.ALERT;
             }
         } catch (Exception e) {
-            // NOTE: isgpupresent will not be set to 1. In calculateRoi function, calculations will be done on a CPU instead of GPU.
+            // NOTE: useGpu will not be set to true. In calculateRoi function, calculations will be done on a CPU instead of GPU.
             tempmsg = "NVIDIA GPU is not detected.";
         }
 
@@ -1019,7 +1022,7 @@ public class Imaging_FCS implements PlugIn {
         f.setFocusable(true);
         f.setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
         f.setLayout(new GridLayout(2, 1));
-        String modestr = (isgpupresent == 1) ? "GPU mode" : "CPU mode";
+        String modestr = useGpu ? "GPU mode" : "CPU mode";
         JLabel l1 = new JLabel(modestr); // create a label
         JLabel l2 = new JLabel("<html><p>" + tempmsg + "</p></html>"); // create a label. Use html tags to wrap long sentences if necessary.
         l1.setVerticalAlignment(JLabel.CENTER);
@@ -1487,7 +1490,7 @@ public class Imaging_FCS implements PlugIn {
     // create window to trigger direct camera readout feature
     private void createDCR() {
         if (dcrobj == null) {
-            dcrobj = new DirectCapture(isgpupresent);
+            dcrobj = new DirectCapture(useGpu);
         }
     }
 
@@ -2017,7 +2020,7 @@ public class Imaging_FCS implements PlugIn {
         gd.addCheckbox("Histogram", plotParaHist);
         gd.addCheckbox("Blocking", plotBlockingCurve);
         gd.addCheckbox("Covariance Matrix", plotCovmats);
-        gd.addCheckbox("GPU", (isgpupresent == 1));
+        gd.addCheckbox("GPU", useGpu);
         gd.hideCancelButton();
         gd.showDialog();
         if (gd.wasOKed()) {
@@ -2028,7 +2031,7 @@ public class Imaging_FCS implements PlugIn {
             plotParaHist = gd.getNextBoolean();
             plotBlockingCurve = gd.getNextBoolean();
             plotCovmats = gd.getNextBoolean();
-            boolean runongpu = gd.getNextBoolean();
+            boolean gpu = gd.getNextBoolean();
             if (!plotACFCurves && (plotSDCurves || plotResCurves)) {
                 plotSDCurves = false;
                 plotResCurves = false;
@@ -2069,12 +2072,8 @@ public class Imaging_FCS implements PlugIn {
                     impCovWin.close();
                 }
             }
-            if (runongpu) {
-                if (isgpupresentmem == 1) {
-                    isgpupresent = 1;
-                }
-            } else {
-                isgpupresent = 0;
+            if (gpu && isCuda) {
+                useGpu = true;
             }
         }
     };
@@ -2185,7 +2184,7 @@ public class Imaging_FCS implements PlugIn {
     ActionListener btnROIPressed = (ActionEvent ev) -> {
 
         boolean proceed = true;
-        if (!overlap && isgpupresent == 1) { // prevent non-overlapping ROI running on GPU
+        if (!overlap && useGpu) { // prevent non-overlapping ROI running on GPU
             proceed = false;
             IJ.log("ROI non-overlapping mode in GPU is disabled. Either run in CPU or activate toggle overlap on");
         }
@@ -2289,20 +2288,18 @@ public class Imaging_FCS implements PlugIn {
 
                 // TODO: perform dimensionality checl e.g., matching correlator scheme as trained
                 // This loop executes the ACF CNN fitting on a btnAll press
-                if (isgpupresent == 1 || isgpupresent == 0) {
-                    if (rbtnCNNACF.isSelected() && cnnACFLoaded) {
-                        correlateRoiInstant.addPropertyChangeListener((PropertyChangeEvent event) -> {
-                            if (event.getPropertyName().equals("state")) {
-                                if (event.getNewValue() == SwingWorker.StateValue.DONE) {
-                                    executeCnnAcf(impRoi1);
-                                }
+                if (rbtnCNNACF.isSelected() && cnnACFLoaded) {
+                    correlateRoiInstant.addPropertyChangeListener((PropertyChangeEvent event) -> {
+                        if (event.getPropertyName().equals("state")) {
+                            if (event.getNewValue() == SwingWorker.StateValue.DONE) {
+                                executeCnnAcf(impRoi1);
                             }
-                        });
-                    }
+                        }
+                    });
                 }
 
                 // This loop executes the Image CNN fitting on a btnAll press
-                if (isgpupresent == 0) {
+                if (!useGpu) {
                     if (rbtnCNNImage.isSelected() && cnnImageLoaded) {
                         correlateRoiInstant.addPropertyChangeListener((PropertyChangeEvent event) -> {
                             if (event.getPropertyName().equals("state")) {
@@ -3954,7 +3951,7 @@ public class Imaging_FCS implements PlugIn {
     // FCSNet loading model.
     ActionListener btnCNNACFPressed = (ActionEvent ev) -> {
 
-        // if (isgpupresent == 1) {
+        // if (useGpu) {
         // // TODO: Make it so the code can get the ACFs from the GPU.
         // JOptionPane.showMessageDialog(null, "GPU Mode might need to be deactivated
         // for CNN calculation to work.");
@@ -9563,7 +9560,7 @@ public class Imaging_FCS implements PlugIn {
         }
 
         boolean IsGPUCalculationOK = true;
-        if (isgpupresent == 1) {
+        if (useGpu) {
             roi1StartX = 0;
             roi1StartY = 0;
 
@@ -9634,7 +9631,7 @@ public class Imaging_FCS implements PlugIn {
         }
 
         // CPU calculations
-        if (isgpupresent != 1 || !IsGPUCalculationOK) {
+        if (!useGpu || !IsGPUCalculationOK) {
 
             //mean and variance of the image
             mean = new double[x][y];
@@ -10216,7 +10213,7 @@ public class Imaging_FCS implements PlugIn {
 
         boolean IsGPUCalculationOK = true;
 
-        if (isgpupresent == 1) {
+        if (useGpu) {
             // The user can only perform 2 particle fits in the GPU version.
             prepareFit();
             IsGPUCalculationOK = GPU_Calculate_ACF_All(improi);
@@ -10230,7 +10227,7 @@ public class Imaging_FCS implements PlugIn {
         }
 
         // CPU calculations
-        if (isgpupresent != 1 || !IsGPUCalculationOK) {
+        if (!useGpu || !IsGPUCalculationOK) {
             correlateObj = new Correlate(improi);
             correlateObj.runCPU();
             if (isTimeProcesses) {
@@ -14468,7 +14465,7 @@ public class Imaging_FCS implements PlugIn {
                     }
 
                     boolean IsGPUCalculationOK = false; // Runs the calculation in CPU if error is encountered in GPU.
-                    if (isgpupresent == 1) {
+                    if (useGpu) {
                         boolean temp_doFit = doFit;
                         doFit = true;
                         isdlawcalculatedingpu = 1;
@@ -14492,7 +14489,7 @@ public class Imaging_FCS implements PlugIn {
 
                     for (int x = mincposx; x <= maxcposx; x++) {
                         for (int y = mincposy; y <= maxcposy; y++) {
-                            if (isgpupresent != 1 || !IsGPUCalculationOK) { //TODO: Currently implements constant background subtraction before bleach correction
+                            if (!useGpu || !IsGPUCalculationOK) { //TODO: Currently implements constant background subtraction before bleach correction
                                 calcIntensityTrace(imp, x * pixbin, y * pixbin, x * pixbin, y * pixbin, firstframe, lastframe, true);
                                 correlate(imp, x * pixbin, y * pixbin, x * pixbin, y * pixbin, 0, firstframe, lastframe);	// correlate the pixel
                                 fit(x, y, 0, "ITIR-FCS (2D)");										// fit the correlation function with a simple 1 component fit 2D FCS
@@ -14504,7 +14501,7 @@ public class Imaging_FCS implements PlugIn {
                             }
                             // and their square to calcualte averages and standard deviations
                         }
-                        if (isgpupresent != 1 || !IsGPUCalculationOK) {
+                        if (!useGpu || !IsGPUCalculationOK) {
                             IJ.showProgress(count++, max);
                         }
                     }
@@ -14515,7 +14512,7 @@ public class Imaging_FCS implements PlugIn {
                 }
             }
 
-            if (isgpupresent == 1) {
+            if (useGpu) {
                 int pcnt = (u_counter == numbin) ? 100 : (int) Math.floor(u_counter * 100 / numbin);
                 IJ.showProgress(pcnt, 100);
                 u_counter += 1;
@@ -14859,7 +14856,7 @@ public class Imaging_FCS implements PlugIn {
             plot.draw();
 
             if (doFit) {
-                if (recalculateFits && isgpupresent == 1 && fitacf[ct][cpx1][cpy1][1] == 0.0) {
+                if (recalculateFits && useGpu && fitacf[ct][cpx1][cpy1][1] == 0.0) {
 
                     int num1 = 0;
                     for (int i = 0; i < noparam; i++) {
@@ -15021,15 +15018,13 @@ public class Imaging_FCS implements PlugIn {
 
                             if (recalculateFits) {
                                 int num1 = 0;
-                                if (isgpupresent == 1) {
+                                if (useGpu) {
                                     for (int i = 0; i < noparam; i++) {
                                         if (paramfit[i]) {
                                             num1++;
                                         }
                                     }
-                                }
 
-                                if (isgpupresent == 1) {
                                     double[] parameters = new double[num1];
                                     ParametricUnivariateFunction theofunction;
                                     switch ($fitmode) {
@@ -15333,7 +15328,7 @@ public class Imaging_FCS implements PlugIn {
                                 plot.addPoints(lagtime, acf[cftype][x][y], Plot.LINE);
                                 plot.setColor(java.awt.Color.RED);
 
-                                if (recalculateFits && isgpupresent == 1 && fitacf[0][x][y][1] == 0.0) {
+                                if (recalculateFits && useGpu && fitacf[0][x][y][1] == 0.0) {
 
                                     int num1 = 0;
                                     for (int i = 0; i < noparam; i++) {
@@ -15552,7 +15547,7 @@ public class Imaging_FCS implements PlugIn {
 
                             if (recalculateFits) {
                                 int num1 = 0;
-                                if (isgpupresent == 1) {
+                                if (useGpu) {
                                     for (int i = 0; i < noparam; i++) {
                                         if (paramfit[i]) {
                                             num1++;
@@ -15560,7 +15555,7 @@ public class Imaging_FCS implements PlugIn {
                                     }
                                 }
 
-                                if (isgpupresent == 1) {
+                                if (useGpu) {
                                     double[] parameters = new double[num1];
                                     ParametricUnivariateFunction theofunction;
                                     switch ($fitmode) {
@@ -16028,7 +16023,7 @@ public class Imaging_FCS implements PlugIn {
             ct = 2; 	// index ct ensures that when DC-FCCS is selected residual of CCF fit is plotted
         }
 
-        if (isgpupresent == 1) {
+        if (useGpu) {
             for (int i = 1; i < chanum; i++) {
                 res[ct][rpx1][rpy1][i] = acf[ct][rpx1][rpy1][i] - fitacf[ct][rpx1][rpy1][i];
             }

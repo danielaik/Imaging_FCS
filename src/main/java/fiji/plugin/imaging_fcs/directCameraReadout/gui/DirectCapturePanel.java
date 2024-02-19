@@ -337,7 +337,7 @@ public class DirectCapturePanel {
         public static int background = 1_000_000; //by default is 0; setting background >= 1_000_000 will set min counts as bacgkround. see minDetermination(ImagePlus imp);    //V2
 
         public static boolean RunLiveReadOutOnGPU;
-        public static int isgpupresent;
+        public static boolean useGpu;
 
         // Calibration plot
         public static boolean isCalibFixScale = false; //Setting this to truew ill remove the auto scaling for 3 calibration plot: diffusion, intensity and amplitude   //V2
@@ -1395,7 +1395,7 @@ public class DirectCapturePanel {
             Common.correlator_p = 16;
             Common.correlator_q = 8;
             Common.RunLiveReadOutOnGPU = false;
-            Common.isgpupresent = 0; //TODO remove this // main ImFCS panel will assigne
+            Common.useGpu = false; //TODO remove this // main ImFCS panel will assigne
 
             Common.plotACFCurves = true;
             Common.plotTrace = true;
@@ -3560,7 +3560,7 @@ public class DirectCapturePanel {
             @Override
             public void actionPerformed(ActionEvent e) {
                 if (rbGPUon.isSelected() == true) {
-                    if (Common.isgpupresent == 1) {
+                    if (Common.useGpu) {
                         Common.RunLiveReadOutOnGPU = true;
                         rbGPUon.setSelected(true);
                     } else {

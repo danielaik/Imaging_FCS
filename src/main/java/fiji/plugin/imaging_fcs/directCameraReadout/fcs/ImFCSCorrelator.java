@@ -575,7 +575,7 @@ public class ImFCSCorrelator {
 
         boolean IsGPUCalculationOK = true;
 
-        if ((DirectCapturePanel.Common.isgpupresent == 1) && DirectCapturePanel.Common.RunLiveReadOutOnGPU) {
+        if (DirectCapturePanel.Common.useGpu && DirectCapturePanel.Common.RunLiveReadOutOnGPU) {
 
             // The user can only perform 2 particle fits in the GPU version.
             prepareFit();
@@ -590,7 +590,7 @@ public class ImFCSCorrelator {
         }
 
         // CPU calculations
-        if (DirectCapturePanel.Common.isgpupresent != 1 || !IsGPUCalculationOK || !DirectCapturePanel.Common.RunLiveReadOutOnGPU) {
+        if (!DirectCapturePanel.Common.useGpu || !IsGPUCalculationOK || !DirectCapturePanel.Common.RunLiveReadOutOnGPU) {
 
             Rectangle imprect = improi.getBounds();
             int startXmap = (int) Math.ceil(imprect.getX() / pixbinX);
@@ -908,14 +908,14 @@ public class ImFCSCorrelator {
             }
             acfPlot.draw();
             int num1 = 0;
-            if (DirectCapturePanel.Common.isgpupresent == 1) {
+            if (DirectCapturePanel.Common.useGpu) {
                 for (int i = 0; i < noparam; i++) {
                     if (paramfit[i]) {
                         num1++;
                     }
                 }
             }
-//            if (isgpupresent == 1) {
+//            if (useGpu) {
 //                ParametricUnivariateFunction theofunction = new FCS_3p();
 //                double[] parameters = new double[num1];
 //                num1 = 0;
@@ -1035,7 +1035,7 @@ public class ImFCSCorrelator {
 //                            plot.addPoints(lagtime, acf[cftype][x][y], Plot.LINE);
 //                            plot.setColor(java.awt.Color.RED);
 //                            int num1 = 0;
-//                            if (isgpupresent == 1) {
+//                            if (useGpu) {
 //                                for (int i = 0; i < noparam; i++) {
 //                                    if (paramfit[i]) {
 //                                        num1++;
@@ -1043,7 +1043,7 @@ public class ImFCSCorrelator {
 //                                }
 //                            }
 //
-//                            if (isgpupresent == 1) {
+//                            if (useGpu) {
 //                                double[] parameters = new double[num1];
 //                                ParametricUnivariateFunction theofunction;
 //                                theofunction = new FCS_3p();
@@ -1486,7 +1486,7 @@ public class ImFCSCorrelator {
 //                            plot.addPoints(lagtime, acf[cftype][x][y], Plot.LINE);
 //                            plot.setColor(java.awt.Color.RED);
 //                            int num1 = 0;
-//                            if (isgpupresent == 1) {
+//                            if (useGpu) {
 //                                for (int i = 0; i < noparam; i++) {
 //                                    if (paramfit[i]) {
 //                                        num1++;
@@ -1494,7 +1494,7 @@ public class ImFCSCorrelator {
 //                                }
 //                            }
 //
-//                            if (isgpupresent == 1) {
+//                            if (useGpu) {
 //                                double[] parameters = new double[num1];
 //                                ParametricUnivariateFunction theofunction;
 //                                theofunction = new FCS_3p();
@@ -3021,7 +3021,7 @@ public class ImFCSCorrelator {
 //        printlog("CCF x: " + cfXDistance + ", CCF y: " + cfYDistance);
 //        printlog("width: " + width + ", height: " + height + ", frames: " + frames + ", firstframe: " + firstframe + ", lastframe: " + lastframe + ", frametime: " + frametime);
 //        printlog("polyorder: " + polyOrder + ",bleachCorMem: " + bleachCorMem + ", binningX: " + binningX + ", binningY: " + binningY + ", correlator p: " + correlatorp + ", correlator q: " + correlatorq + ", doFit: " + doFit + ", overlap: " + overlap);
-//        printlog("isgpupresent: " + Common.isgpupresent + ", runongpu: " + Common.RunLiveReadOutOnGPU + ", impmin: " + impmin);
+//        printlog("useGpu: " + Common.useGpu + ", runongpu: " + Common.RunLiveReadOutOnGPU + ", impmin: " + impmin);
 //        printlog("--fromImFCSCPUGPU class");
     }
 
