@@ -12,18 +12,20 @@ class Stoppable
 {
     std::promise<void> exitSignal;
     std::future<void> futureObj;
+
 public:
-    Stoppable() :
-        futureObj(exitSignal.get_future())
+    Stoppable()
+        : futureObj(exitSignal.get_future())
+    {}
+    Stoppable(Stoppable &&obj)
+        : exitSignal(std::move(obj.exitSignal))
+        , futureObj(std::move(obj.futureObj))
     {
+        // std::cout << "Move Constructor is called" << std::endl;
     }
-    Stoppable(Stoppable&& obj) : exitSignal(std::move(obj.exitSignal)), futureObj(std::move(obj.futureObj))
+    Stoppable &operator=(Stoppable &&obj)
     {
-        //std::cout << "Move Constructor is called" << std::endl;
-    }
-    Stoppable& operator=(Stoppable&& obj)
-    {
-        //std::cout << "Move Assignment is called" << std::endl;
+        // std::cout << "Move Assignment is called" << std::endl;
         exitSignal = std::move(obj.exitSignal);
         futureObj = std::move(obj.futureObj);
         return *this;
@@ -36,11 +38,12 @@ public:
     {
         run();
     }
-    //Checks if thread is requested to stop
+    // Checks if thread is requested to stop
     bool stopRequested()
     {
         // checks if value in future object is available
-        if (futureObj.wait_for(std::chrono::milliseconds(0)) == std::future_status::timeout)
+        if (futureObj.wait_for(std::chrono::milliseconds(0))
+            == std::future_status::timeout)
             return false;
         return true;
     }
@@ -50,7 +53,5 @@ public:
         exitSignal.set_value();
     }
 };
-
-
 
 #endif /* _STOPPABLE_H_ */

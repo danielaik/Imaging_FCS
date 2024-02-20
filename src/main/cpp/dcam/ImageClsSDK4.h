@@ -5,88 +5,87 @@
 #include "dcamprop.h"
 #include "common.h"
 
-class ImageSDK4 {
+class ImageSDK4
+{
 private:
-
 public:
-	ImageSDK4();
-	~ImageSDK4();
+    ImageSDK4();
+    ~ImageSDK4();
 
-	DCAMERR err;
-	DCAMAPI_INIT apiinit;
-	DCAMDEV_OPEN devopen;
-	HDCAM hdcam;
-	DCAMPROP_ATTR basepropattr;
-	int32 iDevice = 0; // currenty only works if one hamamatsu camera is connected
+    DCAMERR err;
+    DCAMAPI_INIT apiinit;
+    DCAMDEV_OPEN devopen;
+    HDCAM hdcam;
+    DCAMPROP_ATTR basepropattr;
+    int32 iDevice =
+        0; // currenty only works if one hamamatsu camera is connected
 
-	int acqmode_; //1 = single capture; 2 = acquisition; 3 = infinite loop
-	double exposureTime_;
+    int acqmode_; // 1 = single capture; 2 = acquisition; 3 = infinite loop
+    double exposureTime_;
 
-	//output trigger
-	int outTriggerKind_; //0-Disabled, 1-Programmable, 2-Global
-	double outTriggerDelay_;//s
-	double outTriggerPeriod_;//s
+    // output trigger
+    int outTriggerKind_; // 0-Disabled, 1-Programmable, 2-Global
+    double outTriggerDelay_; // s
+    double outTriggerPeriod_; // s
 
-	//readout speed
-	int readoutSpeedIdx_; //0-DCAMPROP_READOUTSPEED__SLOWEST; 1-DCAMPROP_READOUTSPEED__FASTEST
+    // readout speed
+    int readoutSpeedIdx_; // 0-DCAMPROP_READOUTSPEED__SLOWEST;
+                          // 1-DCAMPROP_READOUTSPEED__FASTEST
 
-	//sensor mode
-	int sensorModeIdx_; //0-DCAMPROP_SENSORMODE__AREA; 1-DCAMPROP_SENSORMODE__PHOTONNUMBERRESOLVING
+    // sensor mode
+    int sensorModeIdx_; // 0-DCAMPROP_SENSORMODE__AREA;
+                        // 1-DCAMPROP_SENSORMODE__PHOTONNUMBERRESOLVING
 
+    // Timer
+    double timeelapsed1;
+    double timeelapsed2;
+    double timeelapsed3;
+    int framecounter;
 
+    // sanity check
+    int temparraysize;
 
-	//Timer
-	double timeelapsed1;
-	double timeelapsed2;
-	double timeelapsed3;
-	int framecounter;
+    // CriticalAccess to Java Heap
+    int enableCriticalAccess = 0; // 0-no 1-yes
 
+    // ROI
+    double hbin; // hbin == vbin. Hamamatsu support equal binning
+    double vbin;
+    int hstart; // index start at 0
+    int hend;
+    int vstart; // index start at 0
+    int vend;
+    int nopixelX_, nopixelY_;
+    void setPixelDimParam(int w, int h, int l, int t, int incamerabin);
+    void getnoPixelXY();
 
-	//sanity check
-	int temparraysize;
+    int totalframe_;
+    int size_b_;
+    int arraysize_;
+    void setnoElementArray();
 
-	//CriticalAccess to Java Heap
-	int enableCriticalAccess = 0; //0-no 1-yes
+    short *pImageArray1_; // short OK// float OK
+    void InitArray();
+    void freeImArray();
+    void reset();
 
-	// ROI
-	double hbin; //hbin == vbin. Hamamatsu support equal binning
-	double vbin;
-	int hstart;// index start at 0
-	int hend;
-	int vstart;// index start at 0
-	int vend;
-	int nopixelX_, nopixelY_;
-	void setPixelDimParam(int w, int h, int l, int t, int incamerabin);
-	void getnoPixelXY();
+    // control flow
+    bool isStopPressed_;
 
-	int totalframe_;
-	int size_b_;
-	int arraysize_;
-	void setnoElementArray();
+    int setbinning();
+    int setsubarray();
+    int setexposuretime(double exptime);
+    double getframerate();
 
-	short* pImageArray1_; //short OK// float OK
-	void InitArray();
-	void freeImArray();
-	void reset();
+    // Set Programable OutputTrigger
+    void setOutTrigger(int outTriggerKind, double outTrigDelay,
+                       double outTrigPeriod);
 
-	//control flow
-	bool isStopPressed_;
+    // Set Readout Speed; Ultra-quiet or Standard scan (default)
+    void setReadoutSpeed(int readoutSpeedIdx);
 
-	int setbinning();
-	int setsubarray();
-	int setexposuretime(double exptime);
-	double getframerate();
-
-	//Set Programable OutputTrigger
-	void setOutTrigger(int outTriggerKind, double outTrigDelay, double outTrigPeriod);
-
-	//Set Readout Speed; Ultra-quiet or Standard scan (default)
-	void setReadoutSpeed(int readoutSpeedIdx);
-
-	//Set Sensor Mode; AREA (default) OR PHOTONNUMBERRESOLVING (only quest)
-	void setSensorMode(int sensorModeIdx);
-
+    // Set Sensor Mode; AREA (default) OR PHOTONNUMBERRESOLVING (only quest)
+    void setSensorMode(int sensorModeIdx);
 };
 
 #endif /* _IMAGECLSSDK3_H_ */
-

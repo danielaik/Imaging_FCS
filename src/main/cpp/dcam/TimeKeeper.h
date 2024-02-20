@@ -3,14 +3,16 @@
 
 #include <iostream>
 
-class TimeKeeper {
+class TimeKeeper
+{
 private:
-	std::chrono::steady_clock::time_point timestart;
+    std::chrono::steady_clock::time_point timestart;
+
 public:
-	TimeKeeper();
-	~TimeKeeper();
-	void setTimeStart();
-	double getTimeElapsed();//in milliseconds
+    TimeKeeper();
+    ~TimeKeeper();
+    void setTimeStart();
+    double getTimeElapsed(); // in milliseconds
 };
 
 #endif /* _TIMEKEEPER_H__ */

@@ -3,9 +3,9 @@
  */
 #include "Common.h"
 
- // System
-#include <assert.h>
+// System
 #include <algorithm> // std::min
+#include <assert.h>
 #include <cstring> // strlen
 #include <fstream>
 #include <iostream>
@@ -32,8 +32,8 @@ rgn_type g_Region = { 0, 0, 0, 0, 0, 0 };
 std::mutex g_EofMutex;
 std::condition_variable g_EofCond;
 bool g_EofFlag = false;
-FRAME_INFO* g_pFrameInfo = NULL;
-smart_stream_type* g_pSmartStreamStruct = NULL;
+FRAME_INFO *g_pFrameInfo = NULL;
+smart_stream_type *g_pSmartStreamStruct = NULL;
 
 /*
  * Module local variables
@@ -46,7 +46,7 @@ rs_bool s_IsCameraOpen = FALSE;
  * Common function implementations
  */
 
-bool StrToDouble(const std::string& str, double& number)
+bool StrToDouble(const std::string &str, double &number)
 {
     try
     {
@@ -55,33 +55,34 @@ bool StrToDouble(const std::string& str, double& number)
         if (idx == str.length())
             return true;
     }
-    catch (...) {};
+    catch (...)
+    {};
     return false;
 }
 
-bool StrToInt(const std::string& str, int& number)
+bool StrToInt(const std::string &str, int &number)
 {
     try
     {
         size_t idx;
         long nr = std::stoul(str, &idx);
-        if (idx == str.length()
-            && nr >= (std::numeric_limits<int>::min)()
+        if (idx == str.length() && nr >= (std::numeric_limits<int>::min)()
             && nr <= (std::numeric_limits<int>::max)())
         {
             number = (int)nr;
             return true;
         }
     }
-    catch (...) {};
+    catch (...)
+    {};
     return false;
 }
 
 // Returns true and a value of selected item assigned to NVP item.
 // When user enters nothing or anything but not valid value, this function
 // returns false.
-bool GetMenuSelection(const std::string& title, const NVPC& menu,
-    int32& selection)
+bool GetMenuSelection(const std::string &title, const NVPC &menu,
+                      int32 &selection)
 {
     const std::string underline(title.length() + 1, '-');
     printf("\n%s:\n%s\n", title.c_str(), underline.c_str());
@@ -107,9 +108,9 @@ std::string WaitForInput()
     return str;
 }
 
-bool ShowAppInfo(int argc, char* argv[])
+bool ShowAppInfo(int argc, char *argv[])
 {
-    const char* appName = "<unable to get name>";
+    const char *appName = "<unable to get name>";
     if (argc > 0 && argv != NULL && argv[0] != NULL)
         appName = argv[0];
 
@@ -123,29 +124,25 @@ bool ShowAppInfo(int argc, char* argv[])
 
     printf("************************************************************\n");
     printf("Application  : %s\n", appName);
-    printf("App. version : %d.%d.%d\n",
-        VERSION_MAJOR,
-        VERSION_MINOR,
-        VERSION_BUILD);
-    printf("PVCAM version: %d.%d.%d\n",
-        (pvcamVersion >> 8) & 0xFF,
-        (pvcamVersion >> 4) & 0x0F,
-        (pvcamVersion >> 0) & 0x0F);
+    printf("App. version : %d.%d.%d\n", VERSION_MAJOR, VERSION_MINOR,
+           VERSION_BUILD);
+    printf("PVCAM version: %d.%d.%d\n", (pvcamVersion >> 8) & 0xFF,
+           (pvcamVersion >> 4) & 0x0F, (pvcamVersion >> 0) & 0x0F);
     printf("************************************************************\n\n");
 
     return true;
 }
 
-void PrintErrorMessage(int16 errorCode, const char* message)
+void PrintErrorMessage(int16 errorCode, const char *message)
 {
     char pvcamErrMsg[ERROR_MSG_LEN];
     pl_error_message(errorCode, pvcamErrMsg);
-    printf("%s\nError code: %d\nError message: %s\n", message, errorCode, pvcamErrMsg);
+    printf("%s\nError code: %d\nError message: %s\n", message, errorCode,
+           pvcamErrMsg);
 }
 
 int InitPVCAM()
 {
-
     // Initialize PVCAM library
     if (PV_OK != pl_pvcam_init())
     {
@@ -175,9 +172,10 @@ int InitPVCAM()
     return 0;
 }
 
-int GetCameraInfos() {
-    // Open camera with the specified camera name obtained in InitPVCAM() function
-   // Error 195 = third party connecting same camera
+int GetCameraInfos()
+{
+    // Open camera with the specified camera name obtained in InitPVCAM()
+    // function Error 195 = third party connecting same camera
     if (PV_OK != pl_cam_open(g_Camera0_Name, &g_hCam, OPEN_EXCLUSIVE))
     {
         PrintErrorMessage(pl_error_code(), "pl_cam_open() error");
@@ -187,8 +185,9 @@ int GetCameraInfos() {
     printf("Camera %s opened\n", g_Camera0_Name);
 
     // get chip name
-    if (PV_OK != pl_get_param(g_hCam, PARAM_CHIP_NAME, ATTR_CURRENT,
-        (void*)chipName))
+    if (PV_OK
+        != pl_get_param(g_hCam, PARAM_CHIP_NAME, ATTR_CURRENT,
+                        (void *)chipName))
     {
         assert((false) && "error retrieving chip name");
     }
@@ -198,7 +197,8 @@ int GetCameraInfos() {
 
 bool OpenCamera()
 {
-    // Open camera with the specified camera name obtained in InitPVCAM() function
+    // Open camera with the specified camera name obtained in InitPVCAM()
+    // function
     if (PV_OK != pl_cam_open(g_Camera0_Name, &g_hCam, OPEN_EXCLUSIVE))
     {
         PrintErrorMessage(pl_error_code(), "pl_cam_open() error");
@@ -211,26 +211,28 @@ bool OpenCamera()
     if (!IsParamAvailable(PARAM_DD_VERSION, "PARAM_DD_VERSION"))
         return false;
     uns16 ddVersion;
-    if (PV_OK != pl_get_param(g_hCam, PARAM_DD_VERSION, ATTR_CURRENT,
-        (void*)&ddVersion))
+    if (PV_OK
+        != pl_get_param(g_hCam, PARAM_DD_VERSION, ATTR_CURRENT,
+                        (void *)&ddVersion))
     {
-        PrintErrorMessage(pl_error_code(), "pl_get_param(PARAM_DD_VERSION) error");
+        PrintErrorMessage(pl_error_code(),
+                          "pl_get_param(PARAM_DD_VERSION) error");
         return false;
     }
-    printf("Device driver version: %d.%d.%d\n",
-        (ddVersion >> 8) & 0xFF,
-        (ddVersion >> 4) & 0x0F,
-        (ddVersion >> 0) & 0x0F);
+    printf("Device driver version: %d.%d.%d\n", (ddVersion >> 8) & 0xFF,
+           (ddVersion >> 4) & 0x0F, (ddVersion >> 0) & 0x0F);
 
     // Get camera chip name string. Typically holds both chip and camera model
     // name, therefore is the best camera identifier for most models
     if (!IsParamAvailable(PARAM_CHIP_NAME, "PARAM_CHIP_NAME"))
         return false;
     char chipName[CCD_NAME_LEN];
-    if (PV_OK != pl_get_param(g_hCam, PARAM_CHIP_NAME, ATTR_CURRENT,
-        (void*)chipName))
+    if (PV_OK
+        != pl_get_param(g_hCam, PARAM_CHIP_NAME, ATTR_CURRENT,
+                        (void *)chipName))
     {
-        PrintErrorMessage(pl_error_code(), "pl_get_param(PARAM_CHIP_NAME) error");
+        PrintErrorMessage(pl_error_code(),
+                          "pl_get_param(PARAM_CHIP_NAME) error");
         return false;
     }
     printf("Sensor chip name: %s\n", chipName);
@@ -239,37 +241,39 @@ bool OpenCamera()
     if (!IsParamAvailable(PARAM_CAM_FW_VERSION, "PARAM_CAM_FW_VERSION"))
         return false;
     uns16 fwVersion;
-    if (PV_OK != pl_get_param(g_hCam, PARAM_CAM_FW_VERSION, ATTR_CURRENT,
-        (void*)&fwVersion))
+    if (PV_OK
+        != pl_get_param(g_hCam, PARAM_CAM_FW_VERSION, ATTR_CURRENT,
+                        (void *)&fwVersion))
     {
         PrintErrorMessage(pl_error_code(),
-            "pl_get_param(PARAM_CAM_FW_VERSION) error");
+                          "pl_get_param(PARAM_CAM_FW_VERSION) error");
         return false;
     }
-    printf("Camera firmware version: %d.%d\n",
-        (fwVersion >> 8) & 0xFF,
-        (fwVersion >> 0) & 0xFF);
+    printf("Camera firmware version: %d.%d\n", (fwVersion >> 8) & 0xFF,
+           (fwVersion >> 0) & 0xFF);
 
     // Find out if the sensor is a frame transfer or other (typically interline)
     // type. This is a two-step process.
     // Please, follow the procedure below in your applications.
-    if (PV_OK != pl_get_param(g_hCam, PARAM_FRAME_CAPABLE, ATTR_AVAIL,
-        (void*)&g_IsFrameTransfer))
+    if (PV_OK
+        != pl_get_param(g_hCam, PARAM_FRAME_CAPABLE, ATTR_AVAIL,
+                        (void *)&g_IsFrameTransfer))
     {
         g_IsFrameTransfer = 0;
         PrintErrorMessage(pl_error_code(),
-            "pl_get_param(PARAM_FRAME_CAPABLE) error");
+                          "pl_get_param(PARAM_FRAME_CAPABLE) error");
         return false;
     }
 
     if (g_IsFrameTransfer == TRUE)
     {
-        if (PV_OK != pl_get_param(g_hCam, PARAM_FRAME_CAPABLE, ATTR_CURRENT,
-            (void*)&g_IsFrameTransfer))
+        if (PV_OK
+            != pl_get_param(g_hCam, PARAM_FRAME_CAPABLE, ATTR_CURRENT,
+                            (void *)&g_IsFrameTransfer))
         {
             g_IsFrameTransfer = 0;
             PrintErrorMessage(pl_error_code(),
-                "pl_get_param(PARAM_FRAME_CAPABLE) error");
+                              "pl_get_param(PARAM_FRAME_CAPABLE) error");
             return false;
         }
         if (g_IsFrameTransfer == TRUE)
@@ -288,9 +292,10 @@ bool OpenCamera()
     if (g_IsFrameTransfer == TRUE)
     {
         int32 PMode = PMODE_FT;
-        if (PV_OK != pl_set_param(g_hCam, PARAM_PMODE, (void*)&PMode))
+        if (PV_OK != pl_set_param(g_hCam, PARAM_PMODE, (void *)&PMode))
         {
-            PrintErrorMessage(pl_error_code(), "pl_set_param(PARAM_PMODE) error");
+            PrintErrorMessage(pl_error_code(),
+                              "pl_set_param(PARAM_PMODE) error");
             return false;
         }
     }
@@ -299,9 +304,10 @@ bool OpenCamera()
     else
     {
         int32 PMode = PMODE_NORMAL;
-        if (PV_OK != pl_set_param(g_hCam, PARAM_PMODE, (void*)&PMode))
+        if (PV_OK != pl_set_param(g_hCam, PARAM_PMODE, (void *)&PMode))
         {
-            PrintErrorMessage(pl_error_code(), "pl_set_param(PARAM_PMODE) error");
+            PrintErrorMessage(pl_error_code(),
+                              "pl_set_param(PARAM_PMODE) error");
             return false;
         }
     }
@@ -315,7 +321,7 @@ bool OpenCamera()
     NVPC ports;
     if (!ReadEnumeration(&ports, PARAM_READOUT_PORT, "PARAM_READOUT_PORT"))
         return false;
-    
+
     if (!IsParamAvailable(PARAM_SPDTAB_INDEX, "PARAM_SPDTAB_INDEX"))
         return false;
 
@@ -324,28 +330,28 @@ bool OpenCamera()
 
     if (!IsParamAvailable(PARAM_BIT_DEPTH, "PARAM_BIT_DEPTH"))
         return false;
-    
-
 
     // Iterate through available ports and their speeds
     for (size_t pi = 0; pi < ports.size(); pi++)
     {
         // Set readout port
-        if (PV_OK != pl_set_param(g_hCam, PARAM_READOUT_PORT,
-            (void*)&ports[pi].value))
+        if (PV_OK
+            != pl_set_param(g_hCam, PARAM_READOUT_PORT,
+                            (void *)&ports[pi].value))
         {
             PrintErrorMessage(pl_error_code(),
-                "pl_set_param(PARAM_READOUT_PORT) error");
+                              "pl_set_param(PARAM_READOUT_PORT) error");
             return false;
         }
 
         // Get number of available speeds for this port
         uns32 speedCount;
-        if (PV_OK != pl_get_param(g_hCam, PARAM_SPDTAB_INDEX, ATTR_COUNT,
-            (void*)&speedCount))
+        if (PV_OK
+            != pl_get_param(g_hCam, PARAM_SPDTAB_INDEX, ATTR_COUNT,
+                            (void *)&speedCount))
         {
             PrintErrorMessage(pl_error_code(),
-                "pl_get_param(PARAM_SPDTAB_INDEX) error");
+                              "pl_get_param(PARAM_SPDTAB_INDEX) error");
             return false;
         }
 
@@ -353,9 +359,10 @@ bool OpenCamera()
         for (int16 si = 0; si < (int16)speedCount; si++)
         {
             // Set camera to new speed index
-            if (PV_OK != pl_set_param(g_hCam, PARAM_SPDTAB_INDEX, (void*)&si))
+            if (PV_OK != pl_set_param(g_hCam, PARAM_SPDTAB_INDEX, (void *)&si))
             {
-                PrintErrorMessage(pl_error_code(),
+                PrintErrorMessage(
+                    pl_error_code(),
                     "pl_set_param(g_hCam, PARAM_SPDTAB_INDEX) error");
                 return false;
             }
@@ -364,48 +371,53 @@ bool OpenCamera()
             // current port/speed pair. This can be used to calculate readout
             // frequency of the port/speed pair.
             uns16 pixTime;
-            if (PV_OK != pl_get_param(g_hCam, PARAM_PIX_TIME, ATTR_CURRENT,
-                (void*)&pixTime))
+            if (PV_OK
+                != pl_get_param(g_hCam, PARAM_PIX_TIME, ATTR_CURRENT,
+                                (void *)&pixTime))
             {
                 PrintErrorMessage(pl_error_code(),
-                    "pl_get_param(g_hCam, PARAM_PIX_TIME) error");
+                                  "pl_get_param(g_hCam, PARAM_PIX_TIME) error");
                 return false;
             }
 
             // Get bit depth of the current readout port/speed pair
             int16 bitDepth;
-            if (PV_OK != pl_get_param(g_hCam, PARAM_BIT_DEPTH, ATTR_CURRENT,
-                (void*)&bitDepth))
+            if (PV_OK
+                != pl_get_param(g_hCam, PARAM_BIT_DEPTH, ATTR_CURRENT,
+                                (void *)&bitDepth))
             {
                 PrintErrorMessage(pl_error_code(),
-                    "pl_get_param(PARAM_BIT_DEPTH) error");
+                                  "pl_get_param(PARAM_BIT_DEPTH) error");
                 return false;
             }
 
             int16 gainMin;
-            if (PV_OK != pl_get_param(g_hCam, PARAM_GAIN_INDEX, ATTR_MIN,
-                (void*)&gainMin))
+            if (PV_OK
+                != pl_get_param(g_hCam, PARAM_GAIN_INDEX, ATTR_MIN,
+                                (void *)&gainMin))
             {
                 PrintErrorMessage(pl_error_code(),
-                    "pl_get_param(PARAM_GAIN_INDEX) error");
+                                  "pl_get_param(PARAM_GAIN_INDEX) error");
                 return false;
             }
 
             int16 gainMax;
-            if (PV_OK != pl_get_param(g_hCam, PARAM_GAIN_INDEX, ATTR_MAX,
-                (void*)&gainMax))
+            if (PV_OK
+                != pl_get_param(g_hCam, PARAM_GAIN_INDEX, ATTR_MAX,
+                                (void *)&gainMax))
             {
                 PrintErrorMessage(pl_error_code(),
-                    "pl_get_param(PARAM_GAIN_INDEX) error");
+                                  "pl_get_param(PARAM_GAIN_INDEX) error");
                 return false;
             }
 
             int16 gainIncrement;
-            if (PV_OK != pl_get_param(g_hCam, PARAM_GAIN_INDEX, ATTR_INCREMENT,
-                (void*)&gainIncrement))
+            if (PV_OK
+                != pl_get_param(g_hCam, PARAM_GAIN_INDEX, ATTR_INCREMENT,
+                                (void *)&gainIncrement))
             {
                 PrintErrorMessage(pl_error_code(),
-                    "pl_get_param(PARAM_GAIN_INDEX) error");
+                                  "pl_get_param(PARAM_GAIN_INDEX) error");
                 return false;
             }
 
@@ -428,25 +440,20 @@ bool OpenCamera()
             g_SpeedTable.push_back(ro);
 
             printf("g_SpeedTable[%lu].Port = %ld (%d - %s)\n",
-                (unsigned long)(g_SpeedTable.size() - 1),
-                (unsigned long)pi,
-                ro.port.value,
-                ro.port.name.c_str());
+                   (unsigned long)(g_SpeedTable.size() - 1), (unsigned long)pi,
+                   ro.port.value, ro.port.name.c_str());
             printf("g_SpeedTable[%lu].SpeedIndex = %d\n",
-                (unsigned long)(g_SpeedTable.size() - 1),
-                ro.speedIndex);
+                   (unsigned long)(g_SpeedTable.size() - 1), ro.speedIndex);
             printf("g_SpeedTable[%lu].PortReadoutFrequency = %.3f MHz\n",
-                (unsigned long)(g_SpeedTable.size() - 1),
-                ro.readoutFrequency);
+                   (unsigned long)(g_SpeedTable.size() - 1),
+                   ro.readoutFrequency);
             printf("g_SpeedTable[%lu].bitDepth = %d bit\n",
-                (unsigned long)(g_SpeedTable.size() - 1),
-                ro.bitDepth);
+                   (unsigned long)(g_SpeedTable.size() - 1), ro.bitDepth);
             for (int16 gi = 0; gi < (int16)ro.gains.size(); gi++)
             {
                 printf("g_SpeedTable[%lu].gains[%d] = %d \n",
-                    (unsigned long)(g_SpeedTable.size() - 1),
-                    (int)gi,
-                    ro.gains[gi]);
+                       (unsigned long)(g_SpeedTable.size() - 1), (int)gi,
+                       ro.gains[gi]);
             }
             printf("\n");
         }
@@ -455,8 +462,9 @@ bool OpenCamera()
     // Speed Table has been created
 
     // Set camera to first port
-    if (PV_OK != pl_set_param(g_hCam, PARAM_READOUT_PORT,
-        (void*)&g_SpeedTable[0].port.value))
+    if (PV_OK
+        != pl_set_param(g_hCam, PARAM_READOUT_PORT,
+                        (void *)&g_SpeedTable[0].port.value))
     {
         PrintErrorMessage(pl_error_code(), "Readout port could not be set");
         return false;
@@ -464,8 +472,9 @@ bool OpenCamera()
     printf("Setting readout port to %s\n", g_SpeedTable[0].port.name.c_str());
 
     // Set camera to speed 0
-    if (PV_OK != pl_set_param(g_hCam, PARAM_SPDTAB_INDEX,
-        (void*)&g_SpeedTable[0].speedIndex))
+    if (PV_OK
+        != pl_set_param(g_hCam, PARAM_SPDTAB_INDEX,
+                        (void *)&g_SpeedTable[0].speedIndex))
     {
         PrintErrorMessage(pl_error_code(), "Readout port could not be set");
         return false;
@@ -473,8 +482,9 @@ bool OpenCamera()
     printf("Setting readout speed index to %d\n", g_SpeedTable[0].speedIndex);
 
     // Set gain index to one (the first one)
-    if (PV_OK != pl_set_param(g_hCam, PARAM_GAIN_INDEX,
-        (void*)&g_SpeedTable[0].gains[0]))
+    if (PV_OK
+        != pl_set_param(g_hCam, PARAM_GAIN_INDEX,
+                        (void *)&g_SpeedTable[0].gains[0]))
     {
         PrintErrorMessage(pl_error_code(), "Gain index could not be set");
         return false;
@@ -486,8 +496,9 @@ bool OpenCamera()
     // Get number of sensor columns
     if (!IsParamAvailable(PARAM_SER_SIZE, "PARAM_SER_SIZE"))
         return false;
-    if (PV_OK != pl_get_param(g_hCam, PARAM_SER_SIZE, ATTR_CURRENT,
-        (void*)&g_SensorResX))
+    if (PV_OK
+        != pl_get_param(g_hCam, PARAM_SER_SIZE, ATTR_CURRENT,
+                        (void *)&g_SensorResX))
     {
         PrintErrorMessage(pl_error_code(), "Couldn't read CCD X-resolution");
         return false;
@@ -495,8 +506,9 @@ bool OpenCamera()
     // Get number of sensor lines
     if (!IsParamAvailable(PARAM_PAR_SIZE, "PARAM_PAR_SIZE"))
         return false;
-    if (PV_OK != pl_get_param(g_hCam, PARAM_PAR_SIZE, ATTR_CURRENT,
-        (void*)&g_SensorResY))
+    if (PV_OK
+        != pl_get_param(g_hCam, PARAM_PAR_SIZE, ATTR_CURRENT,
+                        (void *)&g_SensorResY))
     {
         PrintErrorMessage(pl_error_code(), "Couldn't read CCD Y-resolution");
         return false;
@@ -507,10 +519,10 @@ bool OpenCamera()
     if (!IsParamAvailable(PARAM_CLEAR_CYCLES, "PARAM_CLEAR_CYCLES"))
         return false;
     uns16 ClearCycles = 2;
-    if (PV_OK != pl_set_param(g_hCam, PARAM_CLEAR_CYCLES, (void*)&ClearCycles))
+    if (PV_OK != pl_set_param(g_hCam, PARAM_CLEAR_CYCLES, (void *)&ClearCycles))
     {
         PrintErrorMessage(pl_error_code(),
-            "pl_set_param(PARAM_CLEAR_CYCLES) error");
+                          "pl_set_param(PARAM_CLEAR_CYCLES) error");
         return false;
     }
 
@@ -520,11 +532,12 @@ bool OpenCamera()
     // moment.
     // We do not use IsParamAvailable function as it print error messages
     // unwanted here.
-    if (PV_OK != pl_get_param(g_hCam, PARAM_SMART_STREAM_MODE, ATTR_AVAIL,
-        (void*)&g_IsSmartStreaming))
+    if (PV_OK
+        != pl_get_param(g_hCam, PARAM_SMART_STREAM_MODE, ATTR_AVAIL,
+                        (void *)&g_IsSmartStreaming))
     {
         PrintErrorMessage(pl_error_code(),
-            "Smart streaming availability check failed");
+                          "Smart streaming availability check failed");
         return false;
     }
     if (g_IsSmartStreaming == TRUE)
@@ -560,7 +573,8 @@ bool InitAndOpenFirstCamera()
     // same on heap.
     if (PV_OK != pl_create_frame_info_struct(&g_pFrameInfo))
     {
-        PrintErrorMessage(pl_error_code(), "pl_create_frame_info_struct() error");
+        PrintErrorMessage(pl_error_code(),
+                          "pl_create_frame_info_struct() error");
         CloseCameraAndUninit();
         return false;
     }
@@ -570,18 +584,18 @@ bool InitAndOpenFirstCamera()
 
 void CloseCameraAndUninit()
 {
-
     //// Findout why error when reopening (error 56)
     //// Release Smart Streaming structure
-    //if (g_pSmartStreamStruct != NULL)
-    //    if (PV_OK != pl_release_smart_stream_struct(&g_pSmartStreamStruct))
-    //        PrintErrorMessage(pl_error_code(), "pl_release_smart_stream_struct() error");
+    // if (g_pSmartStreamStruct != NULL)
+    //     if (PV_OK != pl_release_smart_stream_struct(&g_pSmartStreamStruct))
+    //         PrintErrorMessage(pl_error_code(),
+    //         "pl_release_smart_stream_struct() error");
 
     //// Release frame info
-    //if (g_pFrameInfo != NULL)
-    //    if (PV_OK != pl_release_frame_info_struct(g_pFrameInfo))
-    //        PrintErrorMessage(pl_error_code(), "pl_release_frame_info_struct() error");
-
+    // if (g_pFrameInfo != NULL)
+    //     if (PV_OK != pl_release_frame_info_struct(g_pFrameInfo))
+    //         PrintErrorMessage(pl_error_code(),
+    //         "pl_release_frame_info_struct() error");
 
     // Do not close camera if none has been detected and open
     if (s_IsCameraOpen == TRUE)
@@ -590,7 +604,7 @@ void CloseCameraAndUninit()
             PrintErrorMessage(pl_error_code(), "pl_cam_close() error");
         else
             s_IsCameraOpen = FALSE;
-            printf("Camera closed\n");
+        printf("Camera closed\n");
     }
 
     // Uninitialize PVCAM library
@@ -600,19 +614,18 @@ void CloseCameraAndUninit()
             PrintErrorMessage(pl_error_code(), "pl_pvcam_uninit() error");
         else
             s_IsPvcamInitialized = FALSE;
-            printf("PVCAM uninitializated\n");
+        printf("PVCAM uninitializated\n");
     }
-
-
 }
 
-bool IsParamAvailable(uns32 paramID, const char* paramName)
+bool IsParamAvailable(uns32 paramID, const char *paramName)
 {
     if (paramName == NULL)
         return false;
 
     rs_bool isAvailable;
-    if (PV_OK != pl_get_param(g_hCam, paramID, ATTR_AVAIL, (void*)&isAvailable))
+    if (PV_OK
+        != pl_get_param(g_hCam, paramID, ATTR_AVAIL, (void *)&isAvailable))
     {
         printf("Error reading ATTR_AVAIL of %s\n", paramName);
         return false;
@@ -626,7 +639,7 @@ bool IsParamAvailable(uns32 paramID, const char* paramName)
     return true;
 }
 
-bool ReadEnumeration(NVPC* nvpc, uns32 paramID, const char* paramName)
+bool ReadEnumeration(NVPC *nvpc, uns32 paramID, const char *paramName)
 {
     if (nvpc == NULL || paramName == NULL)
         return false;
@@ -635,7 +648,7 @@ bool ReadEnumeration(NVPC* nvpc, uns32 paramID, const char* paramName)
         return false;
 
     uns32 count;
-    if (PV_OK != pl_get_param(g_hCam, paramID, ATTR_COUNT, (void*)&count))
+    if (PV_OK != pl_get_param(g_hCam, paramID, ATTR_COUNT, (void *)&count))
     {
         const std::string msg =
             "pl_get_param(" + std::string(paramName) + ") error";
@@ -657,11 +670,12 @@ bool ReadEnumeration(NVPC* nvpc, uns32 paramID, const char* paramName)
         }
 
         // Allocate the destination string
-        char* name = new (std::nothrow) char[strLength];
+        char *name = new (std::nothrow) char[strLength];
 
         // Actually get the string and value
         int32 value;
-        if (PV_OK != pl_get_enum_param(g_hCam, paramID, i, &value, name, strLength))
+        if (PV_OK
+            != pl_get_enum_param(g_hCam, paramID, i, &value, name, strLength))
         {
             const std::string msg =
                 "pl_get_enum_param(" + std::string(paramName) + ") error";
@@ -681,7 +695,7 @@ bool ReadEnumeration(NVPC* nvpc, uns32 paramID, const char* paramName)
     return !nvpc->empty();
 }
 
-void ShowImage(uns16* buffer, uns32 bufferSize, const char* title)
+void ShowImage(uns16 *buffer, uns32 bufferSize, const char *title)
 {
     std::string subTitle;
     if (title != NULL && strlen(title) > 0)
@@ -690,8 +704,8 @@ void ShowImage(uns16* buffer, uns32 bufferSize, const char* title)
     // Print first up to 5 pixel values
     const uns32 pixelCount = std::min<uns32>(5, bufferSize);
 
-    printf("First %d pixel values of the frame%s: ",
-        pixelCount, subTitle.c_str());
+    printf("First %d pixel values of the frame%s: ", pixelCount,
+           subTitle.c_str());
 
     std::ostringstream pixels;
     for (uns32 n = 0; n < pixelCount; n++)
@@ -703,7 +717,7 @@ void ShowImage(uns16* buffer, uns32 bufferSize, const char* title)
     printf("%s\n", pixels.str().c_str());
 }
 
-bool SaveImage(uns16* buffer, uns32 bufferSize, const char* path)
+bool SaveImage(uns16 *buffer, uns32 bufferSize, const char *path)
 {
     std::ofstream stream(path, std::ios::binary);
     if (!stream.is_open())
@@ -713,9 +727,10 @@ bool SaveImage(uns16* buffer, uns32 bufferSize, const char* path)
     }
     try
     {
-        stream.write(reinterpret_cast<const char*>(buffer), bufferSize * sizeof(uns16));
+        stream.write(reinterpret_cast<const char *>(buffer),
+                     bufferSize * sizeof(uns16));
     }
-    catch (const std::exception& e)
+    catch (const std::exception &e)
     {
         printf("Failed to write data to file:\n");
         printf("%s\n", e.what());
@@ -724,9 +739,10 @@ bool SaveImage(uns16* buffer, uns32 bufferSize, const char* path)
     return true;
 }
 
-void PrintMetaExtMd(void* pMetaData, uns32 metaDataSize)
+void PrintMetaExtMd(void *pMetaData, uns32 metaDataSize)
 {
-    printf("============================= EXTENDED ROI METADATA ===========================\n");
+    printf("============================= EXTENDED ROI METADATA "
+           "===========================\n");
     md_ext_item_collection extMdCol;
     if (PV_OK != pl_md_read_extended(&extMdCol, pMetaData, metaDataSize))
     {
@@ -742,20 +758,20 @@ void PrintMetaExtMd(void* pMetaData, uns32 metaDataSize)
         switch (extMdCol.list[i].tagInfo->type)
         {
         case TYPE_UNS32:
-            str << *(uns32*)extMdCol.list[i].value;
+            str << *(uns32 *)extMdCol.list[i].value;
             break;
         case TYPE_UNS8:
-            str << (int)*(uns8*)extMdCol.list[i].value;
+            str << (int)*(uns8 *)extMdCol.list[i].value;
             break;
         case TYPE_UNS16:
-            str << *(uns16*)extMdCol.list[i].value;
+            str << *(uns16 *)extMdCol.list[i].value;
             break;
         case TYPE_FLT64:
-            str << *(flt64*)extMdCol.list[i].value;
+            str << *(flt64 *)extMdCol.list[i].value;
             break;
         default:
-            str << "Unsupported value type ("
-                << extMdCol.list[i].tagInfo->type << ")";
+            str << "Unsupported value type (" << extMdCol.list[i].tagInfo->type
+                << ")";
             break;
         }
         str << std::endl;
@@ -764,26 +780,31 @@ void PrintMetaExtMd(void* pMetaData, uns32 metaDataSize)
     }
 }
 
-void PrintMetaRoi(md_frame_roi* pRoiDesc)
+void PrintMetaRoi(md_frame_roi *pRoiDesc)
 {
-    printf("================================ ROI DESCRIPTOR ===============================\n");
-    printf(" DataSize:%u, ExtMdDataSize:%u\n",
-        pRoiDesc->dataSize, pRoiDesc->extMdDataSize);
-    printf("================================== ROI HEADER =================================\n");
-    md_frame_roi_header* pRoiHdr = pRoiDesc->header;
-    const rgn_type& roi = pRoiHdr->roi;
-    printf(" RoiNr:%u, Roi:[%u,%u,%u,%u,%u,%u]\n",
-        pRoiHdr->roiNr, roi.s1, roi.s2, roi.sbin, roi.p1, roi.p2, roi.pbin);
+    printf("================================ ROI DESCRIPTOR "
+           "===============================\n");
+    printf(" DataSize:%u, ExtMdDataSize:%u\n", pRoiDesc->dataSize,
+           pRoiDesc->extMdDataSize);
+    printf("================================== ROI HEADER "
+           "=================================\n");
+    md_frame_roi_header *pRoiHdr = pRoiDesc->header;
+    const rgn_type &roi = pRoiHdr->roi;
+    printf(" RoiNr:%u, Roi:[%u,%u,%u,%u,%u,%u]\n", pRoiHdr->roiNr, roi.s1,
+           roi.s2, roi.sbin, roi.p1, roi.p2, roi.pbin);
     printf("TimestampBOR:%u, TimestampEOR:%u, ExtendedMdSize:%u, Flags:0x%1x\n",
-        pRoiHdr->timestampBOR, pRoiHdr->timestampEOR,
-        pRoiHdr->extendedMdSize, pRoiHdr->flags);
+           pRoiHdr->timestampBOR, pRoiHdr->timestampEOR,
+           pRoiHdr->extendedMdSize, pRoiHdr->flags);
     if (pRoiDesc->extMdDataSize > 0)
         PrintMetaExtMd(pRoiDesc->extMdData, pRoiDesc->extMdDataSize);
-    printf("=================================== ROI DATA ==================================\n");
-    const uns16* pRoiPixels = static_cast<uns16*>(pRoiDesc->data);
+    printf("=================================== ROI DATA "
+           "==================================\n");
+    const uns16 *pRoiPixels = static_cast<uns16 *>(pRoiDesc->data);
     const uns32 roiPixelCount = pRoiDesc->dataSize / sizeof(uns16);
-    const uns32 countPerLine = 80 / 6; // 13 "65535"s (inc space) will fit on a line of 80 chars
-    const uns32 maxPrintCount = 2 * countPerLine; // Max number of lines to print
+    const uns32 countPerLine =
+        80 / 6; // 13 "65535"s (inc space) will fit on a line of 80 chars
+    const uns32 maxPrintCount =
+        2 * countPerLine; // Max number of lines to print
     const int printCount = (std::min)(roiPixelCount, maxPrintCount);
     for (int i = 0; i < printCount; ++i)
     {
@@ -794,24 +815,27 @@ void PrintMetaRoi(md_frame_roi* pRoiDesc)
     printf("\n");
 }
 
-void PrintMetaFrame(md_frame* pFrameDesc, bool printAllRois)
+void PrintMetaFrame(md_frame *pFrameDesc, bool printAllRois)
 {
-    const rgn_type& impRoi = pFrameDesc->impliedRoi;
-    const md_frame_header* pFrameHdr = pFrameDesc->header;
-    printf("=============================== FRAME DESCRIPTOR ==============================\n");
+    const rgn_type &impRoi = pFrameDesc->impliedRoi;
+    const md_frame_header *pFrameHdr = pFrameDesc->header;
+    printf("=============================== FRAME DESCRIPTOR "
+           "==============================\n");
     printf(" RoiCount:%u, Implied ROI:[%u,%u,%u,%u,%u,%u]\n",
-        pFrameDesc->roiCount, impRoi.s1, impRoi.s2, impRoi.sbin, impRoi.p1,
-        impRoi.p2, impRoi.pbin);
-    printf("================================= FRAME HEADER ================================\n");
-    printf(" FrameNr:%03u, RoiCount:%03u, BitDepth:%u, Version:%u, Sig:%u, Flags:0x%1x\n",
-        pFrameHdr->frameNr, pFrameHdr->roiCount, pFrameHdr->bitDepth,
-        pFrameHdr->version, pFrameHdr->signature, pFrameHdr->flags);
+           pFrameDesc->roiCount, impRoi.s1, impRoi.s2, impRoi.sbin, impRoi.p1,
+           impRoi.p2, impRoi.pbin);
+    printf("================================= FRAME HEADER "
+           "================================\n");
+    printf(" FrameNr:%03u, RoiCount:%03u, BitDepth:%u, Version:%u, Sig:%u, "
+           "Flags:0x%1x\n",
+           pFrameHdr->frameNr, pFrameHdr->roiCount, pFrameHdr->bitDepth,
+           pFrameHdr->version, pFrameHdr->signature, pFrameHdr->flags);
     printf(" ExpTime:%u, ExpTimeResNs:%u, TimestampBOF:%u, TimestampEOF:%u\n",
-        pFrameHdr->exposureTime, pFrameHdr->exposureTimeResNs,
-        pFrameHdr->timestampBOF, pFrameHdr->timestampEOF);
+           pFrameHdr->exposureTime, pFrameHdr->exposureTimeResNs,
+           pFrameHdr->timestampBOF, pFrameHdr->timestampEOF);
     printf(" TimestampResNs:%u, RoiTimestampResNs:%u, ExtendedMdSz:%u\n",
-        pFrameHdr->timestampResNs, pFrameHdr->roiTimestampResNs,
-        pFrameHdr->extendedMdSize);
+           pFrameHdr->timestampResNs, pFrameHdr->roiTimestampResNs,
+           pFrameHdr->extendedMdSize);
     if (pFrameDesc->extMdDataSize > 0)
         PrintMetaExtMd(pFrameDesc->extMdData, pFrameDesc->extMdDataSize);
 
@@ -825,16 +849,18 @@ void PrintMetaFrame(md_frame* pFrameDesc, bool printAllRois)
         PrintMetaRoi(&pFrameDesc->roiArray[0]);
     }
 
-    printf("===============================================================================\n");
+    printf(
+        "====================================================================="
+        "==========\n");
 }
 
-void ConsoleReadNumber(int& out, int min, int max, int def)
+void ConsoleReadNumber(int &out, int min, int max, int def)
 {
     bool bSuccess = false;
     while (!bSuccess)
     {
-        printf(" Enter number [%d - %d] or hit <Enter> for default (%d): ",
-            min, max, def);
+        printf(" Enter number [%d - %d] or hit <Enter> for default (%d): ", min,
+               max, def);
         const std::string numStr = WaitForInput();
 
         // If zero length is received the user simply pressed <Enter>
@@ -861,7 +887,7 @@ void ConsoleReadNumber(int& out, int min, int max, int def)
     }
 }
 
-bool UploadSmartStreamingExposures(const uns32* exposures, uns16 exposuresCount)
+bool UploadSmartStreamingExposures(const uns32 *exposures, uns16 exposuresCount)
 {
     if (g_IsSmartStreaming == FALSE)
     {
@@ -876,18 +902,20 @@ bool UploadSmartStreamingExposures(const uns32* exposures, uns16 exposuresCount)
     }
 
     if (!IsParamAvailable(PARAM_SMART_STREAM_MODE_ENABLED,
-        "PARAM_SMART_STREAM_MODE_ENABLED"))
+                          "PARAM_SMART_STREAM_MODE_ENABLED"))
         return false;
     if (!IsParamAvailable(PARAM_SMART_STREAM_EXP_PARAMS,
-        "PARAM_SMART_STREAM_EXP_PARAMS"))
+                          "PARAM_SMART_STREAM_EXP_PARAMS"))
         return false;
 
     // Enable Smart Streaming in the camera
     rs_bool enableSS = TRUE;
-    if (PV_OK != pl_set_param(g_hCam, PARAM_SMART_STREAM_MODE_ENABLED,
-        (void*)&enableSS))
+    if (PV_OK
+        != pl_set_param(g_hCam, PARAM_SMART_STREAM_MODE_ENABLED,
+                        (void *)&enableSS))
     {
-        PrintErrorMessage(pl_error_code(),
+        PrintErrorMessage(
+            pl_error_code(),
             "pl_set_param(PARAM_SMART_STREAM_MODE_ENABLED) error");
         return false;
     }
@@ -897,13 +925,15 @@ bool UploadSmartStreamingExposures(const uns32* exposures, uns16 exposuresCount)
     // That is a bit tricky because the parameter is not numeric but returns
     // smart_stream_type structure. The number we want is stored in its
     // "entries" member.
-    // At the time of writing this sample code on Evolve-512 and Evolve-512 Delta
-    // this value is 12.
+    // At the time of writing this sample code on Evolve-512 and Evolve-512
+    // Delta this value is 12.
     smart_stream_type maxExposuresStruct;
-    if (PV_OK != pl_get_param(g_hCam, PARAM_SMART_STREAM_EXP_PARAMS, ATTR_MAX,
-        (void*)&maxExposuresStruct))
+    if (PV_OK
+        != pl_get_param(g_hCam, PARAM_SMART_STREAM_EXP_PARAMS, ATTR_MAX,
+                        (void *)&maxExposuresStruct))
     {
-        PrintErrorMessage(pl_error_code(),
+        PrintErrorMessage(
+            pl_error_code(),
             "pl_get_param(PARAM_SMART_STREAM_EXP_PARAMS, ATTR_MAX) error");
         return false;
     }
@@ -913,10 +943,11 @@ bool UploadSmartStreamingExposures(const uns32* exposures, uns16 exposuresCount)
         (uns16)(std::min<size_t>)(maxExposuresStruct.entries, exposuresCount);
 
     // Allocate the structure for correct number of exposures
-    if (PV_OK != pl_create_smart_stream_struct(&g_pSmartStreamStruct, maxExposures))
+    if (PV_OK
+        != pl_create_smart_stream_struct(&g_pSmartStreamStruct, maxExposures))
     {
         PrintErrorMessage(pl_error_code(),
-            "pl_create_smart_stream_struct() error");
+                          "pl_create_smart_stream_struct() error");
         return false;
     }
     // ... and fill it with values
@@ -924,14 +955,15 @@ bool UploadSmartStreamingExposures(const uns32* exposures, uns16 exposuresCount)
         g_pSmartStreamStruct->params[n] = exposures[n];
 
     // Send the data to the camera
-    if (PV_OK != pl_set_param(g_hCam, PARAM_SMART_STREAM_EXP_PARAMS,
-        (void*)g_pSmartStreamStruct))
+    if (PV_OK
+        != pl_set_param(g_hCam, PARAM_SMART_STREAM_EXP_PARAMS,
+                        (void *)g_pSmartStreamStruct))
     {
         PrintErrorMessage(pl_error_code(),
-            "pl_set_param(PARAM_SMART_STREAM_EXP_PARAMS) error");
+                          "pl_set_param(PARAM_SMART_STREAM_EXP_PARAMS) error");
         if (PV_OK != pl_release_smart_stream_struct(&g_pSmartStreamStruct))
             PrintErrorMessage(pl_error_code(),
-                "pl_release_smart_stream_struct() error");
+                              "pl_release_smart_stream_struct() error");
         return false;
     }
     printf("Smart Streaming parameters loaded correctly\n");
@@ -939,14 +971,14 @@ bool UploadSmartStreamingExposures(const uns32* exposures, uns16 exposuresCount)
     return true;
 }
 
-void PV_DECL NewFrameHandler(FRAME_INFO* pFrameInfo, void* context) {
-
-    SampleContext ctx = *(SampleContext*)context;
+void PV_DECL NewFrameHandler(FRAME_INFO *pFrameInfo, void *context)
+{
+    SampleContext ctx = *(SampleContext *)context;
     // Read extended frame information
     g_pFrameInfo->FrameNr = pFrameInfo->FrameNr;
     g_pFrameInfo->TimeStamp = pFrameInfo->TimeStamp;
- /*   printf("Context myData1 = %d\n", ctx.myData1);
-    printf("Context myData2 = %d\n", ctx.myData2);*/
+    /*   printf("Context myData1 = %d\n", ctx.myData1);
+       printf("Context myData2 = %d\n", ctx.myData2);*/
 
     // Unblock main thread
     {
@@ -954,5 +986,4 @@ void PV_DECL NewFrameHandler(FRAME_INFO* pFrameInfo, void* context) {
         g_EofFlag = true; // Set flag
     }
     g_EofCond.notify_one();
-
 }

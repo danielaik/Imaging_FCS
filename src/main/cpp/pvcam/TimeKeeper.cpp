@@ -1,17 +1,20 @@
 #include "TimeKeeper.h"
-#include <windows.h>
+
 #include <iostream>
+#include <windows.h>
 
-TimeKeeper::TimeKeeper() {
+TimeKeeper::TimeKeeper()
+{}
+
+TimeKeeper::~TimeKeeper()
+{}
+
+void TimeKeeper::setTimeStart()
+{
+    timestart = GetTickCount();
 }
 
-TimeKeeper::~TimeKeeper() {
-}
-
-void TimeKeeper::setTimeStart() {
-	timestart = GetTickCount(); 
-}
-
-double TimeKeeper::getTimeElapsed() {
-	return (GetTickCount() - timestart); //ms
+double TimeKeeper::getTimeElapsed()
+{
+    return (GetTickCount() - timestart); // ms
 }
