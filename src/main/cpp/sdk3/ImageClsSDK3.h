@@ -49,7 +49,7 @@ public:
         *iAuxOutSource; // 0-FireRow1; 1-FireRowN; 3-FireAll; 4-FireAny
 
     // control flow
-    boolean isStopPressed;
+    bool isStopPressed;
 
     AT_64 iImageSizeBytes;
 
