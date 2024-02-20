@@ -16,6 +16,8 @@ else()
     include_directories($ENV{JAVA_HOME}/include/linux)
 endif()
 
+link_directories(dependencies/lib/win64)
+
 # Define the library this folder will build
 add_library(dcam SHARED
     dependencies/include/dcamapi4.h
@@ -34,3 +36,5 @@ add_library(dcam SHARED
     TimeKeeper.cpp
     TimeKeeper.h
     )
+
+target_link_libraries(dcam dcamapi)
