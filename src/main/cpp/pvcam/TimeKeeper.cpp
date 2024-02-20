@@ -1,7 +1,7 @@
 #include "TimeKeeper.h"
 
+#include <chrono>
 #include <iostream>
-#include <windows.h>
 
 TimeKeeper::TimeKeeper()
 {}
@@ -11,10 +11,14 @@ TimeKeeper::~TimeKeeper()
 
 void TimeKeeper::setTimeStart()
 {
-    timestart = GetTickCount();
+    timestart = std::chrono::steady_clock::now();
 }
 
 double TimeKeeper::getTimeElapsed()
 {
-    return (GetTickCount() - timestart); // ms
+    auto timeend = std::chrono::steady_clock::now();
+    auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+                       timeend - timestart)
+                       .count();
+    return static_cast<double>(elapsed); // ms
 }

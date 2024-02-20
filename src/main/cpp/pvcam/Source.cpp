@@ -1,9 +1,11 @@
 #include <iostream>
+#include <chrono>
 #include <jni.h>
+#include <thread>
 
+#include "directCameraReadout_pvcamsdk_Photometrics_PVCAM_SDK.h"
 #include "ImageClsPVCam.h"
 #include "TimeKeeper.h"
-#include "directCameraReadout_pvcamsdk_Photometrics_PVCAM_SDK.h"
 
 ImagePVCam imgobj;
 TimeKeeper tk1;
