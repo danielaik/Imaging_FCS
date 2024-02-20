@@ -1,6 +1,8 @@
 #ifndef _IMAGECLSSDK2_H_
 #define _IMAGECLSSDK2_H_
 
+#include <iostream>
+
 class ImageSDK2
 {
 private:
