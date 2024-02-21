@@ -1,4 +1,4 @@
-[![Build](https://github.com/Biophysical-Fluorescence-Laboratory/Imaging_FCS/actions/workflows/java_maven_ci.yml/badge.svg)](https://github.com/Biophysical-Fluorescence-Laboratory/Imaging_FCS/actions/workflows/java_maven_ci.yml)
+[![Build](https://github.com/Biophysical-Fluorescence-Laboratory/Imaging_FCS/actions/workflows/build_and_release.yml/badge.svg)](https://github.com/Biophysical-Fluorescence-Laboratory/Imaging_FCS/actions/workflows/build_and_release.yml)
 [![Version](https://img.shields.io/github/v/release/Biophysical-Fluorescence-Laboratory/Imaging_FCS?sort=semver)](https://github.com/Biophysical-Fluorescence-Laboratory/Imaging_FCS/releases)
 
 This repository contains the source code for Imaging FCS
