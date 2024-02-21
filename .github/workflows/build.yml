@@ -51,11 +51,19 @@ jobs:
         # Build your program with the given configuration. Note that --config is needed because the default Windows generator is a multi-config generator (Visual Studio generator).
         run: cmake --build ${{ steps.strings.outputs.build-output-dir }} --config ${{ matrix.build_type }}
 
-      - name: Upload built libraries
+      - name: Upload Windows Libraries
+        if: matrix.os == 'windows-latest'
         uses: actions/upload-artifact@v4
         with:
-          name: libs-${{ matrix.os }}-${{ matrix.build_type }}
-          path: ${{ steps.strings.outputs.build-output-dir }}
+          name: windows-lib
+          path: ${{ steps.strings.outputs.build-output-dir }}/**/*.dll
+
+      - name: Upload Linux Libraries
+        if: matrix.os == 'ubuntu-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-lib
+          path: ${{ steps.strings.outputs.build-output-dir }}/**/*.so
 
   build-jar:
     runs-on: ubuntu-latest
