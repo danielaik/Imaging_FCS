@@ -1,9 +1,11 @@
-name: build
+name: Build
 
 on:
   push:
     branches:
       - "*"
+    tags:
+      - 'v*'
 
 jobs:
   build-libs:
@@ -55,14 +57,14 @@ jobs:
         if: matrix.os == 'windows-latest'
         uses: actions/upload-artifact@v4
         with:
-          name: windows-lib
+          name: windows-libs
           path: ${{ steps.strings.outputs.build-output-dir }}/**/*.dll
 
       - name: Upload Linux Libraries
         if: matrix.os == 'ubuntu-latest'
         uses: actions/upload-artifact@v4
         with:
-          name: linux-lib
+          name: linux-libs
           path: ${{ steps.strings.outputs.build-output-dir }}/**/*.so
 
   build-jar:
@@ -85,3 +87,23 @@ jobs:
         with:
           name: jar
           path: ./target/*.jar
+
+  release:
+    needs: [build-libs, build-jar]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@4634c16e79c963813287e889244c50009e7f0981 # FIXME: check when softprops makes a new release that fixes the node warning
+        with:
+          files: |
+            ./jar/*.jar
+            ./windows-libs/**/*.dll
+            ./linux-libs/**/*.so
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
