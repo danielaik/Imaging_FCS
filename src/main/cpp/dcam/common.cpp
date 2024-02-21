@@ -136,11 +136,11 @@ void dcamcon_show_dcamdev_info_detail(HDCAM hdcam)
         printf("DCAM_IDSTR_DCAMAPIVERSION = %s\n", buf);
 }
 
-BOOL console_prompt(const char *prompt, char *buf, int32 bufsize)
+int console_prompt(const char *prompt, char *buf, int32 bufsize)
 {
     fputs(prompt, stdout);
     if (fgets(buf, bufsize, stdin) == NULL)
-        return FALSE;
+        return 0;
 
-    return TRUE;
+    return 1;
 }
