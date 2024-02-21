@@ -4,8 +4,6 @@ on:
   push:
     branches:
       - "*"
-    tags:
-      - 'v*'
 
 jobs:
   build-libs:
@@ -30,7 +28,7 @@ jobs:
             c_compiler: cl
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Set reusable strings
         # Turn repeated input strings (such as the build output directory) into step outputs. These step outputs can be used throughout the workflow file.
@@ -53,6 +51,12 @@ jobs:
         # Build your program with the given configuration. Note that --config is needed because the default Windows generator is a multi-config generator (Visual Studio generator).
         run: cmake --build ${{ steps.strings.outputs.build-output-dir }} --config ${{ matrix.build_type }}
 
+      - name: Upload built libraries
+        uses: actions/upload-artifact@v4
+        with:
+          name: libs-${{ matrix.os }}-${{ matrix.build_type }}
+          path: ${{ steps.strings.outputs.build-output-dir }}
+
   build-jar:
     runs-on: ubuntu-latest
     steps:
@@ -71,23 +75,5 @@ jobs:
       - name: Upload jar package for release
         uses: actions/upload-artifact@v4
         with:
-          name: target
+          name: jar
           path: ./target/*.jar
-
-  release:
-    needs: [build-libs, build-jar]
-    runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/v')
-    steps:
-      - name: Download jar
-        uses: actions/download-artifact@v4
-        with:
-          name: target
-
-      - name: Create GitHub Release
-        id: create_release
-        uses: softprops/action-gh-release@4634c16e79c963813287e889244c50009e7f0981 # FIXME: check when softprops makes a new release that fixes the node warning
-        with:
-          files: ./*.jar
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
