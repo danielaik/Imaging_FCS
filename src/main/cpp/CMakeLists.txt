@@ -8,3 +8,9 @@ if (WIN32)
     add_subdirectory(sdk2)
     add_subdirectory(sdk3)
 endif()
+
+# Find CUDA Toolkit
+find_package(CUDAToolkit)
+if(CUDAToolkit_FOUND)
+    add_subdirectory(gpufitOneFile)
+endif()

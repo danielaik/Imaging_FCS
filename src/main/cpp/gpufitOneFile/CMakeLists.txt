@@ -4,6 +4,8 @@ project(agpufit LANGUAGES CUDA)
 set(CMAKE_CUDA_STANDARD 14)
 set(CMAKE_CUDA_STANDARD_REQUIRED True)
 
+
+include_directories($ENV{JAVA_HOME}/include)
 # Additionally, for platform-specific headers (e.g., jni_md.h)
 if(APPLE)
     include_directories($ENV{JAVA_HOME}/include/darwin)
