@@ -1,5 +1,6 @@
-#include "lm_fit.h"
 #include <algorithm>
+
+#include "lm_fit.h"
 #include "cuda_kernels.cuh"
 
 #ifdef USE_CUBLAS

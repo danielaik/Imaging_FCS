@@ -1,8 +1,8 @@
-#include "gpufitImFCS_GpufitImFCS.h"
-#include "gpufit.h"
-#include "definitions.h"
-
 #include <cuda_runtime.h>
+
+#include "definitions.h"
+#include "gpufit.h"
+#include "gpufitImFCS_GpufitImFCS.h"
 
 /*-------------------------------------------------------------------------------------------------------
 * Calculate binning START
@@ -47,7 +47,6 @@ __global__ void calc_binning(float *data, float *data1, int win_star,
 /*-------------------------------------------------------------------------------------------------------
 * Calculate binning END
 -------------------------------------------------------------------------------------------------------*/
-
 
 __global__ void calc_data_bleach_correction(float *data, float *data1,
                                             int width, int height, int nopit,

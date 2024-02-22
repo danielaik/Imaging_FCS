@@ -1,10 +1,10 @@
 #ifndef GPUFIT_MODELS_CUH_INCLUDED
 #define GPUFIT_MODELS_CUH_INCLUDED
 
-#include "linear_1d.cuh"
-#include "gauss_2d.cuh"
 #include "acf_1d.cuh"
 #include "acf_numerical3d.cuh"
+#include "gauss_2d.cuh"
+#include "linear_1d.cuh"
 
 __device__ void calculate_model(ModelID const model_id, REAL const *parameters,
                                 int const n_fits, int const n_points,

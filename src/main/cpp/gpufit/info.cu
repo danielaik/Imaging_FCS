@@ -1,6 +1,7 @@
-#include "info.h"
-#include <cuda_runtime.h>
 #include <algorithm>
+#include <cuda_runtime.h>
+
+#include "info.h"
 
 void Info::get_gpu_properties()
 {

@@ -3,13 +3,13 @@
 
 #include "info.h"
 #ifdef USE_CUBLAS
-#include "cublas_v2.h"
+#    include "cublas_v2.h"
 #endif
 
 #include <cuda_runtime.h>
+#include <limits>
 #include <stdexcept>
 #include <vector>
-#include <limits>
 
 template <typename Type>
 struct Device_Array

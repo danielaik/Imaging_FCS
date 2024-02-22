@@ -1,10 +1,11 @@
 #ifndef GPUFIT_PARAMETERS_H_INCLUDED
 #define GPUFIT_PARAMETERS_H_INCLUDED
 
-#include "gpufit.h"
+#include <vector>
+
 #include "constants.h"
 #include "definitions.h"
-#include <vector>
+#include "gpufit.h"
 
 class Info
 {

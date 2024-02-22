@@ -1,6 +1,7 @@
-#include "gpufit.h"
 #include "interface.h"
+
 #include "cuda_kernels.cuh"
+#include "gpufit.h"
 
 FitInterface::FitInterface(REAL const *data, REAL const *weights,
                            std::size_t n_fits, int n_points, REAL tolerance,

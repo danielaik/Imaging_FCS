@@ -1,7 +1,8 @@
-#include "gpu_data.cuh"
 #include <algorithm>
 #include <cuda_runtime.h>
 #include <device_launch_parameters.h>
+
+#include "gpu_data.cuh"
 
 GPUData::GPUData(Info const &info)
     : chunk_size_(0)

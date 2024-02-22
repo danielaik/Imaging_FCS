@@ -1,4 +1,5 @@
 #include "lm_fit.h"
+
 #include <algorithm>
 
 LMFit::LMFit(REAL const *const data, REAL const *const weights, Info &info,

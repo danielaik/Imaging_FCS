@@ -1,13 +1,13 @@
 #ifndef GPUFIT_LM_FIT_H_INCLUDED
 #define GPUFIT_LM_FIT_H_INCLUDED
 
-#include "info.h"
 #include "gpu_data.cuh"
+#include "info.h"
 
 #ifdef USE_CUBLAS
-#include "cublas_v2.h"
+#    include "cublas_v2.h"
 #else
-#include "cuda_gaussjordan.cuh"
+#    include "cuda_gaussjordan.cuh"
 #endif // USE_CUBLAS
 
 class LMFitCUDA;

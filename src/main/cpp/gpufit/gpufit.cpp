@@ -1,7 +1,8 @@
 #include "gpufit.h"
-#include "interface.h"
 
 #include <string>
+
+#include "interface.h"
 
 std::string last_error;
 

@@ -1,7 +1,7 @@
 #include "constants.h"
 #include "cuda_kernels.cuh"
-#include "models/models.cuh"
 #include "estimators/estimators.cuh"
+#include "models/models.cuh"
 
 /* Description of the cuda_calc_curve_values function
 * ===================================================
