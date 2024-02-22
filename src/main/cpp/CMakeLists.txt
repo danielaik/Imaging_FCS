@@ -3,10 +3,7 @@ project(Imaging_FCS)
 
 # Include directories
 if (WIN32)
-    add_subdirectory(dcam)
-    add_subdirectory(pvcam)
-    add_subdirectory(sdk2)
-    add_subdirectory(sdk3)
+    add_subdirectory(cameras)
 endif()
 
 # Find CUDA
