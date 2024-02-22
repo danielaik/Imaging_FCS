@@ -26,11 +26,6 @@ jobs:
       - name: Set JAVA_HOME
         run: echo "JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64" >> $GITHUB_ENV
 
-      - name: List JNI headers
-        run: |
-          ls -l ${JAVA_HOME}/include
-          ls -l ${JAVA_HOME}/include/linux
-
       - name: Configure and Build for Ubuntu
         run: |
           cmake -B ./src/main/cpp/build -DCMAKE_CXX_COMPILER=g++ -DCMAKE_C_COMPILER=gcc -DCMAKE_BUILD_TYPE=Release -S ./src/main/cpp
@@ -40,7 +35,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: linux-libs
-          path: .src/main/cpp/build/**/*.so
+          path: ./src/main/cpp/build/**/*.so
 
   build-libs-windows:
     runs-on: windows-latest

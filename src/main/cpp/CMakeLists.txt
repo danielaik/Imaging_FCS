@@ -12,5 +12,5 @@ endif()
 # Find CUDA Toolkit
 find_package(CUDAToolkit)
 if(CUDAToolkit_FOUND)
-    add_subdirectory(gpufitOneFile)
+    add_subdirectory(gpufit)
 endif()
