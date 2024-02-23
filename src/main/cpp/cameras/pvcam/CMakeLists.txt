@@ -1,5 +1,5 @@
 include_directories(dependencies/include)
-link_directories(dependencies/lib/amd64)
+link_directories(dependencies/lib)
 
 # Define the library this folder will build
 add_library(JNIPhotometricsPVCAMsdk SHARED
