@@ -5,7 +5,7 @@ link_directories(dependencies/lib/win64)
 add_library(dcam SHARED
     dependencies/include/dcamapi4.h
     dependencies/include/dcamprop.h
-    dependencies/include/directCameraReadout_hamadcamsdk4_Hamamatsu_DCAM_SDK4.h
+    dependencies/include/fiji_plugin_imaging_fcs_directCameraReadout_hamadcamsdk4_Hamamatsu_DCAM_SDK4.h
     common.cpp
     common.h
     console4.h

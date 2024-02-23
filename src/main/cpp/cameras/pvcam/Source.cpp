@@ -3,7 +3,7 @@
 #include <jni.h>
 #include <thread>
 
-#include "directCameraReadout_pvcamsdk_Photometrics_PVCAM_SDK.h"
+#include "fiji_plugin_imaging_fcs_directCameraReadout_pvcamsdk_Photometrics_PVCAM_SDK.h"
 #include "ImageClsPVCam.h"
 #include "TimeKeeper.h"
 
@@ -201,7 +201,7 @@ void readBufferCpy8bitJNI(uns8 *buffer8bit, int pixelperframe, int new_c,
 }
 
 JNIEXPORT jfloat JNICALL
-Java_directCameraReadout_pvcamsdk_Photometrics_1PVCAM_1SDK_seyHello(JNIEnv *env,
+Java_fiji_plugin_imaging_1fcs_directCameraReadout_pvcamsdk_Photometrics_1PVCAM_1SDK_seyHello(JNIEnv *env,
                                                                     jclass cls,
                                                                     jint n1,
                                                                     jint n2)
@@ -212,7 +212,7 @@ Java_directCameraReadout_pvcamsdk_Photometrics_1PVCAM_1SDK_seyHello(JNIEnv *env,
 }
 
 JNIEXPORT jint JNICALL
-Java_directCameraReadout_pvcamsdk_Photometrics_1PVCAM_1SDK_sayHello(
+Java_fiji_plugin_imaging_1fcs_directCameraReadout_pvcamsdk_Photometrics_1PVCAM_1SDK_sayHello(
     JNIEnv *env, jobject thisObj)
 {
     std::cout << "hello from cpp" << std::endl;
@@ -220,7 +220,7 @@ Java_directCameraReadout_pvcamsdk_Photometrics_1PVCAM_1SDK_sayHello(
 }
 
 JNIEXPORT jint JNICALL
-Java_directCameraReadout_pvcamsdk_Photometrics_1PVCAM_1SDK_isPHOTOMETRICSconnectedPVCAM(
+Java_fiji_plugin_imaging_1fcs_directCameraReadout_pvcamsdk_Photometrics_1PVCAM_1SDK_isPHOTOMETRICSconnectedPVCAM(
     JNIEnv *env, jclass cls)
 {
     // 0 = good to go; 195 = third party software accessing same camera; 186 =
@@ -230,35 +230,35 @@ Java_directCameraReadout_pvcamsdk_Photometrics_1PVCAM_1SDK_isPHOTOMETRICSconnect
 }
 
 JNIEXPORT jstring JNICALL
-Java_directCameraReadout_pvcamsdk_Photometrics_1PVCAM_1SDK_GetModelPVCAM(
+Java_fiji_plugin_imaging_1fcs_directCameraReadout_pvcamsdk_Photometrics_1PVCAM_1SDK_GetModelPVCAM(
     JNIEnv *env, jclass cls)
 {
     return (*env).NewStringUTF(imgobj.getChipName());
 }
 
 JNIEXPORT jstring JNICALL
-Java_directCameraReadout_pvcamsdk_Photometrics_1PVCAM_1SDK_GetCameraNamePVCAM(
+Java_fiji_plugin_imaging_1fcs_directCameraReadout_pvcamsdk_Photometrics_1PVCAM_1SDK_GetCameraNamePVCAM(
     JNIEnv *env, jclass cls)
 {
     return (*env).NewStringUTF(imgobj.getCameraName());
 }
 
 JNIEXPORT jint JNICALL
-Java_directCameraReadout_pvcamsdk_Photometrics_1PVCAM_1SDK_InitializePVCAM(
+Java_fiji_plugin_imaging_1fcs_directCameraReadout_pvcamsdk_Photometrics_1PVCAM_1SDK_InitializePVCAM(
     JNIEnv *env, jclass cls)
 {
     return imgobj.initSystem();
 }
 
 JNIEXPORT jint JNICALL
-Java_directCameraReadout_pvcamsdk_Photometrics_1PVCAM_1SDK_SystemShutDownPVCAM(
+Java_fiji_plugin_imaging_1fcs_directCameraReadout_pvcamsdk_Photometrics_1PVCAM_1SDK_SystemShutDownPVCAM(
     JNIEnv *env, jclass cls)
 {
     return imgobj.uninitSystem();
 }
 
 JNIEXPORT jintArray JNICALL
-Java_directCameraReadout_pvcamsdk_Photometrics_1PVCAM_1SDK_GetDetectorDimPVCAM(
+Java_fiji_plugin_imaging_1fcs_directCameraReadout_pvcamsdk_Photometrics_1PVCAM_1SDK_GetDetectorDimPVCAM(
     JNIEnv *env, jclass cls)
 {
     int *res = new int[2];
@@ -277,7 +277,7 @@ Java_directCameraReadout_pvcamsdk_Photometrics_1PVCAM_1SDK_GetDetectorDimPVCAM(
 }
 
 JNIEXPORT jint JNICALL
-Java_directCameraReadout_pvcamsdk_Photometrics_1PVCAM_1SDK_setParameterPVCAM(
+Java_fiji_plugin_imaging_1fcs_directCameraReadout_pvcamsdk_Photometrics_1PVCAM_1SDK_setParameterPVCAM(
     JNIEnv *env, jclass cls, jdouble exposuretime, jint width, jint height,
     jint left, jint top, jint incamerabin, jint acqmode, jint totalframe,
     jint size_b, jint arraysize, jint portIndex, jint speedIndex)
@@ -288,7 +288,7 @@ Java_directCameraReadout_pvcamsdk_Photometrics_1PVCAM_1SDK_setParameterPVCAM(
 }
 
 JNIEXPORT jdouble JNICALL
-Java_directCameraReadout_pvcamsdk_Photometrics_1PVCAM_1SDK_getKineticCyclePVCAM(
+Java_fiji_plugin_imaging_1fcs_directCameraReadout_pvcamsdk_Photometrics_1PVCAM_1SDK_getKineticCyclePVCAM(
     JNIEnv *env, jclass cls)
 {
     std::cout << "JNICALL cpp getKinteit cycle not implemetned" << std::endl;
@@ -296,7 +296,7 @@ Java_directCameraReadout_pvcamsdk_Photometrics_1PVCAM_1SDK_getKineticCyclePVCAM(
 }
 
 JNIEXPORT jshortArray JNICALL
-Java_directCameraReadout_pvcamsdk_Photometrics_1PVCAM_1SDK_runSingleScanPVCAM(
+Java_fiji_plugin_imaging_1fcs_directCameraReadout_pvcamsdk_Photometrics_1PVCAM_1SDK_runSingleScanPVCAM(
     JNIEnv *env, jclass cls)
 {
     // Enable BOF/EOF counter
@@ -440,7 +440,7 @@ Java_directCameraReadout_pvcamsdk_Photometrics_1PVCAM_1SDK_runSingleScanPVCAM(
 }
 
 JNIEXPORT void JNICALL
-Java_directCameraReadout_pvcamsdk_Photometrics_1PVCAM_1SDK_runInfiniteLoopPVCAM(
+Java_fiji_plugin_imaging_1fcs_directCameraReadout_pvcamsdk_Photometrics_1PVCAM_1SDK_runInfiniteLoopPVCAM(
     JNIEnv *env, jclass cls, jshortArray outArray, jobject framecounterObj)
 {
     assert((env->GetArrayLength(outArray) == imgobj.temparraysize)
@@ -638,7 +638,7 @@ Java_directCameraReadout_pvcamsdk_Photometrics_1PVCAM_1SDK_runInfiniteLoopPVCAM(
 }
 
 JNIEXPORT void JNICALL
-Java_directCameraReadout_pvcamsdk_Photometrics_1PVCAM_1SDK_setStopMechanismPVCAM(
+Java_fiji_plugin_imaging_1fcs_directCameraReadout_pvcamsdk_Photometrics_1PVCAM_1SDK_setStopMechanismPVCAM(
     JNIEnv *env, jclass cls, jboolean isstoppressed)
 {
     imgobj.isStopPressed_ = isstoppressed;
@@ -646,21 +646,21 @@ Java_directCameraReadout_pvcamsdk_Photometrics_1PVCAM_1SDK_setStopMechanismPVCAM
 }
 
 JNIEXPORT jint JNICALL
-Java_directCameraReadout_pvcamsdk_Photometrics_1PVCAM_1SDK_debugMyData1PVCAM(
+Java_fiji_plugin_imaging_1fcs_directCameraReadout_pvcamsdk_Photometrics_1PVCAM_1SDK_debugMyData1PVCAM(
     JNIEnv *env, jclass cls)
 {
     return imgobj.dataContext.myData1;
 }
 
 JNIEXPORT jint JNICALL
-Java_directCameraReadout_pvcamsdk_Photometrics_1PVCAM_1SDK_debugMyData2PVCAM(
+Java_fiji_plugin_imaging_1fcs_directCameraReadout_pvcamsdk_Photometrics_1PVCAM_1SDK_debugMyData2PVCAM(
     JNIEnv *env, jclass cls)
 {
     return imgobj.dataContext.myData2;
 }
 
 JNIEXPORT jdouble JNICALL
-Java_directCameraReadout_pvcamsdk_Photometrics_1PVCAM_1SDK_getDoubleValuePVCAM(
+Java_fiji_plugin_imaging_1fcs_directCameraReadout_pvcamsdk_Photometrics_1PVCAM_1SDK_getDoubleValuePVCAM(
     JNIEnv *env, jclass cls, jstring inJNIStr)
 {
     // ID - exposuretime; ID - frametime; ID - top; ID - left; ID - width; ID -
@@ -749,7 +749,7 @@ Java_directCameraReadout_pvcamsdk_Photometrics_1PVCAM_1SDK_getDoubleValuePVCAM(
 }
 
 JNIEXPORT jint JNICALL
-Java_directCameraReadout_pvcamsdk_Photometrics_1PVCAM_1SDK_getPortSize(
+Java_fiji_plugin_imaging_1fcs_directCameraReadout_pvcamsdk_Photometrics_1PVCAM_1SDK_getPortSize(
     JNIEnv *env, jclass cls)
 {
     int noPort = imgobj.getTotalPortNo();
@@ -758,7 +758,7 @@ Java_directCameraReadout_pvcamsdk_Photometrics_1PVCAM_1SDK_getPortSize(
 }
 
 JNIEXPORT jint JNICALL
-Java_directCameraReadout_pvcamsdk_Photometrics_1PVCAM_1SDK_getSpeedCount(
+Java_fiji_plugin_imaging_1fcs_directCameraReadout_pvcamsdk_Photometrics_1PVCAM_1SDK_getSpeedCount(
     JNIEnv *env, jclass cls, jint portidx)
 {
     int speedCount = imgobj.getSpeedCount(portidx);
@@ -767,7 +767,7 @@ Java_directCameraReadout_pvcamsdk_Photometrics_1PVCAM_1SDK_getSpeedCount(
 }
 
 JNIEXPORT void JNICALL
-Java_directCameraReadout_pvcamsdk_Photometrics_1PVCAM_1SDK_setPortAndSpeedPair(
+Java_fiji_plugin_imaging_1fcs_directCameraReadout_pvcamsdk_Photometrics_1PVCAM_1SDK_setPortAndSpeedPair(
     JNIEnv *env, jclass cls, jint portidx, jint speedidx)
 {
     int proceed = imgobj.setPortAndSpeedPair(portidx, speedidx);

@@ -3,7 +3,7 @@ link_directories(dependencies/lib/amd64)
 
 # Define the library this folder will build
 add_library(JNIPhotometricsPVCAMsdk SHARED
-    dependencies/include/directCameraReadout_pvcamsdk_Photometrics_PVCAM_SDK.h
+    dependencies/include/fiji_plugin_imaging_fcs_directCameraReadout_pvcamsdk_Photometrics_PVCAM_SDK.h
     dependencies/include/master.h
     dependencies/include/pvcam.h
     Common.cpp

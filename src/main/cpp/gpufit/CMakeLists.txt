@@ -42,8 +42,8 @@ add_library(agpufit SHARED
     gpu_data.cuh
     gpufit.cpp
     gpufit.h
-    gpufitImFCS_GpufitImFCS.cu
-    gpufitImFCS_GpufitImFCS.h
+    fiji_plugin_imaging_fcs_gpufitImFCS_GpufitImFCS.cu
+    fiji_plugin_imaging_fcs_gpufitImFCS_GpufitImFCS.h
     info.cpp
     info.cu
     info.h

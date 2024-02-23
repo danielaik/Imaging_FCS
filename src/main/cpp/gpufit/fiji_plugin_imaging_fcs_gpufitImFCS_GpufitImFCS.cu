@@ -2,7 +2,7 @@
 
 #include "definitions.h"
 #include "gpufit.h"
-#include "gpufitImFCS_GpufitImFCS.h"
+#include "fiji_plugin_imaging_fcs_gpufitImFCS_GpufitImFCS.h"
 
 /*-------------------------------------------------------------------------------------------------------
 * Calculate binning START
@@ -100,7 +100,7 @@ void *buffer_address(JNIEnv *env, jobject buffer)
  * Signature:
  * (IILjava/nio/FloatBuffer;Ljava/nio/FloatBuffer;ILjava/nio/FloatBuffer;FILjava/nio/IntBuffer;IILjava/nio/ByteBuffer;Ljava/nio/FloatBuffer;Ljava/nio/IntBuffer;Ljava/nio/FloatBuffer;Ljava/nio/IntBuffer;)I
  */
-jint JNICALL Java_gpufitImFCS_GpufitImFCS_fit(
+jint JNICALL Java_fiji_plugin_imaging_1fcs_gpufitImFCS_GpufitImFCS_fit(
     JNIEnv *env, jclass cls, jint number_fits, jint number_points,
     jobject data_buffer, jobject weights_buffer, jint model_id,
     jobject initial_parameter_buffer, jfloat tolerance,
@@ -146,7 +146,7 @@ jint JNICALL Java_gpufitImFCS_GpufitImFCS_fit(
  * Method:    getLastError
  * Signature: ()Ljava/lang/String;
  */
-jstring JNICALL Java_gpufitImFCS_GpufitImFCS_getLastError(JNIEnv *env,
+jstring JNICALL Java_fiji_plugin_imaging_1fcs_gpufitImFCS_GpufitImFCS_getLastError(JNIEnv *env,
                                                           jclass cls)
 {
     char const *error = gpufit_get_last_error();
@@ -160,7 +160,7 @@ jstring JNICALL Java_gpufitImFCS_GpufitImFCS_getLastError(JNIEnv *env,
  * Method:    isCudaAvailableInt
  * Signature: ()Z
  */
-jboolean JNICALL Java_gpufitImFCS_GpufitImFCS_isCudaAvailableInt(JNIEnv *env,
+jboolean JNICALL Java_fiji_plugin_imaging_1fcs_gpufitImFCS_GpufitImFCS_isCudaAvailableInt(JNIEnv *env,
                                                                  jclass cls)
 {
     return gpufit_cuda_available() == 1 ? JNI_TRUE : JNI_FALSE;
@@ -174,7 +174,7 @@ jboolean JNICALL Java_gpufitImFCS_GpufitImFCS_isCudaAvailableInt(JNIEnv *env,
  * Signature: ()[I
  */
 jintArray JNICALL
-Java_gpufitImFCS_GpufitImFCS_getCudaVersionAsArray(JNIEnv *env, jclass cls)
+Java_fiji_plugin_imaging_1fcs_gpufitImFCS_GpufitImFCS_getCudaVersionAsArray(JNIEnv *env, jclass cls)
 {
     int runtime_version, driver_version;
     if (gpufit_get_cuda_version(&runtime_version, &driver_version)
@@ -199,7 +199,7 @@ Java_gpufitImFCS_GpufitImFCS_getCudaVersionAsArray(JNIEnv *env, jclass cls)
  * Method:    resetGPU
  * Signature: ()V
  */
-void JNICALL Java_gpufitImFCS_GpufitImFCS_resetGPU(JNIEnv *env, jclass cls)
+void JNICALL Java_fiji_plugin_imaging_1fcs_gpufitImFCS_GpufitImFCS_resetGPU(JNIEnv *env, jclass cls)
 {
     try
     {
@@ -218,7 +218,7 @@ void JNICALL Java_gpufitImFCS_GpufitImFCS_resetGPU(JNIEnv *env, jclass cls)
  * Method:    calcDataBleachCorrection
  * Signature: ([F[FLgpufitImFCS/GpufitImFCS/ACFParameters;)V
  */
-void JNICALL Java_gpufitImFCS_GpufitImFCS_calcDataBleachCorrection(
+void JNICALL Java_fiji_plugin_imaging_1fcs_gpufitImFCS_GpufitImFCS_calcDataBleachCorrection(
     JNIEnv *env, jclass cls, jfloatArray pixels, jfloatArray outdata,
     jobject ACFInputParams)
 {
@@ -337,7 +337,7 @@ void JNICALL Java_gpufitImFCS_GpufitImFCS_calcDataBleachCorrection(
  * Method:    isBinningMemorySufficient
  * Signature: (LgpufitImFCS/GpufitImFCS/ACFParameters;)Z
  */
-jboolean JNICALL Java_gpufitImFCS_GpufitImFCS_isBinningMemorySufficient(
+jboolean JNICALL Java_fiji_plugin_imaging_1fcs_gpufitImFCS_GpufitImFCS_isBinningMemorySufficient(
     JNIEnv *env, jclass cls, jobject ACFInputParams)
 {
     try
@@ -388,7 +388,7 @@ jboolean JNICALL Java_gpufitImFCS_GpufitImFCS_isBinningMemorySufficient(
  * Method:    calcBinning
  * Signature: ([F[FLgpufitImFCS/GpufitImFCS/ACFParameters;)V
  */
-void JNICALL Java_gpufitImFCS_GpufitImFCS_calcBinning(JNIEnv *env, jclass cls,
+void JNICALL Java_fiji_plugin_imaging_1fcs_gpufitImFCS_GpufitImFCS_calcBinning(JNIEnv *env, jclass cls,
                                                       jfloatArray indata,
                                                       jfloatArray outdata,
                                                       jobject ACFInputParams)
@@ -519,7 +519,7 @@ void JNICALL Java_gpufitImFCS_GpufitImFCS_calcBinning(JNIEnv *env, jclass cls,
  * Method:    isACFmemorySufficient
  * Signature: (LgpufitImFCS/GpufitImFCS/ACFParameters;)Z
  */
-jboolean JNICALL Java_gpufitImFCS_GpufitImFCS_isACFmemorySufficient(
+jboolean JNICALL Java_fiji_plugin_imaging_1fcs_gpufitImFCS_GpufitImFCS_isACFmemorySufficient(
     JNIEnv *env, jclass cls, jobject ACFInputParams)
 {
     try
@@ -1148,7 +1148,7 @@ void initializedoublearr(double *array, unsigned long size, double value)
  * Method:    calcACF
  * Signature: ([F[D[D[D[D[D[ILgpufitImFCS/GpufitImFCS/ACFParameters;)V
  */
-void JNICALL Java_gpufitImFCS_GpufitImFCS_calcACF(
+void JNICALL Java_fiji_plugin_imaging_1fcs_gpufitImFCS_GpufitImFCS_calcACF(
     JNIEnv *env, jclass cls, jfloatArray pixels, jdoubleArray pixels1,
     jdoubleArray blockvararray, jdoubleArray NBmeanGPU,
     jdoubleArray NBcovarianceGPU, jdoubleArray blocked1D,

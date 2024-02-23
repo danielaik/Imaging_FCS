@@ -5,7 +5,7 @@
 #include "OrcaJob.h"
 #include "TimeKeeper.h"
 #include "dcamprop.h"
-#include "directCameraReadout_hamadcamsdk4_Hamamatsu_DCAM_SDK4.h"
+#include "fiji_plugin_imaging_fcs_directCameraReadout_hamadcamsdk4_Hamamatsu_DCAM_SDK4.h"
 
 class Synchron
 {
@@ -454,7 +454,7 @@ int readBufferCpyJNI(const void *buf, int32 rowbytes, DCAM_PIXELTYPE type,
 }
 
 JNIEXPORT jfloat JNICALL
-Java_directCameraReadout_hamadcamsdk4_Hamamatsu_1DCAM_1SDK4_seyHello(
+Java_fiji_plugin_imaging_1fcs_directCameraReadout_hamadcamsdk4_Hamamatsu_1DCAM_1SDK4_seyHello(
     JNIEnv *env, jclass cls, jint n1, jint n2)
 {
     jfloat result;
@@ -463,7 +463,7 @@ Java_directCameraReadout_hamadcamsdk4_Hamamatsu_1DCAM_1SDK4_seyHello(
 }
 
 JNIEXPORT jint JNICALL
-Java_directCameraReadout_hamadcamsdk4_Hamamatsu_1DCAM_1SDK4_sayHello(
+Java_fiji_plugin_imaging_1fcs_directCameraReadout_hamadcamsdk4_Hamamatsu_1DCAM_1SDK4_sayHello(
     JNIEnv *env, jobject thisObj)
 {
     std::cout << "hello from cpp" << std::endl;
@@ -471,7 +471,7 @@ Java_directCameraReadout_hamadcamsdk4_Hamamatsu_1DCAM_1SDK4_sayHello(
 }
 
 JNIEXPORT jint JNICALL
-Java_directCameraReadout_hamadcamsdk4_Hamamatsu_1DCAM_1SDK4_isHAMAconnectedSDK4(
+Java_fiji_plugin_imaging_1fcs_directCameraReadout_hamadcamsdk4_Hamamatsu_1DCAM_1SDK4_isHAMAconnectedSDK4(
     JNIEnv *env, jclass cls)
 {
     // 0 = good to go; 1 = no camera; 2 = other error
@@ -507,7 +507,7 @@ Java_directCameraReadout_hamadcamsdk4_Hamamatsu_1DCAM_1SDK4_isHAMAconnectedSDK4(
 }
 
 JNIEXPORT jstring JNICALL
-Java_directCameraReadout_hamadcamsdk4_Hamamatsu_1DCAM_1SDK4_GetModelSDK4(
+Java_fiji_plugin_imaging_1fcs_directCameraReadout_hamadcamsdk4_Hamamatsu_1DCAM_1SDK4_GetModelSDK4(
     JNIEnv *env, jclass cls)
 {
     // method gets called if there is at least one camera attached
@@ -566,7 +566,7 @@ Java_directCameraReadout_hamadcamsdk4_Hamamatsu_1DCAM_1SDK4_GetModelSDK4(
 }
 
 JNIEXPORT jint JNICALL
-Java_directCameraReadout_hamadcamsdk4_Hamamatsu_1DCAM_1SDK4_InitializeHamaSDK4(
+Java_fiji_plugin_imaging_1fcs_directCameraReadout_hamadcamsdk4_Hamamatsu_1DCAM_1SDK4_InitializeHamaSDK4(
     JNIEnv *env, jclass cls)
 {
     // initialize DCAM-API and open device
@@ -638,7 +638,7 @@ Java_directCameraReadout_hamadcamsdk4_Hamamatsu_1DCAM_1SDK4_InitializeHamaSDK4(
 }
 
 JNIEXPORT jint JNICALL
-Java_directCameraReadout_hamadcamsdk4_Hamamatsu_1DCAM_1SDK4_SystemShutDownSDK4(
+Java_fiji_plugin_imaging_1fcs_directCameraReadout_hamadcamsdk4_Hamamatsu_1DCAM_1SDK4_SystemShutDownSDK4(
     JNIEnv *env, jclass cls)
 {
     dcamdev_close(imgobj.hdcam);
@@ -650,7 +650,7 @@ Java_directCameraReadout_hamadcamsdk4_Hamamatsu_1DCAM_1SDK4_SystemShutDownSDK4(
 }
 
 JNIEXPORT jstring JNICALL
-Java_directCameraReadout_hamadcamsdk4_Hamamatsu_1DCAM_1SDK4_GetStringSDK4(
+Java_fiji_plugin_imaging_1fcs_directCameraReadout_hamadcamsdk4_Hamamatsu_1DCAM_1SDK4_GetStringSDK4(
     JNIEnv *env, jclass cls, jstring inJNIStr)
 { // MODEL, CAMERAID, BUS
     // obtain C++ const char
@@ -689,7 +689,7 @@ Java_directCameraReadout_hamadcamsdk4_Hamamatsu_1DCAM_1SDK4_GetStringSDK4(
 }
 
 JNIEXPORT jdouble JNICALL
-Java_directCameraReadout_hamadcamsdk4_Hamamatsu_1DCAM_1SDK4_GetDoubleSDK4(
+Java_fiji_plugin_imaging_1fcs_directCameraReadout_hamadcamsdk4_Hamamatsu_1DCAM_1SDK4_GetDoubleSDK4(
     JNIEnv *env, jclass cls, jstring inJNIStr)
 {
     // CONVERSIONFACTOR_COEFF, CONVERSIONFACTOR_OFFSET, BITSPERCHANNEL
@@ -828,7 +828,7 @@ Java_directCameraReadout_hamadcamsdk4_Hamamatsu_1DCAM_1SDK4_GetDoubleSDK4(
 }
 
 JNIEXPORT jint JNICALL
-Java_directCameraReadout_hamadcamsdk4_Hamamatsu_1DCAM_1SDK4_getIntegerSDK4(
+Java_fiji_plugin_imaging_1fcs_directCameraReadout_hamadcamsdk4_Hamamatsu_1DCAM_1SDK4_getIntegerSDK4(
     JNIEnv *env, jclass cls, jstring inJNIStr)
 {
     // WIDTH, HEIGHT, TOP, LEFT, BIN
@@ -866,7 +866,7 @@ Java_directCameraReadout_hamadcamsdk4_Hamamatsu_1DCAM_1SDK4_getIntegerSDK4(
 }
 
 JNIEXPORT jintArray JNICALL
-Java_directCameraReadout_hamadcamsdk4_Hamamatsu_1DCAM_1SDK4_getDetectorDimensionSDK4(
+Java_fiji_plugin_imaging_1fcs_directCameraReadout_hamadcamsdk4_Hamamatsu_1DCAM_1SDK4_getDetectorDimensionSDK4(
     JNIEnv *env, jclass cls)
 {
     int *res = new int[2];
@@ -891,7 +891,7 @@ Java_directCameraReadout_hamadcamsdk4_Hamamatsu_1DCAM_1SDK4_getDetectorDimension
 }
 
 JNIEXPORT jfloatArray JNICALL
-Java_directCameraReadout_hamadcamsdk4_Hamamatsu_1DCAM_1SDK4_getChipSizeSDK4(
+Java_fiji_plugin_imaging_1fcs_directCameraReadout_hamadcamsdk4_Hamamatsu_1DCAM_1SDK4_getChipSizeSDK4(
     JNIEnv *env, jclass cls)
 {
     float *res = new float[2];
@@ -916,7 +916,7 @@ Java_directCameraReadout_hamadcamsdk4_Hamamatsu_1DCAM_1SDK4_getChipSizeSDK4(
 }
 
 JNIEXPORT jint JNICALL
-Java_directCameraReadout_hamadcamsdk4_Hamamatsu_1DCAM_1SDK4_setParameterSDK4(
+Java_fiji_plugin_imaging_1fcs_directCameraReadout_hamadcamsdk4_Hamamatsu_1DCAM_1SDK4_setParameterSDK4(
     JNIEnv *env, jclass cls, jdouble exposureTime, jint Width, jint Height,
     jint Left, jint Top, jint Incamerabin, jint acqmode, jint totalframe,
     jint size_b, jint arraysize, jint ouTriggerKind, jdouble outDelay,
@@ -930,14 +930,14 @@ Java_directCameraReadout_hamadcamsdk4_Hamamatsu_1DCAM_1SDK4_setParameterSDK4(
 }
 
 JNIEXPORT jdouble JNICALL
-Java_directCameraReadout_hamadcamsdk4_Hamamatsu_1DCAM_1SDK4_getKineticCycleSDK4(
+Java_fiji_plugin_imaging_1fcs_directCameraReadout_hamadcamsdk4_Hamamatsu_1DCAM_1SDK4_getKineticCycleSDK4(
     JNIEnv *env, jclass cls)
 {
     return imgobj.getframerate();
 }
 
 JNIEXPORT jshortArray JNICALL
-Java_directCameraReadout_hamadcamsdk4_Hamamatsu_1DCAM_1SDK4_runSingleScanSDK4(
+Java_fiji_plugin_imaging_1fcs_directCameraReadout_hamadcamsdk4_Hamamatsu_1DCAM_1SDK4_runSingleScanSDK4(
     JNIEnv *env, jclass cls)
 {
     // open wait handle
@@ -1003,7 +1003,7 @@ Java_directCameraReadout_hamadcamsdk4_Hamamatsu_1DCAM_1SDK4_runSingleScanSDK4(
 }
 
 JNIEXPORT void JNICALL
-Java_directCameraReadout_hamadcamsdk4_Hamamatsu_1DCAM_1SDK4_runInfiniteLoopSDK4(
+Java_fiji_plugin_imaging_1fcs_directCameraReadout_hamadcamsdk4_Hamamatsu_1DCAM_1SDK4_runInfiniteLoopSDK4(
     JNIEnv *env, jclass cls, jshortArray outArray, jobject framecounterObj)
 {
     assert((env->GetArrayLength(outArray) == imgobj.temparraysize)
@@ -1107,7 +1107,7 @@ Java_directCameraReadout_hamadcamsdk4_Hamamatsu_1DCAM_1SDK4_runInfiniteLoopSDK4(
 }
 
 JNIEXPORT void JNICALL
-Java_directCameraReadout_hamadcamsdk4_Hamamatsu_1DCAM_1SDK4_setStopMechanismSDK4(
+Java_fiji_plugin_imaging_1fcs_directCameraReadout_hamadcamsdk4_Hamamatsu_1DCAM_1SDK4_setStopMechanismSDK4(
     JNIEnv *env, jclass cls, jboolean isstoppressed)
 {
     imgobj.isStopPressed_ = isstoppressed;

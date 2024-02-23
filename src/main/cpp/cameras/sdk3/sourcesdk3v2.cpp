@@ -11,7 +11,7 @@
 #    include "ImageClsSDK3.h"
 #    include "TimeKeeper.h"
 #    include "atcore.h"
-#    include "directCameraReadout_andorsdk3v2_AndorSDK3v2.h"
+#    include "fiji_plugin_imaging_fcs_directCameraReadout_andorsdk3v2_AndorSDK3v2.h"
 
 #    define EXTRACTLOWPACKED(SourcePtr)                                        \
         ((SourcePtr[0] << 4) + (SourcePtr[1] & 0xF))
@@ -1345,7 +1345,7 @@ void deleteBuffers()
 
 // Test JNI
 JNIEXPORT jfloat JNICALL
-Java_directCameraReadout_andorsdk3v2_AndorSDK3v2_seyHello(JNIEnv *env,
+Java_fiji_plugin_imaging_1fcs_directCameraReadout_andorsdk3v2_AndorSDK3v2_seyHello(JNIEnv *env,
                                                           jclass cls, jint n1,
                                                           jint n2)
 {
@@ -1355,7 +1355,7 @@ Java_directCameraReadout_andorsdk3v2_AndorSDK3v2_seyHello(JNIEnv *env,
 }
 
 JNIEXPORT jint JNICALL
-Java_directCameraReadout_andorsdk3v2_AndorSDK3v2_sayHello(JNIEnv *env,
+Java_fiji_plugin_imaging_1fcs_directCameraReadout_andorsdk3v2_AndorSDK3v2_sayHello(JNIEnv *env,
                                                           jobject thisObj)
 {
     std::cout << "hello from cpp" << std::endl;
@@ -1364,7 +1364,7 @@ Java_directCameraReadout_andorsdk3v2_AndorSDK3v2_sayHello(JNIEnv *env,
 
 // SDK3
 JNIEXPORT jint JNICALL
-Java_directCameraReadout_andorsdk3v2_AndorSDK3v2_isSCMOSconnectedSDK3(
+Java_fiji_plugin_imaging_1fcs_directCameraReadout_andorsdk3v2_AndorSDK3v2_isSCMOSconnectedSDK3(
     JNIEnv *env, jclass cls)
 {
     // check and return camera status; JNI call did not close and finalize
@@ -1373,7 +1373,7 @@ Java_directCameraReadout_andorsdk3v2_AndorSDK3v2_isSCMOSconnectedSDK3(
 }
 
 JNIEXPORT void JNICALL
-Java_directCameraReadout_andorsdk3v2_AndorSDK3v2_ShutDownSDK3(JNIEnv *env,
+Java_fiji_plugin_imaging_1fcs_directCameraReadout_andorsdk3v2_AndorSDK3v2_ShutDownSDK3(JNIEnv *env,
                                                               jclass cls)
 {
     // close and finalize library
@@ -1383,7 +1383,7 @@ Java_directCameraReadout_andorsdk3v2_AndorSDK3v2_ShutDownSDK3(JNIEnv *env,
 }
 
 JNIEXPORT void JNICALL
-Java_directCameraReadout_andorsdk3v2_AndorSDK3v2_SystemShutDownSDK3(JNIEnv *env,
+Java_fiji_plugin_imaging_1fcs_directCameraReadout_andorsdk3v2_AndorSDK3v2_SystemShutDownSDK3(JNIEnv *env,
                                                                     jclass cls)
 {
     // turn off cooling, close and finalize library
@@ -1394,7 +1394,7 @@ Java_directCameraReadout_andorsdk3v2_AndorSDK3v2_SystemShutDownSDK3(JNIEnv *env,
 }
 
 JNIEXPORT jboolean JNICALL
-Java_directCameraReadout_andorsdk3v2_AndorSDK3v2_InitializeSystemSDK3(
+Java_fiji_plugin_imaging_1fcs_directCameraReadout_andorsdk3v2_AndorSDK3v2_InitializeSystemSDK3(
     JNIEnv *env, jclass cls)
 {
     // initialize library and open handle
@@ -1403,7 +1403,7 @@ Java_directCameraReadout_andorsdk3v2_AndorSDK3v2_InitializeSystemSDK3(
 }
 
 JNIEXPORT jstring JNICALL
-Java_directCameraReadout_andorsdk3v2_AndorSDK3v2_GetEnumeratedStringSDK3(
+Java_fiji_plugin_imaging_1fcs_directCameraReadout_andorsdk3v2_AndorSDK3v2_GetEnumeratedStringSDK3(
     JNIEnv *env, jclass cls, jstring inJNIStr)
 {
     // obtain C++ const char
@@ -1434,7 +1434,7 @@ Java_directCameraReadout_andorsdk3v2_AndorSDK3v2_GetEnumeratedStringSDK3(
 }
 
 JNIEXPORT jint JNICALL
-Java_directCameraReadout_andorsdk3v2_AndorSDK3v2_GetIntegerValueSDK3(
+Java_fiji_plugin_imaging_1fcs_directCameraReadout_andorsdk3v2_AndorSDK3v2_GetIntegerValueSDK3(
     JNIEnv *env, jclass cls, jstring inJNIStr)
 {
     // obtain C++ const char
@@ -1458,7 +1458,7 @@ Java_directCameraReadout_andorsdk3v2_AndorSDK3v2_GetIntegerValueSDK3(
 }
 
 JNIEXPORT jdouble JNICALL
-Java_directCameraReadout_andorsdk3v2_AndorSDK3v2_GetDoubleValueSDK3(
+Java_fiji_plugin_imaging_1fcs_directCameraReadout_andorsdk3v2_AndorSDK3v2_GetDoubleValueSDK3(
     JNIEnv *env, jclass cls, jstring inJNIStr)
 {
     // obtain C++ const char
@@ -1478,7 +1478,7 @@ Java_directCameraReadout_andorsdk3v2_AndorSDK3v2_GetDoubleValueSDK3(
 }
 
 JNIEXPORT jstring JNICALL
-Java_directCameraReadout_andorsdk3v2_AndorSDK3v2_GetStringValueSDK3(
+Java_fiji_plugin_imaging_1fcs_directCameraReadout_andorsdk3v2_AndorSDK3v2_GetStringValueSDK3(
     JNIEnv *env, jclass cls, jstring inJNIStr)
 {
     // obtain C++ const char
@@ -1506,7 +1506,7 @@ Java_directCameraReadout_andorsdk3v2_AndorSDK3v2_GetStringValueSDK3(
 }
 
 JNIEXPORT jboolean JNICALL
-Java_directCameraReadout_andorsdk3v2_AndorSDK3v2_GetBooleanValueSDK3(
+Java_fiji_plugin_imaging_1fcs_directCameraReadout_andorsdk3v2_AndorSDK3v2_GetBooleanValueSDK3(
     JNIEnv *env, jclass cls, jstring inJNIStr)
 {
     // obtain C++ const char
@@ -1525,7 +1525,7 @@ Java_directCameraReadout_andorsdk3v2_AndorSDK3v2_GetBooleanValueSDK3(
 }
 
 JNIEXPORT jint JNICALL
-Java_directCameraReadout_andorsdk3v2_AndorSDK3v2_GetEnumCountSDK3(
+Java_fiji_plugin_imaging_1fcs_directCameraReadout_andorsdk3v2_AndorSDK3v2_GetEnumCountSDK3(
     JNIEnv *env, jclass cls, jstring inJNIStr)
 {
     // obtain C++ const char
@@ -1549,7 +1549,7 @@ Java_directCameraReadout_andorsdk3v2_AndorSDK3v2_GetEnumCountSDK3(
 }
 
 JNIEXPORT jstring JNICALL
-Java_directCameraReadout_andorsdk3v2_AndorSDK3v2_GetEnumStringByIndexSDK3(
+Java_fiji_plugin_imaging_1fcs_directCameraReadout_andorsdk3v2_AndorSDK3v2_GetEnumStringByIndexSDK3(
     JNIEnv *env, jclass cls, jstring inJNIStr, jint index)
 {
     // obtain C++ const char
@@ -1577,7 +1577,7 @@ Java_directCameraReadout_andorsdk3v2_AndorSDK3v2_GetEnumStringByIndexSDK3(
 }
 
 JNIEXPORT jfloat JNICALL
-Java_directCameraReadout_andorsdk3v2_AndorSDK3v2_GetFloatMaxSDK3(
+Java_fiji_plugin_imaging_1fcs_directCameraReadout_andorsdk3v2_AndorSDK3v2_GetFloatMaxSDK3(
     JNIEnv *env, jclass cls, jstring inJNIStr)
 {
     // obtain C++ const char
@@ -1597,7 +1597,7 @@ Java_directCameraReadout_andorsdk3v2_AndorSDK3v2_GetFloatMaxSDK3(
 }
 
 JNIEXPORT jfloat JNICALL
-Java_directCameraReadout_andorsdk3v2_AndorSDK3v2_GetFloatMinSDK3(
+Java_fiji_plugin_imaging_1fcs_directCameraReadout_andorsdk3v2_AndorSDK3v2_GetFloatMinSDK3(
     JNIEnv *env, jclass cls, jstring inJNIStr)
 {
     // obtain C++ const char
@@ -1617,7 +1617,7 @@ Java_directCameraReadout_andorsdk3v2_AndorSDK3v2_GetFloatMinSDK3(
 }
 
 JNIEXPORT jint JNICALL
-Java_directCameraReadout_andorsdk3v2_AndorSDK3v2_GetIntMaxSDK3(JNIEnv *env,
+Java_fiji_plugin_imaging_1fcs_directCameraReadout_andorsdk3v2_AndorSDK3v2_GetIntMaxSDK3(JNIEnv *env,
                                                                jclass cls,
                                                                jstring inJNIStr)
 {
@@ -1638,7 +1638,7 @@ Java_directCameraReadout_andorsdk3v2_AndorSDK3v2_GetIntMaxSDK3(JNIEnv *env,
 }
 
 JNIEXPORT jint JNICALL
-Java_directCameraReadout_andorsdk3v2_AndorSDK3v2_GetIntMinSDK3(JNIEnv *env,
+Java_fiji_plugin_imaging_1fcs_directCameraReadout_andorsdk3v2_AndorSDK3v2_GetIntMinSDK3(JNIEnv *env,
                                                                jclass cls,
                                                                jstring inJNIStr)
 {
@@ -1659,7 +1659,7 @@ Java_directCameraReadout_andorsdk3v2_AndorSDK3v2_GetIntMinSDK3(JNIEnv *env,
 }
 
 JNIEXPORT jint JNICALL
-Java_directCameraReadout_andorsdk3v2_AndorSDK3v2_SetEnumeratedStringSDK3(
+Java_fiji_plugin_imaging_1fcs_directCameraReadout_andorsdk3v2_AndorSDK3v2_SetEnumeratedStringSDK3(
     JNIEnv *env, jclass cls, jstring inJNIStr, jstring value)
 {
     // obtain C++ const char
@@ -1691,7 +1691,7 @@ Java_directCameraReadout_andorsdk3v2_AndorSDK3v2_SetEnumeratedStringSDK3(
 }
 
 JNIEXPORT jint JNICALL
-Java_directCameraReadout_andorsdk3v2_AndorSDK3v2_SetIntegerValueSDK3(
+Java_fiji_plugin_imaging_1fcs_directCameraReadout_andorsdk3v2_AndorSDK3v2_SetIntegerValueSDK3(
     JNIEnv *env, jclass cls, jstring inJNIStr, jint value)
 {
     // obtain C++ const char
@@ -1709,7 +1709,7 @@ Java_directCameraReadout_andorsdk3v2_AndorSDK3v2_SetIntegerValueSDK3(
 }
 
 JNIEXPORT jint JNICALL
-Java_directCameraReadout_andorsdk3v2_AndorSDK3v2_SetDoubleValueSDK3(
+Java_fiji_plugin_imaging_1fcs_directCameraReadout_andorsdk3v2_AndorSDK3v2_SetDoubleValueSDK3(
     JNIEnv *env, jclass cls, jstring inJNIStr, jdouble value)
 {
     // obtain C++ const char
@@ -1727,7 +1727,7 @@ Java_directCameraReadout_andorsdk3v2_AndorSDK3v2_SetDoubleValueSDK3(
 }
 
 JNIEXPORT jint JNICALL
-Java_directCameraReadout_andorsdk3v2_AndorSDK3v2_SetBooleanValueSDK3(
+Java_fiji_plugin_imaging_1fcs_directCameraReadout_andorsdk3v2_AndorSDK3v2_SetBooleanValueSDK3(
     JNIEnv *env, jclass cls, jstring inJNIStr, jint somebool)
 {
     // obtain C++ const char
@@ -1745,7 +1745,7 @@ Java_directCameraReadout_andorsdk3v2_AndorSDK3v2_SetBooleanValueSDK3(
 }
 
 JNIEXPORT jint JNICALL
-Java_directCameraReadout_andorsdk3v2_AndorSDK3v2_SetEnumIndexSDK3(
+Java_fiji_plugin_imaging_1fcs_directCameraReadout_andorsdk3v2_AndorSDK3v2_SetEnumIndexSDK3(
     JNIEnv *env, jclass cls, jstring inJNIStr, jint index)
 {
     // obtain C++ const char
@@ -1763,7 +1763,7 @@ Java_directCameraReadout_andorsdk3v2_AndorSDK3v2_SetEnumIndexSDK3(
 }
 
 JNIEXPORT void JNICALL
-Java_directCameraReadout_andorsdk3v2_AndorSDK3v2_setParameterSingleSDK3(
+Java_fiji_plugin_imaging_1fcs_directCameraReadout_andorsdk3v2_AndorSDK3v2_setParameterSingleSDK3(
     JNIEnv *env, jclass cls, jdouble exposureTime, jint width, jint height,
     jint left, jint top, jint incamerabin, jint iPixelEncoding)
 {
@@ -1805,7 +1805,7 @@ Java_directCameraReadout_andorsdk3v2_AndorSDK3v2_setParameterSingleSDK3(
 }
 
 JNIEXPORT jshortArray JNICALL
-Java_directCameraReadout_andorsdk3v2_AndorSDK3v2_runSingleScanSDK3(JNIEnv *env,
+Java_fiji_plugin_imaging_1fcs_directCameraReadout_andorsdk3v2_AndorSDK3v2_runSingleScanSDK3(JNIEnv *env,
                                                                    jclass cls)
 {
     // initializing 1D array for single frame acquisition
@@ -1910,7 +1910,7 @@ Java_directCameraReadout_andorsdk3v2_AndorSDK3v2_runSingleScanSDK3(JNIEnv *env,
 }
 
 JNIEXPORT void JNICALL
-Java_directCameraReadout_andorsdk3v2_AndorSDK3v2_setParameterInfiniteLoopSDK3(
+Java_fiji_plugin_imaging_1fcs_directCameraReadout_andorsdk3v2_AndorSDK3v2_setParameterInfiniteLoopSDK3(
     JNIEnv *env, jclass cls, jint size_b, jint totalFrame,
     jint transferInterval, jdouble exposureTime, jint width, jint height,
     jint left, jint top, jint incamerabin, jint iPixelEncoding, jint arraysize,
@@ -1975,7 +1975,7 @@ Java_directCameraReadout_andorsdk3v2_AndorSDK3v2_setParameterInfiniteLoopSDK3(
 }
 
 JNIEXPORT void JNICALL
-Java_directCameraReadout_andorsdk3v2_AndorSDK3v2_runInfiniteLoopSDK3(
+Java_fiji_plugin_imaging_1fcs_directCameraReadout_andorsdk3v2_AndorSDK3v2_runInfiniteLoopSDK3(
     JNIEnv *env, jclass cls, jshortArray outArray, jobject framecounterObj)
 {
     assert((env->GetArrayLength(outArray) == imgobj.temparraysize)
@@ -2034,7 +2034,7 @@ Java_directCameraReadout_andorsdk3v2_AndorSDK3v2_runInfiniteLoopSDK3(
 }
 
 JNIEXPORT void JNICALL
-Java_directCameraReadout_andorsdk3v2_AndorSDK3v2_setStopMechanismSDK3(
+Java_fiji_plugin_imaging_1fcs_directCameraReadout_andorsdk3v2_AndorSDK3v2_setStopMechanismSDK3(
     JNIEnv *env, jclass cls, jboolean isStoppressed)
 {
     imgobj.isStopPressed = isStoppressed;
