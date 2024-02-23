@@ -126,7 +126,6 @@
                                 </goals>
                                 <configuration>
                                     <target>
-                                        <mkdir dir="${project.build.directory}/jni"/>
                                         <path id="compile.classpath">
                                             <path path="${project.build.directory}/classes"/>
                                             <fileset dir="${project.build.directory}/dependencies">
@@ -140,7 +139,7 @@
                                             <arg value="-d"/>
                                             <arg value="${project.build.directory}/classes"/>
                                             <arg value="-h"/>
-                                            <arg value="${project.build.directory}/jni"/>
+                                            <arg value="src/main/cpp/gpufit"/>
                                             <arg value="src/main/java/fiji/plugin/imaging_fcs/gpufitImFCS/GpufitImFCS.java"/>
                                         </exec>
                                         <exec executable="javac">
@@ -149,7 +148,7 @@
                                             <arg value="-d"/>
                                             <arg value="${project.build.directory}/classes"/>
                                             <arg value="-h"/>
-                                            <arg value="${project.build.directory}/jni"/>
+                                            <arg value="src/main/cpp/cameras/sdk2/dependencies/include"/>
                                             <arg value="src/main/java/fiji/plugin/imaging_fcs/directCameraReadout/andorsdk2v3/AndorSDK2v3.java"/>
                                         </exec>
                                         <exec executable="javac">
@@ -158,7 +157,7 @@
                                             <arg value="-d"/>
                                             <arg value="${project.build.directory}/classes"/>
                                             <arg value="-h"/>
-                                            <arg value="${project.build.directory}/jni"/>
+                                            <arg value="src/main/cpp/cameras/sdk3/dependencies/include"/>
                                             <arg value="src/main/java/fiji/plugin/imaging_fcs/directCameraReadout/andorsdk3v2/AndorSDK3v2.java"/>
                                         </exec>
                                         <exec executable="javac">
@@ -167,7 +166,7 @@
                                             <arg value="-d"/>
                                             <arg value="${project.build.directory}/classes"/>
                                             <arg value="-h"/>
-                                            <arg value="${project.build.directory}/jni"/>
+                                            <arg value="src/main/cpp/cameras/dcam/dependencies/include"/>
                                             <arg value="src/main/java/fiji/plugin/imaging_fcs/directCameraReadout/hamadcamsdk4/Hamamatsu_DCAM_SDK4.java"/>
                                         </exec>
                                         <exec executable="javac">
@@ -176,7 +175,7 @@
                                             <arg value="-d"/>
                                             <arg value="${project.build.directory}/classes"/>
                                             <arg value="-h"/>
-                                            <arg value="${project.build.directory}/jni"/>
+                                            <arg value="src/main/cpp/cameras/pvcam/dependencies/include"/>
                                             <arg value="src/main/java/fiji/plugin/imaging_fcs/directCameraReadout/pvcamsdk/Photometrics_PVCAM_SDK.java"/>
                                         </exec>
                                     </target>
