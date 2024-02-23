@@ -137,6 +137,8 @@
                                         <exec executable="javac">
                                             <arg value="-classpath"/>
                                             <arg value="${project.build.directory}/classes"/>
+                                            <arg value="-d"/>
+                                            <arg value="${project.build.directory}/classes"/>
                                             <arg value="-h"/>
                                             <arg value="${project.build.directory}/jni"/>
                                             <arg value="src/main/java/fiji/plugin/imaging_fcs/gpufitImFCS/GpufitImFCS.java"/>
@@ -144,6 +146,8 @@
                                         <exec executable="javac">
                                             <arg value="-classpath"/>
                                             <arg value="${project.build.directory}/classes${path.separator}${compile.classpath}"/>
+                                            <arg value="-d"/>
+                                            <arg value="${project.build.directory}/classes"/>
                                             <arg value="-h"/>
                                             <arg value="${project.build.directory}/jni"/>
                                             <arg value="src/main/java/fiji/plugin/imaging_fcs/directCameraReadout/andorsdk2v3/AndorSDK2v3.java"/>
@@ -151,6 +155,8 @@
                                         <exec executable="javac">
                                             <arg value="-classpath"/>
                                             <arg value="${project.build.directory}/classes${path.separator}${compile.classpath}"/>
+                                            <arg value="-d"/>
+                                            <arg value="${project.build.directory}/classes"/>
                                             <arg value="-h"/>
                                             <arg value="${project.build.directory}/jni"/>
                                             <arg value="src/main/java/fiji/plugin/imaging_fcs/directCameraReadout/andorsdk3v2/AndorSDK3v2.java"/>
@@ -158,6 +164,8 @@
                                         <exec executable="javac">
                                             <arg value="-classpath"/>
                                             <arg value="${project.build.directory}/classes${path.separator}${compile.classpath}"/>
+                                            <arg value="-d"/>
+                                            <arg value="${project.build.directory}/classes"/>
                                             <arg value="-h"/>
                                             <arg value="${project.build.directory}/jni"/>
                                             <arg value="src/main/java/fiji/plugin/imaging_fcs/directCameraReadout/hamadcamsdk4/Hamamatsu_DCAM_SDK4.java"/>
@@ -165,6 +173,8 @@
                                         <exec executable="javac">
                                             <arg value="-classpath"/>
                                             <arg value="${project.build.directory}/classes${path.separator}${compile.classpath}"/>
+                                            <arg value="-d"/>
+                                            <arg value="${project.build.directory}/classes"/>
                                             <arg value="-h"/>
                                             <arg value="${project.build.directory}/jni"/>
                                             <arg value="src/main/java/fiji/plugin/imaging_fcs/directCameraReadout/pvcamsdk/Photometrics_PVCAM_SDK.java"/>
