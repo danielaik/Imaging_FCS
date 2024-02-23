@@ -83,89 +83,99 @@
         </repository>
     </repositories>
 
-    <!-- This part is used to create the header file if needed -->
-    <build>
-    <plugins>
-        <plugin>
-            <groupId>org.apache.maven.plugins</groupId>
-            <artifactId>maven-dependency-plugin</artifactId>
-            <version>3.6.1</version>
-            <executions>
-                <execution>
-                    <id>copy-dependencies</id>
-                    <phase>generate-sources</phase>
-                    <goals>
-                        <goal>copy-dependencies</goal>
-                    </goals>
-                    <configuration>
-                        <outputDirectory>${project.build.directory}/dependencies</outputDirectory>
-                    </configuration>
-                </execution>
-            </executions>
-        </plugin>
+    <!-- This part is used to create the header file if needed (specify -DgenerateJniHeaders=true) -->
+    <profiles>
+        <profile>
+            <id>generate-jni-headers</id>
+            <!-- This profile activates when generateJniHeaders is true -->
+            <activation>
+                <property>
+                    <name>generateJniHeaders</name>
+                    <value>true</value>
+                </property>
+            </activation>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-dependency-plugin</artifactId>
+                        <version>3.6.1</version>
+                        <executions>
+                            <execution>
+                                <id>copy-dependencies</id>
+                                <phase>generate-sources</phase>
+                                <goals>
+                                    <goal>copy-dependencies</goal>
+                                </goals>
+                                <configuration>
+                                    <outputDirectory>${project.build.directory}/dependencies</outputDirectory>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
 
-        <plugin>
-            <groupId>org.apache.maven.plugins</groupId>
-            <artifactId>maven-antrun-plugin</artifactId>
-            <version>3.1.0</version>
-            <executions>
-                <execution>
-                    <phase>compile</phase>
-                    <goals>
-                        <goal>run</goal>
-                    </goals>
-                    <configuration>
-                        <target>
-                            <mkdir dir="${project.build.directory}/jni"/>
-                            <path id="compile.classpath">
-                                <path path="${project.build.directory}/classes"/>
-                                <fileset dir="${project.build.directory}/dependencies">
-                                    <include name="**/*.jar"/>
-                                </fileset>
-                            </path>
-                            <property name="compile.classpath" refid="compile.classpath"/>
-                            <exec executable="javac">
-                                <arg value="-classpath"/>
-                                <arg value="${project.build.directory}/classes"/>
-                                <arg value="-h"/>
-                                <arg value="${project.build.directory}/jni"/>
-                                <arg value="src/main/java/fiji/plugin/imaging_fcs/gpufitImFCS/GpufitImFCS.java"/>
-                            </exec>
-                            <exec executable="javac">
-                                <arg value="-classpath"/>
-                                <arg value="${project.build.directory}/classes${path.separator}${compile.classpath}"/>
-                                <arg value="-h"/>
-                                <arg value="${project.build.directory}/jni"/>
-                                <arg value="src/main/java/fiji/plugin/imaging_fcs/directCameraReadout/andorsdk2v3/AndorSDK2v3.java"/>
-                            </exec>
-                            <exec executable="javac">
-                                <arg value="-classpath"/>
-                                <arg value="${project.build.directory}/classes${path.separator}${compile.classpath}"/>
-                                <arg value="-h"/>
-                                <arg value="${project.build.directory}/jni"/>
-                                <arg value="src/main/java/fiji/plugin/imaging_fcs/directCameraReadout/andorsdk3v2/AndorSDK3v2.java"/>
-                            </exec>
-                            <exec executable="javac">
-                                <arg value="-classpath"/>
-                                <arg value="${project.build.directory}/classes${path.separator}${compile.classpath}"/>
-                                <arg value="-h"/>
-                                <arg value="${project.build.directory}/jni"/>
-                                <arg value="src/main/java/fiji/plugin/imaging_fcs/directCameraReadout/hamadcamsdk4/Hamamatsu_DCAM_SDK4.java"/>
-                            </exec>
-                            <exec executable="javac">
-                                <arg value="-classpath"/>
-                                <arg value="${project.build.directory}/classes${path.separator}${compile.classpath}"/>
-                                <arg value="-h"/>
-                                <arg value="${project.build.directory}/jni"/>
-                                <arg value="src/main/java/fiji/plugin/imaging_fcs/directCameraReadout/pvcamsdk/Photometrics_PVCAM_SDK.java"/>
-                            </exec>
-                        </target>
-                    </configuration>
-                </execution>
-            </executions>
-        </plugin>
-    </plugins>
-</build>
-
-
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-antrun-plugin</artifactId>
+                        <version>3.1.0</version>
+                        <executions>
+                            <execution>
+                                <phase>compile</phase>
+                                <goals>
+                                    <goal>run</goal>
+                                </goals>
+                                <configuration>
+                                    <target>
+                                        <mkdir dir="${project.build.directory}/jni"/>
+                                        <path id="compile.classpath">
+                                            <path path="${project.build.directory}/classes"/>
+                                            <fileset dir="${project.build.directory}/dependencies">
+                                                <include name="**/*.jar"/>
+                                            </fileset>
+                                        </path>
+                                        <property name="compile.classpath" refid="compile.classpath"/>
+                                        <exec executable="javac">
+                                            <arg value="-classpath"/>
+                                            <arg value="${project.build.directory}/classes"/>
+                                            <arg value="-h"/>
+                                            <arg value="${project.build.directory}/jni"/>
+                                            <arg value="src/main/java/fiji/plugin/imaging_fcs/gpufitImFCS/GpufitImFCS.java"/>
+                                        </exec>
+                                        <exec executable="javac">
+                                            <arg value="-classpath"/>
+                                            <arg value="${project.build.directory}/classes${path.separator}${compile.classpath}"/>
+                                            <arg value="-h"/>
+                                            <arg value="${project.build.directory}/jni"/>
+                                            <arg value="src/main/java/fiji/plugin/imaging_fcs/directCameraReadout/andorsdk2v3/AndorSDK2v3.java"/>
+                                        </exec>
+                                        <exec executable="javac">
+                                            <arg value="-classpath"/>
+                                            <arg value="${project.build.directory}/classes${path.separator}${compile.classpath}"/>
+                                            <arg value="-h"/>
+                                            <arg value="${project.build.directory}/jni"/>
+                                            <arg value="src/main/java/fiji/plugin/imaging_fcs/directCameraReadout/andorsdk3v2/AndorSDK3v2.java"/>
+                                        </exec>
+                                        <exec executable="javac">
+                                            <arg value="-classpath"/>
+                                            <arg value="${project.build.directory}/classes${path.separator}${compile.classpath}"/>
+                                            <arg value="-h"/>
+                                            <arg value="${project.build.directory}/jni"/>
+                                            <arg value="src/main/java/fiji/plugin/imaging_fcs/directCameraReadout/hamadcamsdk4/Hamamatsu_DCAM_SDK4.java"/>
+                                        </exec>
+                                        <exec executable="javac">
+                                            <arg value="-classpath"/>
+                                            <arg value="${project.build.directory}/classes${path.separator}${compile.classpath}"/>
+                                            <arg value="-h"/>
+                                            <arg value="${project.build.directory}/jni"/>
+                                            <arg value="src/main/java/fiji/plugin/imaging_fcs/directCameraReadout/pvcamsdk/Photometrics_PVCAM_SDK.java"/>
+                                        </exec>
+                                    </target>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 </project>
