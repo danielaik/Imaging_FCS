@@ -2072,9 +2072,8 @@ public class Imaging_FCS implements PlugIn {
                     impCovWin.close();
                 }
             }
-            if (gpu && isCuda) {
-                useGpu = true;
-            }
+
+            useGpu = gpu && isCuda;
         }
     };
 
