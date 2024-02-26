@@ -1,0 +1,98 @@
+name: Build
+
+on:
+  push:
+    branches:
+      - "*"
+    tags:
+      - 'v*'
+
+jobs:
+  build-libs-ubuntu:
+    runs-on: ubuntu-latest
+    container:
+      image: nvidia/cuda:12.3.1-devel-ubuntu22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install CMake and java
+        run: |
+          apt-get update
+          apt-get install -y cmake g++ gcc openjdk-8-jdk
+          update-alternatives --set java /usr/lib/jvm/java-8-openjdk-amd64/jre/bin/java
+        env:
+          DEBIAN_FRONTEND: noninteractive
+
+      - name: Set JAVA_HOME
+        run: echo "JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64" >> $GITHUB_ENV
+
+      - name: Configure and Build for Ubuntu
+        run: |
+          cmake -B ./src/main/cpp/build -DCMAKE_CXX_COMPILER=g++ -DCMAKE_C_COMPILER=gcc -DCMAKE_BUILD_TYPE=Release -S ./src/main/cpp
+          cmake --build ./src/main/cpp/build --config Release
+
+      - name: Upload Linux Libraries
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-libs
+          path: ./src/main/cpp/build/**/*.so
+
+  build-libs-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure and Build for Windows
+        run: |
+          cmake -B .src/main/cpp/build -DCMAKE_CXX_COMPILER=cl -DCMAKE_C_COMPILER=cl -DCMAKE_BUILD_TYPE=Release -S ./src/main/cpp
+          cmake --build .src/main/cpp/build --config Release
+
+      - name: Upload Windows Libraries
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-libs
+          path: .src/main/cpp/build/**/*.dll
+
+  build-jar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 1.8
+        uses: actions/setup-java@v4
+        with:
+          java-version: '8'
+          distribution: 'zulu'
+          cache: 'maven'
+
+      - name: Build with Maven
+        run: mvn -B package --file pom.xml
+
+      - name: Upload jar package for release
+        uses: actions/upload-artifact@v4
+        with:
+          name: jar
+          path: ./target/*.jar
+
+  release:
+    needs: [build-libs-ubuntu, build-libs-windows, build-jar]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+
+      - name: Compress folders
+        run: zip -r windows-libs.zip windows-libs && zip -r linux-libs.zip linux-libs
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@4634c16e79c963813287e889244c50009e7f0981 # FIXME: check when softprops makes a new release that fixes the node warning
+        with:
+          files: |
+            ./jar/*.jar
+            ./windows-libs.zip
+            ./linux-libs.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

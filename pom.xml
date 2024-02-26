@@ -5,7 +5,7 @@
 
     <groupId>imagej.imfcs</groupId>
     <artifactId>Imaging_FCS</artifactId>
-    <version>1_621</version>
+    <version>1_631</version>
 
     <properties>
         <java.version>1.8</java.version>
@@ -83,4 +83,168 @@
         </repository>
     </repositories>
 
+    <!-- This part is used to create the header file and/or compile the C++/CUDA libraries if needed -->
+    <profiles>
+        <profile>
+            <id>generate-jni-headers</id>
+            <!-- This profile activates when generateJniHeaders is true -->
+            <activation>
+                <property>
+                    <name>generateJniHeaders</name>
+                    <value>true</value>
+                </property>
+            </activation>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-dependency-plugin</artifactId>
+                        <version>3.6.1</version>
+                        <executions>
+                            <execution>
+                                <id>copy-dependencies</id>
+                                <phase>generate-sources</phase>
+                                <goals>
+                                    <goal>copy-dependencies</goal>
+                                </goals>
+                                <configuration>
+                                    <outputDirectory>${project.build.directory}/dependencies</outputDirectory>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-antrun-plugin</artifactId>
+                        <version>3.1.0</version>
+                        <executions>
+                            <execution>
+                                <phase>compile</phase>
+                                <goals>
+                                    <goal>run</goal>
+                                </goals>
+                                <configuration>
+                                    <target>
+                                        <path id="compile.classpath">
+                                            <path path="${project.build.directory}/classes"/>
+                                            <fileset dir="${project.build.directory}/dependencies">
+                                                <include name="**/*.jar"/>
+                                            </fileset>
+                                        </path>
+                                        <property name="compile.classpath" refid="compile.classpath"/>
+
+                                        <exec executable="javac">
+                                            <arg value="-classpath"/>
+                                            <arg value="${project.build.directory}/classes"/>
+                                            <arg value="-d"/>
+                                            <arg value="${project.build.directory}/classes"/>
+                                            <arg value="-h"/>
+                                            <arg value="src/main/cpp/gpufit"/>
+                                            <arg value="src/main/java/fiji/plugin/imaging_fcs/gpufitImFCS/GpufitImFCS.java"/>
+                                        </exec>
+
+                                        <exec executable="javac">
+                                            <arg value="-classpath"/>
+                                            <arg value="${project.build.directory}/classes${path.separator}${compile.classpath}"/>
+                                            <arg value="-d"/>
+                                            <arg value="${project.build.directory}/classes"/>
+                                            <arg value="-h"/>
+                                            <arg value="src/main/cpp/cameras/sdk2/dependencies/include"/>
+                                            <arg value="src/main/java/fiji/plugin/imaging_fcs/directCameraReadout/andorsdk2v3/AndorSDK2v3.java"/>
+                                        </exec>
+
+                                        <exec executable="javac">
+                                            <arg value="-classpath"/>
+                                            <arg value="${project.build.directory}/classes${path.separator}${compile.classpath}"/>
+                                            <arg value="-d"/>
+                                            <arg value="${project.build.directory}/classes"/>
+                                            <arg value="-h"/>
+                                            <arg value="src/main/cpp/cameras/sdk3/dependencies/include"/>
+                                            <arg value="src/main/java/fiji/plugin/imaging_fcs/directCameraReadout/andorsdk3v2/AndorSDK3v2.java"/>
+                                        </exec>
+
+                                        <exec executable="javac">
+                                            <arg value="-classpath"/>
+                                            <arg value="${project.build.directory}/classes${path.separator}${compile.classpath}"/>
+                                            <arg value="-d"/>
+                                            <arg value="${project.build.directory}/classes"/>
+                                            <arg value="-h"/>
+                                            <arg value="src/main/cpp/cameras/dcam/dependencies/include"/>
+                                            <arg value="src/main/java/fiji/plugin/imaging_fcs/directCameraReadout/hamadcamsdk4/Hamamatsu_DCAM_SDK4.java"/>
+                                        </exec>
+
+                                        <exec executable="javac">
+                                            <arg value="-classpath"/>
+                                            <arg value="${project.build.directory}/classes${path.separator}${compile.classpath}"/>
+                                            <arg value="-d"/>
+                                            <arg value="${project.build.directory}/classes"/>
+                                            <arg value="-h"/>
+                                            <arg value="src/main/cpp/cameras/pvcam/dependencies/include"/>
+                                            <arg value="src/main/java/fiji/plugin/imaging_fcs/directCameraReadout/pvcamsdk/Photometrics_PVCAM_SDK.java"/>
+                                        </exec>
+                                    </target>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+
+        <profile>
+             <id>compile_libs</id>
+            <!-- This profile activates when compile_libs is true -->
+            <activation>
+                <property>
+                    <name>compileLibs</name>
+                    <value>true</value>
+                </property>
+            </activation>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.codehaus.mojo</groupId>
+                        <artifactId>exec-maven-plugin</artifactId>
+                        <version>3.2.0</version>
+                        <executions>
+                            <execution>
+                                <id>cmake-configure</id>
+                                <phase>compile</phase>
+                                <goals>
+                                    <goal>exec</goal>
+                                </goals>
+                                <configuration>
+                                    <executable>cmake</executable>
+                                    <workingDirectory>${project.basedir}/src/main/cpp</workingDirectory>
+                                    <arguments>
+                                        <argument>-Bbuild</argument>
+                                        <argument>-DCMAKE_BUILD_TYPE=Release</argument>
+                                    </arguments>
+                                </configuration>
+                            </execution>
+
+                            <execution>
+                                <id>cmake-build</id>
+                                <phase>compile</phase>
+                                <goals>
+                                    <goal>exec</goal>
+                                </goals>
+                                <configuration>
+                                    <executable>cmake</executable>
+                                    <workingDirectory>${project.basedir}/src/main/cpp/build</workingDirectory>
+                                    <arguments>
+                                        <argument>--build</argument>
+                                        <argument>.</argument>
+                                        <argument>--config</argument>
+                                        <argument>Release</argument>
+                                    </arguments>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 </project>
