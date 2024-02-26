@@ -83,7 +83,7 @@
         </repository>
     </repositories>
 
-    <!-- This part is used to create the header file if needed (specify -DgenerateJniHeaders=true) -->
+    <!-- This part is used to create the header file and/or compile the C++/CUDA libraries if needed -->
     <profiles>
         <profile>
             <id>generate-jni-headers</id>
@@ -133,6 +133,7 @@
                                             </fileset>
                                         </path>
                                         <property name="compile.classpath" refid="compile.classpath"/>
+
                                         <exec executable="javac">
                                             <arg value="-classpath"/>
                                             <arg value="${project.build.directory}/classes"/>
@@ -142,6 +143,7 @@
                                             <arg value="src/main/cpp/gpufit"/>
                                             <arg value="src/main/java/fiji/plugin/imaging_fcs/gpufitImFCS/GpufitImFCS.java"/>
                                         </exec>
+
                                         <exec executable="javac">
                                             <arg value="-classpath"/>
                                             <arg value="${project.build.directory}/classes${path.separator}${compile.classpath}"/>
@@ -151,6 +153,7 @@
                                             <arg value="src/main/cpp/cameras/sdk2/dependencies/include"/>
                                             <arg value="src/main/java/fiji/plugin/imaging_fcs/directCameraReadout/andorsdk2v3/AndorSDK2v3.java"/>
                                         </exec>
+
                                         <exec executable="javac">
                                             <arg value="-classpath"/>
                                             <arg value="${project.build.directory}/classes${path.separator}${compile.classpath}"/>
@@ -160,6 +163,7 @@
                                             <arg value="src/main/cpp/cameras/sdk3/dependencies/include"/>
                                             <arg value="src/main/java/fiji/plugin/imaging_fcs/directCameraReadout/andorsdk3v2/AndorSDK3v2.java"/>
                                         </exec>
+
                                         <exec executable="javac">
                                             <arg value="-classpath"/>
                                             <arg value="${project.build.directory}/classes${path.separator}${compile.classpath}"/>
@@ -169,6 +173,7 @@
                                             <arg value="src/main/cpp/cameras/dcam/dependencies/include"/>
                                             <arg value="src/main/java/fiji/plugin/imaging_fcs/directCameraReadout/hamadcamsdk4/Hamamatsu_DCAM_SDK4.java"/>
                                         </exec>
+
                                         <exec executable="javac">
                                             <arg value="-classpath"/>
                                             <arg value="${project.build.directory}/classes${path.separator}${compile.classpath}"/>
@@ -179,6 +184,61 @@
                                             <arg value="src/main/java/fiji/plugin/imaging_fcs/directCameraReadout/pvcamsdk/Photometrics_PVCAM_SDK.java"/>
                                         </exec>
                                     </target>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+
+        <profile>
+             <id>compile_libs</id>
+            <!-- This profile activates when compile_libs is true -->
+            <activation>
+                <property>
+                    <name>compileLibs</name>
+                    <value>true</value>
+                </property>
+            </activation>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.codehaus.mojo</groupId>
+                        <artifactId>exec-maven-plugin</artifactId>
+                        <version>3.2.0</version>
+                        <executions>
+                            <execution>
+                                <id>cmake-configure</id>
+                                <phase>compile</phase>
+                                <goals>
+                                    <goal>exec</goal>
+                                </goals>
+                                <configuration>
+                                    <executable>cmake</executable>
+                                    <workingDirectory>${project.basedir}/src/main/cpp</workingDirectory>
+                                    <arguments>
+                                        <argument>-Bbuild</argument>
+                                        <argument>-DCMAKE_BUILD_TYPE=Release</argument>
+                                    </arguments>
+                                </configuration>
+                            </execution>
+
+                            <execution>
+                                <id>cmake-build</id>
+                                <phase>compile</phase>
+                                <goals>
+                                    <goal>exec</goal>
+                                </goals>
+                                <configuration>
+                                    <executable>cmake</executable>
+                                    <workingDirectory>${project.basedir}/src/main/cpp/build</workingDirectory>
+                                    <arguments>
+                                        <argument>--build</argument>
+                                        <argument>.</argument>
+                                        <argument>--config</argument>
+                                        <argument>Release</argument>
+                                    </arguments>
                                 </configuration>
                             </execution>
                         </executions>
