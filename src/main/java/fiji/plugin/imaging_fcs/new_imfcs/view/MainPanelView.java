@@ -14,7 +14,7 @@ import static fiji.plugin.imaging_fcs.version.VERSION.IMFCS_VERSION;
 
 /**
  * The MainPanelView class defines the GUI for the Imaging FCS plugin in Fiji.
- * It extends JFrame and uses a MainPanelController to handle events.
+ * It extends BaseView and uses a MainPanelController to handle events.
  */
 public class MainPanelView extends BaseView {
     // Constants for UI design

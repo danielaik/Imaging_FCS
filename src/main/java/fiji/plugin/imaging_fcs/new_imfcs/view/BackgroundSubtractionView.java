@@ -9,6 +9,11 @@ import java.awt.*;
 
 import static fiji.plugin.imaging_fcs.new_imfcs.view.UIUtils.createJLabel;
 
+/**
+ * Sets up a dialog for selecting a background subtraction method and configuring its parameters.
+ * Users can choose among several methods, input constant background values, and see the status of background
+ * image loading. There's also an option to specify if subtraction should be applied after bleach correction.
+ */
 public class BackgroundSubtractionView extends BaseView {
     private static final GridLayout BACKGROUND_SUBTRACTION_LAYOUT = new GridLayout(4, 2);
     private static final Point BACKGROUND_SUBTRACTION_LOCATION = new Point(800, 355);
@@ -16,14 +21,16 @@ public class BackgroundSubtractionView extends BaseView {
 
     private final BackgroundSubtractionController controller;
 
+    // UI components
     private JComboBox<String> cbBackgroundSubtractionMethod;
-
-    private JTextField tfBackground;
-    private JTextField tfBackground2;
-    private JTextField tfBGRLoadStatus;
-
+    private JTextField tfBackground, tfBackground2, tfBGRLoadStatus;
     private JRadioButton rbtnIsSubtractionAfterBleachCorrection;
 
+    /**
+     * Initializes the view with the specified background subtraction controller.
+     *
+     * @param controller Controls background subtraction operations.
+     */
     public BackgroundSubtractionView(BackgroundSubtractionController controller) {
         super("Background subtraction method selection");
         this.controller = controller;
@@ -83,6 +90,11 @@ public class BackgroundSubtractionView extends BaseView {
         add(tfBGRLoadStatus);
     }
 
+    /**
+     * Updates the status text and color based on the success or failure of background image loading.
+     *
+     * @param loaded Indicates whether the background image was successfully loaded.
+     */
     public void updateStatusOnImageLoad(boolean loaded) {
         if (loaded) {
             tfBGRLoadStatus.setText("Successfully loaded background file.");
@@ -93,11 +105,19 @@ public class BackgroundSubtractionView extends BaseView {
         }
     }
 
+    /**
+     * Enables or disables the text fields for entering background values.
+     *
+     * @param enabled If true, the fields are enabled; otherwise, they are disabled.
+     */
     public void setEnableBackgroundTextField(boolean enabled) {
         tfBackground.setEnabled(enabled);
         tfBackground2.setEnabled(enabled);
     }
 
+    /**
+     * Unselects the radio button for subtraction after bleach correction with a warning message.
+     */
     public void unselectSubtractionAfterBleachCorrection() {
         if (rbtnIsSubtractionAfterBleachCorrection.isSelected()) {
             rbtnIsSubtractionAfterBleachCorrection.setSelected(false);

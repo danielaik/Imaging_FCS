@@ -12,7 +12,7 @@ import static fiji.plugin.imaging_fcs.new_imfcs.view.UIUtils.createJLabel;
 
 /**
  * Provides the user interface for adjusting and displaying experimental settings in the imaging FCS application.
- * This class extends JFrame to create a window where users can input and view settings such as pixel size,
+ * This class extends BaseView to create a window where users can input and view settings such as pixel size,
  * magnification, numerical aperture, and more. It also displays calculated parameters based on these settings.
  */
 public class ExpSettingsView extends BaseView {
@@ -67,6 +67,9 @@ public class ExpSettingsView extends BaseView {
         setVisible(false);
     }
 
+    /**
+     * Initialize text fields with callbacks that will update the model values if modified by the user.
+     */
     @Override
     protected void initializeTextFields() {
         // Initialize editable fields with model data and controller actions

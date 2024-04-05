@@ -14,7 +14,7 @@ import static fiji.plugin.imaging_fcs.new_imfcs.view.TextFieldFactory.createText
 import static fiji.plugin.imaging_fcs.new_imfcs.view.UIUtils.createJLabel;
 
 /**
- * The SimulationView class extends JFrame and is responsible for creating the GUI for the simulation panel.
+ * The SimulationView class extends BaseView and is responsible for creating the GUI for the simulation panel.
  * It initializes and displays various UI components like buttons, text fields, and combo boxes that
  * allow users to input simulation parameters and control the simulation process.
  */
