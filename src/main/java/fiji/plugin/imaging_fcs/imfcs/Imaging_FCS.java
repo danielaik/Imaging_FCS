@@ -13066,8 +13066,8 @@ public class Imaging_FCS implements PlugIn {
         // initialframe and finalframe provide the range of frames to be used
         // isDCsubtract: whether to perform constant value subtraction
         int ave = (int) Math.floor((finalframe - initialframe + 1) / nopit); // calculate number of data points which are averaged
-        int sum1;
-        int sum2;
+        double sum1;
+        double sum2;
         int bckg1 = background;
         int bckg2 = background;	//needs to be adapted for background2 once available
 
@@ -13110,8 +13110,8 @@ public class Imaging_FCS implements PlugIn {
         // imageType: 1 - accept raw imp (16-bit); 2 - accept bleach corrected imp (32-bit). 32-bit bleach corrected image follows the same shape as output parameter maps
 
         int ave = (int) Math.floor((finalframe - initialframe + 1) / nopit); // calculate number of data points which are averaged
-        int sum1;
-        int sum2;
+        double sum1;
+        double sum2;
         int bckg1 = background;
         int bckg2 = background;	//needs to be adapted for background2 once available
         int imageType;
