@@ -32,6 +32,7 @@ public class MainPanelController {
     private final ImageController imageController;
     private final ExpSettingsModel expSettingsModel;
     private final SimulationController simulationController;
+    private final BackgroundSubtractionController backgroundSubtractionController;
 
     /**
      * Constructor that initializes models, views, and other controllers needed for the main panel.
@@ -50,6 +51,8 @@ public class MainPanelController {
         updateSettingsField();
 
         this.simulationController = new SimulationController(imageController, expSettingsModel);
+
+        this.backgroundSubtractionController = new BackgroundSubtractionController();
 
         this.view = new MainPanelView(this, this.expSettingsModel);
     }
@@ -239,8 +242,10 @@ public class MainPanelController {
     }
 
     public ItemListener tbBackgroundPressed() {
-        // TODO: FIXME
-        return null;
+        return (ItemEvent ev) -> {
+            boolean selected = (ev.getStateChange() == ItemEvent.SELECTED);
+            backgroundSubtractionController.setVisible(selected);
+        };
     }
 
     /**
