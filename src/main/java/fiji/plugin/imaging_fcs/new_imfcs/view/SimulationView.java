@@ -3,7 +3,6 @@ package fiji.plugin.imaging_fcs.new_imfcs.view;
 import fiji.plugin.imaging_fcs.new_imfcs.constants.Constants;
 import fiji.plugin.imaging_fcs.new_imfcs.controller.SimulationController;
 import fiji.plugin.imaging_fcs.new_imfcs.model.SimulationModel;
-import ij.IJ;
 
 import javax.swing.*;
 import java.awt.*;
@@ -19,7 +18,7 @@ import static fiji.plugin.imaging_fcs.new_imfcs.view.UIUtils.createJLabel;
  * It initializes and displays various UI components like buttons, text fields, and combo boxes that
  * allow users to input simulation parameters and control the simulation process.
  */
-public class SimulationView extends JFrame {
+public class SimulationView extends BaseView {
     // Constants
     private static final GridLayout SIMULATION_LAYOUT = new GridLayout(16, 4);
     private static final Point SIMULATION_LOCATION = new Point(
@@ -56,39 +55,24 @@ public class SimulationView extends JFrame {
     }
 
     /**
-     * Initializes the UI components and configures the layout of the simulation window.
-     */
-    private void initializeUI() {
-        configureWindow();
-        initializeComboBoxes();
-        initializeTextFields();
-        try {
-            initializeButtons();
-        } catch (Exception e) {
-            IJ.log(e.getMessage());
-        }
-
-        disable_fields();
-
-        addComponentsToFrame();
-    }
-
-    /**
      * Configures basic window properties such as size, location, and behavior on close.
      */
-    private void configureWindow() {
-        setFocusable(true);
-        setDefaultCloseOperation(DO_NOTHING_ON_CLOSE);
+    @Override
+    protected void configureWindow() {
+        super.configureWindow();
+
         setLayout(SIMULATION_LAYOUT);
         setLocation(SIMULATION_LOCATION);
         setSize(SIMULATION_DIM);
-        setResizable(false);
+
+        setVisible(false);
     }
 
     /**
      * Initializes the combo boxes and sets up their action listeners.
      */
-    private void initializeComboBoxes() {
+    @Override
+    protected void initializeComboBoxes() {
         cbMode = new JComboBox<>(new String[]{
                 "2D (free)", "2D (domains)", "2D (mesh)", "3D (free)"});
         cbMode.addActionListener(controller.cbModeChanged());
@@ -97,7 +81,8 @@ public class SimulationView extends JFrame {
     /**
      * Initializes text fields with model data and focus listeners for updating model values.
      */
-    private void initializeTextFields() {
+    @Override
+    protected void initializeTextFields() {
         tfSeed = createTextField(model.getSeed(), "", createFocusListener(model::setSeed));
         tfNumParticle = createTextField(model.getNumParticles(), "", createFocusListener(model::setNumParticles));
         tfCPS = createTextField(model.getCPS(), "", createFocusListener(model::setCPS));
@@ -131,7 +116,8 @@ public class SimulationView extends JFrame {
     /**
      * Initialize buttons and set their listeners.
      */
-    private void initializeButtons() throws Exception {
+    @Override
+    protected void initializeButtons() {
         btnSimulate = createJButton("Simulate", "", null, controller.btnSimulatePressed());
         btnBatchSim = createJButton("Batch", "Run multiple simulations", null, controller.btnBatchSimPressed());
         btnStopSimulation = createJButton("Stop", "Stops running simulations", null,
@@ -201,7 +187,10 @@ public class SimulationView extends JFrame {
      * This method systematically arranges all the interactive and informational elements of the simulation panel,
      * facilitating user interaction and providing necessary details about each simulation parameter.
      */
-    private void addComponentsToFrame() {
+    @Override
+    protected void addComponentsToFrame() {
+        disable_fields();
+
         // row 1
         add(createJLabel("Mode", ""));
         add(cbMode);

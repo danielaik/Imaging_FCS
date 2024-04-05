@@ -3,7 +3,6 @@ package fiji.plugin.imaging_fcs.new_imfcs.view;
 import fiji.plugin.imaging_fcs.new_imfcs.constants.Constants;
 import fiji.plugin.imaging_fcs.new_imfcs.controller.MainPanelController;
 import fiji.plugin.imaging_fcs.new_imfcs.model.ExpSettingsModel;
-import ij.IJ;
 
 import javax.swing.*;
 import java.awt.*;
@@ -17,7 +16,7 @@ import static fiji.plugin.imaging_fcs.version.VERSION.IMFCS_VERSION;
  * The MainPanelView class defines the GUI for the Imaging FCS plugin in Fiji.
  * It extends JFrame and uses a MainPanelController to handle events.
  */
-public class MainPanelView extends JFrame {
+public class MainPanelView extends BaseView {
     // Constants for UI design
     private static final GridLayout PANEL_LAYOUT = new GridLayout(14, 4);
     private static final String CORREL_Q = "8";
@@ -62,32 +61,17 @@ public class MainPanelView extends JFrame {
     }
 
     /**
-     * Initializes the user interface components and layout.
-     */
-    private void initializeUI() {
-        configureWindow();
-        initializeTextFields();
-        initializeComboBoxes();
-
-        try {
-            addComponentsToFrame();
-        } catch (Exception e) {
-            IJ.log(e.getMessage());
-        }
-
-        setVisible(true);
-    }
-
-    /**
      * Configures basic window properties.
      */
-    private void configureWindow() {
-        setFocusable(true);
-        setDefaultCloseOperation(DO_NOTHING_ON_CLOSE);
+    @Override
+    protected void configureWindow() {
+        super.configureWindow();
+
         setLayout(PANEL_LAYOUT);
         setLocation(Constants.MAIN_PANEL_POS);
         setSize(Constants.MAIN_PANEL_DIM);
-        setResizable(false);
+
+        setVisible(true);
     }
 
     /**
@@ -96,7 +80,8 @@ public class MainPanelView extends JFrame {
      * initial values and tooltips to guide the user. Listeners are attached to fields to handle
      * changes in input, triggering appropriate actions in the application.
      */
-    private void initializeTextFields() {
+    @Override
+    protected void initializeTextFields() {
         tfFirstFrame = createTextField("1", "", controller.tfFirstFrameChanged());
 
         tfFrameTime = createTextField(
@@ -121,7 +106,8 @@ public class MainPanelView extends JFrame {
      * This method sets up combo boxes used for selecting options in the main panel. It also
      * attaches action listeners to some combo boxes to handle user selections.
      */
-    private void initializeComboBoxes() {
+    @Override
+    protected void initializeComboBoxes() {
         cbFitModel = new JComboBox<>(new String[]{"ITIR-FCS (2D)", "SPIM-FCS (3D)", "DC-FCCS (2D)"});
         cbCorrelatorP = new JComboBox<>(new String[]{"16", "32"});
         cbFilter = new JComboBox<>(new String[]{"none", "Intensity", "Mean"});
@@ -154,7 +140,8 @@ public class MainPanelView extends JFrame {
      *
      * @throws Exception if there is an error adding components to the frame.
      */
-    private void addComponentsToFrame() throws Exception {
+    @Override
+    protected void addComponentsToFrame() {
         // create the IO colored buttons
         JButton btnSave = createJButton("Save",
                 "Save the evaluation of the data as binary files. Which data to save can be selected in a dialog.",
@@ -258,12 +245,12 @@ public class MainPanelView extends JFrame {
         // row 12
         add(createJButton("PSF", "Calculates the calibration for the PSF.", null, controller.btnPSFPressed()));
         add(createJToggleButton("Diff. Law", "Calculates the Diffusion Law.", null, controller.tbDLPressed()));
-        add(createJToggleButton("Fit off", "Switches Fit on/off; opens/closes Fit panel.", null,
+        add(createJToggleButton("Fit Off", "Switches Fit on/off; opens/closes Fit panel.", null,
                 controller.tbFitPressed()));
         add(createJButton("All", "Calculates all ACFs.", null, controller.btnAllPressed()));
 
         // row 13
-        add(createJToggleButton("Sim off", "Opens/closes Simulation panel.", null, controller.tbSimPressed()));
+        add(createJToggleButton("Sim Off", "Opens/closes Simulation panel.", null, controller.tbSimPressed()));
         add(createJButton("Res. Table", "Create a results table.", null, controller.btnRTPressed()));
         add(createJToggleButton("MSD Off", "Switches Mean Square Displacement calculation and plot on/off.",
                 null, controller.tbMSDPressed()));

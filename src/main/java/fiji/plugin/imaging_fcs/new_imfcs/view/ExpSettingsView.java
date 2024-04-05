@@ -15,7 +15,7 @@ import static fiji.plugin.imaging_fcs.new_imfcs.view.UIUtils.createJLabel;
  * This class extends JFrame to create a window where users can input and view settings such as pixel size,
  * magnification, numerical aperture, and more. It also displays calculated parameters based on these settings.
  */
-public class ExpSettingsView extends JFrame {
+public class ExpSettingsView extends BaseView {
     private static final GridLayout SETTINGS_LAYOUT = new GridLayout(11, 4);
     private static final Point SETTINGS_LOCATION = new Point(
             Constants.MAIN_PANEL_POS.x + Constants.MAIN_PANEL_DIM.width + 10, 125);
@@ -54,27 +54,21 @@ public class ExpSettingsView extends JFrame {
     }
 
     /**
-     * Configures the main window settings, initializes text fields for user input, and adds components to the frame.
-     */
-    private void initializeUI() {
-        configureWindow();
-        initializeTextFields();
-        addComponentsToFrame();
-    }
-
-    /**
      * Sets up the basic window properties such as size, layout, and default close operation.
      */
-    private void configureWindow() {
-        setFocusable(true);
-        setDefaultCloseOperation(DO_NOTHING_ON_CLOSE);
+    @Override
+    protected void configureWindow() {
+        super.configureWindow();
+
         setLayout(SETTINGS_LAYOUT);
         setLocation(SETTINGS_LOCATION);
         setSize(SETTINGS_DIMENSION);
-        setResizable(false);
+
+        setVisible(false);
     }
 
-    private void initializeTextFields() {
+    @Override
+    protected void initializeTextFields() {
         // Initialize editable fields with model data and controller actions
         tfPixelSize = createTextField(model.getPixelSize(), "", controller.updateSettings(model::setPixelSize));
         tfMagnification = createTextField(model.getMagnification(), "", controller.updateSettings(model::setMagnification));
@@ -111,7 +105,8 @@ public class ExpSettingsView extends JFrame {
     /**
      * Adds UI components to the frame, organizing them according to the layout for the settings panel.
      */
-    private void addComponentsToFrame() {
+    @Override
+    protected void addComponentsToFrame() {
         // row 1
         add(createJLabel("Pixel size [um]:", ""));
         add(tfPixelSize);

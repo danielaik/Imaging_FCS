@@ -9,7 +9,7 @@ import java.awt.*;
 
 import static fiji.plugin.imaging_fcs.new_imfcs.view.UIUtils.createJLabel;
 
-public class BackgroundSubtractionView extends JFrame {
+public class BackgroundSubtractionView extends BaseView {
     private static final GridLayout BACKGROUND_SUBTRACTION_LAYOUT = new GridLayout(4, 2);
     private static final Point BACKGROUND_SUBTRACTION_LOCATION = new Point(800, 355);
     private static final Dimension BACKGROUND_SUBTRACTION_DIM = new Dimension(450, 180);
@@ -31,28 +31,20 @@ public class BackgroundSubtractionView extends JFrame {
         initializeUI();
     }
 
-    private void initializeUI() {
-        configureWindow();
+    @Override
+    protected void configureWindow() {
+        super.configureWindow();
 
-        initializeComboBoxes();
-        initializeTextFields();
-        initializeButtons();
-
-        addComponentsToFrame();
-    }
-
-    private void configureWindow() {
-        setFocusable(true);
         setDefaultCloseOperation(DO_NOTHING_ON_CLOSE);
         setLayout(BACKGROUND_SUBTRACTION_LAYOUT);
         setLocation(BACKGROUND_SUBTRACTION_LOCATION);
         setSize(BACKGROUND_SUBTRACTION_DIM);
-        setResizable(false);
 
         setVisible(false);
     }
 
-    private void initializeComboBoxes() {
+    @Override
+    protected void initializeComboBoxes() {
         cbBackgroundSubtractionMethod = new JComboBox<>(new String[]{
                 "Constant Background", "Min frame by frame", "Min per image stack", "Min Pixel wise per image stack",
                 "Load BGR image"
@@ -60,7 +52,8 @@ public class BackgroundSubtractionView extends JFrame {
         cbBackgroundSubtractionMethod.addActionListener(controller.cbBackgroundSubtractionMethodChanged());
     }
 
-    private void initializeTextFields() {
+    @Override
+    protected void initializeTextFields() {
         tfBackground = TextFieldFactory.createTextField("0", "");
         tfBackground2 = TextFieldFactory.createTextField("0", "");
 
@@ -70,11 +63,13 @@ public class BackgroundSubtractionView extends JFrame {
         tfBGRLoadStatus.setFont(new Font(Constants.PANEL_FONT, Font.BOLD, Constants.PANEL_FONT_SIZE));
     }
 
-    private void initializeButtons() {
+    @Override
+    protected void initializeButtons() {
         rbtnIsSubtractionAfterBleachCorrection = new JRadioButton("Subtract after bleach correction");
     }
 
-    private void addComponentsToFrame() {
+    @Override
+    protected void addComponentsToFrame() {
         add(createJLabel("Background correction method: ", ""));
         add(cbBackgroundSubtractionMethod);
 
