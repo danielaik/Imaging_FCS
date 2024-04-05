@@ -63,9 +63,11 @@ public class SimulationController {
      * @param view The BatchSimulationView containing user-defined parameters for batch simulation.
      */
     public void runBatchSimulation(BatchSimulationView view) {
-        double[] batchD1 = new double[]{view.getNextNumber(), view.getNextNumber(), view.getNextNumber()};
-        double[] batchD2 = new double[]{view.getNextNumber(), view.getNextNumber(), view.getNextNumber()};
-        double[] batchF2 = new double[]{view.getNextNumber(), view.getNextNumber(), view.getNextNumber()};
+        // get the range user values for D1, D2 and F2. It is stored as an array with the first index being the
+        // start of the range, the second being the end of the range and the last index being the step size
+        double[] rangeD1 = new double[]{view.getNextNumber(), view.getNextNumber(), view.getNextNumber()};
+        double[] rangeD2 = new double[]{view.getNextNumber(), view.getNextNumber(), view.getNextNumber()};
+        double[] rangeF2 = new double[]{view.getNextNumber(), view.getNextNumber(), view.getNextNumber()};
 
         JFileChooser fc = new JFileChooser();
         fc.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
@@ -87,7 +89,7 @@ public class SimulationController {
             simulationView.enableBtnSimulate(false);
             simulationView.enableBtnBatch(false);
 
-            simulationModel.runBatch(path, batchD1, batchD2, batchF2);
+            simulationModel.runBatch(path, rangeD1, rangeD2, rangeF2);
         }
     }
 

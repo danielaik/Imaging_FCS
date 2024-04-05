@@ -97,11 +97,11 @@ public class SimulationModel {
      * Initiates batch simulations based on provided parameter ranges, handling each simulation in separate threads.
      *
      * @param path    Directory for saving batch simulation results.
-     * @param batchD1 Range for D1 parameter.
-     * @param batchD2 Range for D2 parameter.
-     * @param batchF2 Range for F2 parameter.
+     * @param rangeD1 Range for D1 parameter.
+     * @param rangeD2 Range for D2 parameter.
+     * @param rangeF2 Range for F2 parameter.
      */
-    public void runBatch(File path, double[] batchD1, double[] batchD2, double[] batchF2) {
+    public void runBatch(File path, double[] rangeD1, double[] rangeD2, double[] rangeF2) {
         simulationWorkers = new ArrayList<>();
 
         // Store the initial values to restore them later
@@ -109,13 +109,13 @@ public class SimulationModel {
         double initialD2 = this.D2;
         double initialF2 = this.F2;
 
-        for (double D1 = batchD1[0]; D1 <= batchD1[1]; D1 += batchD1[2]) {
+        for (double D1 = rangeD1[0]; D1 <= rangeD1[1]; D1 += rangeD1[2]) {
             this.D1 = D1 / DIFFUSION_COEFFICIENT_BASE;
 
-            for (double D2 = batchD2[0]; D2 <= batchD2[1]; D2 += batchD2[2]) {
+            for (double D2 = rangeD2[0]; D2 <= rangeD2[1]; D2 += rangeD2[2]) {
                 this.D2 = D2 / DIFFUSION_COEFFICIENT_BASE;
 
-                for (double F2 = batchF2[0]; F2 <= batchF2[1]; F2 += batchF2[2]) {
+                for (double F2 = rangeF2[0]; F2 <= rangeF2[1]; F2 += rangeF2[2]) {
                     this.F2 = F2;
 
                     try {

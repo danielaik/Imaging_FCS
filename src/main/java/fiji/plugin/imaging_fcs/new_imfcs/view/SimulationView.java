@@ -31,7 +31,7 @@ public class SimulationView extends JFrame {
     private final SimulationModel model;
 
     // ComboBoxes
-    public JComboBox<String> cbMode;
+    private JComboBox<String> cbMode;
     // TextFields
     private JTextField tfSeed, tfNumParticle, tfCPS, tfTauBleach, tfPixelNum, tfExtensionFactor, tfNumFrames,
             tfFrameTime, tfStepsPerFrame, tfCurrentStepSize, tfD1, tfDoutDinRatio, tfD2, tfF2, tfD3, tfF3, tfKon,
