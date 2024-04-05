@@ -52,7 +52,7 @@ public class MainPanelController {
 
         this.simulationController = new SimulationController(imageController, expSettingsModel);
 
-        this.backgroundSubtractionController = new BackgroundSubtractionController();
+        this.backgroundSubtractionController = new BackgroundSubtractionController(imageModel);
 
         this.view = new MainPanelView(this, this.expSettingsModel);
     }

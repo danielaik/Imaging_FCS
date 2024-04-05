@@ -5,6 +5,7 @@ import ij.ImagePlus;
 import ij.gui.ImageCanvas;
 import ij.gui.ImageWindow;
 
+import javax.swing.*;
 import java.util.EventListener;
 import java.util.function.Consumer;
 
@@ -25,6 +26,10 @@ public class ImageModel {
         this.image = null;
     }
 
+    private boolean isImageLoaded() {
+        return image != null && image.getWindow() != null;
+    }
+
     /**
      * Loads an image into the model, checking its type and extracting its path and file name.
      * Only images of type GRAY16 are supported.
@@ -35,7 +40,7 @@ public class ImageModel {
     public void loadImage(ImagePlus image, boolean simulation) {
         checkImage(image);
         // If an image is already loaded, unload it
-        if (this.image != null) {
+        if (isImageLoaded()) {
             unloadImage();
         }
 
@@ -48,11 +53,6 @@ public class ImageModel {
     }
 
     private void unloadImage() {
-        // if no image is load or the window is closed, do nothing
-        if (image.getWindow() == null) {
-            return;
-        }
-
         if (image.getOverlay() != null) {
             image.deleteRoi();
             image.getOverlay().clear();
@@ -70,6 +70,39 @@ public class ImageModel {
         for (T listener : listeners) {
             removeListenerFunction.accept(listener);
         }
+    }
+
+    public boolean loadBackgroundImage() {
+        if (!isImageLoaded()) {
+            throw new RuntimeException("No Image loaded, please load an image before loading a background.");
+        }
+
+        ImagePlus backgroundImg = null;
+
+        JFileChooser fc = new JFileChooser();
+        fc.setFileSelectionMode(JFileChooser.FILES_ONLY);
+        fc.setMultiSelectionEnabled(false);
+        if (fc.showDialog(null, "Choose background file") == JFileChooser.APPROVE_OPTION) {
+            backgroundImg = IJ.openImage(fc.getSelectedFile().getAbsolutePath());
+            if (backgroundImg == null) {
+                IJ.showMessage("Selected file does not exist or it is not an image.");
+                return false;
+            }
+
+            checkImage(backgroundImg);
+        } else {
+            IJ.showMessage("No background image loaded.");
+            return false;
+        }
+
+        if (backgroundImg.getWidth() != image.getWidth() ||
+                backgroundImg.getHeight() != image.getWidth() ||
+                backgroundImg.getStackSize() != image.getStackSize()) {
+            throw new RuntimeException("Background image is not the same size as Image. Background image not loaded");
+        }
+
+        // TODO: Compute covariance and row and columns means, just need to see where it is actually used
+        return true;
     }
 
     public void adapt_image_scale() {

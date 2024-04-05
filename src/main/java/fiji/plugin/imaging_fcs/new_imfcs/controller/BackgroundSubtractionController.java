@@ -1,17 +1,19 @@
 package fiji.plugin.imaging_fcs.new_imfcs.controller;
 
+import fiji.plugin.imaging_fcs.new_imfcs.model.ImageModel;
 import fiji.plugin.imaging_fcs.new_imfcs.view.BackgroundSubtractionView;
 import ij.IJ;
-import ij.ImagePlus;
 
 import javax.swing.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 
 public class BackgroundSubtractionController {
+    private final ImageModel imageModel;
     private final BackgroundSubtractionView view;
 
-    public BackgroundSubtractionController() {
+    public BackgroundSubtractionController(ImageModel imageModel) {
+        this.imageModel = imageModel;
         view = new BackgroundSubtractionView(this);
     }
 
@@ -39,33 +41,22 @@ public class BackgroundSubtractionController {
                     view.unselectSubtractionAfterBleachCorrection();
 
                     // Try to load image, revert to other background subtraction method if no background file is loaded
-                    if (!loadBGRFile()) {
+                    boolean loaded = false;
+                    try {
+                        loaded = imageModel.loadBackgroundImage();
+                    } catch (RuntimeException e) {
+                        IJ.showMessage(e.getMessage());
+                    }
+
+                    if (loaded) {
+                        view.updateStatusOnImageLoad(true);
+                    } else {
                         ((JComboBox<?>) ev.getSource()).setSelectedIndex(0);
                         view.setEnableBackgroundTextField(true);
                         view.updateStatusOnImageLoad(false);
-                    } else {
-                        view.updateStatusOnImageLoad(true);
                     }
                     break;
             }
         };
-    }
-
-    private boolean loadBGRFile() {
-        JFileChooser fc = new JFileChooser();
-        fc.setFileSelectionMode(JFileChooser.FILES_ONLY);
-        fc.setMultiSelectionEnabled(false);
-        if (fc.showDialog(null, "Choose background file") == JFileChooser.APPROVE_OPTION) {
-            ImagePlus background_img = IJ.openImage(fc.getSelectedFile().getAbsolutePath());
-            if (background_img == null) {
-                IJ.showMessage("Selected file does not exist or it is not an image.");
-                return false;
-            }
-        } else {
-            IJ.showMessage("No background image loaded.");
-            return false;
-        }
-
-        return true;
     }
 }
