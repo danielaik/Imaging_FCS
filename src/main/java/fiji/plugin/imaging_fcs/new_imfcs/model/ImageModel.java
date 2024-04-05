@@ -5,7 +5,6 @@ import ij.ImagePlus;
 import ij.gui.ImageCanvas;
 import ij.gui.ImageWindow;
 
-import javax.swing.*;
 import java.util.EventListener;
 import java.util.function.Consumer;
 
@@ -15,6 +14,7 @@ import java.util.function.Consumer;
 public class ImageModel {
     private static final double ZOOM_FACTOR = 250;
     public ImagePlus image;
+    public ImagePlus backgroundImage;
     private String imagePath;
     private String fileName;
     private boolean isSimulation;
@@ -24,6 +24,7 @@ public class ImageModel {
      */
     public ImageModel() {
         this.image = null;
+        this.backgroundImage = null;
     }
 
     private boolean isImageLoaded() {
@@ -31,14 +32,38 @@ public class ImageModel {
     }
 
     /**
+     * Validates that the provided ImagePlus object is of the correct type (GRAY16).
+     *
+     * @param image The ImagePlus object to check.
+     * @throws RuntimeException if the image type is not GRAY16.
+     */
+    private void checkImage(ImagePlus image) {
+        if (image.getType() != ImagePlus.GRAY16) {
+            throw new RuntimeException("Only GRAY16 Tiff stacks supported");
+        }
+    }
+
+    private boolean areNotSameSize(ImagePlus img1, ImagePlus img2) {
+        return img1.getWidth() != img2.getWidth() ||
+                img1.getHeight() != img2.getHeight() ||
+                img1.getStackSize() != img2.getStackSize();
+    }
+
+    /**
      * Loads an image into the model, checking its type and extracting its path and file name.
      * Only images of type GRAY16 are supported.
      *
      * @param image The ImagePlus object to load into the model.
-     * @throws RuntimeException if the image is not of type GRAY16.
+     * @throws RuntimeException if the image is not of type GRAY16 or if the size doesn't match with the background.
      */
     public void loadImage(ImagePlus image, boolean simulation) {
         checkImage(image);
+
+        // if a background image is loaded, check that there are the same format
+        if (backgroundImage != null && areNotSameSize(image, backgroundImage)) {
+            throw new RuntimeException("Image is not the same size as the background image");
+        }
+
         // If an image is already loaded, unload it
         if (isImageLoaded()) {
             unloadImage();
@@ -72,35 +97,19 @@ public class ImageModel {
         }
     }
 
-    public boolean loadBackgroundImage() {
-        if (!isImageLoaded()) {
-            throw new RuntimeException("No Image loaded, please load an image before loading a background.");
-        }
-
-        ImagePlus backgroundImg = null;
-
-        JFileChooser fc = new JFileChooser();
-        fc.setFileSelectionMode(JFileChooser.FILES_ONLY);
-        fc.setMultiSelectionEnabled(false);
-        if (fc.showDialog(null, "Choose background file") == JFileChooser.APPROVE_OPTION) {
-            backgroundImg = IJ.openImage(fc.getSelectedFile().getAbsolutePath());
-            if (backgroundImg == null) {
-                IJ.showMessage("Selected file does not exist or it is not an image.");
-                return false;
-            }
-
-            checkImage(backgroundImg);
-        } else {
-            IJ.showMessage("No background image loaded.");
+    public boolean loadBackgroundImage(ImagePlus backgroundImage) {
+        if (backgroundImage == null) {
+            IJ.showMessage("Selected file does not exist or it is not an image.");
             return false;
         }
 
-        if (backgroundImg.getWidth() != image.getWidth() ||
-                backgroundImg.getHeight() != image.getWidth() ||
-                backgroundImg.getStackSize() != image.getStackSize()) {
+        checkImage(backgroundImage);
+
+        if (isImageLoaded() && areNotSameSize(image, backgroundImage)) {
             throw new RuntimeException("Background image is not the same size as Image. Background image not loaded");
         }
 
+        this.backgroundImage = backgroundImage;
         // TODO: Compute covariance and row and columns means, just need to see where it is actually used
         return true;
     }
@@ -127,18 +136,6 @@ public class ImageModel {
     }
 
     /**
-     * Validates that the provided ImagePlus object is of the correct type (GRAY16).
-     *
-     * @param image The ImagePlus object to check.
-     * @throws RuntimeException if the image type is not GRAY16.
-     */
-    private void checkImage(ImagePlus image) {
-        if (image.getType() != ImagePlus.GRAY16) {
-            throw new RuntimeException("Only GRAY16 Tiff stacks supported");
-        }
-    }
-
-    /**
      * Extracts and stores the path and file name from the ImagePlus object's FileInfo.
      */
     private void getImagePath() {
@@ -151,6 +148,10 @@ public class ImageModel {
      */
     public void show() {
         image.show();
+    }
+
+    public void resetBackgroundImage() {
+        backgroundImage = null;
     }
 
     // List of getters

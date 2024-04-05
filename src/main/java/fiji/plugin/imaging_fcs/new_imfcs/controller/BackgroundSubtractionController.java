@@ -25,6 +25,7 @@ public class BackgroundSubtractionController {
         return (ActionEvent ev) -> {
             String method = ControllerUtils.getComboBoxSelectionFromEvent(ev);
             view.setEnableBackgroundTextField(false);
+            imageModel.resetBackgroundImage();
 
             switch (method) {
                 case "Constant Background":
@@ -43,7 +44,7 @@ public class BackgroundSubtractionController {
                     // Try to load image, revert to other background subtraction method if no background file is loaded
                     boolean loaded = false;
                     try {
-                        loaded = imageModel.loadBackgroundImage();
+                        loaded = imageModel.loadBackgroundImage(IJ.openImage());
                     } catch (RuntimeException e) {
                         IJ.showMessage(e.getMessage());
                     }
