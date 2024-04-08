@@ -10,6 +10,7 @@ import java.awt.*;
  */
 public class ExpSettingsModel {
     // User parameters with default values
+    //// Parameter that updates the non-user parameters
     private final Point binning = new Point(1, 1);
     private final Dimension CCF = new Dimension(0, 0);
     private double pixelSize = 24;
@@ -21,6 +22,19 @@ public class ExpSettingsModel {
     private double emLamdba2 = 600;
     private double sigmaZ = 1000000;
     private double sigmaZ2 = 1000000;
+
+    //// Other user parameters
+    private int firstFrame = 1;
+    private int lastFrame = 1;
+    private double frameTime = 0.001;
+    private int correlatorP = 16;
+    private int correlatorQ = 8;
+    private String fitModel = "ITIR-FCS (2D)";
+    private String scatter = "N vs D";
+    private String dCCF = "x direction";
+    private String bleachCorrection = "none";
+    private String filter = "none";
+    private boolean FCSSDisp = false;
 
     // Non-user parameters (compute using user parameters)
     private double paramA;
@@ -187,5 +201,93 @@ public class ExpSettingsModel {
 
     public double getParamW2() {
         return paramW2;
+    }
+
+    public int getFirstFrame() {
+        return firstFrame;
+    }
+
+    public void setFirstFrame(String firstFrame) {
+        this.firstFrame = Integer.parseInt(firstFrame);
+    }
+
+    public int getLastFrame() {
+        return lastFrame;
+    }
+
+    public void setLastFrame(String lastFrame) {
+        this.lastFrame = Integer.parseInt(lastFrame);
+    }
+
+    public double getFrameTime() {
+        return frameTime;
+    }
+
+    public void setFrameTime(String frameTime) {
+        this.frameTime = Double.parseDouble(frameTime);
+    }
+
+    public int getCorrelatorP() {
+        return correlatorP;
+    }
+
+    public void setCorrelatorP(String correlatorP) {
+        this.correlatorP = Integer.parseInt(correlatorP);
+    }
+
+    public int getCorrelatorQ() {
+        return correlatorQ;
+    }
+
+    public void setCorrelatorQ(String correlatorQ) {
+        this.correlatorQ = Integer.parseInt(correlatorQ);
+    }
+
+    public String getFitModel() {
+        return fitModel;
+    }
+
+    public void setFitModel(String fitModel) {
+        this.fitModel = fitModel;
+    }
+
+    public String getScatter() {
+        return scatter;
+    }
+
+    public void setScatter(String scatter) {
+        this.scatter = scatter;
+    }
+
+    public String getdCCF() {
+        return dCCF;
+    }
+
+    public void setdCCF(String dCCF) {
+        this.dCCF = dCCF;
+    }
+
+    public String getBleachCorrection() {
+        return bleachCorrection;
+    }
+
+    public void setBleachCorrection(String bleachCorrection) {
+        this.bleachCorrection = bleachCorrection;
+    }
+
+    public String getFilter() {
+        return filter;
+    }
+
+    public void setFilter(String filter) {
+        this.filter = filter;
+    }
+
+    public boolean isFCSSDisp() {
+        return FCSSDisp;
+    }
+
+    public void setFCSSDisp(String FCSSDisp) {
+        this.FCSSDisp = Boolean.parseBoolean(FCSSDisp);
     }
 }

@@ -13,8 +13,8 @@ import java.util.function.Consumer;
  */
 public class ImageModel {
     private static final double ZOOM_FACTOR = 250;
-    public ImagePlus image;
-    public ImagePlus backgroundImage;
+    private ImagePlus image;
+    private ImagePlus backgroundImage;
     private String imagePath;
     private String fileName;
     private boolean isSimulation;
@@ -27,8 +27,12 @@ public class ImageModel {
         this.backgroundImage = null;
     }
 
-    private boolean isImageLoaded() {
+    public boolean isImageLoaded() {
         return image != null && image.getWindow() != null;
+    }
+
+    public boolean isBackgroundLoaded() {
+        return backgroundImage != null;
     }
 
     /**
@@ -173,5 +177,9 @@ public class ImageModel {
 
     public ImagePlus getImage() {
         return image;
+    }
+
+    public ImagePlus getBackgroundImage() {
+        return backgroundImage;
     }
 }

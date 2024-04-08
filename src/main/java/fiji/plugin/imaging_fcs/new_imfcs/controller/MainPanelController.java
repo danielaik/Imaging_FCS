@@ -33,6 +33,7 @@ public class MainPanelController {
     private final ExpSettingsModel expSettingsModel;
     private final SimulationController simulationController;
     private final BackgroundSubtractionController backgroundSubtractionController;
+    private final NBController nbController;
 
     /**
      * Constructor that initializes models, views, and other controllers needed for the main panel.
@@ -53,6 +54,8 @@ public class MainPanelController {
         this.simulationController = new SimulationController(imageController, expSettingsModel);
 
         this.backgroundSubtractionController = new BackgroundSubtractionController(imageModel);
+
+        this.nbController = new NBController(imageModel);
 
         this.view = new MainPanelView(this, this.expSettingsModel);
     }
@@ -143,8 +146,13 @@ public class MainPanelController {
     }
 
     public ItemListener tbNBPressed() {
-        // TODO: FIXME
-        return null;
+        return (ItemEvent ev) -> {
+            JToggleButton button = (JToggleButton) ev.getItemSelectable();
+
+            boolean selected = (ev.getStateChange() == ItemEvent.SELECTED);
+            button.setText(selected ? "N&B On" : "N&B Off");
+            nbController.setVisible(selected);
+        };
     }
 
     public ActionListener tbFilteringPressed() {
@@ -226,7 +234,7 @@ public class MainPanelController {
             JToggleButton button = (JToggleButton) ev.getItemSelectable();
 
             boolean selected = (ev.getStateChange() == ItemEvent.SELECTED);
-            button.setText(selected ? "Sim on" : "Sim off");
+            button.setText(selected ? "Sim On" : "Sim Off");
             simulationController.setVisible(selected);
         };
     }
