@@ -30,7 +30,7 @@ public class ExpSettingsModel {
     private int correlatorP = 16;
     private int correlatorQ = 8;
     private String fitModel = "ITIR-FCS (2D)";
-    private String scatter = "N vs D";
+    private String paraCor = "N vs D";
     private String dCCF = "x direction";
     private String bleachCorrection = "none";
     private String filter = "none";
@@ -251,12 +251,12 @@ public class ExpSettingsModel {
         this.fitModel = fitModel;
     }
 
-    public String getScatter() {
-        return scatter;
+    public String getParaCor() {
+        return paraCor;
     }
 
-    public void setScatter(String scatter) {
-        this.scatter = scatter;
+    public void setParaCor(String paraCor) {
+        this.paraCor = paraCor;
     }
 
     public String getdCCF() {

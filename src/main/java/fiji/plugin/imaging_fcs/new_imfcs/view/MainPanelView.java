@@ -7,6 +7,7 @@ import fiji.plugin.imaging_fcs.new_imfcs.model.ExpSettingsModel;
 import javax.swing.*;
 import java.awt.*;
 
+import static fiji.plugin.imaging_fcs.new_imfcs.controller.ControllerUtils.updateComboBoxValue;
 import static fiji.plugin.imaging_fcs.new_imfcs.controller.FocusListenerFactory.createFocusListener;
 import static fiji.plugin.imaging_fcs.new_imfcs.view.ButtonFactory.createJButton;
 import static fiji.plugin.imaging_fcs.new_imfcs.view.ButtonFactory.createJToggleButton;
@@ -130,6 +131,9 @@ public class MainPanelView extends BaseView {
         cbDCCF = new JComboBox<>(new String[]{"x direction", "y direction", "diagonal /", "diagonal \\"});
 
         // add listeners
+        cbFitModel.addActionListener(updateComboBoxValue(expSettingsModel::setFitModel));
+        cbCorrelatorP.addActionListener(updateComboBoxValue(expSettingsModel::setCorrelatorP));
+        cbParaCor.addActionListener(updateComboBoxValue(expSettingsModel::setParaCor));
         cbBleachCor.addActionListener(controller.cbBleachCorChanged());
         cbFilter.addActionListener(controller.cbFilterChanged());
     }
