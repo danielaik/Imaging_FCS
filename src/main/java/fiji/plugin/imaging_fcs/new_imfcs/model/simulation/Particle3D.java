@@ -3,7 +3,7 @@ package fiji.plugin.imaging_fcs.new_imfcs.model.simulation;
 /**
  * Extends the Particle2D class to represent a 3-dimensional particle for use in fluorescence correlation spectroscopy (FCS) simulations.
  */
-public class Particle3D extends Particle2D {
+public final class Particle3D extends Particle2D {
     public double z;
 
     /**

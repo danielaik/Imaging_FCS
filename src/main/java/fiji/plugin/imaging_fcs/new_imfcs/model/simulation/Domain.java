@@ -5,7 +5,7 @@ package fiji.plugin.imaging_fcs.new_imfcs.model.simulation;
  * This class is used to define a circular area and determine
  * whether a given particle is within this domain.
  */
-public class Domain {
+public final class Domain {
     // All the domain fields are final as a domain is fixed in space, it will not move after instantiation.
     public final double x;
     public final double y;

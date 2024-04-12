@@ -18,7 +18,7 @@ import java.io.File;
  * Controls interactions between the simulation model and view, handling user input
  * and simulation execution feedback.
  */
-public class SimulationController {
+public final class SimulationController {
     private final ImageController imageController;
     private final SimulationView simulationView;
     private final SimulationModel simulationModel;

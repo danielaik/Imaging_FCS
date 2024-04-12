@@ -5,7 +5,7 @@ package fiji.plugin.imaging_fcs.new_imfcs.model;
  * It stores user preferences for plotting various curves and histograms, as well as
  * the option to use GPU acceleration if CUDA is available.
  */
-public class OptionsModel {
+public final class OptionsModel {
     private final boolean isCuda;
     private boolean plotACFCurves;
     private boolean plotSDCurves;

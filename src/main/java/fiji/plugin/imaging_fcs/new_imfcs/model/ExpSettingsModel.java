@@ -8,7 +8,7 @@ import java.awt.*;
  * such as pixel size, magnification, numerical aperture (NA),
  * and others relevant for fluorescence correlation spectroscopy (FCS) analysis.
  */
-public class ExpSettingsModel {
+public final class ExpSettingsModel {
     // User parameters with default values
     //// Parameter that updates the non-user parameters
     private final Point binning = new Point(1, 1);

@@ -7,7 +7,7 @@ import java.util.function.Consumer;
 /**
  * This class provides a user interface for selecting filter limits.
  */
-public class FilterLimitsSelectionView extends GenericDialog {
+public final class FilterLimitsSelectionView extends GenericDialog {
     private final Consumer<FilterLimitsSelectionView> listener;
     private final int filterLowerLimit;
     private final int filterUpperLimit;

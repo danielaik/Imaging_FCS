@@ -24,7 +24,7 @@ import static fiji.plugin.imaging_fcs.new_imfcs.controller.FocusListenerFactory.
  * the update of models based on user input, as well as the update of views to reflect the current state
  * of the models.
  */
-public class MainPanelController {
+public final class MainPanelController {
     // Field declarations for the views and models that this controller will manage
     private final MainPanelView view;
     private final ExpSettingsView expSettingsView;

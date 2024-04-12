@@ -10,7 +10,7 @@ import java.util.function.Consumer;
  * such as diffusion rates (D) and fraction (F2) ranges, and executes a specified action
  * upon user confirmation.
  */
-public class BatchSimulationView extends GenericDialog {
+public final class BatchSimulationView extends GenericDialog {
     public BatchSimulationView() {
         super("Batch Simulation");
     }

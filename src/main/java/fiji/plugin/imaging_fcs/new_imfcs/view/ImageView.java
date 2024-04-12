@@ -11,7 +11,7 @@ import java.awt.*;
  * The ImageView class is responsible for displaying images in a window with custom settings.
  * It provides functionality to adjust the zoom level and window position based on predefined constants.
  */
-public class ImageView {
+public final class ImageView {
     // Constants defining the zoom factor and the initial position of the image window
     private static final Point IMAGE_POSITION = new Point(
             Constants.MAIN_PANEL_POS.x + Constants.MAIN_PANEL_DIM.width + 10,

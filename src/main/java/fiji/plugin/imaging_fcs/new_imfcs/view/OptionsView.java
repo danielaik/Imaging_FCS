@@ -9,7 +9,7 @@ import ij.gui.GenericDialog;
  * specific needs of the imaging FCS plugin. The view reads its initial state from the OptionsModel and updates
  * the model through the OptionsController upon user confirmation.
  */
-public class OptionsView extends GenericDialog {
+public final class OptionsView extends GenericDialog {
     private final Runnable listener;
 
     /**

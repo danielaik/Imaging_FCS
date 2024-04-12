@@ -14,7 +14,7 @@ import static fiji.plugin.imaging_fcs.new_imfcs.view.UIUtils.createJLabel;
  * Users can choose among several methods, input constant background values, and see the status of background
  * image loading. There's also an option to specify if subtraction should be applied after bleach correction.
  */
-public class BackgroundSubtractionView extends BaseView {
+public final class BackgroundSubtractionView extends BaseView {
     private static final GridLayout BACKGROUND_SUBTRACTION_LAYOUT = new GridLayout(4, 2);
     private static final Point BACKGROUND_SUBTRACTION_LOCATION = new Point(800, 355);
     private static final Dimension BACKGROUND_SUBTRACTION_DIM = new Dimension(450, 180);

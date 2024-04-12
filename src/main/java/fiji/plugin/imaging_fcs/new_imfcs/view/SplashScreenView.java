@@ -10,7 +10,7 @@ import java.awt.*;
  * This splash screen displays the current version and indicates whether the application
  * is running in GPU or CPU mode, along with a custom message related to CUDA if applicable.
  */
-public class SplashScreenView extends JFrame {
+public final class SplashScreenView extends JFrame {
     // Define the layout and dimensions of the splash screen.
     private static final GridLayout SPLASH_SCREEN_LAYOUT = new GridLayout(2, 1);
     private static final Dimension SPLASH_SCREEN_DIMENSION = new Dimension(300, 200);

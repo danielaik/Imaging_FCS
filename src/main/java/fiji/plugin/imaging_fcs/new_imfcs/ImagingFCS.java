@@ -5,7 +5,7 @@ import fiji.plugin.imaging_fcs.new_imfcs.view.UIUtils;
 import ij.ImageJ;
 import ij.plugin.PlugIn;
 
-public class ImagingFCS implements PlugIn {
+public final class ImagingFCS implements PlugIn {
     public static void main(final String[] args) {
         ImageJ.main(args);
         new ImagingFCS().run("");

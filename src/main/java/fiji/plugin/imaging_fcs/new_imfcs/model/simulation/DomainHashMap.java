@@ -10,7 +10,7 @@ import java.util.Map;
  * query which domain a particle is in. It uses a hashing mechanism to map domains into
  * a grid of cells, facilitating fast lookup operations for spatial queries.
  */
-public class DomainHashMap {
+public final class DomainHashMap {
     private static final long GRID_DIMENSION_OFFSET = 100000;
     private final double cellSize;
     private final Map<Long, List<Domain>> buckets = new HashMap<>();

@@ -13,7 +13,7 @@ import java.util.function.Consumer;
  * to simplify the process of attaching a focus lost behavior to text fields, where the new text value
  * is captured and processed through a provided {@link Consumer<String>}.
  */
-public class FocusListenerFactory {
+public final class FocusListenerFactory {
     // Private constructor to prevent instantiation
     private FocusListenerFactory() {
     }

@@ -8,7 +8,7 @@ import java.awt.*;
 
 import static fiji.plugin.imaging_fcs.new_imfcs.view.UIUtils.createJLabel;
 
-public class NBView extends BaseView {
+public final class NBView extends BaseView {
     private static final GridLayout NB_LAYOUT = new GridLayout(4, 2);
     private static final Point NB_LOCATION = new Point(
             Constants.MAIN_PANEL_POS.x + Constants.MAIN_PANEL_DIM.width + 300, 125);

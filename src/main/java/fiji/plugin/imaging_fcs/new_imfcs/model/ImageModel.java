@@ -11,7 +11,7 @@ import java.util.function.Consumer;
 /**
  * The ImageModel class encapsulates data and operations for an image.
  */
-public class ImageModel {
+public final class ImageModel {
     private static final double ZOOM_FACTOR = 250;
     private ImagePlus image;
     private ImagePlus backgroundImage;

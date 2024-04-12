@@ -9,7 +9,7 @@ import fiji.plugin.imaging_fcs.new_imfcs.view.OptionsView;
  * through the view's dialog. This class acts as a part of the MVC (Model-View-Controller) architectural pattern,
  * focusing on the user interaction logic for the options dialog.
  */
-public class OptionsController {
+public final class OptionsController {
     private final OptionsModel optionsModel;
     private final OptionsView optionsView;
 

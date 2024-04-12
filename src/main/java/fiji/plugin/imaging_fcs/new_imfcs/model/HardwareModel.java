@@ -7,7 +7,7 @@ import fiji.plugin.imaging_fcs.gpufitImFCS.GpufitImFCS;
  * This class is responsible for determining if CUDA (GPU computing) is available
  * and fetching any relevant messages regarding the CUDA setup.
  */
-public class HardwareModel {
+public final class HardwareModel {
     private final boolean cuda;
     private final String cudaMessage;
 

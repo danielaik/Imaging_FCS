@@ -18,7 +18,7 @@ import static fiji.plugin.imaging_fcs.new_imfcs.view.UIUtils.createJLabel;
  * It initializes and displays various UI components like buttons, text fields, and combo boxes that
  * allow users to input simulation parameters and control the simulation process.
  */
-public class SimulationView extends BaseView {
+public final class SimulationView extends BaseView {
     // Constants
     private static final GridLayout SIMULATION_LAYOUT = new GridLayout(16, 4);
     private static final Point SIMULATION_LOCATION = new Point(

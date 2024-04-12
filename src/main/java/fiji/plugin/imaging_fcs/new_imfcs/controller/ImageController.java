@@ -9,7 +9,7 @@ import java.awt.event.KeyListener;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 
-public class ImageController {
+public final class ImageController {
     private final ImageModel imageModel;
     private ImageView imageView;
 

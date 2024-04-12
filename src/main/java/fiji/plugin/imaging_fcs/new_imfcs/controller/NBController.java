@@ -9,7 +9,7 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.util.Objects;
 
-public class NBController {
+public final class NBController {
     private final NBView view;
     private final ImageModel imageModel;
 

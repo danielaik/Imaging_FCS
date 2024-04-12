@@ -16,7 +16,7 @@ import java.io.File;
  * the saving or loading of the resulting simulated images. It supports both batch and interactive modes, facilitating
  * the flexible integration with GUI components and batch processing workflows.
  */
-public class SimulationWorker extends SwingWorker<Void, Void> {
+public final class SimulationWorker extends SwingWorker<Void, Void> {
     private final SimulationController controller;
     private final SimulationBase simulation;
     private final String path;

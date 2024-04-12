@@ -12,7 +12,7 @@ import java.util.List;
  * Represents the data model for FCS simulation, encapsulating all simulation parameters
  * and providing methods to execute and control simulations.
  */
-public class SimulationModel {
+public final class SimulationModel {
     public static final double PIXEL_SIZE_REAL_SPACE_CONVERSION_FACTOR = Math.pow(10, 6);
     private static final double DIFFUSION_COEFFICIENT_BASE = Math.pow(10, 12);
     private static final double DOMAIN_MESH_CONVERSION = Math.pow(10, 9);

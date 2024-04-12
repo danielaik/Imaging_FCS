@@ -9,7 +9,7 @@ import javax.swing.*;
  * Controls the behavior and timing of the splash screen for the Imaging FCS application.
  * It initializes the splash screen with hardware information and schedules its automatic closure.
  */
-public class SplashScreenController {
+public final class SplashScreenController {
     private static final int duration = 3000; // milliseconds
     private final SplashScreenView splashScreenView;
     private final HardwareModel hardwareModel;

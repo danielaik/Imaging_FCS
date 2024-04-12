@@ -15,7 +15,7 @@ import static fiji.plugin.imaging_fcs.new_imfcs.view.UIUtils.createJLabel;
  * This class extends BaseView to create a window where users can input and view settings such as pixel size,
  * magnification, numerical aperture, and more. It also displays calculated parameters based on these settings.
  */
-public class ExpSettingsView extends BaseView {
+public final class ExpSettingsView extends BaseView {
     private static final GridLayout SETTINGS_LAYOUT = new GridLayout(11, 4);
     private static final Point SETTINGS_LOCATION = new Point(
             Constants.MAIN_PANEL_POS.x + Constants.MAIN_PANEL_DIM.width + 10, 125);
