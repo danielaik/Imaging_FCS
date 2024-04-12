@@ -34,6 +34,8 @@ public class ExpSettingsModel {
     private String dCCF = "x direction";
     private String bleachCorrection = "none";
     private String filter = "none";
+    private int filterLowerLimit = 0;
+    private int filterUpperLimit = 65536;
     private boolean FCSSDisp = false;
 
     // Non-user parameters (compute using user parameters)
@@ -289,5 +291,21 @@ public class ExpSettingsModel {
 
     public void setFCSSDisp(String FCSSDisp) {
         this.FCSSDisp = Boolean.parseBoolean(FCSSDisp);
+    }
+
+    public int getFilterLowerLimit() {
+        return filterLowerLimit;
+    }
+
+    public void setFilterLowerLimit(int filterLowerLimit) {
+        this.filterLowerLimit = filterLowerLimit;
+    }
+
+    public int getFilterUpperLimit() {
+        return filterUpperLimit;
+    }
+
+    public void setFilterUpperLimit(int filterUpperLimit) {
+        this.filterUpperLimit = filterUpperLimit;
     }
 }

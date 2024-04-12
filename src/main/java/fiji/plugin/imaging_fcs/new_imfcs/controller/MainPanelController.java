@@ -5,6 +5,7 @@ import fiji.plugin.imaging_fcs.new_imfcs.model.HardwareModel;
 import fiji.plugin.imaging_fcs.new_imfcs.model.ImageModel;
 import fiji.plugin.imaging_fcs.new_imfcs.model.OptionsModel;
 import fiji.plugin.imaging_fcs.new_imfcs.view.ExpSettingsView;
+import fiji.plugin.imaging_fcs.new_imfcs.view.FilterLimitsSelectionView;
 import fiji.plugin.imaging_fcs.new_imfcs.view.MainPanelView;
 import ij.IJ;
 import ij.ImagePlus;
@@ -75,9 +76,44 @@ public class MainPanelController {
         return null;
     }
 
+    /**
+     * Returns an action listener for changes in the filter selection combo box.
+     * This method creates a listener that updates the filter settings and may
+     * open a dialog for setting filter limits based on the selected filter mode.
+     *
+     * @return an ActionListener that processes filter selection changes
+     */
     public ActionListener cbFilterChanged() {
-        // TODO: FIXME
-        return null;
+        return (ActionEvent ev) -> {
+            String filterMode = ControllerUtils.getComboBoxSelectionFromEvent(ev);
+            expSettingsModel.setFilter(filterMode);
+
+            // If a filter mode other than "none" is selected, show the filter limits dialog.
+            if (!filterMode.equals("none")) {
+                new FilterLimitsSelectionView(this::onFilterSelectionAccepted, expSettingsModel.getFilterLowerLimit(),
+                        expSettingsModel.getFilterUpperLimit());
+            }
+        };
+    }
+
+    /**
+     * Handles the acceptance of filter limits from the FilterLimitsSelectionView dialog.
+     * Validates the entered limits and updates the model accordingly or prompts re-entry if limits are invalid.
+     *
+     * @param filterView The FilterLimitsSelectionView instance from which to retrieve the limits
+     */
+    private void onFilterSelectionAccepted(FilterLimitsSelectionView filterView) {
+        int lowerLimit = (int) filterView.getNextNumber();
+        int upperLimit = (int) filterView.getNextNumber();
+
+        if (lowerLimit < 0 || lowerLimit > upperLimit) {
+            IJ.showMessage("Illegal filter limits");
+            new FilterLimitsSelectionView(this::onFilterSelectionAccepted, expSettingsModel.getFilterLowerLimit(),
+                    expSettingsModel.getFilterUpperLimit());
+        } else {
+            expSettingsModel.setFilterLowerLimit(lowerLimit);
+            expSettingsModel.setFilterUpperLimit(upperLimit);
+        }
     }
 
     public ActionListener btnExitPressed() {
