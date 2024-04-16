@@ -4,6 +4,7 @@ import ij.IJ;
 import ij.ImagePlus;
 import ij.gui.ImageCanvas;
 import ij.gui.ImageWindow;
+import ij.process.ImageProcessor;
 
 import java.util.EventListener;
 import java.util.function.Consumer;
@@ -15,6 +16,7 @@ public final class ImageModel {
     private static final double ZOOM_FACTOR = 250;
     private ImagePlus image;
     private ImagePlus backgroundImage;
+    private double[][] backgroundMean, backgroundVariance, backgroundCovariance;
     private String imagePath;
     private String fileName;
     private boolean isSimulation;
@@ -114,8 +116,56 @@ public final class ImageModel {
         }
 
         this.backgroundImage = backgroundImage;
-        // TODO: Compute covariance and row and columns means, just need to see where it is actually used
+
+        // Compute Mean, Variance and Covariance of the background
+        computeBackgroundStats();
         return true;
+    }
+
+    private void computeBackgroundStats() {
+        int width = backgroundImage.getWidth();
+        int height = backgroundImage.getHeight();
+        int stackSize = backgroundImage.getStackSize();
+
+        backgroundMean = new double[width][height];
+        double[][] meanNextFrame = new double[width][height];
+
+        backgroundCovariance = new double[width][height];
+        backgroundVariance = new double[width][height];
+
+        for (int stackIndex = 1; stackIndex <= stackSize; stackIndex++) {
+            ImageProcessor ip = backgroundImage.getStack().getProcessor(stackIndex);
+            ImageProcessor ipNextFrame = (stackIndex < stackSize) ?
+                    backgroundImage.getStack().getProcessor(stackIndex + 1) : null;
+
+            // compute the means, variance and covariance
+            for (int x = 0; x < width; x++) {
+                for (int y = 0; y < height; y++) {
+                    double currentPixelValue = ip.getPixelValue(x, y);
+
+                    // Compute covariance if the next frame exists
+                    if (ipNextFrame != null) {
+                        double nextPixelValue = ipNextFrame.getPixelValue(x, y);
+                        meanNextFrame[x][y] += nextPixelValue;
+                        backgroundCovariance[x][y] += currentPixelValue * nextPixelValue;
+                    }
+
+                    backgroundMean[x][y] += currentPixelValue;
+                    backgroundVariance[x][y] += Math.pow(currentPixelValue, 2.0);
+                }
+            }
+        }
+
+        // Compute final values for mean, variance and covariance
+        for (int x = 0; x < width; x++) {
+            for (int y = 0; y < height; y++) {
+                backgroundMean[x][y] /= stackSize;
+                backgroundVariance[x][y] = backgroundVariance[x][y] / stackSize - Math.pow(backgroundMean[x][y], 2);
+                meanNextFrame[x][y] /= (stackSize - 1);
+                backgroundCovariance[x][y] = backgroundCovariance[x][y] / (stackSize - 1) -
+                        backgroundMean[x][y] * meanNextFrame[x][y];
+            }
+        }
     }
 
     public void adapt_image_scale() {
