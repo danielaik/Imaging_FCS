@@ -2,11 +2,14 @@ package fiji.plugin.imaging_fcs.new_imfcs.view;
 
 import fiji.plugin.imaging_fcs.new_imfcs.constants.Constants;
 import fiji.plugin.imaging_fcs.new_imfcs.controller.BackgroundSubtractionController;
+import fiji.plugin.imaging_fcs.new_imfcs.model.ImageModel;
 import ij.IJ;
 
 import javax.swing.*;
 import java.awt.*;
 
+import static fiji.plugin.imaging_fcs.new_imfcs.controller.FocusListenerFactory.createFocusListener;
+import static fiji.plugin.imaging_fcs.new_imfcs.view.TextFieldFactory.createTextField;
 import static fiji.plugin.imaging_fcs.new_imfcs.view.UIUtils.createJLabel;
 
 /**
@@ -20,6 +23,7 @@ public final class BackgroundSubtractionView extends BaseView {
     private static final Dimension BACKGROUND_SUBTRACTION_DIM = new Dimension(450, 180);
 
     private final BackgroundSubtractionController controller;
+    private final ImageModel model;
 
     // UI components
     private JComboBox<String> cbBackgroundSubtractionMethod;
@@ -31,9 +35,10 @@ public final class BackgroundSubtractionView extends BaseView {
      *
      * @param controller Controls background subtraction operations.
      */
-    public BackgroundSubtractionView(BackgroundSubtractionController controller) {
+    public BackgroundSubtractionView(BackgroundSubtractionController controller, ImageModel model) {
         super("Background subtraction method selection");
         this.controller = controller;
+        this.model = model;
 
         initializeUI();
     }
@@ -42,7 +47,6 @@ public final class BackgroundSubtractionView extends BaseView {
     protected void configureWindow() {
         super.configureWindow();
 
-        setDefaultCloseOperation(DO_NOTHING_ON_CLOSE);
         setLayout(BACKGROUND_SUBTRACTION_LAYOUT);
         setLocation(BACKGROUND_SUBTRACTION_LOCATION);
         setSize(BACKGROUND_SUBTRACTION_DIM);
@@ -61,10 +65,10 @@ public final class BackgroundSubtractionView extends BaseView {
 
     @Override
     protected void initializeTextFields() {
-        tfBackground = TextFieldFactory.createTextField("0", "");
-        tfBackground2 = TextFieldFactory.createTextField("0", "");
+        tfBackground = createTextField(model.getBackground(), "", createFocusListener(model::setBackground));
+        tfBackground2 = createTextField(model.getBackground2(), "", createFocusListener(model::setBackground2));
 
-        tfBGRLoadStatus = TextFieldFactory.createTextField("",
+        tfBGRLoadStatus = createTextField("",
                 "Status on background file for correction. Has to be the same area recorded under the same conditions as the experimental file");
         tfBGRLoadStatus.setEditable(false);
         tfBGRLoadStatus.setFont(new Font(Constants.PANEL_FONT, Font.BOLD, Constants.PANEL_FONT_SIZE));
