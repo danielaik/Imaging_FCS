@@ -12,6 +12,7 @@ import static fiji.plugin.imaging_fcs.new_imfcs.controller.FocusListenerFactory.
 import static fiji.plugin.imaging_fcs.new_imfcs.view.ButtonFactory.createJButton;
 import static fiji.plugin.imaging_fcs.new_imfcs.view.ButtonFactory.createJToggleButton;
 import static fiji.plugin.imaging_fcs.new_imfcs.view.TextFieldFactory.createTextField;
+import static fiji.plugin.imaging_fcs.new_imfcs.view.UIUtils.createJLabel;
 import static fiji.plugin.imaging_fcs.version.VERSION.IMFCS_VERSION;
 
 /**
@@ -81,7 +82,7 @@ public final class MainPanelView extends BaseView {
     @Override
     protected void initializeTextFields() {
         tfFirstFrame = createTextField(expSettingsModel.getFirstFrame(), "",
-                createFocusListener(expSettingsModel::setFirstFrame));
+                controller.updateStrideParam(expSettingsModel::setFirstFrame));
 
         tfFrameTime = createTextField(
                 expSettingsModel.getFrameTime(),
@@ -89,7 +90,7 @@ public final class MainPanelView extends BaseView {
                 createFocusListener(expSettingsModel::setFrameTime));
 
         tfLastFrame = createTextField(expSettingsModel.getLastFrame(), "",
-                createFocusListener(expSettingsModel::setLastFrame));
+                controller.updateStrideParam(expSettingsModel::setLastFrame));
 
         tfBinning = createTextField(expSettingsModel.getBinningString(),
                 "Pixel binning used in the evaluations. NOTE: Changing this value will reinitialize all arrays.",
@@ -227,46 +228,46 @@ public final class MainPanelView extends BaseView {
     @Override
     protected void addComponentsToFrame() {
         // row 1
-        add(new JLabel("Image"));
+        add(createJLabel("Image", ""));
         add(btnUseExisting);
         add(btnLoad);
         add(btnBatch);
 
         // row 2
-        add(new JLabel("First frame: "));
+        add(createJLabel("First frame: ", ""));
         add(tfFirstFrame);
-        add(new JLabel("Last frame: "));
+        add(createJLabel("Last frame: ", ""));
         add(tfLastFrame);
 
         // row 3
-        add(new JLabel("Frame time: "));
+        add(createJLabel("Frame time: ", ""));
         add(tfFrameTime);
         add(tbExpSettings);
         add(btnWriteConfig);
 
         // row 4
-        add(new JLabel("CCF distance: "));
+        add(createJLabel("CCF distance: ", ""));
         add(tfCCFDistance);
-        add(new JLabel("Binning"));
+        add(createJLabel("Binning", ""));
         add(tfBinning);
 
         // row 5
-        add(new JLabel("Correlator P: "));
+        add(createJLabel("Correlator P: ", ""));
         add(cbCorrelatorP);
-        add(new JLabel("Correlator Q: "));
+        add(createJLabel("Correlator Q: ", ""));
         add(tfCorrelatorQ);
 
         // row 6
-        add(new JLabel("Fit Model: "));
+        add(createJLabel("Fit Model: ", ""));
         add(cbFitModel);
         add(tbFCCSDisplay);
         add(tbOverlap);
 
         // row 7
-        add(new JLabel(""));
-        add(new JLabel(""));
-        add(new JLabel(""));
-        add(new JLabel(""));
+        add(createJLabel("", ""));
+        add(createJLabel("", ""));
+        add(createJLabel("", ""));
+        add(createJLabel("", ""));
 
         // row 8
         add(btnDCR);
@@ -289,7 +290,7 @@ public final class MainPanelView extends BaseView {
         // row 11
         add(btnDCCF);
         add(cbDCCF);
-        add(new JLabel("Filter (All):"));
+        add(createJLabel("Filter (All):", ""));
         add(cbFilter);
 
         // row 12
@@ -309,5 +310,14 @@ public final class MainPanelView extends BaseView {
         add(btnSave);
         add(btnRead);
         add(btnExit);
+    }
+
+    /**
+     * Update tfLastFrame with the text given.
+     *
+     * @param text The text used to update the last frame text field
+     */
+    public void setTfLastFrame(String text) {
+        tfLastFrame.setText(text);
     }
 }
