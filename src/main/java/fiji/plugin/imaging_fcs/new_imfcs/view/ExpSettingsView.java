@@ -22,22 +22,8 @@ public final class ExpSettingsView extends BaseView {
     private static final Dimension SETTINGS_DIMENSION = new Dimension(370, 280);
     private final ExpSettingsModel model;
     private final MainPanelController controller;
-    private JTextField tfParamA;
-    private JTextField tfParamW;
-    private JTextField tfParamZ;
-    private JTextField tfParamW2;
-    private JTextField tfParamZ2;
-    private JTextField tfParamRx;
-    private JTextField tfParamRy;
-    private JTextField tfPixelSize;
-    private JTextField tfMagnification;
-    private JTextField tfNA;
-    private JTextField tfEmLambda;
-    private JTextField tfEmLambda2;
-    private JTextField tfSigma;
-    private JTextField tfSigma2;
-    private JTextField tfSigmaZ;
-    private JTextField tfSigmaZ2;
+    private JTextField tfParamA, tfParamW, tfParamZ, tfParamW2, tfParamZ2, tfParamRx, tfParamRy, tfPixelSize,
+            tfMagnification, tfNA, tfEmLambda, tfEmLambda2, tfSigma, tfSigma2, tfSigmaZ, tfSigmaZ2;
 
     /**
      * Constructs an ExpSettingsView with references to a controller and a model.
