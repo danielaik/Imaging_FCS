@@ -4,6 +4,7 @@ import fiji.plugin.imaging_fcs.new_imfcs.model.ExpSettingsModel;
 import fiji.plugin.imaging_fcs.new_imfcs.model.HardwareModel;
 import fiji.plugin.imaging_fcs.new_imfcs.model.ImageModel;
 import fiji.plugin.imaging_fcs.new_imfcs.model.OptionsModel;
+import fiji.plugin.imaging_fcs.new_imfcs.view.BleachCorrelationView;
 import fiji.plugin.imaging_fcs.new_imfcs.view.ExpSettingsView;
 import fiji.plugin.imaging_fcs.new_imfcs.view.FilterLimitsSelectionView;
 import fiji.plugin.imaging_fcs.new_imfcs.view.MainPanelView;
@@ -12,7 +13,6 @@ import ij.ImagePlus;
 import ij.WindowManager;
 
 import javax.swing.*;
-import javax.swing.event.DocumentListener;
 import java.awt.event.*;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -28,6 +28,7 @@ public final class MainPanelController {
     // Field declarations for the views and models that this controller will manage
     private final MainPanelView view;
     private final ExpSettingsView expSettingsView;
+    private final BleachCorrelationView bleachCorrelationView;
     private final HardwareModel hardwareModel;
     private final OptionsModel optionsModel;
     private final ImageController imageController;
@@ -46,29 +47,25 @@ public final class MainPanelController {
         this.optionsModel = new OptionsModel(hardwareModel.isCuda());
 
         ImageModel imageModel = new ImageModel();
-        this.imageController = new ImageController(imageModel);
+        this.imageController = new ImageController(this, imageModel);
 
         this.expSettingsModel = new ExpSettingsModel();
         this.expSettingsView = new ExpSettingsView(this, expSettingsModel);
         updateSettingsField();
 
+        this.bleachCorrelationView = new BleachCorrelationView(this, expSettingsModel);
+
         this.simulationController = new SimulationController(imageController, expSettingsModel);
 
         this.backgroundSubtractionController = new BackgroundSubtractionController(imageModel);
 
-        this.nbController = new NBController(imageModel);
+        this.nbController = new NBController(imageModel, expSettingsModel, optionsModel);
 
         this.view = new MainPanelView(this, this.expSettingsModel);
     }
 
-    public DocumentListener tfLastFrameChanged() {
-        // TODO: FIXME
-        return null;
-    }
-
-    public DocumentListener tfFirstFrameChanged() {
-        // TODO: FIXME
-        return null;
+    public void setLastFrame(int lastFrame) {
+        view.setTfLastFrame(String.valueOf(lastFrame));
     }
 
     public ActionListener cbBleachCorChanged() {
@@ -256,8 +253,15 @@ public final class MainPanelController {
     }
 
     public ItemListener tbBleachCorStridePressed() {
-        // TODO: FIXME
-        return null;
+        return (ItemEvent ev) -> {
+            if (imageController.isImageLoaded()) {
+                bleachCorrelationView.setVisible(ev.getStateChange() == ItemEvent.SELECTED);
+            } else if (ev.getStateChange() == ItemEvent.SELECTED) {
+                // Don't show the message if the button is unselected.
+                IJ.showMessage("No image stack loaded.");
+                ((JToggleButton) ev.getSource()).setSelected(false);
+            }
+        };
     }
 
     public ItemListener tbFitPressed() {
@@ -331,6 +335,31 @@ public final class MainPanelController {
         };
 
         // Create the focus listener with the method from the factory with the decorated setter
+        return createFocusListener(decoratedSetter);
+    }
+
+    private void updateStrideParamFields() {
+        Runnable doUpdateStrideParam = () -> {
+            int numberOfFrames = expSettingsModel.getLastFrame() - expSettingsModel.getFirstFrame() + 1;
+
+            // Use variable points for the intensity, except when less than 1000 frames are present.
+            int numPointsIntensityTrace = numberOfFrames;
+            if (numberOfFrames >= 1000) {
+                numPointsIntensityTrace = numberOfFrames / expSettingsModel.getAverageStride();
+            }
+
+            bleachCorrelationView.setTextNumPointsIntensityTrace(String.valueOf(numPointsIntensityTrace));
+        };
+
+        SwingUtilities.invokeLater(doUpdateStrideParam);
+    }
+
+    public FocusListener updateStrideParam(Consumer<String> setter) {
+        Consumer<String> decoratedSetter = (String value) -> {
+            setter.accept(value);
+            updateStrideParamFields();
+        };
+
         return createFocusListener(decoratedSetter);
     }
 }

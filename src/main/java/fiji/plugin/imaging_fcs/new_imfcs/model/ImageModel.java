@@ -21,6 +21,9 @@ public final class ImageModel {
     private String fileName;
     private boolean isSimulation;
 
+    private int background = 0;
+    private int background2 = 0;
+
     /**
      * Constructs an ImageModel instance with no image loaded.
      */
@@ -225,11 +228,44 @@ public final class ImageModel {
         return image.getWidth();
     }
 
+    public int getStackSize() {
+        return image.getStackSize();
+    }
+
     public ImagePlus getImage() {
         return image;
     }
 
     public ImagePlus getBackgroundImage() {
         return backgroundImage;
+    }
+
+    public double[][] getBackgroundMean() {
+        return backgroundMean;
+    }
+
+    public double[][] getBackgroundVariance() {
+        return backgroundVariance;
+    }
+
+    public double[][] getBackgroundCovariance() {
+        return backgroundCovariance;
+    }
+
+    public int getBackground() {
+        return background;
+    }
+
+    public void setBackground(String background) {
+        this.background = Integer.parseInt(background);
+    }
+
+    public int getBackground2() {
+        return background2;
+    }
+
+    public void setBackground2(String background2) {
+        this.background2 = Integer.parseInt(background2);
+        System.out.println(this.background2);
     }
 }

@@ -14,7 +14,7 @@ public class BackgroundSubtractionController {
 
     public BackgroundSubtractionController(ImageModel imageModel) {
         this.imageModel = imageModel;
-        view = new BackgroundSubtractionView(this);
+        view = new BackgroundSubtractionView(this, imageModel);
     }
 
     public void setVisible(boolean b) {

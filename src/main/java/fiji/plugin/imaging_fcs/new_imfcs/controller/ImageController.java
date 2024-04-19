@@ -11,11 +11,17 @@ import java.awt.event.MouseListener;
 
 public final class ImageController {
     private final ImageModel imageModel;
+    private final MainPanelController mainPanelController;
     private ImageView imageView;
 
-    public ImageController(ImageModel imageModel) {
+    public ImageController(MainPanelController mainPanelController, ImageModel imageModel) {
+        this.mainPanelController = mainPanelController;
         this.imageModel = imageModel;
         imageView = null;
+    }
+
+    public boolean isImageLoaded() {
+        return imageModel.isImageLoaded();
     }
 
     public void loadImage(ImagePlus image, boolean simulation) {
@@ -28,6 +34,8 @@ public final class ImageController {
         image.getCanvas().addKeyListener(imageKeyPressed());
 
         imageModel.adapt_image_scale();
+
+        mainPanelController.setLastFrame(imageModel.getStackSize());
     }
 
     public MouseListener imageMouseClicked() {
