@@ -90,10 +90,10 @@ public final class SimulationController {
      * Handles the completion of all batch simulations, updating the UI and displaying the final status.
      */
     public void onBatchSimulationComplete() {
-        int simulationsRunning = simulationModel.getAndDecrementSimulationsRunningNumber();
+        simulationModel.decrementSimulationsRunningNumber();
 
         // All simulations finished running, it can now log to the user
-        if (simulationsRunning <= 0) {
+        if (simulationModel.getSimulationsRunningNumber() <= 0) {
             // Activate the buttons again
             simulationView.enableBtnStopSimulation(false);
             simulationView.enableBtnSimulate(true);

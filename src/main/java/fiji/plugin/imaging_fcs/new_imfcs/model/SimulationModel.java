@@ -176,12 +176,19 @@ public final class SimulationModel {
     }
 
     /**
-     * Decrement the count of simulations currently running.
-     *
-     * @return the number of simulations still running after decrement.
+     * Decrements the count of simulations currently running. Used to track batch simulation progress.
      */
-    public int getAndDecrementSimulationsRunningNumber() {
-        return --simulationsRunning;
+    public void decrementSimulationsRunningNumber() {
+        simulationsRunning--;
+    }
+
+    /**
+     * Get the count of simulations currently running.
+     *
+     * @return the number of running simulations.
+     */
+    public int getSimulationsRunningNumber() {
+        return simulationsRunning;
     }
 
     /**
