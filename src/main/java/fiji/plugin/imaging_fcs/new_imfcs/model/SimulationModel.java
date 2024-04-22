@@ -1,12 +1,13 @@
 package fiji.plugin.imaging_fcs.new_imfcs.model;
 
-import fiji.plugin.imaging_fcs.new_imfcs.controller.SimulationController;
 import fiji.plugin.imaging_fcs.new_imfcs.model.simulation.SimulationWorker;
 import ij.IJ;
+import ij.ImagePlus;
 
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Consumer;
 
 /**
  * Represents the data model for FCS simulation, encapsulating all simulation parameters
@@ -17,7 +18,6 @@ public final class SimulationModel {
     private static final double DIFFUSION_COEFFICIENT_BASE = Math.pow(10, 12);
     private static final double DOMAIN_MESH_CONVERSION = Math.pow(10, 9);
     private final ExpSettingsModel expSettingsModel;
-    private final SimulationController controller;
     private List<SimulationWorker> simulationWorkers;
 
     private boolean is2D, isDomain, isMesh, blinkFlag;
@@ -49,14 +49,16 @@ public final class SimulationModel {
     private double meshWorkSize = 100.0 / DOMAIN_MESH_CONVERSION; // Size of meshes
     private double hopProbability = 1.0; // hop probability over meshwork barriers
 
+    // attributes to count the numbers of simulation running and the numbers of errors
+    private int simulationsRunning = 0;
+    private int numSimulationsErrors = 0;
+
     /**
-     * Constructs a simulation model with references to the controller and experimental settings.
+     * Constructs a simulation model with references to the experimental settings.
      *
-     * @param controller       the controller for simulation actions.
      * @param expSettingsModel the experimental settings model.
      */
-    public SimulationModel(SimulationController controller, ExpSettingsModel expSettingsModel) {
-        this.controller = controller;
+    public SimulationModel(ExpSettingsModel expSettingsModel) {
         this.expSettingsModel = expSettingsModel;
 
         is2D = true;
@@ -68,15 +70,18 @@ public final class SimulationModel {
     /**
      * Starts the simulation process in a background thread, updating UI upon completion.
      */
-    public void runSimulation() {
+    public void runSimulation(Runnable onSimulationComplete, Consumer<ImagePlus> loadImage) {
         simulationWorkers = new ArrayList<>();
         try {
-            simulationWorkers.add(new SimulationWorker(this, expSettingsModel, controller, null));
+            // Here we will load the image directly in the plugin so the path is null.
+            // Only one simulation is running, so we don't need a callback to increment the errors numbers
+            simulationWorkers.add(new SimulationWorker(this, expSettingsModel, null, loadImage,
+                    onSimulationComplete, null));
             simulationWorkers.get(0).execute();
         } catch (RuntimeException e) {
             IJ.showStatus("Instantiation error");
             IJ.showMessage(e.getMessage());
-            controller.onSimulationComplete();
+            onSimulationComplete.run();
         }
     }
 
@@ -101,7 +106,12 @@ public final class SimulationModel {
      * @param rangeD2 Range for D2 parameter.
      * @param rangeF2 Range for F2 parameter.
      */
-    public void runBatch(File path, double[] rangeD1, double[] rangeD2, double[] rangeF2) {
+    public void runBatch(File path, double[] rangeD1, double[] rangeD2, double[] rangeF2,
+                         Runnable onBatchSimulationComplete) {
+        // reset the variables to count the number of simulations running and errors
+        simulationsRunning = 0;
+        numSimulationsErrors = 0;
+
         simulationWorkers = new ArrayList<>();
 
         // Store the initial values to restore them later
@@ -119,11 +129,14 @@ public final class SimulationModel {
                     this.F2 = F2;
 
                     try {
+                        // In batch mode, we will not load the image in the plugin but save it directly.
+                        // Here loadImage callback is null.
                         SimulationWorker simulationWorker =
-                                new SimulationWorker(this, expSettingsModel, controller, path);
+                                new SimulationWorker(this, expSettingsModel, path, null,
+                                        onBatchSimulationComplete, this::incrementSimulationErrorsNumber);
                         simulationWorkers.add(simulationWorker);
 
-                        controller.incrementSimulationsRunningNumber();
+                        incrementSimulationsRunningNumber();
                         simulationWorker.execute();
                     } catch (RuntimeException e) {
                         IJ.showStatus("Instantiation error");
@@ -131,8 +144,8 @@ public final class SimulationModel {
 
                         // reset the values to make the UI consistent with the model
                         resetValues(initialD1, initialD2, initialF2);
-                        controller.incrementSimulationErrorsNumber();
-                        controller.onBatchSimulationComplete();
+                        incrementSimulationErrorsNumber();
+                        onBatchSimulationComplete.run();
                         return;
                     }
                 }
@@ -153,6 +166,38 @@ public final class SimulationModel {
         for (SimulationWorker simulationWorker : simulationWorkers) {
             simulationWorker.cancel(mayInterruptIfRunning);
         }
+    }
+
+    /**
+     * Increments the count of simulations currently running. Used to track batch simulation progress.
+     */
+    public void incrementSimulationsRunningNumber() {
+        simulationsRunning++;
+    }
+
+    /**
+     * Decrement the count of simulations currently running.
+     *
+     * @return the number of simulations still running after decrement.
+     */
+    public int getAndDecrementSimulationsRunningNumber() {
+        return --simulationsRunning;
+    }
+
+    /**
+     * Increments the count of encountered errors during simulation. Used for error tracking in batch simulations.
+     */
+    public void incrementSimulationErrorsNumber() {
+        numSimulationsErrors++;
+    }
+
+    /**
+     * Get the count of encountered errors during simulation.
+     *
+     * @return the number of errors
+     */
+    public int getNumSimulationsErrors() {
+        return numSimulationsErrors;
     }
 
     // Getter and setter methods follow, providing access to all simulation parameters.

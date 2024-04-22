@@ -23,9 +23,6 @@ public final class SimulationController {
     private final SimulationView simulationView;
     private final SimulationModel simulationModel;
 
-    private int simulationsRunning = 0;
-    private int numSimulationsErrors = 0;
-
     /**
      * Constructs a controller with references to the image controller and experimental settings model.
      * Initializes the simulation view and model.
@@ -35,7 +32,7 @@ public final class SimulationController {
      */
     public SimulationController(ImageController imageController, ExpSettingsModel expSettingsModel) {
         this.imageController = imageController;
-        simulationModel = new SimulationModel(this, expSettingsModel);
+        simulationModel = new SimulationModel(expSettingsModel);
         simulationView = new SimulationView(this, simulationModel);
     }
 
@@ -80,16 +77,12 @@ public final class SimulationController {
                 return;
             }
 
-            // reset the variables to count the number of simulations running and errors
-            simulationsRunning = 0;
-            numSimulationsErrors = 0;
-
             // Activate the buttons again
             simulationView.enableBtnStopSimulation(true);
             simulationView.enableBtnSimulate(false);
             simulationView.enableBtnBatch(false);
 
-            simulationModel.runBatch(path, rangeD1, rangeD2, rangeF2);
+            simulationModel.runBatch(path, rangeD1, rangeD2, rangeF2, this::onBatchSimulationComplete);
         }
     }
 
@@ -97,7 +90,7 @@ public final class SimulationController {
      * Handles the completion of all batch simulations, updating the UI and displaying the final status.
      */
     public void onBatchSimulationComplete() {
-        simulationsRunning--;
+        int simulationsRunning = simulationModel.getAndDecrementSimulationsRunningNumber();
 
         // All simulations finished running, it can now log to the user
         if (simulationsRunning <= 0) {
@@ -106,25 +99,12 @@ public final class SimulationController {
             simulationView.enableBtnSimulate(true);
             simulationView.enableBtnBatch(true);
 
-            String message = String.format("Batch simulation finished with %d errors", numSimulationsErrors);
+            String message = String.format("Batch simulation finished with %d errors",
+                    simulationModel.getNumSimulationsErrors());
             IJ.showStatus("Simulation ended.");
             IJ.showMessage(message);
             IJ.showProgress(1);
         }
-    }
-
-    /**
-     * Increments the count of simulations currently running. Used to track batch simulation progress.
-     */
-    public void incrementSimulationsRunningNumber() {
-        simulationsRunning++;
-    }
-
-    /**
-     * Increments the count of encountered errors during simulation. Used for error tracking in batch simulations.
-     */
-    public void incrementSimulationErrorsNumber() {
-        numSimulationsErrors++;
     }
 
     /**
@@ -160,7 +140,7 @@ public final class SimulationController {
             simulationView.enableBtnStopSimulation(true);
             simulationView.enableBtnSimulate(false);
             simulationView.enableBtnBatch(false);
-            simulationModel.runSimulation();
+            simulationModel.runSimulation(this::onSimulationComplete, this::loadImage);
         };
     }
 

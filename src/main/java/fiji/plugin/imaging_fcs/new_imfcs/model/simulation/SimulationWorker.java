@@ -1,6 +1,5 @@
 package fiji.plugin.imaging_fcs.new_imfcs.model.simulation;
 
-import fiji.plugin.imaging_fcs.new_imfcs.controller.SimulationController;
 import fiji.plugin.imaging_fcs.new_imfcs.model.ExpSettingsModel;
 import fiji.plugin.imaging_fcs.new_imfcs.model.SimulationModel;
 import ij.IJ;
@@ -8,6 +7,7 @@ import ij.ImagePlus;
 
 import javax.swing.*;
 import java.io.File;
+import java.util.function.Consumer;
 
 /**
  * SimulationWorker is a SwingWorker subclass designed to handle long-running simulation tasks for imaging FCS in a
@@ -17,7 +17,9 @@ import java.io.File;
  * the flexible integration with GUI components and batch processing workflows.
  */
 public final class SimulationWorker extends SwingWorker<Void, Void> {
-    private final SimulationController controller;
+    private final Consumer<ImagePlus> loadImage;
+    private final Runnable onSimulationComplete;
+    private final Runnable incrementSimulationErrorsNumber;
     private final SimulationBase simulation;
     private final String path;
     private final boolean batchMode;
@@ -25,20 +27,25 @@ public final class SimulationWorker extends SwingWorker<Void, Void> {
     /**
      * Constructs a Worker instance for running imaging FCS simulations.
      *
-     * @param model         The simulation model containing parameters and settings for the simulation.
-     * @param settingsModel The experimental settings model with additional configuration for the simulation.
-     * @param controller    The controller that manages interactions between the simulation model and the UI.
-     * @param path          The file path where the simulated image will be saved if in batch mode, otherwise null.
+     * @param model                           The simulation model containing parameters and settings for the simulation.
+     * @param settingsModel                   The experimental settings model with additional configuration for the simulation.
+     * @param path                            The file path where the simulated image will be saved if in batch mode, otherwise null.
+     * @param loadImage                       Callback to load the simulated image into the GUI in interactive mode.
+     * @param onSimulationComplete            Callback invoked upon completion of the simulation to update UI or handle post-processing.
+     * @param incrementSimulationErrorsNumber Callback to increment the error counter in batch mode on failure.
      */
-    public SimulationWorker(SimulationModel model, ExpSettingsModel settingsModel, SimulationController controller,
-                            File path) {
+    public SimulationWorker(SimulationModel model, ExpSettingsModel settingsModel, File path,
+                            Consumer<ImagePlus> loadImage, Runnable onSimulationComplete,
+                            Runnable incrementSimulationErrorsNumber) {
         if (model.getIs2D()) {
             simulation = new Simulation2D(model, settingsModel);
         } else {
             simulation = new Simulation3D(model, settingsModel);
         }
 
-        this.controller = controller;
+        this.loadImage = loadImage;
+        this.onSimulationComplete = onSimulationComplete;
+        this.incrementSimulationErrorsNumber = incrementSimulationErrorsNumber;
 
         if (path != null) {
             this.batchMode = true;
@@ -67,12 +74,12 @@ public final class SimulationWorker extends SwingWorker<Void, Void> {
             if (batchMode) {
                 IJ.saveAsTiff(image, path);
             } else {
-                controller.loadImage(image);
+                loadImage.accept(image);
             }
         } catch (RuntimeException e) {
             IJ.showProgress(1);
             if (batchMode) {
-                controller.incrementSimulationErrorsNumber();
+                incrementSimulationErrorsNumber.run();
             } else {
                 IJ.showProgress(1);
                 IJ.showStatus("Simulation Interrupted");
@@ -88,10 +95,6 @@ public final class SimulationWorker extends SwingWorker<Void, Void> {
      */
     @Override
     protected void done() {
-        if (batchMode) {
-            controller.onBatchSimulationComplete();
-        } else {
-            controller.onSimulationComplete();
-        }
+        onSimulationComplete.run();
     }
 }
