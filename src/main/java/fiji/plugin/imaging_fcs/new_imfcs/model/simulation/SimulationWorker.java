@@ -22,7 +22,6 @@ public final class SimulationWorker extends SwingWorker<Void, Void> {
     private final Runnable incrementSimulationErrorsNumber;
     private final SimulationBase simulation;
     private final String path;
-    private final boolean batchMode;
 
     /**
      * Constructs a Worker instance for running imaging FCS simulations.
@@ -48,11 +47,9 @@ public final class SimulationWorker extends SwingWorker<Void, Void> {
         this.incrementSimulationErrorsNumber = incrementSimulationErrorsNumber;
 
         if (path != null) {
-            this.batchMode = true;
             this.path = String.format("%s/sim-D1=%.2f-D2=%.2f-F2=%.2f.tif", path.getAbsolutePath(),
                     model.getD1Interface(), model.getD2Interface(), model.getF2());
         } else {
-            this.batchMode = false;
             this.path = null;
         }
     }
@@ -71,14 +68,14 @@ public final class SimulationWorker extends SwingWorker<Void, Void> {
 
             IJ.run(image, "Enhance Contrast", "saturated=0.35");
 
-            if (batchMode) {
-                IJ.saveAsTiff(image, path);
-            } else {
+            if (loadImage != null) {
                 loadImage.accept(image);
+            } else {
+                IJ.saveAsTiff(image, path);
             }
         } catch (RuntimeException e) {
             IJ.showProgress(1);
-            if (batchMode) {
+            if (incrementSimulationErrorsNumber != null) {
                 incrementSimulationErrorsNumber.run();
             } else {
                 IJ.showProgress(1);
