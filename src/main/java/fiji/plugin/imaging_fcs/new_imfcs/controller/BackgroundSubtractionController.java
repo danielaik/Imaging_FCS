@@ -60,4 +60,12 @@ public class BackgroundSubtractionController {
             }
         };
     }
+
+    public void setTfBackground(String text) {
+        view.setTfBackground(text);
+    }
+
+    public void setTfBackground2(String text) {
+        view.setTfBackground2(text);
+    }
 }

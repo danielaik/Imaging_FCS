@@ -47,7 +47,8 @@ public final class MainPanelController {
         this.optionsModel = new OptionsModel(hardwareModel.isCuda());
 
         ImageModel imageModel = new ImageModel();
-        this.imageController = new ImageController(this, imageModel);
+        this.backgroundSubtractionController = new BackgroundSubtractionController(imageModel);
+        this.imageController = new ImageController(this, imageModel, backgroundSubtractionController);
 
         this.expSettingsModel = new ExpSettingsModel();
         this.expSettingsView = new ExpSettingsView(this, expSettingsModel);
@@ -57,7 +58,6 @@ public final class MainPanelController {
 
         this.simulationController = new SimulationController(imageController, expSettingsModel);
 
-        this.backgroundSubtractionController = new BackgroundSubtractionController(imageModel);
 
         this.nbController = new NBController(imageModel, expSettingsModel, optionsModel);
 

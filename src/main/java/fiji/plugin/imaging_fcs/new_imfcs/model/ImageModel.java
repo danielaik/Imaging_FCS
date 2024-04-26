@@ -68,10 +68,19 @@ public final class ImageModel {
     public void loadImage(ImagePlus image, boolean simulation) {
         checkImage(image);
 
+        int minBackgroundValue = 0;
+
         // if a background image is loaded, check that there are the same format
         if (backgroundImage != null && areNotSameSize(image, backgroundImage)) {
             throw new RuntimeException("Image is not the same size as the background image");
+        } else {
+            // if no background is load, calculate the minimum of the image. This will be used as the default
+            // background value.
+            minBackgroundValue = minDetermination(image);
         }
+
+        background = minBackgroundValue;
+        background2 = minBackgroundValue;
 
         // If an image is already loaded, unload it
         if (isImageLoaded()) {
@@ -104,6 +113,24 @@ public final class ImageModel {
         for (T listener : listeners) {
             removeListenerFunction.accept(listener);
         }
+    }
+
+    private int minDetermination(ImagePlus img) {
+        int min = Integer.MAX_VALUE;
+
+        for (int z = 1; z <= img.getStackSize(); z++) {
+            final ImageProcessor imageProcessor = img.getStack().getProcessor(z);
+            for (int x = 0; x < img.getWidth(); x++) {
+                for (int y = 0; y < img.getHeight(); y++) {
+                    int pixelValue = imageProcessor.get(x, y);
+                    if (pixelValue < min) {
+                        min = imageProcessor.get(x, y);
+                    }
+                }
+            }
+        }
+
+        return min;
     }
 
     public boolean loadBackgroundImage(ImagePlus backgroundImage) {

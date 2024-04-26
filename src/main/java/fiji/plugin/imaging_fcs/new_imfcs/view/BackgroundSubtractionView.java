@@ -128,4 +128,12 @@ public final class BackgroundSubtractionView extends BaseView {
             IJ.showMessage("Unable to perform background subtraction on bleach corrected intensity traces.");
         }
     }
+
+    public void setTfBackground(String text) {
+        tfBackground.setText(text);
+    }
+
+    public void setTfBackground2(String text) {
+        tfBackground2.setText(text);
+    }
 }

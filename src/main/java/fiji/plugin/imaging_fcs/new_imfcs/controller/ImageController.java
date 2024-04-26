@@ -12,11 +12,14 @@ import java.awt.event.MouseListener;
 public final class ImageController {
     private final ImageModel imageModel;
     private final MainPanelController mainPanelController;
+    private final BackgroundSubtractionController backgroundSubtractionController;
     private ImageView imageView;
 
-    public ImageController(MainPanelController mainPanelController, ImageModel imageModel) {
+    public ImageController(MainPanelController mainPanelController, ImageModel imageModel,
+                           BackgroundSubtractionController backgroundSubtractionController) {
         this.mainPanelController = mainPanelController;
         this.imageModel = imageModel;
+        this.backgroundSubtractionController = backgroundSubtractionController;
         imageView = null;
     }
 
@@ -36,6 +39,8 @@ public final class ImageController {
         imageModel.adapt_image_scale();
 
         mainPanelController.setLastFrame(imageModel.getStackSize());
+        backgroundSubtractionController.setTfBackground(String.valueOf(imageModel.getBackground()));
+        backgroundSubtractionController.setTfBackground2(String.valueOf(imageModel.getBackground2()));
     }
 
     public MouseListener imageMouseClicked() {
