@@ -285,8 +285,13 @@ public final class MainPanelController {
     }
 
     public ItemListener tbOverlapPressed() {
-        // TODO: FIXME
-        return null;
+        return (ItemEvent ev) -> {
+            JToggleButton button = (JToggleButton) ev.getItemSelectable();
+            boolean selected = (ev.getStateChange() == ItemEvent.SELECTED);
+
+            button.setText(selected ? "Overlap On" : "Overlap Off");
+            expSettingsModel.setOverlap(selected);
+        };
     }
 
     public ItemListener tbBackgroundPressed() {

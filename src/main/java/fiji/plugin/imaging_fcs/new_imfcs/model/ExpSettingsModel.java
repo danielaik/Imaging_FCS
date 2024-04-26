@@ -37,6 +37,7 @@ public final class ExpSettingsModel {
     private int filterLowerLimit = 0;
     private int filterUpperLimit = 65536;
     private boolean FCSSDisp = false;
+    private boolean overlap = false;
     private int numPointsIntensityTrace = 1;
     private int averageStride = 50;
 
@@ -325,5 +326,13 @@ public final class ExpSettingsModel {
 
     public void setAverageStride(String averageStride) {
         this.averageStride = Integer.parseInt(averageStride);
+    }
+
+    public boolean isOverlap() {
+        return overlap;
+    }
+
+    public void setOverlap(boolean overlap) {
+        this.overlap = overlap;
     }
 }
