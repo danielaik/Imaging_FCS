@@ -1,7 +1,7 @@
 package fiji.plugin.imaging_fcs.new_imfcs.controller;
 
 import fiji.plugin.imaging_fcs.new_imfcs.model.OptionsModel;
-import fiji.plugin.imaging_fcs.new_imfcs.view.OptionsView;
+import fiji.plugin.imaging_fcs.new_imfcs.view.dialogs.OptionsView;
 
 /**
  * The OptionsController class manages the interactions between the OptionsModel and the OptionsView.

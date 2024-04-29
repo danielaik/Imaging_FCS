@@ -1,4 +1,4 @@
-package fiji.plugin.imaging_fcs.new_imfcs.view;
+package fiji.plugin.imaging_fcs.new_imfcs.view.dialogs;
 
 import ij.gui.GenericDialog;
 
