@@ -4,10 +4,13 @@ import fiji.plugin.imaging_fcs.new_imfcs.model.ExpSettingsModel;
 import fiji.plugin.imaging_fcs.new_imfcs.model.HardwareModel;
 import fiji.plugin.imaging_fcs.new_imfcs.model.ImageModel;
 import fiji.plugin.imaging_fcs.new_imfcs.model.OptionsModel;
+import fiji.plugin.imaging_fcs.new_imfcs.model.fit.BleachCorrectionModel;
 import fiji.plugin.imaging_fcs.new_imfcs.view.BleachCorrelationView;
 import fiji.plugin.imaging_fcs.new_imfcs.view.ExpSettingsView;
 import fiji.plugin.imaging_fcs.new_imfcs.view.MainPanelView;
 import fiji.plugin.imaging_fcs.new_imfcs.view.dialogs.FilterLimitsSelectionView;
+import fiji.plugin.imaging_fcs.new_imfcs.view.dialogs.PolynomialOrderSelectionView;
+import fiji.plugin.imaging_fcs.new_imfcs.view.dialogs.SlidingWindowSelectionView;
 import ij.IJ;
 import ij.ImagePlus;
 import ij.WindowManager;
@@ -33,6 +36,7 @@ public final class MainPanelController {
     private final OptionsModel optionsModel;
     private final ImageController imageController;
     private final ExpSettingsModel expSettingsModel;
+    private final BleachCorrectionModel bleachCorrectionModel;
     private final SimulationController simulationController;
     private final BackgroundSubtractionController backgroundSubtractionController;
     private final NBController nbController;
@@ -54,6 +58,8 @@ public final class MainPanelController {
         this.expSettingsView = new ExpSettingsView(this, expSettingsModel);
         updateSettingsField();
 
+        this.bleachCorrectionModel = new BleachCorrectionModel(expSettingsModel, imageModel);
+
         this.bleachCorrelationView = new BleachCorrelationView(this, expSettingsModel);
 
         this.simulationController = new SimulationController(imageController, expSettingsModel);
@@ -66,11 +72,73 @@ public final class MainPanelController {
 
     public void setLastFrame(int lastFrame) {
         view.setTfLastFrame(String.valueOf(lastFrame));
+        expSettingsModel.setLastFrame(String.valueOf(lastFrame));
     }
 
+    /**
+     * Handles different bleach correction modes and initializes appropriate views for further user inputs
+     * depending on the selected mode.
+     *
+     * @return ActionListener to handle bleach correction mode changes.
+     */
     public ActionListener cbBleachCorChanged() {
-        // TODO: FIXME
-        return null;
+        return (ActionEvent ev) -> {
+            String bleachCorrectionMode = ControllerUtils.getComboBoxSelectionFromEvent(ev);
+            expSettingsModel.setBleachCorrection(bleachCorrectionMode);
+
+            if ("Sliding Window".equals(bleachCorrectionMode) || "Lin Segment".equals(bleachCorrectionMode)) {
+                if (!imageController.isImageLoaded()) {
+                    IJ.showMessage("No image open. Please open an image first.");
+                    // reset the combo box to default in no image is loaded.
+                    ((JComboBox<?>) ev.getSource()).setSelectedIndex(0);
+                } else {
+                    new SlidingWindowSelectionView(
+                            this::onBleachCorrectionSlidingWindowAccepted,
+                            bleachCorrectionModel.getSlidingWindowLength());
+                }
+            } else if ("Polynomial".equals(bleachCorrectionMode)) {
+                new PolynomialOrderSelectionView(
+                        this::onBleachCorrectionOrderAccepted, bleachCorrectionModel.getPolynomialOrder());
+            }
+        };
+    }
+
+    /**
+     * Callback method for accepting sliding window length.
+     * It validates the input and sets it in the model or prompts re-entry if the input is invalid.
+     *
+     * @param slidingWindowLength The length of the sliding window chosen by the user.
+     */
+    private void onBleachCorrectionSlidingWindowAccepted(int slidingWindowLength) {
+        int maxWindowSize = expSettingsModel.getLastFrame() - expSettingsModel.getFirstFrame();
+
+        if (slidingWindowLength <= 0 ||
+                slidingWindowLength > (expSettingsModel.getLastFrame() - expSettingsModel.getFirstFrame())) {
+            IJ.showMessage(String.format(
+                    "Invalid sliding window size. It must be inside 0 < order < %d", maxWindowSize));
+            new SlidingWindowSelectionView(this::onBleachCorrectionSlidingWindowAccepted,
+                    bleachCorrectionModel.getSlidingWindowLength());
+        } else {
+            bleachCorrectionModel.setSlidingWindowLength(slidingWindowLength);
+        }
+    }
+
+    /**
+     * Callback method for accepting polynomial order.
+     * It validates the polynomial order and sets it in the model or prompts re-entry if the input is invalid.
+     *
+     * @param order The polynomial order chosen by the user.
+     */
+    private void onBleachCorrectionOrderAccepted(int order) {
+        if (order <= 0 || order > BleachCorrectionModel.MAX_POLYNOMIAL_ORDER) {
+            IJ.showMessage(String.format(
+                    "Invalid polynomial order. It must be inside 0 < order <= %d",
+                    BleachCorrectionModel.MAX_POLYNOMIAL_ORDER));
+            new PolynomialOrderSelectionView(this::onBleachCorrectionOrderAccepted,
+                    bleachCorrectionModel.getPolynomialOrder());
+        } else {
+            bleachCorrectionModel.setPolynomialOrder(order);
+        }
     }
 
     /**
@@ -94,15 +162,13 @@ public final class MainPanelController {
     }
 
     /**
-     * Handles the acceptance of filter limits from the FilterLimitsSelectionView dialog.
-     * Validates the entered limits and updates the model accordingly or prompts re-entry if limits are invalid.
+     * Callback method for accepting filter limits.
+     * It validates the filter limits and sets them in the model or prompts re-entry if the input is invalid.
      *
-     * @param filterView The FilterLimitsSelectionView instance from which to retrieve the limits
+     * @param lowerLimit The lower limit of the filter chosen by the user.
+     * @param upperLimit The upper limit of the filter chosen by the user.
      */
-    private void onFilterSelectionAccepted(FilterLimitsSelectionView filterView) {
-        int lowerLimit = (int) filterView.getNextNumber();
-        int upperLimit = (int) filterView.getNextNumber();
-
+    private void onFilterSelectionAccepted(int lowerLimit, int upperLimit) {
         if (lowerLimit < 0 || lowerLimit > upperLimit) {
             IJ.showMessage("Illegal filter limits");
             new FilterLimitsSelectionView(this::onFilterSelectionAccepted, expSettingsModel.getFilterLowerLimit(),

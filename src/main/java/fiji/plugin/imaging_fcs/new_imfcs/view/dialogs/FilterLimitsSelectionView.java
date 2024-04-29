@@ -2,13 +2,13 @@ package fiji.plugin.imaging_fcs.new_imfcs.view.dialogs;
 
 import ij.gui.GenericDialog;
 
-import java.util.function.Consumer;
+import java.util.function.BiConsumer;
 
 /**
  * This class provides a user interface for selecting filter limits.
  */
 public final class FilterLimitsSelectionView extends GenericDialog {
-    private final Consumer<FilterLimitsSelectionView> listener;
+    private final BiConsumer<Integer, Integer> listener;
     private final int filterLowerLimit;
     private final int filterUpperLimit;
 
@@ -19,7 +19,7 @@ public final class FilterLimitsSelectionView extends GenericDialog {
      * @param filterLowerLimit the initial value for the lower limit field
      * @param filterUpperLimit the initial value for the upper limit field
      */
-    public FilterLimitsSelectionView(Consumer<FilterLimitsSelectionView> listener, int filterLowerLimit,
+    public FilterLimitsSelectionView(BiConsumer<Integer, Integer> listener, int filterLowerLimit,
                                      int filterUpperLimit) {
         super("Filter");
         this.listener = listener;
@@ -43,7 +43,7 @@ public final class FilterLimitsSelectionView extends GenericDialog {
         showDialog();
 
         if (wasOKed()) {
-            listener.accept(this);
+            listener.accept((int) getNextNumber(), (int) getNextNumber());
         }
     }
 }
