@@ -1,5 +1,7 @@
 package fiji.plugin.imaging_fcs.new_imfcs.model;
 
+import fiji.plugin.imaging_fcs.new_imfcs.controller.InvalidUserInputException;
+
 import java.awt.*;
 
 /**
@@ -182,8 +184,15 @@ public final class ExpSettingsModel {
 
     public void setBinning(String binning) {
         String[] parts = binning.replace(" ", "").split("x");
-        this.binning.x = Integer.parseInt(parts[0]);
-        this.binning.y = Integer.parseInt(parts[1]);
+        int binningX = Integer.parseInt(parts[0]);
+        int binningY = Integer.parseInt(parts[1]);
+
+        if (binningX < 1 || binningY < 1) {
+            throw new InvalidUserInputException("Binning can't be smaller than 1.");
+        }
+
+        this.binning.x = binningX;
+        this.binning.y = binningY;
     }
 
     public String getBinningString() {
@@ -213,7 +222,12 @@ public final class ExpSettingsModel {
     }
 
     public void setFirstFrame(String firstFrame) {
-        this.firstFrame = Integer.parseInt(firstFrame);
+        int intFirstFrame = Integer.parseInt(firstFrame);
+        if (intFirstFrame >= lastFrame || intFirstFrame < 1) {
+            throw new InvalidUserInputException("First frame set incorrectly, it needs to be between 1 and last frame.");
+        }
+
+        this.firstFrame = intFirstFrame;
     }
 
     public int getLastFrame() {
@@ -221,7 +235,12 @@ public final class ExpSettingsModel {
     }
 
     public void setLastFrame(String lastFrame) {
-        this.lastFrame = Integer.parseInt(lastFrame);
+        int intLastFrame = Integer.parseInt(lastFrame);
+        if (intLastFrame <= firstFrame || intLastFrame < 1) {
+            throw new InvalidUserInputException("Last frame set incorrectly, it needs to be larger than first frame.");
+        }
+
+        this.lastFrame = intLastFrame;
     }
 
     public double getFrameTime() {
