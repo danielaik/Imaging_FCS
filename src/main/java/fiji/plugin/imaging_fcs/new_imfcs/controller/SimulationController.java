@@ -2,8 +2,8 @@ package fiji.plugin.imaging_fcs.new_imfcs.controller;
 
 import fiji.plugin.imaging_fcs.new_imfcs.model.ExpSettingsModel;
 import fiji.plugin.imaging_fcs.new_imfcs.model.SimulationModel;
-import fiji.plugin.imaging_fcs.new_imfcs.view.BatchSimulationView;
 import fiji.plugin.imaging_fcs.new_imfcs.view.SimulationView;
+import fiji.plugin.imaging_fcs.new_imfcs.view.dialogs.BatchSimulationView;
 import ij.IJ;
 import ij.ImagePlus;
 
