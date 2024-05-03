@@ -31,7 +31,6 @@ public abstract class BaseFit extends AbstractCurveFitter {
         ArrayList<WeightedObservedPoint> points = new ArrayList<>();
         int numPoints = intensityTrace.length;
 
-        // Add points here
         for (int i = 0; i < numPoints; i++) {
             points.add(new WeightedObservedPoint(1, intensityTime[i], intensityTrace[i]));
         }
