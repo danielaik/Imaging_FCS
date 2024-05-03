@@ -2,7 +2,7 @@ package fiji.plugin.imaging_fcs.new_imfcs.view;
 
 import fiji.plugin.imaging_fcs.new_imfcs.constants.Constants;
 import fiji.plugin.imaging_fcs.new_imfcs.controller.MainPanelController;
-import fiji.plugin.imaging_fcs.new_imfcs.model.ExpSettingsModel;
+import fiji.plugin.imaging_fcs.new_imfcs.model.fit.BleachCorrectionModel;
 
 import javax.swing.*;
 import java.awt.*;
@@ -17,13 +17,13 @@ import static fiji.plugin.imaging_fcs.new_imfcs.view.UIUtils.createJLabel;
  * <p>
  * This class extends {@link BaseView} and uses a grid layout to organize text fields and labels.
  */
-public class BleachCorrelationView extends BaseView {
+public class BleachCorrectionView extends BaseView {
     private static final GridLayout BLEACH_CORRELATION_LAYOUT = new GridLayout(2, 2);
     private static final Point BLEACH_CORRELATION_LOCATION =
             new Point(Constants.MAIN_PANEL_POS.x + Constants.MAIN_PANEL_DIM.width + 10, 125);
     private static final Dimension BLEACH_CORRELATION_DIM = new Dimension(125, 75);
     private final MainPanelController controller;
-    private final ExpSettingsModel model;
+    private final BleachCorrectionModel model;
     private JTextField tfIntAveStride, tfNumPointsIntensityTrace;
 
     /**
@@ -32,7 +32,7 @@ public class BleachCorrelationView extends BaseView {
      * @param controller the main panel controller that handles user interactions
      * @param model      the experimental settings model containing data to be displayed and edited
      */
-    public BleachCorrelationView(MainPanelController controller, ExpSettingsModel model) {
+    public BleachCorrectionView(MainPanelController controller, BleachCorrectionModel model) {
         super("Bleach correction settings.");
 
         this.controller = controller;

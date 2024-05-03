@@ -40,8 +40,6 @@ public final class ExpSettingsModel {
     private int filterUpperLimit = 65536;
     private boolean FCSSDisp = false;
     private boolean overlap = false;
-    private int numPointsIntensityTrace = 1;
-    private int averageStride = 50;
 
     // Non-user parameters (compute using user parameters)
     private double paramA;
@@ -329,22 +327,6 @@ public final class ExpSettingsModel {
 
     public void setFilterUpperLimit(int filterUpperLimit) {
         this.filterUpperLimit = filterUpperLimit;
-    }
-
-    public int getNumPointsIntensityTrace() {
-        return numPointsIntensityTrace;
-    }
-
-    public void setNumPointsIntensityTrace(int numPointsIntensityTrace) {
-        this.numPointsIntensityTrace = numPointsIntensityTrace;
-    }
-
-    public int getAverageStride() {
-        return averageStride;
-    }
-
-    public void setAverageStride(String averageStride) {
-        this.averageStride = Integer.parseInt(averageStride);
     }
 
     public boolean isOverlap() {

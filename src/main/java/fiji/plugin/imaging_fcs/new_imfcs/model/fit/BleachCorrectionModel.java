@@ -21,6 +21,8 @@ public class BleachCorrectionModel {
     private final ImageModel imageModel;
     private int polynomialOrder = 0;
     private int slidingWindowLength = 0;
+    private int numPointsIntensityTrace = 1;
+    private int averageStride = 50;
 
     private double[] intensityTrace1, intensityTrace2, intensityTime;
 
@@ -342,5 +344,21 @@ public class BleachCorrectionModel {
 
     public void setSlidingWindowLength(int slidingWindowLength) {
         this.slidingWindowLength = slidingWindowLength;
+    }
+
+    public int getNumPointsIntensityTrace() {
+        return numPointsIntensityTrace;
+    }
+
+    public void setNumPointsIntensityTrace(int numPointsIntensityTrace) {
+        this.numPointsIntensityTrace = numPointsIntensityTrace;
+    }
+
+    public int getAverageStride() {
+        return averageStride;
+    }
+
+    public void setAverageStride(String averageStride) {
+        this.averageStride = Integer.parseInt(averageStride);
     }
 }
