@@ -23,6 +23,7 @@ public final class ImageModel {
 
     private int background = 0;
     private int background2 = 0;
+    private int minBackgroundValue = 0;
 
     /**
      * Constructs an ImageModel instance with no image loaded.
@@ -68,19 +69,23 @@ public final class ImageModel {
     public void loadImage(ImagePlus image, boolean simulation) {
         checkImage(image);
 
-        int minBackgroundValue = 0;
+        minBackgroundValue = 0;
 
         // if a background image is loaded, check that there are the same format
         if (backgroundImage != null && areNotSameSize(image, backgroundImage)) {
             throw new RuntimeException("Image is not the same size as the background image");
         } else {
-            // if no background is load, calculate the minimum of the image. This will be used as the default
-            // background value.
+            // calculate the minimum background value, this will be used if no background is loaded
             minBackgroundValue = minDetermination(image);
         }
 
-        background = minBackgroundValue;
-        background2 = minBackgroundValue;
+        if (backgroundImage == null) {
+            background = minBackgroundValue;
+            background2 = minBackgroundValue;
+        } else {
+            background = 0;
+            background2 = 0;
+        }
 
         // If an image is already loaded, unload it
         if (isImageLoaded()) {
@@ -149,6 +154,10 @@ public final class ImageModel {
 
         // Compute Mean, Variance and Covariance of the background
         computeBackgroundStats();
+
+        // set background values to 0 if a background is loaded
+        background = 0;
+        background2 = 0;
         return true;
     }
 

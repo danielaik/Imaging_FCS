@@ -26,6 +26,8 @@ public class BackgroundSubtractionController {
             String method = ControllerUtils.getComboBoxSelectionFromEvent(ev);
             view.setEnableBackgroundTextField(false);
             imageModel.resetBackgroundImage();
+            setTfBackground(imageModel.getBackground());
+            setTfBackground2(imageModel.getBackground2());
 
             switch (method) {
                 case "Constant Background":
@@ -45,6 +47,8 @@ public class BackgroundSubtractionController {
                     boolean loaded = false;
                     try {
                         loaded = imageModel.loadBackgroundImage(IJ.openImage());
+                        setTfBackground(imageModel.getBackground());
+                        setTfBackground2(imageModel.getBackground2());
                     } catch (RuntimeException e) {
                         IJ.showMessage(e.getMessage());
                     }
@@ -61,11 +65,11 @@ public class BackgroundSubtractionController {
         };
     }
 
-    public void setTfBackground(String text) {
-        view.setTfBackground(text);
+    public void setTfBackground(int background) {
+        view.setTfBackground(String.valueOf(background));
     }
 
-    public void setTfBackground2(String text) {
-        view.setTfBackground2(text);
+    public void setTfBackground2(int background2) {
+        view.setTfBackground2(String.valueOf(background2));
     }
 }
