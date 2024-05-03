@@ -36,10 +36,11 @@ public class SingleExponentialFit extends BaseFit {
         final double[] weights = new double[numPoints];
         final double[] initialGuess = new double[3];
 
-        for (int i = 0; i < numPoints; i++) {
-            WeightedObservedPoint point = points.iterator().next();
+        int i = 0;
+        for (WeightedObservedPoint point : points) {
             target[i] = point.getY();
             weights[i] = point.getWeight();
+            i++;
         }
 
         // initial guesses

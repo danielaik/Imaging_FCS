@@ -40,7 +40,7 @@ public class DoubleExponentialFit extends BaseFit {
         for (WeightedObservedPoint point : points) {
             target[i] = point.getY();
             weights[i] = point.getWeight();
-            i += 1;
+            i++;
         }
 
         // initial guesses
