@@ -194,7 +194,7 @@ public final class MainPanelController {
         return (ActionEvent ev) -> {
             if (WindowManager.getImageCount() > 0) {
                 try {
-                    imageController.loadImage(IJ.getImage(), false);
+                    imageController.loadImage(IJ.getImage());
                 } catch (RuntimeException e) {
                     IJ.showMessage("Wrong image format", e.getMessage());
                 }
@@ -209,7 +209,7 @@ public final class MainPanelController {
             ImagePlus image = IJ.openImage();
             if (image != null) {
                 try {
-                    imageController.loadImage(image, false);
+                    imageController.loadImage(image);
                 } catch (RuntimeException e) {
                     IJ.showMessage("Wrong image format", e.getMessage());
                 }

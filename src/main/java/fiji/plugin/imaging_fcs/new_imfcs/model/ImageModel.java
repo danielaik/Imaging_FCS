@@ -17,9 +17,6 @@ public final class ImageModel {
     private ImagePlus image;
     private ImagePlus backgroundImage;
     private double[][] backgroundMean, backgroundVariance, backgroundCovariance;
-    private String imagePath;
-    private String fileName;
-    private boolean isSimulation;
 
     private int background = 0;
     private int background2 = 0;
@@ -87,7 +84,7 @@ public final class ImageModel {
      * @param image The ImagePlus object to load into the model.
      * @throws RuntimeException if the image is not of type GRAY16 or if the size doesn't match with the background.
      */
-    public void loadImage(ImagePlus image, boolean simulation) {
+    public void loadImage(ImagePlus image) {
         checkImage(image);
 
         minBackgroundValue = 0;
@@ -113,12 +110,7 @@ public final class ImageModel {
             unloadImage();
         }
 
-        this.isSimulation = simulation;
         this.image = image;
-
-        if (!this.isSimulation) {
-            getImagePath();
-        }
     }
 
     private void unloadImage() {
@@ -230,14 +222,6 @@ public final class ImageModel {
                         (meanCurrentNoLastFrame[x][y] / (stackSize - 1)) * meanNextFrame[x][y];
             }
         }
-    }
-
-    /**
-     * Extracts and stores the path and file name from the ImagePlus object's FileInfo.
-     */
-    private void getImagePath() {
-        imagePath = image.getOriginalFileInfo().directory;
-        fileName = image.getOriginalFileInfo().fileName;
     }
 
     /**

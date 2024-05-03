@@ -27,8 +27,8 @@ public final class ImageController {
         return imageModel.isImageLoaded();
     }
 
-    public void loadImage(ImagePlus image, boolean simulation) {
-        imageModel.loadImage(image, simulation);
+    public void loadImage(ImagePlus image) {
+        imageModel.loadImage(image);
 
         imageView = new ImageView();
         imageView.showImage(imageModel);

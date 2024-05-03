@@ -183,6 +183,6 @@ public final class SimulationController {
      * @param image the image to display.
      */
     public void loadImage(ImagePlus image) {
-        imageController.loadImage(image, true);
+        imageController.loadImage(image);
     }
 }
