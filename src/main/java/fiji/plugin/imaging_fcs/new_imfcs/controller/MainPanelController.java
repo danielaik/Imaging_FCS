@@ -5,7 +5,7 @@ import fiji.plugin.imaging_fcs.new_imfcs.model.HardwareModel;
 import fiji.plugin.imaging_fcs.new_imfcs.model.ImageModel;
 import fiji.plugin.imaging_fcs.new_imfcs.model.OptionsModel;
 import fiji.plugin.imaging_fcs.new_imfcs.model.fit.BleachCorrectionModel;
-import fiji.plugin.imaging_fcs.new_imfcs.view.BleachCorrelationView;
+import fiji.plugin.imaging_fcs.new_imfcs.view.BleachCorrectionView;
 import fiji.plugin.imaging_fcs.new_imfcs.view.ExpSettingsView;
 import fiji.plugin.imaging_fcs.new_imfcs.view.MainPanelView;
 import fiji.plugin.imaging_fcs.new_imfcs.view.dialogs.FilterLimitsSelectionView;
@@ -31,7 +31,7 @@ public final class MainPanelController {
     // Field declarations for the views and models that this controller will manage
     private final MainPanelView view;
     private final ExpSettingsView expSettingsView;
-    private final BleachCorrelationView bleachCorrelationView;
+    private final BleachCorrectionView bleachCorrectionView;
     private final HardwareModel hardwareModel;
     private final OptionsModel optionsModel;
     private final ImageController imageController;
@@ -60,12 +60,12 @@ public final class MainPanelController {
 
         this.bleachCorrectionModel = new BleachCorrectionModel(expSettingsModel, imageModel);
 
-        this.bleachCorrelationView = new BleachCorrelationView(this, expSettingsModel);
+        this.bleachCorrectionView = new BleachCorrectionView(this, bleachCorrectionModel);
 
         this.simulationController = new SimulationController(imageController, expSettingsModel);
 
 
-        this.nbController = new NBController(imageModel, expSettingsModel, optionsModel);
+        this.nbController = new NBController(imageModel, expSettingsModel, optionsModel, bleachCorrectionModel);
 
         this.view = new MainPanelView(this, this.expSettingsModel);
     }
@@ -73,6 +73,8 @@ public final class MainPanelController {
     public void setLastFrame(int lastFrame) {
         view.setTfLastFrame(String.valueOf(lastFrame));
         expSettingsModel.setLastFrame(String.valueOf(lastFrame));
+        bleachCorrectionModel.setSlidingWindowLength(lastFrame / 20);
+        updateStrideParamFields();
     }
 
     /**
@@ -321,7 +323,7 @@ public final class MainPanelController {
     public ItemListener tbBleachCorStridePressed() {
         return (ItemEvent ev) -> {
             if (imageController.isImageLoaded()) {
-                bleachCorrelationView.setVisible(ev.getStateChange() == ItemEvent.SELECTED);
+                bleachCorrectionView.setVisible(ev.getStateChange() == ItemEvent.SELECTED);
             } else if (ev.getStateChange() == ItemEvent.SELECTED) {
                 // Don't show the message if the button is unselected.
                 IJ.showMessage("No image stack loaded.");
@@ -416,10 +418,11 @@ public final class MainPanelController {
             // Use variable points for the intensity, except when less than 1000 frames are present.
             int numPointsIntensityTrace = numberOfFrames;
             if (numberOfFrames >= 1000) {
-                numPointsIntensityTrace = numberOfFrames / expSettingsModel.getAverageStride();
+                numPointsIntensityTrace = numberOfFrames / bleachCorrectionModel.getAverageStride();
             }
 
-            bleachCorrelationView.setTextNumPointsIntensityTrace(String.valueOf(numPointsIntensityTrace));
+            bleachCorrectionView.setTextNumPointsIntensityTrace(String.valueOf(numPointsIntensityTrace));
+            bleachCorrectionModel.setNumPointsIntensityTrace(numPointsIntensityTrace);
         };
 
         SwingUtilities.invokeLater(doUpdateStrideParam);

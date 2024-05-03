@@ -2,10 +2,12 @@ package fiji.plugin.imaging_fcs.new_imfcs.view;
 
 import fiji.plugin.imaging_fcs.new_imfcs.constants.Constants;
 import fiji.plugin.imaging_fcs.new_imfcs.controller.NBController;
+import fiji.plugin.imaging_fcs.new_imfcs.model.NBModel;
 
 import javax.swing.*;
 import java.awt.*;
 
+import static fiji.plugin.imaging_fcs.new_imfcs.controller.FocusListenerFactory.createFocusListener;
 import static fiji.plugin.imaging_fcs.new_imfcs.view.UIUtils.createJLabel;
 
 public final class NBView extends BaseView {
@@ -15,15 +17,17 @@ public final class NBView extends BaseView {
     private static final Dimension NB_DIM = new Dimension(250, 150);
 
     private final NBController controller;
+    private final NBModel model;
 
     // UI elements
     private JTextField tfNBS, tfNBCalibRatio;
     private JComboBox<String> cbNBMode;
     private JButton btnNB;
 
-    public NBView(NBController controller) {
+    public NBView(NBController controller, NBModel model) {
         super("N&B");
         this.controller = controller;
+        this.model = model;
 
         initializeUI();
     }
@@ -53,8 +57,9 @@ public final class NBView extends BaseView {
 
     @Override
     protected void initializeTextFields() {
-        tfNBS = TextFieldFactory.createTextField("0.0", "");
-        tfNBCalibRatio = TextFieldFactory.createTextField("2", "");
+        tfNBS = TextFieldFactory.createTextField(model.getS_value(), "", createFocusListener(model::setS_value));
+        tfNBCalibRatio = TextFieldFactory.createTextField(model.getCalibRatio(), "",
+                createFocusListener(model::setCalibRatio));
 
         tfNBS.setEnabled(false);
         tfNBCalibRatio.setEnabled(false);
