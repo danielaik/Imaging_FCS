@@ -10,6 +10,10 @@ import java.awt.*;
 import static fiji.plugin.imaging_fcs.new_imfcs.controller.FocusListenerFactory.createFocusListener;
 import static fiji.plugin.imaging_fcs.new_imfcs.view.UIUtils.createJLabel;
 
+/**
+ * The NBView class represents the view component for the Number and Brightness (N&B) analysis panel.
+ * It provides user interface elements to configure and perform N&B analysis.
+ */
 public final class NBView extends BaseView {
     private static final GridLayout NB_LAYOUT = new GridLayout(4, 2);
     private static final Point NB_LOCATION = new Point(
@@ -24,6 +28,12 @@ public final class NBView extends BaseView {
     private JComboBox<String> cbNBMode;
     private JButton btnNB;
 
+    /**
+     * Constructs a new NBView instance with the specified controller and model.
+     *
+     * @param controller The controller handling user interactions.
+     * @param model      The model containing data and logic for N&B analysis.
+     */
     public NBView(NBController controller, NBModel model) {
         super("N&B");
         this.controller = controller;
@@ -57,9 +67,9 @@ public final class NBView extends BaseView {
 
     @Override
     protected void initializeTextFields() {
-        tfNBS = TextFieldFactory.createTextField(model.getS_value(), "", createFocusListener(model::setS_value));
-        tfNBCalibRatio = TextFieldFactory.createTextField(model.getCalibRatio(), "",
-                createFocusListener(model::setCalibRatio));
+        tfNBS = TextFieldFactory.createTextField(model.getsValue(), "", createFocusListener(model::setsValue));
+        tfNBCalibRatio = TextFieldFactory.createTextField(model.getCalibrationRatio(), "",
+                createFocusListener(model::setCalibrationRatio));
 
         tfNBS.setEnabled(false);
         tfNBCalibRatio.setEnabled(false);
@@ -80,6 +90,11 @@ public final class NBView extends BaseView {
         add(tfNBS);
     }
 
+    /**
+     * Enables or disables the text fields based on the specified flag.
+     *
+     * @param enabled A boolean indicating whether to enable or disable the text fields.
+     */
     public void setEnabledTextFields(boolean enabled) {
         tfNBS.setEnabled(enabled);
         tfNBCalibRatio.setEnabled(enabled);

@@ -8,6 +8,9 @@ import ij.process.ImageProcessor;
 import java.util.Arrays;
 import java.util.function.Consumer;
 
+/**
+ * The NBModel class represents the model for performing number and brightness (N&B) analysis.
+ */
 public final class NBModel {
     private final ImageModel imageModel;
     private final ExpSettingsModel settings;
@@ -17,11 +20,19 @@ public final class NBModel {
     private double[][] filterArray, NBB, NBN, NBNum, NBEpsilon;
 
     private String mode = "G1";
-    private int calibRatio = 2;
-    private double s_value = 0.0;
+    private int calibrationRatio = 2;
+    private double sValue = 0.0;
 
     private int frameCount;
 
+    /**
+     * Constructs a new NBModel instance with the specified parameters.
+     *
+     * @param imageModel            The image model containing image data.
+     * @param settings              The experimental settings model.
+     * @param options               The options model containing analysis options.
+     * @param bleachCorrectionModel The bleach correction model.
+     */
     public NBModel(ImageModel imageModel, ExpSettingsModel settings, OptionsModel options,
                    BleachCorrectionModel bleachCorrectionModel) {
         this.imageModel = imageModel;
@@ -30,7 +41,13 @@ public final class NBModel {
         this.options = options;
     }
 
-    // perform number and brightness (N&B) analysis
+    /**
+     * Performs number and brightness (N&B) analysis on the specified image.
+     *
+     * @param img        The ImagePlus object representing the input image.
+     * @param evaluation A boolean indicating whether to perform evaluation.
+     * @param showImage  A consumer to display the resulting image.
+     */
     public void performNB(ImagePlus img, boolean evaluation, Consumer<ImagePlus> showImage) {
         int width = img.getWidth();
         int height = img.getHeight();
@@ -86,9 +103,17 @@ public final class NBModel {
     }
 
     private void performGpuAnalysis(ImagePlus img) {
-
+        // TODO: implement me
     }
 
+    /**
+     * Performs CPU-based analysis of the fluorescence image.
+     * If the mode is "G1", it calculates the mean and covariance.
+     * If the mode is "Calibrated", it calculates the mean and variance.
+     *
+     * @param img        The ImagePlus object representing the input image.
+     * @param evaluation A boolean indicating whether to perform evaluation.
+     */
     private void performCpuAnalysis(ImagePlus img, boolean evaluation) {
         if ("G1".equals(mode)) {
             calculateMeanAndCovariance(img);
@@ -97,6 +122,12 @@ public final class NBModel {
         }
     }
 
+    /**
+     * Calculates the mean and covariance for the fluorescence image.
+     * Used when the mode is "G1".
+     *
+     * @param img The ImagePlus object representing the input image.
+     */
     private void calculateMeanAndCovariance(ImagePlus img) {
         for (int i = 0; i < img.getWidth(); i++) {
             for (int j = 0; j < img.getHeight(); j++) {
@@ -130,6 +161,13 @@ public final class NBModel {
         }
     }
 
+    /**
+     * Calculates the mean and variance for the fluorescence image.
+     * Used when the mode is "Calibrated".
+     *
+     * @param img        The ImagePlus object representing the input image.
+     * @param evaluation A boolean indicating whether to perform evaluation.
+     */
     private void calculateMeanAndVariance(ImagePlus img, boolean evaluation) {
         for (int i = 0; i < img.getWidth(); i++) {
             for (int j = 0; j < img.getHeight(); j++) {
@@ -162,14 +200,23 @@ public final class NBModel {
                     NBN[i][j] = (mean * mean) / (variance - imageModel.getBackgroundVariance()[i][j]);
 
                     if (evaluation) {
-                        NBNum[i][j] = mean / (NBB[i][j] - s_value); // n = (mean - offset) / (B - S)
-                        NBEpsilon[i][j] = NBB[i][j] / s_value - 1; // epsilon = B / S - 1
+                        NBNum[i][j] = mean / (NBB[i][j] - sValue); // n = (mean - offset) / (B - S)
+                        NBEpsilon[i][j] = NBB[i][j] / sValue - 1; // epsilon = B / S - 1
                     }
                 }
             }
         }
     }
 
+    /**
+     * Creates and fills an ImagePlus object with the specified title, width, height, and values.
+     *
+     * @param title  The title of the image.
+     * @param width  The width of the image.
+     * @param height The height of the image.
+     * @param values The values to fill the image with.
+     * @return The created ImagePlus object.
+     */
     private ImagePlus createAndFillImage(String title, int width, int height, double[][] values) {
         ImagePlus image = IJ.createImage(title, "GRAY32", width, height, 1);
         ImageProcessor ip = image.getStack().getProcessor(1);
@@ -183,6 +230,12 @@ public final class NBModel {
         return image;
     }
 
+    /**
+     * Creates and displays the number and brightness (N&B) images based on the analysis results.
+     *
+     * @param img       The ImagePlus object representing the input image.
+     * @param showImage A consumer to display the resulting image.
+     */
     private void createNBImages(ImagePlus img, Consumer<ImagePlus> showImage) {
         int height = img.getHeight();
         int width = img.getWidth();
@@ -202,6 +255,7 @@ public final class NBModel {
         }
     }
 
+    // Getter and setter.
     public String getMode() {
         return mode;
     }
@@ -210,19 +264,19 @@ public final class NBModel {
         this.mode = mode;
     }
 
-    public int getCalibRatio() {
-        return calibRatio;
+    public int getCalibrationRatio() {
+        return calibrationRatio;
     }
 
-    public void setCalibRatio(String calibRatio) {
-        this.calibRatio = Integer.parseInt(calibRatio);
+    public void setCalibrationRatio(String calibrationRatio) {
+        this.calibrationRatio = Integer.parseInt(calibrationRatio);
     }
 
-    public double getS_value() {
-        return s_value;
+    public double getsValue() {
+        return sValue;
     }
 
-    public void setS_value(String s_value) {
-        this.s_value = Double.parseDouble(s_value);
+    public void setsValue(String sValue) {
+        this.sValue = Double.parseDouble(sValue);
     }
 }
