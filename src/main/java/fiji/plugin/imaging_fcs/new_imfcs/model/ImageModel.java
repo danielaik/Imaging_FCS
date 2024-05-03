@@ -33,6 +33,27 @@ public final class ImageModel {
         this.backgroundImage = null;
     }
 
+    public static void adaptImageScale(ImagePlus image) {
+        double scimp;
+        if (image.getWidth() >= image.getHeight()) {
+            scimp = ZOOM_FACTOR / image.getWidth();
+        } else {
+            scimp = ZOOM_FACTOR / image.getHeight();
+        }
+
+        if (scimp < 1.0) {
+            scimp = 1.0;
+        }
+        // Convert scale factor to percentage for the ImageJ command
+        scimp *= 100;
+
+        IJ.run(image, "Original Scale", "");
+        String options = String.format("zoom=%f x=%d y=%d", scimp, image.getWidth() / 2, image.getHeight() / 2);
+        IJ.run(image, "Set... ", options);
+        // This workaround addresses a potential bug in ImageJ versions 1.48v and later
+        IJ.run("In [+]", "");
+    }
+
     public boolean isImageLoaded() {
         return image != null && image.getWindow() != null;
     }
@@ -167,6 +188,9 @@ public final class ImageModel {
         int stackSize = backgroundImage.getStackSize();
 
         backgroundMean = new double[width][height];
+
+        // This is the mean of the current frame without the last frame
+        double[][] meanCurrentNoLastFrame = new double[width][height];
         double[][] meanNextFrame = new double[width][height];
 
         backgroundCovariance = new double[width][height];
@@ -185,6 +209,7 @@ public final class ImageModel {
                     // Compute covariance if the next frame exists
                     if (ipNextFrame != null) {
                         double nextPixelValue = ipNextFrame.getPixelValue(x, y);
+                        meanCurrentNoLastFrame[x][y] += currentPixelValue;
                         meanNextFrame[x][y] += nextPixelValue;
                         backgroundCovariance[x][y] += currentPixelValue * nextPixelValue;
                     }
@@ -202,30 +227,9 @@ public final class ImageModel {
                 backgroundVariance[x][y] = backgroundVariance[x][y] / stackSize - Math.pow(backgroundMean[x][y], 2);
                 meanNextFrame[x][y] /= (stackSize - 1);
                 backgroundCovariance[x][y] = backgroundCovariance[x][y] / (stackSize - 1) -
-                        backgroundMean[x][y] * meanNextFrame[x][y];
+                        (meanCurrentNoLastFrame[x][y] / (stackSize - 1)) * meanNextFrame[x][y];
             }
         }
-    }
-
-    public void adapt_image_scale() {
-        double scimp;
-        if (image.getWidth() >= image.getHeight()) {
-            scimp = ZOOM_FACTOR / image.getWidth();
-        } else {
-            scimp = ZOOM_FACTOR / image.getHeight();
-        }
-
-        if (scimp < 1.0) {
-            scimp = 1.0;
-        }
-        // Convert scale factor to percentage for the ImageJ command
-        scimp *= 100;
-
-        IJ.run(image, "Original Scale", "");
-        String options = String.format("zoom=%f x=%d y=%d", scimp, image.getWidth() / 2, image.getHeight() / 2);
-        IJ.run(image, "Set... ", options);
-        // This workaround addresses a potential bug in ImageJ versions 1.48v and later
-        IJ.run("In [+]", "");
     }
 
     /**
@@ -245,6 +249,8 @@ public final class ImageModel {
 
     public void resetBackgroundImage() {
         backgroundImage = null;
+        background = minBackgroundValue;
+        background2 = minBackgroundValue;
     }
 
     // List of getters

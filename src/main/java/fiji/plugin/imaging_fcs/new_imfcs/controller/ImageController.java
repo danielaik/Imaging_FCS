@@ -36,11 +36,11 @@ public final class ImageController {
         image.getCanvas().addMouseListener(imageMouseClicked());
         image.getCanvas().addKeyListener(imageKeyPressed());
 
-        imageModel.adapt_image_scale();
+        ImageModel.adaptImageScale(image);
 
         mainPanelController.setLastFrame(imageModel.getStackSize());
-        backgroundSubtractionController.setTfBackground(String.valueOf(imageModel.getBackground()));
-        backgroundSubtractionController.setTfBackground2(String.valueOf(imageModel.getBackground2()));
+        backgroundSubtractionController.setTfBackground(imageModel.getBackground());
+        backgroundSubtractionController.setTfBackground2(imageModel.getBackground2());
     }
 
     public MouseListener imageMouseClicked() {
