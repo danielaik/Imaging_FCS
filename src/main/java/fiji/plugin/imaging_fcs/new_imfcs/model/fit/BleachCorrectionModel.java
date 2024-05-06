@@ -1,5 +1,6 @@
 package fiji.plugin.imaging_fcs.new_imfcs.model.fit;
 
+import fiji.plugin.imaging_fcs.new_imfcs.constants.Constants;
 import fiji.plugin.imaging_fcs.new_imfcs.model.ExpSettingsModel;
 import fiji.plugin.imaging_fcs.new_imfcs.model.ImageModel;
 import ij.ImagePlus;
@@ -12,11 +13,6 @@ import ij.process.ImageProcessor;
  */
 public class BleachCorrectionModel {
     public static final int MAX_POLYNOMIAL_ORDER = 8;
-    private static final String BLEACH_CORRECTION_SINGLE_EXP = "Single Exp";
-    private static final String BLEACH_CORRECTION_DOUBLE_EXP = "Double Exp";
-    private static final String BLEACH_CORRECTION_POLYNOMIAL = "Polynomial";
-    private static final String BLEACH_CORRECTION_LINEAR_SEGMENT = "Lin Segment";
-    private static final String DC_FCCS_2D_MODEL = "DC-FCCS (2D)";
     private final ExpSettingsModel settings;
     private final ImageModel imageModel;
     private int polynomialOrder = 0;
@@ -61,7 +57,8 @@ public class BleachCorrectionModel {
         int average = (finalFrame - initialFrame + 1) / numPointsIntensityTrace;
 
         int background1 = imageModel.getBackground();
-        int background2 = DC_FCCS_2D_MODEL.equals(settings.getFitModel()) ? imageModel.getBackground2() : background1;
+        int background2 = Constants.DC_FCCS_2D.equals(settings.getFitModel()) ?
+                imageModel.getBackground2() : background1;
 
         intensityTrace1 = new double[numPointsIntensityTrace];
         intensityTrace2 = new double[numPointsIntensityTrace];
@@ -107,16 +104,16 @@ public class BleachCorrectionModel {
         double[] intensityTrace = mode == 1 ? intensityTrace1 : intensityTrace2;
 
         switch (settings.getBleachCorrection()) {
-            case BLEACH_CORRECTION_SINGLE_EXP:
+            case Constants.BLEACH_CORRECTION_SINGLE_EXP:
                 handleSingleExponential(intensityData, intensityTrace);
                 break;
-            case BLEACH_CORRECTION_DOUBLE_EXP:
+            case Constants.BLEACH_CORRECTION_DOUBLE_EXP:
                 handleDoubleExponential(intensityData, intensityTrace);
                 break;
-            case BLEACH_CORRECTION_POLYNOMIAL:
+            case Constants.BLEACH_CORRECTION_POLYNOMIAL:
                 handlePolynomial(intensityData, intensityTrace);
                 break;
-            case BLEACH_CORRECTION_LINEAR_SEGMENT:
+            case Constants.BLEACH_CORRECTION_LINEAR_SEGMENT:
                 handleLinearSegment(intensityData, intensityTrace);
                 break;
         }
@@ -137,7 +134,7 @@ public class BleachCorrectionModel {
      * @param y             The y-coordinate of the top left corner of the binning area.
      */
     private void fillIntensityData(ImagePlus img, int mode, double[] intensityData, int x, int y, int initialFrame) {
-        int background = (mode == 2 && DC_FCCS_2D_MODEL.equals(settings.getFitModel())) ?
+        int background = (mode == 2 && Constants.DC_FCCS_2D.equals(settings.getFitModel())) ?
                 imageModel.getBackground2() : imageModel.getBackground();
 
         for (int i = 0; i < intensityData.length; i++) {

@@ -1,5 +1,6 @@
 package fiji.plugin.imaging_fcs.new_imfcs.model;
 
+import fiji.plugin.imaging_fcs.new_imfcs.constants.Constants;
 import fiji.plugin.imaging_fcs.new_imfcs.controller.InvalidUserInputException;
 
 import java.awt.*;
@@ -31,7 +32,7 @@ public final class ExpSettingsModel {
     private double frameTime = 0.001;
     private int correlatorP = 16;
     private int correlatorQ = 8;
-    private String fitModel = "ITIR-FCS (2D)";
+    private String fitModel = Constants.ITIR_FCS_2D;
     private String paraCor = "N vs D";
     private String dCCF = "x direction";
     private String bleachCorrection = "none";
