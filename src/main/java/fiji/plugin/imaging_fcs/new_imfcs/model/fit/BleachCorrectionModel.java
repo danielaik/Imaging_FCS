@@ -45,13 +45,13 @@ public class BleachCorrectionModel {
     }
 
     /**
-     * Calculates the intensity trace for a rectangular region defined by two points in an image.
+     * Calculates the intensity trace for two points in an image.
      *
      * @param img the image from which intensity data is extracted
-     * @param x1  the x-coordinate of the first corner of the rectangle
-     * @param y1  the y-coordinate of the first corner of the rectangle
-     * @param x2  the x-coordinate of the opposite corner of the rectangle
-     * @param y2  the y-coordinate of the opposite corner of the rectangle
+     * @param x1  the x-coordinate of the first pixel
+     * @param y1  the y-coordinate of the first pixel
+     * @param x2  the x-coordinate of the second pixel
+     * @param y2  the y-coordinate of the second pixel
      */
     public void calcIntensityTrace(ImagePlus img, int x1, int y1, int x2, int y2, int initialFrame, int finalFrame) {
         int average = (finalFrame - initialFrame + 1) / numPointsIntensityTrace;
