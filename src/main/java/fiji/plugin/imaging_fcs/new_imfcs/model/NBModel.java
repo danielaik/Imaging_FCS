@@ -1,5 +1,6 @@
 package fiji.plugin.imaging_fcs.new_imfcs.model;
 
+import fiji.plugin.imaging_fcs.new_imfcs.constants.Constants;
 import fiji.plugin.imaging_fcs.new_imfcs.model.fit.BleachCorrectionModel;
 import ij.IJ;
 import ij.ImagePlus;
@@ -67,7 +68,7 @@ public final class NBModel {
         frameCount = settings.getLastFrame() - settings.getFirstFrame() + 1;
 
         // If mean is selected we consider all the frames, else just the first frame
-        final int framesToConsider = "Mean".equals(settings.getFilter()) ? frameCount : 1;
+        final int framesToConsider = Constants.FILTER_MEAN.equals(settings.getFilter()) ? frameCount : 1;
 
         if ("none".equals(settings.getFilter())) {
             for (int i = 0; i < width; i++) {
