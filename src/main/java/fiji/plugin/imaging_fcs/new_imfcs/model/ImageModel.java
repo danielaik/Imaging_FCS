@@ -4,6 +4,8 @@ import ij.IJ;
 import ij.ImagePlus;
 import ij.gui.ImageCanvas;
 import ij.gui.ImageWindow;
+import ij.gui.Overlay;
+import ij.gui.Roi;
 import ij.process.ImageProcessor;
 
 import java.util.EventListener;
@@ -256,6 +258,22 @@ public final class ImageModel {
 
     public int getStackSize() {
         return image.getStackSize();
+    }
+
+    public Overlay getOverlay() {
+        return image.getOverlay();
+    }
+
+    public void setOverlay(Overlay overlay) {
+        image.setOverlay(overlay);
+    }
+
+    public Roi getRoi() {
+        return image.getRoi();
+    }
+
+    public void setRoi(Roi roi) {
+        image.setRoi(roi);
     }
 
     public ImagePlus getImage() {

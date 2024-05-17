@@ -50,20 +50,20 @@ public final class MainPanelController {
         this.hardwareModel = hardwareModel;
         this.optionsModel = new OptionsModel(hardwareModel.isCuda());
 
-        ImageModel imageModel = new ImageModel();
-        this.backgroundSubtractionController = new BackgroundSubtractionController(imageModel);
-        this.imageController = new ImageController(this, imageModel, backgroundSubtractionController);
-
         this.expSettingsModel = new ExpSettingsModel();
         this.expSettingsView = new ExpSettingsView(this, expSettingsModel);
         updateSettingsField();
 
+
+        ImageModel imageModel = new ImageModel();
+        this.backgroundSubtractionController = new BackgroundSubtractionController(imageModel);
         this.bleachCorrectionModel = new BleachCorrectionModel(expSettingsModel, imageModel);
+        this.imageController = new ImageController(this, imageModel, backgroundSubtractionController,
+                bleachCorrectionModel, expSettingsModel);
 
         this.bleachCorrectionView = new BleachCorrectionView(this, bleachCorrectionModel);
 
         this.simulationController = new SimulationController(imageController, expSettingsModel);
-
 
         this.nbController = new NBController(imageModel, expSettingsModel, optionsModel, bleachCorrectionModel);
 

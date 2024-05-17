@@ -1,8 +1,14 @@
 package fiji.plugin.imaging_fcs.new_imfcs.controller;
 
+import fiji.plugin.imaging_fcs.new_imfcs.model.ExpSettingsModel;
 import fiji.plugin.imaging_fcs.new_imfcs.model.ImageModel;
+import fiji.plugin.imaging_fcs.new_imfcs.model.correlations.SelectedPixel;
+import fiji.plugin.imaging_fcs.new_imfcs.model.fit.BleachCorrectionModel;
 import fiji.plugin.imaging_fcs.new_imfcs.view.ImageView;
+import fiji.plugin.imaging_fcs.new_imfcs.view.Plots;
+import ij.IJ;
 import ij.ImagePlus;
+import ij.gui.Roi;
 
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
@@ -13,13 +19,22 @@ public final class ImageController {
     private final ImageModel imageModel;
     private final MainPanelController mainPanelController;
     private final BackgroundSubtractionController backgroundSubtractionController;
+    private final BleachCorrectionModel bleachCorrectionModel;
+    private final ExpSettingsModel settings;
     private ImageView imageView;
+    private Plots plots;
+    private int previousX = -1;
+    private int previousY = -1;
 
     public ImageController(MainPanelController mainPanelController, ImageModel imageModel,
-                           BackgroundSubtractionController backgroundSubtractionController) {
+                           BackgroundSubtractionController backgroundSubtractionController,
+                           BleachCorrectionModel bleachCorrectionModel, ExpSettingsModel settings) {
         this.mainPanelController = mainPanelController;
         this.imageModel = imageModel;
         this.backgroundSubtractionController = backgroundSubtractionController;
+        this.bleachCorrectionModel = bleachCorrectionModel;
+        this.settings = settings;
+        this.plots = new Plots();
         imageView = null;
     }
 
@@ -46,30 +61,43 @@ public final class ImageController {
     public MouseListener imageMouseClicked() {
         return new MouseListener() {
             @Override
-            public void mouseClicked(MouseEvent e) {
-                int x = e.getX();
-                int y = e.getY();
+            public void mouseClicked(MouseEvent event) {
+                int x = imageModel.getCanvas().offScreenX(event.getX());
+                int y = imageModel.getCanvas().offScreenY(event.getY());
 
-                System.out.println("x=" + x + " y=" + y);
+                if (!settings.isOverlap()) {
+                    x /= settings.getBinning().x;
+                    y /= settings.getBinning().y;
+
+                    previousX = x * settings.getBinning().x;
+                    previousY = y * settings.getBinning().y;
+                }
+
+                SelectedPixel selectedPixel = new SelectedPixel(imageModel, bleachCorrectionModel, settings);
+                try {
+                    selectedPixel.performCFE(x, y, plots);
+                } catch (RuntimeException e) {
+                    IJ.showMessage("Error", e.getMessage());
+                }
             }
 
             @Override
-            public void mousePressed(MouseEvent e) {
+            public void mousePressed(MouseEvent event) {
 
             }
 
             @Override
-            public void mouseReleased(MouseEvent e) {
+            public void mouseReleased(MouseEvent event) {
 
             }
 
             @Override
-            public void mouseEntered(MouseEvent e) {
+            public void mouseEntered(MouseEvent event) {
 
             }
 
             @Override
-            public void mouseExited(MouseEvent e) {
+            public void mouseExited(MouseEvent event) {
 
             }
         };
@@ -78,16 +106,41 @@ public final class ImageController {
     public KeyListener imageKeyPressed() {
         return new KeyListener() {
             @Override
-            public void keyTyped(KeyEvent e) {
+            public void keyTyped(KeyEvent event) {
             }
 
             @Override
-            public void keyPressed(KeyEvent e) {
-                System.out.println(e.getKeyCode());
+            public void keyPressed(KeyEvent event) {
+                Roi roi = imageModel.getRoi();
+                if (roi != null) {
+                    int x = (int) roi.getXBase();
+                    int y = (int) roi.getYBase();
+
+                    if (!settings.isOverlap()) {
+                        // Move the roi by the size of the binning
+                        x = previousX + (x - previousX) * settings.getBinning().x;
+                        y = previousY + (y - previousY) * settings.getBinning().y;
+
+                        x /= settings.getBinning().x;
+                        y /= settings.getBinning().y;
+
+                        // Here we multiply by the binning again to make sure that X and Y are factor of the binning
+                        // It is only useful if the binning was changed by the user in the meantime
+                        previousX = x * settings.getBinning().x;
+                        previousY = y * settings.getBinning().y;
+                    }
+
+                    SelectedPixel selectedPixel = new SelectedPixel(imageModel, bleachCorrectionModel, settings);
+                    try {
+                        selectedPixel.performCFE(x, y, plots);
+                    } catch (RuntimeException e) {
+                        IJ.showMessage("Error", e.getMessage());
+                    }
+                }
             }
 
             @Override
-            public void keyReleased(KeyEvent e) {
+            public void keyReleased(KeyEvent event) {
             }
         };
     }
