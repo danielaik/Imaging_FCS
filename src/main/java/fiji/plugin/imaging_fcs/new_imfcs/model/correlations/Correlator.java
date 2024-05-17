@@ -30,7 +30,30 @@ public class Correlator {
         this.plots = plots;
     }
 
+    private double[][] getIntensityBlock(ImagePlus img, int x, int y, int x2, int y2,
+                                         int initialFrame, int finalFrame, int mode) {
+        double[] intensityData = bleachCorrectionModel.getIntensity(img, x, y, mode,
+                initialFrame, finalFrame);
+
+        double[][] intensityBlock = new double[2][intensityData.length];
+        intensityBlock[0] = intensityData;
+
+        if (x != x2 || y != y2) {
+            // get intensity for second pixel
+            intensityBlock[1] = bleachCorrectionModel.getIntensity(img, x2, y2, 2, initialFrame, finalFrame);
+        } else {
+            // otherwise perform an auto correlation
+            intensityBlock[1] = intensityData;
+        }
+
+        return intensityBlock;
+    }
+
     public void correlate(ImagePlus img, int x, int y, int initialFrame, int finalFrame) {
+        correlate(img, x, y, x, y, initialFrame, finalFrame);
+    }
+
+    public void correlate(ImagePlus img, int x, int y, int x2, int y2, int initialFrame, int finalFrame) {
         int numFrames = finalFrame - initialFrame + 1;
         correlatorQ = settings.getCorrelatorQ();
 
@@ -50,12 +73,8 @@ public class Correlator {
                 int slidingWindowFinalFrame = (i + 1) * bleachCorrectionModel.getSlidingWindowLength() +
                         initialFrame - 1;
 
-                double[] intensityData = bleachCorrectionModel.getIntensity(img, x, y, 1,
-                        slidingWindowInitialFrame, slidingWindowFinalFrame);
-
-                double[][] intensityBlock = new double[2][intensityData.length];
-                intensityBlock[0] = intensityData;
-                intensityBlock[1] = intensityData;
+                double[][] intensityBlock = getIntensityBlock(img, x, y, x2, y2,
+                        slidingWindowInitialFrame, slidingWindowFinalFrame, 1);
 
                 int index = blockTransform(intensityBlock,
                         slidingWindowFinalFrame - slidingWindowInitialFrame + 1);
@@ -65,6 +84,12 @@ public class Correlator {
             lagGroupNumber = correlatorQ;
             channelNumber = settings.getCorrelatorP() +
                     (correlatorQ - 1) * settings.getCorrelatorP() / 2 + 1;
+
+            // TODO: check kcf (select 1, 2 or 3)
+            int mode = settings.getFitModel().equals(Constants.DC_FCCS_2D) ? 2 : 1;
+            double[][] intensityBlock = getIntensityBlock(img, x, y, x2, y2, initialFrame, finalFrame, mode);
+
+            int index = blockTransform(intensityBlock, finalFrame - initialFrame + 1);
         }
     }
 
