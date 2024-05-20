@@ -23,6 +23,11 @@ public class Correlator {
     private int[] lags;
     private int[] sampleTimes;
     private double[] lagTimes;
+    private double[] blockVariance;
+    private double[] blockStandardDeviation;
+    private double[] meanCovariance;
+    private double[][] regularizedCovarianceMatrix;
+
 
     public Correlator(ExpSettingsModel settings, BleachCorrectionModel bleachCorrectionModel, Plots plots) {
         this.settings = settings;
@@ -76,8 +81,8 @@ public class Correlator {
                 double[][] intensityBlock = getIntensityBlock(img, x, y, x2, y2,
                         slidingWindowInitialFrame, slidingWindowFinalFrame, 1);
 
-                int index = blockTransform(intensityBlock,
-                        slidingWindowFinalFrame - slidingWindowInitialFrame + 1);
+                int index = blockTransform(intensityBlock, bleachCorrectionModel.getSlidingWindowLength());
+                // calculateCF(intensityBlock, bleachCorrectionModel.getSlidingWindowLength(), index);
             }
         } else {
             // if sliding window is not selected, correlate the full intensity trace
@@ -89,7 +94,8 @@ public class Correlator {
             int mode = settings.getFitModel().equals(Constants.DC_FCCS_2D) ? 2 : 1;
             double[][] intensityBlock = getIntensityBlock(img, x, y, x2, y2, initialFrame, finalFrame, mode);
 
-            int index = blockTransform(intensityBlock, finalFrame - initialFrame + 1);
+            int index = blockTransform(intensityBlock, numFrames);
+            // calculateCF(intensityBlock, numFrames, index);
         }
     }
 
@@ -157,6 +163,13 @@ public class Correlator {
         }
     }
 
+    private void binData(int numBinnedDataPoints, double[][] intensityBlock) {
+        for (int i = 0; i < numBinnedDataPoints; i++) {
+            intensityBlock[0][i] = intensityBlock[0][2 * i] + intensityBlock[0][2 * i + 1];
+            intensityBlock[1][i] = intensityBlock[1][2 * i] + intensityBlock[1][2 * i + 1];
+        }
+    }
+
     private void processBlocks(double[][] intensityBlock, int blockCount, int numFrames, double[][] varianceBlocks,
                                double[] lowerQuartile, double[] upperQuartile) {
         int currentIncrement = BLOCK_LAG;
@@ -170,14 +183,11 @@ public class Correlator {
                 currentIncrement = sampleTimes[i];
                 // Correct the number of actual data points accordingly
                 numBinnedDataPoints /= 2;
-                for (int j = 0; j < numBinnedDataPoints; j++) {
-                    intensityBlock[0][j] = intensityBlock[0][2 * j] + intensityBlock[0][2 * j + 1];
-                    intensityBlock[1][j] = intensityBlock[1][2 * j] + intensityBlock[1][2 * j + 1];
-                }
+                binData(numBinnedDataPoints, intensityBlock);
             }
 
             if (i == BLOCK_LAG) {
-                calculateCorrelation(i, blockCount, numFrames, numBinnedDataPoints, intensityBlock, varianceBlocks,
+                processCorrelationData(i, blockCount, numFrames, numBinnedDataPoints, intensityBlock, varianceBlocks,
                         numProducts, currentIncrement);
             }
         }
@@ -190,56 +200,81 @@ public class Correlator {
         }
     }
 
-    private void calculateCorrelation(int i, int blockCount, int numFrames, int numBinnedDataPoints,
-                                      double[][] intensityBlock, double[][] varianceBlocks, double[] numProducts,
-                                      int currentIncrement) {
-        int delay = lags[i] / currentIncrement;
+    private double[] calculateMonitors(double numProducts, double[][] intensityBlock, int delay) {
         double directMonitor = 0.0;
         double delayedMonitor = 0.0;
-        numProducts[0] = numBinnedDataPoints - delay;
-        for (int j = 0; j < numProducts[0]; j++) {
-            directMonitor += intensityBlock[0][j];
-            delayedMonitor += intensityBlock[1][j + delay];
-        }
-        directMonitor /= numProducts[0];
-        delayedMonitor /= numProducts[0];
 
-        double[] products = new double[numFrames];
+        for (int i = 0; i < numProducts; i++) {
+            directMonitor += intensityBlock[0][i];
+            delayedMonitor += intensityBlock[1][i + delay];
+        }
+        directMonitor /= numProducts;
+        delayedMonitor /= numProducts;
+
+        return new double[]{directMonitor, delayedMonitor};
+    }
+
+    private double[] calculateCorrelations(double numProducts, double[][] intensityBlock, double directMonitor,
+                                           double delayedMonitor, double[] products, int delay) {
         double sumProd = 0.0;
         double sumProdSquared = 0.0;
 
-        // calculate the correlation
-        for (int j = 0; j < numProducts[0]; j++) {
-            products[j] = intensityBlock[0][j] * intensityBlock[1][j + delay] -
-                    delayedMonitor * intensityBlock[0][j] - directMonitor * intensityBlock[1][j + delay] +
+        for (int i = 0; i < numProducts; i++) {
+            products[i] = intensityBlock[0][i] * intensityBlock[1][i + delay] -
+                    delayedMonitor * intensityBlock[0][i] - directMonitor * intensityBlock[1][i + delay] +
                     delayedMonitor * directMonitor;
-            // calculate the sum of prod, i.e. the raw correlation value ...
-            sumProd += products[j];
-            sumProdSquared += Math.pow(products[j], 2);
+            sumProd += products[i];
+            sumProdSquared += Math.pow(products[i], 2);
         }
 
-        varianceBlocks[0][0] = currentIncrement * settings.getFrameTime();
-        varianceBlocks[1][0] = (sumProdSquared / (numBinnedDataPoints - delay) -
-                Math.pow(sumProd / numProducts[0], 2)) /
-                (numProducts[0] * Math.pow(directMonitor * delayedMonitor, 2));
+        return new double[]{sumProd, sumProdSquared};
+    }
 
-        // perform blocking operations
-        for (int j = 1; j < blockCount; j++) {
-            numProducts[j] = (int) (numProducts[j - 1] / 2);
+    private void performBlockingOperations(int blockCount, int currentIncrement, double[][] varianceBlocks,
+                                           double directMonitor, double delayedMonitor, double[] products,
+                                           double[] numProducts) {
+        double sumProd, sumProdSquared;
+
+        for (int i = 1; i < blockCount; i++) {
+            numProducts[i] = (int) (numProducts[i - 1] / 2);
             sumProd = sumProdSquared = 0.0;
-            for (int k = 0; k < numProducts[j]; k++) {
-                products[k] = (products[2 * k] + products[2 * k + 1]) / 2;
-                sumProd += products[k];
-                sumProdSquared += products[k] * products[k];
+            for (int j = 0; j < numProducts[i]; j++) {
+                products[j] = (products[2 * j] + products[2 * j + 1]) / 2;
+                sumProd += products[j];
+                sumProdSquared += products[j] * products[j];
             }
 
             // the time of the block curve
-            varianceBlocks[0][j] = (currentIncrement * Math.pow(2, j)) * settings.getFrameTime();
+            varianceBlocks[0][i] = (currentIncrement * Math.pow(2, i)) * settings.getFrameTime();
 
             // value of the block curve
-            varianceBlocks[1][j] = (sumProdSquared / numProducts[j] - Math.pow(sumProd / numProducts[j], 2)) /
-                    (numProducts[j] * Math.pow(directMonitor * delayedMonitor, 2));
+            varianceBlocks[1][i] = (sumProdSquared / numProducts[i] - Math.pow(sumProd / numProducts[i], 2)) /
+                    (numProducts[i] * Math.pow(directMonitor * delayedMonitor, 2));
         }
+    }
+
+    private void processCorrelationData(int i, int blockCount, int numFrames, int numBinnedDataPoints,
+                                        double[][] intensityBlock, double[][] varianceBlocks, double[] numProducts,
+                                        int currentIncrement) {
+        int delay = lags[i] / currentIncrement;
+        numProducts[0] = numBinnedDataPoints - delay;
+
+        double[] monitors = calculateMonitors(numProducts[0], intensityBlock, delay);
+        double directMonitor = monitors[0];
+        double delayedMonitor = monitors[1];
+
+        double[] products = new double[numFrames];
+        double[] sumProds = calculateCorrelations(numProducts[0], intensityBlock, directMonitor, delayedMonitor,
+                products, delay);
+        double sumProd = sumProds[0];
+        double sumProdSquared = sumProds[1];
+
+        varianceBlocks[0][0] = currentIncrement * settings.getFrameTime();
+        varianceBlocks[1][0] = (sumProdSquared / (numBinnedDataPoints - delay) -
+                Math.pow(sumProd / numProducts[0], 2)) / (numProducts[0] * Math.pow(directMonitor * delayedMonitor, 2));
+
+        performBlockingOperations(blockCount, currentIncrement, varianceBlocks, directMonitor, delayedMonitor, products,
+                numProducts);
     }
 
     private int determineLastIndexMeetingCriteria(int blockCount, double[][] varianceBlocks,
@@ -281,5 +316,165 @@ public class Correlator {
 
     private boolean isIncreasing(int index, double[][] varianceBlocks) {
         return varianceBlocks[1][index + 1] - varianceBlocks[1][index] > 0;
+    }
+
+    private double calculateBlockVariance(double[] products, double directMonitor, double delayedMonitor,
+                                          double numProducts) {
+        double sumProd = 0.0;
+        double sumProdSquared = 0.0;
+
+        for (int i = 0; i < numProducts; i++) {
+            // calculate the sum of prod, i.e. the raw correlation value
+            sumProd += products[i];
+            sumProdSquared += Math.pow(products[i], 2);
+        }
+
+        // variance after blocking; extra division by numProduct to obtain SEM
+        return (sumProdSquared / numProducts - Math.pow(sumProd / numProducts, 2)) /
+                ((numProducts - 1) * Math.pow(directMonitor * delayedMonitor, 2));
+    }
+
+    private void calculateMeanCovariance(double[][] products, double[] directMonitors, double[] delayedMonitors,
+                                         int minProducts) {
+        for (int i = 1; i < channelNumber; i++) {
+            for (int j = 0; j < minProducts; j++) {
+                meanCovariance[i] = products[i][j] / (directMonitors[i] * delayedMonitors[i]);
+            }
+            // normalize by the number of products
+            meanCovariance[i] /= minProducts;
+        }
+    }
+
+    private void calculateCovarianceMatrix(double[][] covarianceMatrix, double[][] products, double[] directMonitors,
+                                           double[] delayedMonitors, int minProducts) {
+        for (int i = 1; i < channelNumber; i++) {
+            for (int j = 1; j <= i; j++) {
+                for (int k = 0; k < minProducts; k++) {
+                    covarianceMatrix[i][j] += (products[i][k] / (directMonitors[i] * delayedMonitors[i]) *
+                            (products[j][k] / (directMonitors[j] * delayedMonitors[j]) - meanCovariance[j]));
+                }
+                covarianceMatrix[i][j] /= (minProducts - 1);
+                // lower triangular part is equal to upper triangular part
+                covarianceMatrix[j][i] = covarianceMatrix[i][j];
+            }
+        }
+    }
+
+    private double calculateVarianceShrinkageWeight(double[][] covarianceMatrix, double[][] products,
+                                                    double[] directMonitors, double[] delayedMonitors,
+                                                    int minProducts) {
+        double[] diagonalCovarianceMatrix = new double[channelNumber];
+
+        for (int i = 1; i < channelNumber; i++) {
+            diagonalCovarianceMatrix[i] = covarianceMatrix[i][i];
+        }
+
+        Arrays.sort(diagonalCovarianceMatrix);
+        double pos1 = Math.floor((diagonalCovarianceMatrix.length - 1.0) / 2.0);
+        double pos2 = Math.ceil((diagonalCovarianceMatrix.length - 1.0) / 2.0);
+
+        double median;
+        if (pos1 == pos2) {
+            median = diagonalCovarianceMatrix[(int) pos1];
+        } else {
+            median = (diagonalCovarianceMatrix[(int) pos1] + diagonalCovarianceMatrix[(int) pos2]) / 2.0;
+        }
+
+        double numerator = 0;
+        double denominator = 0;
+        for (int i = 1; i < channelNumber; i++) {
+            double tmp = 0;
+            for (int j = 0; j < minProducts; j++) {
+                tmp += Math.pow(
+                        (Math.pow(products[i][j] / (directMonitors[i] * delayedMonitors[i]) - meanCovariance[i], 2) -
+                                diagonalCovarianceMatrix[i]), 2);
+            }
+            tmp *= minProducts / Math.pow(minProducts - 1, 3);
+            numerator += tmp;
+            denominator += Math.pow(diagonalCovarianceMatrix[i] - median, 2);
+        }
+
+        return Math.max(Math.min(1, numerator / denominator), 0);
+    }
+
+    private void calculateCF(double[][] intensityBlocks, int numFrames, int index) {
+        // FIXME: implement GLS button
+        boolean GLS = true;
+
+        // intensityBlocks is the array of intensity values for the two traces witch are correlated
+        blockVariance = new double[channelNumber];
+        blockStandardDeviation = new double[channelNumber];
+
+        double[][] covarianceMatrix = new double[channelNumber][channelNumber];
+        // the final results does not contain information about the zero lagtime kcf
+        regularizedCovarianceMatrix = new double[channelNumber - 1][channelNumber - 1];
+
+        double[] numProducts = new double[channelNumber];
+        double[][] products = new double[channelNumber][numFrames];
+
+        double[] correlationMean = new double[channelNumber];
+        meanCovariance = new double[channelNumber];
+
+        // direct and delayed monitors required for ACF normalization
+        double[] directMonitors = new double[channelNumber];
+        double[] delayedMonitors = new double[channelNumber];
+
+        int numBinnedDataPoints = numFrames;
+        int currentIncrement = BLOCK_LAG;
+        int minProducts = (int) (numSamples[channelNumber - 1] /
+                Math.pow(2, Math.max(index - Math.log(sampleTimes[channelNumber - 1]) / Math.log(2), 0)));
+
+        // count how often the data was binned
+        int binCount = 0;
+
+        for (int i = 0; i < channelNumber; i++) {
+            if (currentIncrement != sampleTimes[i]) {
+                currentIncrement = sampleTimes[i];
+                numBinnedDataPoints /= 2;
+                binCount++;
+
+                binData(numBinnedDataPoints, intensityBlocks);
+            }
+
+            int delay = lags[i] / currentIncrement;
+            numProducts[i] = numBinnedDataPoints - delay;
+
+            double[] monitors = calculateMonitors(numProducts[i], intensityBlocks, delay);
+            directMonitors[i] = monitors[0];
+            delayedMonitors[i] = monitors[1];
+
+            double[] sumProds = calculateCorrelations(numProducts[i], intensityBlocks, directMonitors[i],
+                    delayedMonitors[i], products[i], delay);
+
+            correlationMean[i] = sumProds[0] / (numProducts[i] * directMonitors[i] * delayedMonitors[i]);
+
+            int binTimes = index - binCount;
+            // bin the data until block time is reached
+            for (int j = 1; j <= binTimes; j++) {
+                // for each binning the number of data point is halfed
+                numProducts[i] /= 2;
+                for (int k = 0; k < numProducts[i]; k++) {
+                    // do the binning and divide by 2 so that the average value does not change
+                    products[i][k] = (products[i][2 * k] + products[i][2 * k + 1]) / 2;
+                }
+            }
+
+            // use only the minimal number of products to achieve a symmetric variance matrix
+            numProducts[i] = minProducts;
+
+            blockVariance[i] = calculateBlockVariance(products[i], directMonitors[i], delayedMonitors[i],
+                    numProducts[i]);
+            blockStandardDeviation[i] = Math.sqrt(blockVariance[i]);
+        }
+
+        // TODO: check if GLS is selected, if it's selected then we do the following operations
+        // if GLS is selected, then calculate the regularized covariance matrix
+        if (GLS) {
+            calculateMeanCovariance(products, directMonitors, delayedMonitors, minProducts);
+            calculateCovarianceMatrix(covarianceMatrix, products, directMonitors, delayedMonitors, minProducts);
+            double varianceShrinkageWeight =
+                    calculateVarianceShrinkageWeight(covarianceMatrix, products, directMonitors,
+                            delayedMonitors, minProducts);
+        }
     }
 }
