@@ -73,7 +73,9 @@ public class Plots {
         minBlock *= 0.9;
         maxBlock *= 1.1;
 
-        Plot plot = new Plot("blocking", "x", "SD", varianceBlocks[0], varianceBlocks[1]);
+        Plot plot = new Plot("blocking", "x", "SD");
+        plot.add("line", varianceBlocks[0], varianceBlocks[1]);
+
         plot.setFrameSize(BLOCKING_CURVE_DIMENSION.width, BLOCKING_CURVE_DIMENSION.height);
         plot.setLogScaleX();
         plot.setLimits(varianceBlocks[0][0] / 2, 2 * varianceBlocks[0][blockCount - 1], minBlock, maxBlock);
