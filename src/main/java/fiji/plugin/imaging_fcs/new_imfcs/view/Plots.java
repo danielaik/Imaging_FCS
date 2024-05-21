@@ -12,7 +12,7 @@ import java.awt.*;
 
 public class Plots {
     private final Point ACF_POSITION = new Point(Constants.MAIN_PANEL_POS.x + Constants.MAIN_PANEL_DIM.width + 10,
-            Constants.MAIN_PANEL_POS.y + 335);
+            Constants.MAIN_PANEL_POS.y + 100);
     private final Dimension ACF_DIMENSION = new Dimension(200, 200);
     private final Dimension BLOCKING_CURVE_DIMENSION = new Dimension(200, 100);
     private final Point STANDARD_DEVIATION_POSITION = new Point(ACF_POSITION.x + ACF_DIMENSION.width + 115,
@@ -22,9 +22,9 @@ public class Plots {
             new Point(STANDARD_DEVIATION_POSITION.x + STANDARD_DEVIATION_DIMENSION.width + 110,
                     STANDARD_DEVIATION_POSITION.y);
     private final Point COVARIANCE_POSITION = new Point(BLOCKING_CURVE_POSITION.x,
-            BLOCKING_CURVE_POSITION.y + BLOCKING_CURVE_DIMENSION.width + 50);
+            BLOCKING_CURVE_POSITION.y + BLOCKING_CURVE_DIMENSION.height + 150);
     private PlotWindow blockingCurveWindow;
-    private ImagePlus imgCovariance;
+    private ImageWindow imgCovarianceWindow;
 
     public Plots() {
         this.blockingCurveWindow = null;
@@ -81,12 +81,8 @@ public class Plots {
     }
 
     public void plotCovarianceMatrix(int channelNumber, double[][] regularizedCovarianceMatrix) {
-        // close covariance window if it exists
-        if (imgCovariance != null) {
-            imgCovariance.close();
-        }
+        ImagePlus imgCovariance = IJ.createImage("Covariance", "GRAY32", channelNumber - 1, channelNumber - 1, 1);
 
-        imgCovariance = IJ.createImage("Covariance", "GRAY32", channelNumber - 1, channelNumber - 1, 1);
         ImageProcessor ip = imgCovariance.getProcessor();
         for (int x = 0; x < channelNumber - 1; x++) {
             for (int y = 0; y < channelNumber - 1; y++) {
@@ -94,15 +90,20 @@ public class Plots {
             }
         }
 
-        imgCovariance.show();
+        if (imgCovarianceWindow == null || imgCovarianceWindow.isClosed()) {
+            imgCovariance.show();
+            imgCovarianceWindow = imgCovariance.getWindow();
+            imgCovarianceWindow.setLocation(COVARIANCE_POSITION);
+        } else {
+            imgCovarianceWindow.setImage(imgCovariance);
+        }
+
         // apply "Spectrum" LUT
         IJ.run(imgCovariance, "Spectrum", "");
         IJ.run(imgCovariance, "Enhance Contrast", "saturated=0.35");
-        ImageWindow imgCovarianceWindow = imgCovariance.getWindow();
-        imgCovarianceWindow.setLocation(COVARIANCE_POSITION);
 
         IJ.run(imgCovariance, "Set... ", "zoom=" + 200 + " x=" + 0 + " y=" + 0);
         // This needs to be used since ImageJ 1.48v to set the window to the right size;
-        IJ.run("In [+]", "");
+        IJ.run(imgCovariance, "In [+]", "");
     }
 }
