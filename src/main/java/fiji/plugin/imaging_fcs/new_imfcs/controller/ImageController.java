@@ -2,10 +2,10 @@ package fiji.plugin.imaging_fcs.new_imfcs.controller;
 
 import fiji.plugin.imaging_fcs.new_imfcs.model.ExpSettingsModel;
 import fiji.plugin.imaging_fcs.new_imfcs.model.ImageModel;
+import fiji.plugin.imaging_fcs.new_imfcs.model.correlations.Correlator;
 import fiji.plugin.imaging_fcs.new_imfcs.model.correlations.SelectedPixel;
 import fiji.plugin.imaging_fcs.new_imfcs.model.fit.BleachCorrectionModel;
 import fiji.plugin.imaging_fcs.new_imfcs.view.ImageView;
-import fiji.plugin.imaging_fcs.new_imfcs.view.Plots;
 import ij.IJ;
 import ij.ImagePlus;
 import ij.gui.Roi;
@@ -20,21 +20,22 @@ public final class ImageController {
     private final MainPanelController mainPanelController;
     private final BackgroundSubtractionController backgroundSubtractionController;
     private final BleachCorrectionModel bleachCorrectionModel;
+    private final Correlator correlator;
     private final ExpSettingsModel settings;
     private ImageView imageView;
-    private Plots plots;
     private int previousX = -1;
     private int previousY = -1;
 
     public ImageController(MainPanelController mainPanelController, ImageModel imageModel,
                            BackgroundSubtractionController backgroundSubtractionController,
-                           BleachCorrectionModel bleachCorrectionModel, ExpSettingsModel settings) {
+                           BleachCorrectionModel bleachCorrectionModel, Correlator correlator,
+                           ExpSettingsModel settings) {
         this.mainPanelController = mainPanelController;
         this.imageModel = imageModel;
         this.backgroundSubtractionController = backgroundSubtractionController;
         this.bleachCorrectionModel = bleachCorrectionModel;
+        this.correlator = correlator;
         this.settings = settings;
-        this.plots = new Plots();
         imageView = null;
     }
 
@@ -73,9 +74,9 @@ public final class ImageController {
                     previousY = y * settings.getBinning().y;
                 }
 
-                SelectedPixel selectedPixel = new SelectedPixel(imageModel, bleachCorrectionModel, settings);
+                SelectedPixel selectedPixel = new SelectedPixel(imageModel, bleachCorrectionModel, correlator, settings);
                 try {
-                    selectedPixel.performCFE(x, y, plots);
+                    selectedPixel.performCFE(x, y);
                 } catch (RuntimeException e) {
                     IJ.showMessage("Error", e.getMessage());
                 }
@@ -130,9 +131,10 @@ public final class ImageController {
                         previousY = y * settings.getBinning().y;
                     }
 
-                    SelectedPixel selectedPixel = new SelectedPixel(imageModel, bleachCorrectionModel, settings);
+                    SelectedPixel selectedPixel =
+                            new SelectedPixel(imageModel, bleachCorrectionModel, correlator, settings);
                     try {
-                        selectedPixel.performCFE(x, y, plots);
+                        selectedPixel.performCFE(x, y);
                     } catch (RuntimeException e) {
                         IJ.showMessage("Error", e.getMessage());
                     }

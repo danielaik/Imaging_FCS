@@ -4,10 +4,12 @@ import fiji.plugin.imaging_fcs.new_imfcs.model.ExpSettingsModel;
 import fiji.plugin.imaging_fcs.new_imfcs.model.HardwareModel;
 import fiji.plugin.imaging_fcs.new_imfcs.model.ImageModel;
 import fiji.plugin.imaging_fcs.new_imfcs.model.OptionsModel;
+import fiji.plugin.imaging_fcs.new_imfcs.model.correlations.Correlator;
 import fiji.plugin.imaging_fcs.new_imfcs.model.fit.BleachCorrectionModel;
 import fiji.plugin.imaging_fcs.new_imfcs.view.BleachCorrectionView;
 import fiji.plugin.imaging_fcs.new_imfcs.view.ExpSettingsView;
 import fiji.plugin.imaging_fcs.new_imfcs.view.MainPanelView;
+import fiji.plugin.imaging_fcs.new_imfcs.view.Plots;
 import fiji.plugin.imaging_fcs.new_imfcs.view.dialogs.FilterLimitsSelectionView;
 import fiji.plugin.imaging_fcs.new_imfcs.view.dialogs.PolynomialOrderSelectionView;
 import fiji.plugin.imaging_fcs.new_imfcs.view.dialogs.SlidingWindowSelectionView;
@@ -32,11 +34,13 @@ public final class MainPanelController {
     private final MainPanelView view;
     private final ExpSettingsView expSettingsView;
     private final BleachCorrectionView bleachCorrectionView;
+    private final Plots plots;
     private final HardwareModel hardwareModel;
     private final OptionsModel optionsModel;
     private final ImageController imageController;
     private final ExpSettingsModel expSettingsModel;
     private final BleachCorrectionModel bleachCorrectionModel;
+    private final Correlator correlator;
     private final SimulationController simulationController;
     private final BackgroundSubtractionController backgroundSubtractionController;
     private final NBController nbController;
@@ -54,12 +58,14 @@ public final class MainPanelController {
         this.expSettingsView = new ExpSettingsView(this, expSettingsModel);
         updateSettingsField();
 
+        this.plots = new Plots();
 
         ImageModel imageModel = new ImageModel();
         this.backgroundSubtractionController = new BackgroundSubtractionController(imageModel);
         this.bleachCorrectionModel = new BleachCorrectionModel(expSettingsModel, imageModel);
+        this.correlator = new Correlator(expSettingsModel, optionsModel, bleachCorrectionModel, plots);
         this.imageController = new ImageController(this, imageModel, backgroundSubtractionController,
-                bleachCorrectionModel, expSettingsModel);
+                bleachCorrectionModel, correlator, expSettingsModel);
 
         this.bleachCorrectionView = new BleachCorrectionView(this, bleachCorrectionModel);
 

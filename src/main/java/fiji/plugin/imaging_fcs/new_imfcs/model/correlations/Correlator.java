@@ -2,6 +2,7 @@ package fiji.plugin.imaging_fcs.new_imfcs.model.correlations;
 
 import fiji.plugin.imaging_fcs.new_imfcs.constants.Constants;
 import fiji.plugin.imaging_fcs.new_imfcs.model.ExpSettingsModel;
+import fiji.plugin.imaging_fcs.new_imfcs.model.OptionsModel;
 import fiji.plugin.imaging_fcs.new_imfcs.model.fit.BleachCorrectionModel;
 import fiji.plugin.imaging_fcs.new_imfcs.view.Plots;
 import ij.ImagePlus;
@@ -16,6 +17,7 @@ public class Correlator {
     private final int SLIDING_WINDOW_MIN_FRAME = 20;
     private final int BLOCK_LAG = 1;
     private final ExpSettingsModel settings;
+    private final OptionsModel options;
     private final BleachCorrectionModel bleachCorrectionModel;
     private final Plots plots;
     private int channelNumber;
@@ -32,8 +34,10 @@ public class Correlator {
     private double[][] regularizedCovarianceMatrix;
 
 
-    public Correlator(ExpSettingsModel settings, BleachCorrectionModel bleachCorrectionModel, Plots plots) {
+    public Correlator(ExpSettingsModel settings, OptionsModel options, BleachCorrectionModel bleachCorrectionModel,
+                      Plots plots) {
         this.settings = settings;
+        this.options = options;
         this.bleachCorrectionModel = bleachCorrectionModel;
         this.plots = plots;
     }
@@ -62,44 +66,55 @@ public class Correlator {
     }
 
     public void correlate(ImagePlus img, int x, int y, int x2, int y2, int initialFrame, int finalFrame) {
-        int numFrames = finalFrame - initialFrame + 1;
         correlatorQ = settings.getCorrelatorQ();
 
         if (settings.getBleachCorrection().equals(Constants.BLEACH_CORRECTION_SLIDING_WINDOW)) {
-            int numSlidingWindow = numFrames / bleachCorrectionModel.getSlidingWindowLength();
-            lagGroupNumber = (int) Math.floor((Math.log(
-                    (double) bleachCorrectionModel.getSlidingWindowLength() /
-                            (SLIDING_WINDOW_MIN_FRAME + settings.getCorrelatorP()))
-                    + 1) / Math.log(2));
-            channelNumber = settings.getCorrelatorP() + (lagGroupNumber - 1) * settings.getCorrelatorP() / 2 + 1;
-
-            // allow smaller correlator Q value as minimum but not larger
-            correlatorQ = Math.min(correlatorQ, lagGroupNumber);
-
-            for (int i = 0; i < numSlidingWindow; i++) {
-                int slidingWindowInitialFrame = i * bleachCorrectionModel.getSlidingWindowLength() + initialFrame;
-                int slidingWindowFinalFrame = (i + 1) * bleachCorrectionModel.getSlidingWindowLength() +
-                        initialFrame - 1;
-
-                double[][] intensityBlock = getIntensityBlock(img, x, y, x2, y2,
-                        slidingWindowInitialFrame, slidingWindowFinalFrame, 1);
-
-                int index = blockTransform(deepCopy(intensityBlock), bleachCorrectionModel.getSlidingWindowLength());
-                calculateCF(deepCopy(intensityBlock), bleachCorrectionModel.getSlidingWindowLength(), index);
-            }
+            handleSlidingWindowCorrelation(img, x, y, x2, y2, initialFrame, finalFrame);
         } else {
             // if sliding window is not selected, correlate the full intensity trace
-            lagGroupNumber = correlatorQ;
-            channelNumber = settings.getCorrelatorP() +
-                    (correlatorQ - 1) * settings.getCorrelatorP() / 2 + 1;
-
-            // TODO: check kcf (select 1, 2 or 3)
-            int mode = settings.getFitModel().equals(Constants.DC_FCCS_2D) ? 2 : 1;
-            double[][] intensityBlock = getIntensityBlock(img, x, y, x2, y2, initialFrame, finalFrame, mode);
-
-            int index = blockTransform(deepCopy(intensityBlock), numFrames);
-            calculateCF(deepCopy(intensityBlock), numFrames, index);
+            handleFullTraceCorrelation(img, x, y, x2, y2, initialFrame, finalFrame);
         }
+    }
+
+    private void handleSlidingWindowCorrelation(ImagePlus img, int x, int y, int x2, int y2, int initialFrame,
+                                                int finalFrame) {
+        int numFrames = finalFrame - initialFrame + 1;
+        int numSlidingWindow = numFrames / bleachCorrectionModel.getSlidingWindowLength();
+        lagGroupNumber = (int) Math.floor((Math.log(
+                (double) bleachCorrectionModel.getSlidingWindowLength() /
+                        (SLIDING_WINDOW_MIN_FRAME + settings.getCorrelatorP()))
+                + 1) / Math.log(2));
+        channelNumber = settings.getCorrelatorP() + (lagGroupNumber - 1) * settings.getCorrelatorP() / 2 + 1;
+
+        // allow smaller correlator Q value as minimum but not larger
+        correlatorQ = Math.min(correlatorQ, lagGroupNumber);
+
+        for (int i = 0; i < numSlidingWindow; i++) {
+            int slidingWindowInitialFrame = i * bleachCorrectionModel.getSlidingWindowLength() + initialFrame;
+            int slidingWindowFinalFrame = (i + 1) * bleachCorrectionModel.getSlidingWindowLength() +
+                    initialFrame - 1;
+
+            double[][] intensityBlock = getIntensityBlock(img, x, y, x2, y2,
+                    slidingWindowInitialFrame, slidingWindowFinalFrame, 1);
+
+            int index = blockTransform(deepCopy(intensityBlock), bleachCorrectionModel.getSlidingWindowLength());
+            calculateCF(deepCopy(intensityBlock), bleachCorrectionModel.getSlidingWindowLength(), index);
+        }
+    }
+
+    private void handleFullTraceCorrelation(ImagePlus img, int x, int y, int x2, int y2, int initialFrame,
+                                            int finalFrame) {
+        int numFrames = finalFrame - initialFrame + 1;
+        lagGroupNumber = correlatorQ;
+        channelNumber = settings.getCorrelatorP() +
+                (correlatorQ - 1) * settings.getCorrelatorP() / 2 + 1;
+
+        // TODO: check kcf (select 1, 2 or 3)
+        int mode = settings.getFitModel().equals(Constants.DC_FCCS_2D) ? 2 : 1;
+        double[][] intensityBlock = getIntensityBlock(img, x, y, x2, y2, initialFrame, finalFrame, mode);
+
+        int index = blockTransform(deepCopy(intensityBlock), numFrames);
+        calculateCF(deepCopy(intensityBlock), numFrames, index);
     }
 
     private int blockTransform(double[][] intensityCorrelation, int numFrames) {
@@ -112,7 +127,9 @@ public class Correlator {
         processBlocks(intensityCorrelation, blockCount, numFrames, varianceBlocks, lowerQuartile, upperQuartile);
         int index = determineLastIndexMeetingCriteria(blockCount, varianceBlocks, lowerQuartile, upperQuartile);
 
-        plots.plotBlockingCurve(varianceBlocks, blockCount, index);
+        if (options.isPlotBlockingCurve()) {
+            plots.plotBlockingCurve(varianceBlocks, blockCount, index);
+        }
 
         return index;
     }
@@ -545,7 +562,29 @@ public class Correlator {
 
             regularizeCovarianceMatrix(covarianceMatrix, correlationMatrix, varianceShrinkageWeight,
                     covarianceShrinkageWeight, minProducts);
-            plots.plotCovarianceMatrix(channelNumber, regularizedCovarianceMatrix);
+
+            if (options.isPlotCovMats()) {
+                plots.plotCovarianceMatrix(channelNumber, regularizedCovarianceMatrix);
+            }
+        } else {
+            // hand over either the correlation function CorrelationMean; they differ only slightly
+            meanCovariance = correlationMean;
         }
+    }
+
+    public double[] getMeanCovariance() {
+        return meanCovariance;
+    }
+
+    public double[] getBlockVariance() {
+        return blockVariance;
+    }
+
+    public double[] getBlockStandardDeviation() {
+        return blockStandardDeviation;
+    }
+
+    public double[][] getRegularizedCovarianceMatrix() {
+        return regularizedCovarianceMatrix;
     }
 }
