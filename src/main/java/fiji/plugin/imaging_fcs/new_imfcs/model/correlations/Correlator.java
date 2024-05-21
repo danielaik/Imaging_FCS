@@ -8,6 +8,8 @@ import ij.ImagePlus;
 
 import java.util.Arrays;
 
+import static fiji.plugin.imaging_fcs.new_imfcs.model.MatrixDeepCopy.deepCopy;
+
 public class Correlator {
     // minimum number of frames required for the sliding windows; this is used to
     // calculate a useful correlatorq
@@ -18,6 +20,7 @@ public class Correlator {
     private final Plots plots;
     private int channelNumber;
     private int lagGroupNumber;
+    private double median;
     private int correlatorQ;
     private int[] numSamples;
     private int[] lags;
@@ -81,8 +84,8 @@ public class Correlator {
                 double[][] intensityBlock = getIntensityBlock(img, x, y, x2, y2,
                         slidingWindowInitialFrame, slidingWindowFinalFrame, 1);
 
-                int index = blockTransform(intensityBlock, bleachCorrectionModel.getSlidingWindowLength());
-                // calculateCF(intensityBlock, bleachCorrectionModel.getSlidingWindowLength(), index);
+                int index = blockTransform(deepCopy(intensityBlock), bleachCorrectionModel.getSlidingWindowLength());
+                calculateCF(deepCopy(intensityBlock), bleachCorrectionModel.getSlidingWindowLength(), index);
             }
         } else {
             // if sliding window is not selected, correlate the full intensity trace
@@ -94,8 +97,8 @@ public class Correlator {
             int mode = settings.getFitModel().equals(Constants.DC_FCCS_2D) ? 2 : 1;
             double[][] intensityBlock = getIntensityBlock(img, x, y, x2, y2, initialFrame, finalFrame, mode);
 
-            int index = blockTransform(intensityBlock, numFrames);
-            // calculateCF(intensityBlock, numFrames, index);
+            int index = blockTransform(deepCopy(intensityBlock), numFrames);
+            calculateCF(deepCopy(intensityBlock), numFrames, index);
         }
     }
 
@@ -176,7 +179,7 @@ public class Correlator {
         int numBinnedDataPoints = numFrames;
         double[] numProducts = new double[blockCount];
 
-        for (int i = 1; i < channelNumber; i++) {
+        for (int i = 0; i < channelNumber; i++) {
             // check whether the kcf width has changed
             if (currentIncrement != sampleTimes[i]) {
                 // set the current increment accordingly
@@ -338,7 +341,7 @@ public class Correlator {
                                          int minProducts) {
         for (int i = 1; i < channelNumber; i++) {
             for (int j = 0; j < minProducts; j++) {
-                meanCovariance[i] = products[i][j] / (directMonitors[i] * delayedMonitors[i]);
+                meanCovariance[i] += products[i][j] / (directMonitors[i] * delayedMonitors[i]);
             }
             // normalize by the number of products
             meanCovariance[i] /= minProducts;
@@ -373,7 +376,6 @@ public class Correlator {
         double pos1 = Math.floor((diagonalCovarianceMatrix.length - 1.0) / 2.0);
         double pos2 = Math.ceil((diagonalCovarianceMatrix.length - 1.0) / 2.0);
 
-        double median;
         if (pos1 == pos2) {
             median = diagonalCovarianceMatrix[(int) pos1];
         } else {
@@ -387,14 +389,74 @@ public class Correlator {
             for (int j = 0; j < minProducts; j++) {
                 tmp += Math.pow(
                         (Math.pow(products[i][j] / (directMonitors[i] * delayedMonitors[i]) - meanCovariance[i], 2) -
-                                diagonalCovarianceMatrix[i]), 2);
+                                covarianceMatrix[i][i]), 2);
             }
             tmp *= minProducts / Math.pow(minProducts - 1, 3);
             numerator += tmp;
-            denominator += Math.pow(diagonalCovarianceMatrix[i] - median, 2);
+            denominator += Math.pow(covarianceMatrix[i][i] - median, 2);
         }
 
         return Math.max(Math.min(1, numerator / denominator), 0);
+    }
+
+    private double calculateCovarianceShrinkageWeight(double[][] products, double[] directMonitors,
+                                                      double[] delayedMonitors, double[][] covarianceMatrix,
+                                                      double[][] correlationMatrix, int minProducts) {
+        for (int i = 1; i < channelNumber; i++) {
+            for (int j = 1; j < channelNumber; j++) {
+                correlationMatrix[i][j] = covarianceMatrix[i][j] /
+                        Math.sqrt(covarianceMatrix[i][i] * covarianceMatrix[j][j]);
+            }
+        }
+
+        double numerator = 0.0;
+        double denominator = 0.0;
+
+        double cmx, cmy, tmp;
+
+        // determine the variance of the covariance
+        for (int i = 1; i < channelNumber; i++) {
+            tmp = 0.0;
+            // sum only the upper triangle as the matrix is symmetric
+            for (int j = 1; j < i; j++) {
+                for (int k = 0; k < minProducts; k++) {
+                    cmx = (products[i][k] / (directMonitors[i] * delayedMonitors[i]) - meanCovariance[i]) /
+                            Math.sqrt(covarianceMatrix[i][i]);
+                    cmy = (products[j][k] / (directMonitors[j] * delayedMonitors[j]) - meanCovariance[j]) /
+                            Math.sqrt(covarianceMatrix[j][j]);
+                    tmp += Math.pow(cmx * cmy - correlationMatrix[i][j], 2);
+                }
+                tmp *= minProducts / Math.pow(minProducts - 1, 3);
+                numerator += tmp;
+                // sum of squares of off-diagonal elements of correlation matrix
+                denominator += Math.pow(correlationMatrix[i][j], 2);
+            }
+        }
+
+        return Math.max(Math.min(1, numerator / denominator), 0);
+    }
+
+    private void regularizeCovarianceMatrix(double[][] covarianceMatrix, double[][] correlationMatrix,
+                                            double varianceShrinkageWeight, double covarianceShrinkageWeight,
+                                            int minProducts) {
+        double cmx, cmy;
+
+        // calculate the off-diagonal elements of the regularized variance-covariance matrix
+        for (int i = 1; i < channelNumber; i++) {
+            for (int j = 1; j < i; j++) {
+                cmx = varianceShrinkageWeight * median + (1 - varianceShrinkageWeight) * covarianceMatrix[i][i];
+                cmy = varianceShrinkageWeight * median + (1 - varianceShrinkageWeight) * covarianceMatrix[j][j];
+                regularizedCovarianceMatrix[i - 1][j - 1] = (1 - covarianceShrinkageWeight) *
+                        correlationMatrix[i][j] * Math.sqrt(cmx * cmy) / minProducts;
+                regularizedCovarianceMatrix[j - 1][i - 1] = regularizedCovarianceMatrix[i - 1][j - 1];
+            }
+        }
+
+        // diagonal elements of the regularized variance-covariance matrix
+        for (int i = 1; i < channelNumber; i++) {
+            regularizedCovarianceMatrix[i - 1][i - 1] = (varianceShrinkageWeight * median +
+                    (1 - varianceShrinkageWeight) * covarianceMatrix[i][i]) / minProducts;
+        }
     }
 
     private void calculateCF(double[][] intensityBlocks, int numFrames, int index) {
@@ -475,6 +537,15 @@ public class Correlator {
             double varianceShrinkageWeight =
                     calculateVarianceShrinkageWeight(covarianceMatrix, products, directMonitors,
                             delayedMonitors, minProducts);
+
+            double[][] correlationMatrix = new double[channelNumber][channelNumber];
+            double covarianceShrinkageWeight =
+                    calculateCovarianceShrinkageWeight(products, directMonitors, delayedMonitors, covarianceMatrix,
+                            correlationMatrix, minProducts);
+
+            regularizeCovarianceMatrix(covarianceMatrix, correlationMatrix, varianceShrinkageWeight,
+                    covarianceShrinkageWeight, minProducts);
+            plots.plotCovarianceMatrix(channelNumber, regularizedCovarianceMatrix);
         }
     }
 }
