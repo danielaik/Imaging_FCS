@@ -1,11 +1,13 @@
 package fiji.plugin.imaging_fcs.new_imfcs.view;
 
 import fiji.plugin.imaging_fcs.new_imfcs.constants.Constants;
+import fiji.plugin.imaging_fcs.new_imfcs.model.FitModel;
 
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ItemListener;
 
+import static fiji.plugin.imaging_fcs.new_imfcs.controller.FocusListenerFactory.createFocusListener;
 import static fiji.plugin.imaging_fcs.new_imfcs.view.ButtonFactory.createJButton;
 import static fiji.plugin.imaging_fcs.new_imfcs.view.ButtonFactory.createJToggleButton;
 import static fiji.plugin.imaging_fcs.new_imfcs.view.TextFieldFactory.createTextField;
@@ -16,6 +18,7 @@ public class FitView extends BaseView {
     private static final Point FIT_LOCATION =
             new Point(10, Constants.MAIN_PANEL_POS.y + Constants.MAIN_PANEL_DIM.height + 10);
     private static final Dimension FIT_DIMENSION = new Dimension(370, 370);
+    private final FitModel model;
 
     private JTextField tfParamQ2, tfParamN, tfParamF2, tfParamD, tfParamD2, tfParamF3, tfParamD3, tfParamQ3, tfParamVx,
             tfParamVy, tfParamG, tfParamFTrip, tfParamTTrip, tfFitStart, tfFitEnd, tfFitModel, tfModProb1, tfModProb2,
@@ -26,8 +29,9 @@ public class FitView extends BaseView {
             holdTTtrip, rbtnCNNImage, rbtnCNNACF;
 
 
-    public FitView() {
+    public FitView(FitModel model) {
         super("Fit");
+        this.model = model;
         initializeUI();
     }
 
@@ -44,31 +48,31 @@ public class FitView extends BaseView {
 
     @Override
     protected void initializeTextFields() {
-        tfParamQ2 = createTextField("1", "");
-        tfParamN = createTextField("1", "");
-        tfParamF2 = createTextField("0", "");
-        tfParamD = createTextField("1", "");
-        tfParamD2 = createTextField("0", "");
-        tfParamF3 = createTextField("0", "");
-        tfParamD3 = createTextField("0", "");
-        tfParamQ3 = createTextField("1", "");
-        tfParamVx = createTextField("0", "");
-        tfParamVy = createTextField("0", "");
-        tfParamG = createTextField("0", "");
-        tfParamFTrip = createTextField("0", "");
-        tfParamTTrip = createTextField("0", "");
-        tfFitStart = createTextField("1", "");
+        tfParamQ2 = createTextField(model.getQ2(), "", createFocusListener(model::setQ2));
+        tfParamN = createTextField(model.getN(), "", createFocusListener(model::setN));
+        tfParamF2 = createTextField(model.getF2(), "", createFocusListener(model::setF2));
+        tfParamD = createTextField(model.getD(), "", createFocusListener(model::setD));
+        tfParamD2 = createTextField(model.getD2(), "", createFocusListener(model::setD2));
+        tfParamF3 = createTextField(model.getF3(), "", createFocusListener(model::setF3));
+        tfParamD3 = createTextField(model.getD3(), "", createFocusListener(model::setD3));
+        tfParamQ3 = createTextField(model.getQ3(), "", createFocusListener(model::setQ3));
+        tfParamVx = createTextField(model.getVx(), "", createFocusListener(model::setVx));
+        tfParamVy = createTextField(model.getVy(), "", createFocusListener(model::setVy));
+        tfParamG = createTextField(model.getG(), "", createFocusListener(model::setG));
+        tfParamFTrip = createTextField(model.getFTrip(), "", createFocusListener(model::setFTrip));
+        tfParamTTrip = createTextField(model.getTTrip(), "", createFocusListener(model::setTTrip));
+        tfFitStart = createTextField(model.getFitStart(), "", createFocusListener(model::setFitStart));
         // TODO: set this value to channel number
-        tfFitEnd = createTextField("0", "");
+        tfFitEnd = createTextField(model.getFitEnd(), "", createFocusListener(model::setFitEnd));
 
         // TODO: set this value to the model currently selected
         //  (we can probably just delete it as it duplicates the model name)
         tfFitModel = createTextField("Model", "");
         tfFitModel.setEditable(false);
 
-        tfModProb1 = createTextField("0", "");
-        tfModProb2 = createTextField("0", "");
-        tfModProb3 = createTextField("0", "");
+        tfModProb1 = createTextField(model.getModProb1(), "", createFocusListener(model::setModProb1));
+        tfModProb2 = createTextField(model.getModProb2(), "", createFocusListener(model::setModProb2));
+        tfModProb3 = createTextField(model.getModProb3(), "", createFocusListener(model::setModProb3));
     }
 
     private JRadioButton createHoldButton(boolean selected) {
