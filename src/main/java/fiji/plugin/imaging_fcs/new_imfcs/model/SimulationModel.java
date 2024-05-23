@@ -9,13 +9,14 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
 
+import static fiji.plugin.imaging_fcs.new_imfcs.constants.Constants.DIFFUSION_COEFFICIENT_BASE;
+import static fiji.plugin.imaging_fcs.new_imfcs.constants.Constants.PIXEL_SIZE_REAL_SPACE_CONVERSION_FACTOR;
+
 /**
  * Represents the data model for FCS simulation, encapsulating all simulation parameters
  * and providing methods to execute and control simulations.
  */
 public final class SimulationModel {
-    public static final double PIXEL_SIZE_REAL_SPACE_CONVERSION_FACTOR = Math.pow(10, 6);
-    private static final double DIFFUSION_COEFFICIENT_BASE = Math.pow(10, 12);
     private static final double DOMAIN_MESH_CONVERSION = Math.pow(10, 9);
     private final ExpSettingsModel expSettingsModel;
     private List<SimulationWorker> simulationWorkers;

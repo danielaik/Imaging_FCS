@@ -27,6 +27,10 @@ public final class Constants {
     public static final Dimension MAIN_PANEL_DIM = new Dimension(410, 370);
     public static final int TEXT_FIELD_COLUMNS = 8;
 
+    // conversion
+    public static final double PIXEL_SIZE_REAL_SPACE_CONVERSION_FACTOR = Math.pow(10, 6);
+    public static final double DIFFUSION_COEFFICIENT_BASE = Math.pow(10, 12);
+
     // Private constructor to prevent instantiation
     private Constants() {
     }

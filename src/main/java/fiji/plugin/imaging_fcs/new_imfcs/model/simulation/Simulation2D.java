@@ -1,5 +1,6 @@
 package fiji.plugin.imaging_fcs.new_imfcs.model.simulation;
 
+import fiji.plugin.imaging_fcs.new_imfcs.constants.Constants;
 import fiji.plugin.imaging_fcs.new_imfcs.model.ExpSettingsModel;
 import fiji.plugin.imaging_fcs.new_imfcs.model.SimulationModel;
 import ij.IJ;
@@ -91,7 +92,7 @@ public final class Simulation2D extends SimulationBase {
     private void initializeDomains() {
         double gridLength = sizeUpperLimit - sizeLowerLimit; // Length of the full simulation grid
         int numberOfDomains = (int) Math.ceil(
-                Math.pow(gridLength * SimulationModel.PIXEL_SIZE_REAL_SPACE_CONVERSION_FACTOR, 2) * domainDensity);
+                Math.pow(gridLength * Constants.PIXEL_SIZE_REAL_SPACE_CONVERSION_FACTOR, 2) * domainDensity);
 
         double cellSize = domainRadius * 2;
         domains = new DomainHashMap(cellSize);
