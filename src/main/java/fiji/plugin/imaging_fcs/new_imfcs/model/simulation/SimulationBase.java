@@ -1,5 +1,6 @@
 package fiji.plugin.imaging_fcs.new_imfcs.model.simulation;
 
+import fiji.plugin.imaging_fcs.new_imfcs.constants.Constants;
 import fiji.plugin.imaging_fcs.new_imfcs.model.ExpSettingsModel;
 import fiji.plugin.imaging_fcs.new_imfcs.model.SimulationModel;
 import ij.IJ;
@@ -15,21 +16,17 @@ public abstract class SimulationBase {
     protected static final double OBSERVATION_WAVELENGTH_CONVERSION_FACTOR = Math.pow(10, 9);
 
     protected final RandomCustom random;
-
-    private int stepsPerFrame, bleachFrame;
     protected double tStep, darkF, pixelSize, wavelength, PSFSize, midPos, sizeLowerLimit, sizeUpperLimit, bleachFactor,
             blinkOnFactor, blinkOffFactor, sqrtCameraNoiseFactor, D1, D2, D3;
-
-    private int cameraOffset;
     protected boolean bleachFlag, blinkFlag;
     protected long particleGroup1;
     protected long particleGroup2;
-
     protected ImagePlus image; // Assuming this is your image stack for the simulation
     protected int width, height; // Width and height of the simulation area in pixels
     protected int numFrames, numParticles, CPS;
-
     protected Particle2D[] particles;
+    private int stepsPerFrame, bleachFrame;
+    private int cameraOffset;
 
     /**
      * Constructs a SimulationBase instance with specified simulation and experimental settings models.
@@ -75,7 +72,7 @@ public abstract class SimulationBase {
 
         // Calculate real pixel size based on settings and a conversion factor
         double pixelSizeRealSize =
-                settingsModel.getPixelSize() / SimulationModel.PIXEL_SIZE_REAL_SPACE_CONVERSION_FACTOR;
+                settingsModel.getPixelSize() / Constants.PIXEL_SIZE_REAL_SPACE_CONVERSION_FACTOR;
 
         // Calculate the wavelength based on settings and a conversion factor
         wavelength = settingsModel.getEmLambda() / OBSERVATION_WAVELENGTH_CONVERSION_FACTOR;

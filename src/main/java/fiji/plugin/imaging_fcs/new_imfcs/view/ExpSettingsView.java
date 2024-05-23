@@ -97,7 +97,7 @@ public final class ExpSettingsView extends BaseView {
     @Override
     protected void addComponentsToFrame() {
         // row 1
-        add(createJLabel("Pixel size [um]:", ""));
+        add(createJLabel("Pixel size [μm]:", ""));
         add(tfPixelSize);
         add(createJLabel("", ""));
         add(createJLabel("", ""));

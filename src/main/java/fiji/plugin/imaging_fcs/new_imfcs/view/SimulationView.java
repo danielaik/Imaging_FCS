@@ -233,7 +233,7 @@ public final class SimulationView extends BaseView {
         add(tfCurrentStepSize);
 
         // row 7
-        add(createJLabel("D1 [um2/s]",
+        add(createJLabel("D1 [μm2/s]",
                 "Double: Diffusion coefficient of first species to be simulated.  Press enter to calculate new step size."));
         add(tfD1);
         add(createJLabel("Dout/Din",
@@ -241,13 +241,13 @@ public final class SimulationView extends BaseView {
         add(tfDoutDinRatio);
 
         // row 8
-        add(createJLabel("D2 [um2/s]", "Double: Diffusion coefficient of second species to be simulated (if any)."));
+        add(createJLabel("D2 [μm2/s]", "Double: Diffusion coefficient of second species to be simulated (if any)."));
         add(tfD2);
         add(createJLabel("F2", "Double (0 < F2 < 1): Fraction of particles of the total for the second species."));
         add(tfF2);
 
         // row 9
-        add(createJLabel("D3 [um2s]", "Double: Diffusion coefficient of third species to be simulated (if any)."));
+        add(createJLabel("D3 [μm2s]", "Double: Diffusion coefficient of third species to be simulated (if any)."));
         add(tfD3);
         add(createJLabel("F3",
                 "Double (0 < F3 < 1 AND F2 + F3 < 1): Fraction of particles of the total for the second species."));
@@ -266,7 +266,7 @@ public final class SimulationView extends BaseView {
         add(tfCameraNoiseFactor);
 
         // row 12
-        add(createJLabel("FRAP Radius [um]",
+        add(createJLabel("FRAP Radius [μm]",
                 "Double: Radius in um within which the particles will be bleached. Only available in 2D."));
         add(tfBleachRadius);
         add(createJLabel("FRAP Frame",
