@@ -1,4 +1,4 @@
-package fiji.plugin.imaging_fcs.new_imfcs.model;
+package fiji.plugin.imaging_fcs.new_imfcs.utils;
 
 import java.util.Arrays;
 
