@@ -351,4 +351,16 @@ public class BleachCorrectionModel {
     public void setAverageStride(String averageStride) {
         this.averageStride = Integer.parseInt(averageStride);
     }
+
+    public double[] getIntensityTrace1() {
+        return intensityTrace1;
+    }
+
+    public double[] getIntensityTrace2() {
+        return intensityTrace2;
+    }
+
+    public double[] getIntensityTime() {
+        return intensityTime;
+    }
 }

@@ -23,7 +23,9 @@ public class Plots {
                     STANDARD_DEVIATION_POSITION.y);
     private final Point COVARIANCE_POSITION = new Point(BLOCKING_CURVE_POSITION.x,
             BLOCKING_CURVE_POSITION.y + BLOCKING_CURVE_DIMENSION.height + 150);
-    private PlotWindow blockingCurveWindow, acfWindow, standardDeviationWindow;
+    private final Point INTENSITY_POSITION = new Point(ACF_POSITION.x, ACF_POSITION.y + ACF_DIMENSION.height + 145);
+    private final Dimension INTENSITY_DIMENSION = new Dimension(ACF_DIMENSION.width, 50);
+    private PlotWindow blockingCurveWindow, acfWindow, standardDeviationWindow, intensityTraceWindow;
     private ImageWindow imgCovarianceWindow;
 
     public Plots() {
@@ -160,11 +162,30 @@ public class Plots {
         plot.setLogScaleX();
         plot.setLimits(lagTimes[1], lagTimes[channelNumber - 1], min, max);
         plot.setJustification(Plot.CENTER);
-        plot.addLabel(0.5, 0, String.format(
-                " StdDev (%d, %d)", x, y));
+        plot.addLabel(0.5, 0, String.format(" StdDev (%d, %d)", x, y));
         plot.draw();
 
         // TODO: Add other lines if DC-FCCS(2D) and FCCSDisplay is selected
         standardDeviationWindow = plotWindow(plot, standardDeviationWindow, STANDARD_DEVIATION_POSITION);
+    }
+
+    public void plotIntensityTrace(double[] intensityTrace, double[] intensityTime, int numPointsIntensityTrace,
+                                   int x, int y) {
+        double[] minMax = findAdjustedMinMax(intensityTrace, numPointsIntensityTrace);
+        double min = minMax[0];
+        double max = minMax[1];
+
+        Plot plot = new Plot("Intensity Trace", "time [s]", "Intensity");
+        plot.setFrameSize(INTENSITY_DIMENSION.width, INTENSITY_DIMENSION.height);
+        plot.setLimits(intensityTime[1], intensityTime[numPointsIntensityTrace - 1], min, max);
+        plot.setColor(Color.BLUE);
+        plot.addPoints(intensityTime, intensityTrace, Plot.LINE);
+        plot.setJustification(Plot.CENTER);
+        plot.addLabel(0.5, 0, String.format(" Intensity Trace (%d, %d)", x, y));
+        plot.draw();
+
+        // TODO: add intensity trace 2 if needed
+
+        intensityTraceWindow = plotWindow(plot, intensityTraceWindow, INTENSITY_POSITION);
     }
 }

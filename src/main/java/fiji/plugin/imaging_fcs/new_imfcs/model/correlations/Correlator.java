@@ -82,6 +82,11 @@ public class Correlator {
         if (options.isPlotSDCurves()) {
             plots.plotStandardDeviation(blockStandardDeviation, lagTimes, channelNumber, x, y);
         }
+
+        if (options.isPlotIntensityCurves()) {
+            plots.plotIntensityTrace(bleachCorrectionModel.getIntensityTrace1(),
+                    bleachCorrectionModel.getIntensityTime(), bleachCorrectionModel.getNumPointsIntensityTrace(), x, y);
+        }
     }
 
     private void handleSlidingWindowCorrelation(ImagePlus img, int x, int y, int x2, int y2, int initialFrame,
