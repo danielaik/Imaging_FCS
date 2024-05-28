@@ -8,11 +8,11 @@ public class FitModel {
     private int fitStart, fitEnd;
 
     public FitModel() {
-        setDefaultValue();
+        setDefaultValues();
     }
 
-    public void setDefaultValue() {
-        D = 1;
+    public void setDefaultValues() {
+        D = 1 / DIFFUSION_COEFFICIENT_BASE;
         Q2 = 1;
         Q3 = 1;
         N = 1;
@@ -33,11 +33,15 @@ public class FitModel {
     }
 
     public double getD() {
-        return D * DIFFUSION_COEFFICIENT_BASE;
+        return D;
     }
 
     public void setD(String D) {
         this.D = Double.parseDouble(D) / DIFFUSION_COEFFICIENT_BASE;
+    }
+
+    public double getDInterface() {
+        return D * DIFFUSION_COEFFICIENT_BASE;
     }
 
     public double getN() {
@@ -49,19 +53,27 @@ public class FitModel {
     }
 
     public double getVx() {
-        return vx * PIXEL_SIZE_REAL_SPACE_CONVERSION_FACTOR;
+        return vx;
     }
 
     public void setVx(String vx) {
         this.vx = Double.parseDouble(vx) / PIXEL_SIZE_REAL_SPACE_CONVERSION_FACTOR;
     }
 
+    public double getVxInterface() {
+        return vx * PIXEL_SIZE_REAL_SPACE_CONVERSION_FACTOR;
+    }
+
     public double getVy() {
-        return vy * PIXEL_SIZE_REAL_SPACE_CONVERSION_FACTOR;
+        return vy;
     }
 
     public void setVy(String vy) {
         this.vy = Double.parseDouble(vy) / PIXEL_SIZE_REAL_SPACE_CONVERSION_FACTOR;
+    }
+
+    public double getVyInterface() {
+        return vy * PIXEL_SIZE_REAL_SPACE_CONVERSION_FACTOR;
     }
 
     public double getG() {
@@ -97,19 +109,27 @@ public class FitModel {
     }
 
     public double getD2() {
-        return D2 * DIFFUSION_COEFFICIENT_BASE;
+        return D2;
     }
 
     public void setD2(String D2) {
         this.D2 = Double.parseDouble(D2) / DIFFUSION_COEFFICIENT_BASE;
     }
 
+    public double getD2Interface() {
+        return D2 * DIFFUSION_COEFFICIENT_BASE;
+    }
+
     public double getD3() {
-        return D3 * DIFFUSION_COEFFICIENT_BASE;
+        return D3;
     }
 
     public void setD3(String D3) {
         this.D3 = Double.parseDouble(D3) / DIFFUSION_COEFFICIENT_BASE;
+    }
+
+    public double getD3Interface() {
+        return D3 * DIFFUSION_COEFFICIENT_BASE;
     }
 
     public double getFTrip() {
@@ -121,11 +141,15 @@ public class FitModel {
     }
 
     public double getTTrip() {
-        return tTrip * PIXEL_SIZE_REAL_SPACE_CONVERSION_FACTOR;
+        return tTrip;
     }
 
     public void setTTrip(String tTrip) {
         this.tTrip = Double.parseDouble(tTrip);
+    }
+
+    public double getTTripInterface() {
+        return tTrip * PIXEL_SIZE_REAL_SPACE_CONVERSION_FACTOR;
     }
 
     public double getModProb1() {

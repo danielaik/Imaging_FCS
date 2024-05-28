@@ -51,16 +51,16 @@ public class FitView extends BaseView {
         tfParamQ2 = createTextField(model.getQ2(), "", createFocusListener(model::setQ2));
         tfParamN = createTextField(model.getN(), "", createFocusListener(model::setN));
         tfParamF2 = createTextField(model.getF2(), "", createFocusListener(model::setF2));
-        tfParamD = createTextField(model.getD(), "", createFocusListener(model::setD));
-        tfParamD2 = createTextField(model.getD2(), "", createFocusListener(model::setD2));
+        tfParamD = createTextField(model.getDInterface(), "", createFocusListener(model::setD));
+        tfParamD2 = createTextField(model.getD2Interface(), "", createFocusListener(model::setD2));
         tfParamF3 = createTextField(model.getF3(), "", createFocusListener(model::setF3));
-        tfParamD3 = createTextField(model.getD3(), "", createFocusListener(model::setD3));
+        tfParamD3 = createTextField(model.getD3Interface(), "", createFocusListener(model::setD3));
         tfParamQ3 = createTextField(model.getQ3(), "", createFocusListener(model::setQ3));
-        tfParamVx = createTextField(model.getVx(), "", createFocusListener(model::setVx));
-        tfParamVy = createTextField(model.getVy(), "", createFocusListener(model::setVy));
+        tfParamVx = createTextField(model.getVxInterface(), "", createFocusListener(model::setVx));
+        tfParamVy = createTextField(model.getVyInterface(), "", createFocusListener(model::setVy));
         tfParamG = createTextField(model.getG(), "", createFocusListener(model::setG));
         tfParamFTrip = createTextField(model.getFTrip(), "", createFocusListener(model::setFTrip));
-        tfParamTTrip = createTextField(model.getTTrip(), "", createFocusListener(model::setTTrip));
+        tfParamTTrip = createTextField(model.getTTripInterface(), "", createFocusListener(model::setTTrip));
         tfFitStart = createTextField(model.getFitStart(), "", createFocusListener(model::setFitStart));
         // TODO: set this value to channel number
         tfFitEnd = createTextField(model.getFitEnd(), "", createFocusListener(model::setFitEnd));
@@ -114,6 +114,31 @@ public class FitView extends BaseView {
         rbtnCNNImage.setVisible(false);
         rbtnCNNACF = new JRadioButton("FCSNet");
         rbtnCNNACF.setVisible(false);
+    }
+
+    private void setText(JTextField textField, Object value) {
+        textField.setText(String.valueOf(value));
+    }
+
+    // this method is called after the model has reset default value
+    public void setDefaultValues() {
+        setText(tfParamQ2, model.getQ2());
+        setText(tfParamN, model.getN());
+        setText(tfParamF2, model.getF2());
+        setText(tfParamD, model.getD());
+        setText(tfParamD2, model.getD2());
+        setText(tfParamF3, model.getF3());
+        setText(tfParamD3, model.getD3());
+        setText(tfParamQ3, model.getQ3());
+        setText(tfParamVx, model.getVx());
+        setText(tfParamVy, model.getVy());
+        setText(tfParamG, model.getG());
+        setText(tfParamFTrip, model.getFTrip());
+        setText(tfParamTTrip, model.getTTrip());
+        setText(tfFitStart, model.getFitStart());
+        setText(tfModProb1, model.getModProb1());
+        setText(tfModProb2, model.getModProb2());
+        setText(tfModProb3, model.getModProb3());
     }
 
     @Override

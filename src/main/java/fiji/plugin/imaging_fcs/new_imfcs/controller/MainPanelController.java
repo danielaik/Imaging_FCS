@@ -1,9 +1,6 @@
 package fiji.plugin.imaging_fcs.new_imfcs.controller;
 
-import fiji.plugin.imaging_fcs.new_imfcs.model.ExpSettingsModel;
-import fiji.plugin.imaging_fcs.new_imfcs.model.HardwareModel;
-import fiji.plugin.imaging_fcs.new_imfcs.model.ImageModel;
-import fiji.plugin.imaging_fcs.new_imfcs.model.OptionsModel;
+import fiji.plugin.imaging_fcs.new_imfcs.model.*;
 import fiji.plugin.imaging_fcs.new_imfcs.model.correlations.Correlator;
 import fiji.plugin.imaging_fcs.new_imfcs.model.fit.BleachCorrectionModel;
 import fiji.plugin.imaging_fcs.new_imfcs.view.BleachCorrectionView;
@@ -44,6 +41,8 @@ public final class MainPanelController {
     private final SimulationController simulationController;
     private final BackgroundSubtractionController backgroundSubtractionController;
     private final NBController nbController;
+    private final FitModel fitModel;
+    private final FitController fitController;
 
     /**
      * Constructor that initializes models, views, and other controllers needed for the main panel.
@@ -72,6 +71,9 @@ public final class MainPanelController {
         this.simulationController = new SimulationController(imageController, expSettingsModel);
 
         this.nbController = new NBController(imageModel, expSettingsModel, optionsModel, bleachCorrectionModel);
+
+        this.fitModel = new FitModel();
+        this.fitController = new FitController(fitModel);
 
         this.view = new MainPanelView(this, this.expSettingsModel);
     }
@@ -339,8 +341,13 @@ public final class MainPanelController {
     }
 
     public ItemListener tbFitPressed() {
-        // TODO: FIXME
-        return null;
+        return (ItemEvent ev) -> {
+            JToggleButton button = (JToggleButton) ev.getItemSelectable();
+
+            boolean selected = (ev.getStateChange() == ItemEvent.SELECTED);
+            button.setText(selected ? "Fit On" : "Fit Off");
+            fitController.setVisible(selected);
+        };
     }
 
     public ItemListener tbSimPressed() {
