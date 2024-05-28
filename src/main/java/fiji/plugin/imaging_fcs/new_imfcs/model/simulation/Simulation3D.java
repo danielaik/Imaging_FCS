@@ -6,6 +6,8 @@ import ij.IJ;
 import ij.ImagePlus;
 import ij.process.ImageProcessor;
 
+import static fiji.plugin.imaging_fcs.new_imfcs.constants.Constants.REFRACTIVE_INDEX;
+
 /**
  * A final class for simulating 3D fluorescence microscopy experiments.
  * It extends the SimulationBase class to include 3D-specific functionalities such as handling
@@ -13,7 +15,6 @@ import ij.process.ImageProcessor;
  */
 public final class Simulation3D extends SimulationBase {
     // Constants
-    private static final double REFRACTIVE_INDEX = 1.333; // refractive index of water;
     private static final double Z_EXT_FACTOR = 10;
 
     // 3D simulation parameters

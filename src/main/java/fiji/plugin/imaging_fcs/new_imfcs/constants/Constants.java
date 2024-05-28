@@ -30,6 +30,10 @@ public final class Constants {
     // conversion
     public static final double PIXEL_SIZE_REAL_SPACE_CONVERSION_FACTOR = Math.pow(10, 6);
     public static final double DIFFUSION_COEFFICIENT_BASE = Math.pow(10, 12);
+    public static final double NANO_CONVERSION_FACTOR = Math.pow(10, 9);
+
+    // constants
+    public static final double REFRACTIVE_INDEX = 1.333; // refractive index of water;
 
     // Private constructor to prevent instantiation
     private Constants() {
