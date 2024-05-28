@@ -23,11 +23,42 @@ public class Plots {
                     STANDARD_DEVIATION_POSITION.y);
     private final Point COVARIANCE_POSITION = new Point(BLOCKING_CURVE_POSITION.x,
             BLOCKING_CURVE_POSITION.y + BLOCKING_CURVE_DIMENSION.height + 150);
-    private PlotWindow blockingCurveWindow;
+    private PlotWindow blockingCurveWindow, acfWindow, standardDeviationWindow;
     private ImageWindow imgCovarianceWindow;
 
     public Plots() {
         this.blockingCurveWindow = null;
+    }
+
+    private double[] findAdjustedMinMax(double[] array, int len) {
+        if (len <= 0) {
+            throw new IllegalArgumentException("findAdjustedMinMax: len <= 0");
+        }
+        double min = Double.MAX_VALUE;
+        double max = Double.MIN_VALUE;
+
+        for (int i = 0; i < len; i++) {
+            min = Math.min(min, array[i]);
+            max = Math.max(max, array[i]);
+        }
+
+        // maximum scales need to be 10% larger than maximum value and 10% smaller than minimum value
+        min -= min * 0.1;
+        max += max * 0.1;
+
+        return new double[]{min, max};
+    }
+
+    private PlotWindow plotWindow(Plot plot, PlotWindow window, Point position) {
+        // Display the plot in a new window or update the existing one
+        if (window == null || window.isClosed()) {
+            window = plot.show();
+            window.setLocation(position);
+        } else {
+            window.drawPlot(plot);
+        }
+
+        return window;
     }
 
     public void plotBlockingCurve(double[][] varianceBlocks, int blockCount, int index) {
@@ -50,28 +81,13 @@ public class Plots {
             plot.draw();
         }
 
-        // Display the plot in a new window or update the existing one
-        if (blockingCurveWindow == null || blockingCurveWindow.isClosed()) {
-            blockingCurveWindow = plot.show();
-            blockingCurveWindow.setLocation(BLOCKING_CURVE_POSITION);
-        } else {
-            blockingCurveWindow.drawPlot(plot);
-        }
+        blockingCurveWindow = plotWindow(plot, blockingCurveWindow, BLOCKING_CURVE_POSITION);
     }
 
     private Plot getBlockingCurvePlot(double[][] varianceBlocks, int blockCount) {
-        double minBlock = Double.MAX_VALUE;
-        double maxBlock = Double.MIN_VALUE;
-
-        // Calculate min and max values in varianceBlocks[1]
-        for (int i = 0; i < blockCount; i++) {
-            minBlock = Math.min(minBlock, varianceBlocks[1][i]);
-            maxBlock = Math.max(maxBlock, varianceBlocks[1][i]);
-        }
-
-        // adjusting min and max value
-        minBlock *= 0.9;
-        maxBlock *= 1.1;
+        double[] minMax = findAdjustedMinMax(varianceBlocks[1], blockCount);
+        double minBlock = minMax[0];
+        double maxBlock = minMax[1];
 
         Plot plot = new Plot("blocking", "x", "SD");
         plot.add("line", varianceBlocks[0], varianceBlocks[1]);
@@ -107,5 +123,48 @@ public class Plots {
         IJ.run(imgCovariance, "Set... ", "zoom=" + 200 + " x=" + 0 + " y=" + 0);
         // This needs to be used since ImageJ 1.48v to set the window to the right size;
         IJ.run(imgCovariance, "In [+]", "");
+    }
+
+    public void plotSingleACF(double[] acf, double[] lagTimes, int channelNumber, int x, int y, Point binning) {
+        double[] minMax = findAdjustedMinMax(acf, channelNumber);
+        double minScale = minMax[0];
+        double maxScale = minMax[1];
+
+        Plot plot = new Plot("CF plot", "tay [s]", "G (tau)");
+        plot.setColor(Color.BLUE);
+        plot.addPoints(lagTimes, acf, Plot.LINE);
+        plot.setFrameSize(ACF_DIMENSION.width, ACF_DIMENSION.height);
+        plot.setLogScaleX();
+        plot.setLimits(lagTimes[1], 2 * lagTimes[channelNumber - 1], minScale, maxScale);
+        plot.setJustification(Plot.CENTER);
+
+        // TODO: create plot label for CCF
+        plot.addLabel(0.5, 0, String.format(
+                " ACF of (%d, %d) at %dx%d binning.", x, y, binning.x, binning.y));
+
+        plot.draw();
+
+        acfWindow = plotWindow(plot, acfWindow, ACF_POSITION);
+    }
+
+    public void plotStandardDeviation(double[] blockStandardDeviation, double[] lagTimes, int channelNumber,
+                                      int x, int y) {
+        double[] minMax = findAdjustedMinMax(blockStandardDeviation, channelNumber);
+        double min = minMax[0];
+        double max = minMax[1];
+
+        Plot plot = new Plot("StdDev", "time [s]", "SD");
+        plot.setColor(Color.BLUE);
+        plot.addPoints(lagTimes, blockStandardDeviation, Plot.LINE);
+        plot.setFrameSize(STANDARD_DEVIATION_DIMENSION.width, STANDARD_DEVIATION_DIMENSION.height);
+        plot.setLogScaleX();
+        plot.setLimits(lagTimes[1], lagTimes[channelNumber - 1], min, max);
+        plot.setJustification(Plot.CENTER);
+        plot.addLabel(0.5, 0, String.format(
+                " StdDev (%d, %d)", x, y));
+        plot.draw();
+
+        // TODO: Add other lines if DC-FCCS(2D) and FCCSDisplay is selected
+        standardDeviationWindow = plotWindow(plot, standardDeviationWindow, STANDARD_DEVIATION_POSITION);
     }
 }

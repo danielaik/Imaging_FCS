@@ -9,12 +9,12 @@ import ij.ImagePlus;
 
 import java.util.Arrays;
 
-import static fiji.plugin.imaging_fcs.new_imfcs.model.MatrixDeepCopy.deepCopy;
+import static fiji.plugin.imaging_fcs.new_imfcs.utils.MatrixDeepCopy.deepCopy;
 
 public class Correlator {
+    private final int SLIDING_WINDOW_MIN_FRAME = 20;
     // minimum number of frames required for the sliding windows; this is used to
     // calculate a useful correlatorq
-    private final int SLIDING_WINDOW_MIN_FRAME = 20;
     private final int BLOCK_LAG = 1;
     private final ExpSettingsModel settings;
     private final OptionsModel options;
@@ -73,6 +73,14 @@ public class Correlator {
         } else {
             // if sliding window is not selected, correlate the full intensity trace
             handleFullTraceCorrelation(img, x, y, x2, y2, initialFrame, finalFrame);
+        }
+
+        if (options.isPlotACFCurves()) {
+            plots.plotSingleACF(meanCovariance, lagTimes, channelNumber, x, y, settings.getBinning());
+        }
+
+        if (options.isPlotSDCurves()) {
+            plots.plotStandardDeviation(blockStandardDeviation, lagTimes, channelNumber, x, y);
         }
     }
 
