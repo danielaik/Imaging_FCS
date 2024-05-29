@@ -43,7 +43,8 @@ public final class ExpSettingsModel {
     private boolean overlap = false;
 
     // Non-user parameters (compute using user parameters)
-    private double paramA;
+    private double paramAx;
+    private double paramAy;
     private double paramW;
     private double paramW2;
     private double paramZ;
@@ -64,7 +65,8 @@ public final class ExpSettingsModel {
      */
     public void updateSettings() {
         // Calculation of the axial resolution adjustment parameter based on pixel size and magnification.
-        paramA = pixelSize * 1000 / magnification * binning.x;
+        paramAx = pixelSize * 1000 / magnification * binning.x;
+        paramAy = pixelSize * 1000 / magnification * binning.y;
 
         // Calculation of lateral and axial resolutions for both emission wavelengths.
         paramW = sigma * emLambda / NA;
@@ -72,9 +74,16 @@ public final class ExpSettingsModel {
         paramZ = sigmaZ * emLambda / NA;
         paramZ2 = sigmaZ2 * emLamdba2 / NA;
 
-        // Adjustments for lateral displacements, intended to reflect CCF shifts but currently using dimension directly.
-        paramRx = pixelSize * 1000 / magnification * CCF.width; // FIXME: supposed to be "cfXshift"
-        paramRy = pixelSize * 1000 / magnification * CCF.height; // FIXME: supposed to be "cfYshit"
+        // Adjustments for lateral displacements.
+        int cfXShift = 0;
+        int cfYShift = 0;
+        if (fitModel.equals(Constants.ITIR_FCS_2D) || fitModel.equals(Constants.SPIM_FCS_3D)) {
+            cfXShift = CCF.width;
+            cfYShift = CCF.height;
+        }
+
+        paramRx = pixelSize * 1000 / magnification * cfXShift;
+        paramRy = pixelSize * 1000 / magnification * cfYShift;
     }
 
     // Getters and setters for various parameters follow, allowing external modification and access to the settings.
@@ -153,8 +162,12 @@ public final class ExpSettingsModel {
         this.sigmaZ2 = Double.parseDouble(sigmaZ2);
     }
 
-    public double getParamA() {
-        return paramA;
+    public double getParamAx() {
+        return paramAx;
+    }
+
+    public double getParamAy() {
+        return paramAy;
     }
 
     public double getParamW() {

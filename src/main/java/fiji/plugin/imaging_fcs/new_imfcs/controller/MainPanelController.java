@@ -17,7 +17,6 @@ import ij.WindowManager;
 import javax.swing.*;
 import java.awt.event.*;
 import java.util.function.Consumer;
-import java.util.function.Function;
 
 import static fiji.plugin.imaging_fcs.new_imfcs.controller.FocusListenerFactory.createFocusListener;
 
@@ -168,6 +167,20 @@ public final class MainPanelController {
                 new FilterLimitsSelectionView(this::onFilterSelectionAccepted, expSettingsModel.getFilterLowerLimit(),
                         expSettingsModel.getFilterUpperLimit());
             }
+        };
+    }
+
+    /**
+     * Creates an ActionListener that updates the fit model selection in the experimental settings model.
+     * This listener is triggered when the fit model combo box selection changes.
+     *
+     * @return an ActionListener that processes the action event
+     */
+    public ActionListener cbFitModelChanged() {
+        return (ActionEvent ev) -> {
+            String fitModel = ControllerUtils.getComboBoxSelectionFromEvent(ev);
+            expSettingsModel.setFitModel(fitModel);
+            updateSettingsField();
         };
     }
 
@@ -389,17 +402,7 @@ public final class MainPanelController {
     private void updateSettingsField() {
         Runnable doUpdateSettingsField = () -> {
             expSettingsModel.updateSettings();
-
-            // Use scientific notation for these fields
-            Function<Double, String> formatter = value -> String.format("%6.2e", value);
-
-            expSettingsView.setTextParamA(formatter.apply(expSettingsModel.getParamA()));
-            expSettingsView.setTextParamW(formatter.apply(expSettingsModel.getParamW()));
-            expSettingsView.setTextParamW2(formatter.apply(expSettingsModel.getParamW2()));
-            expSettingsView.setTextParamZ(formatter.apply(expSettingsModel.getParamZ()));
-            expSettingsView.setTextParamZ2(formatter.apply(expSettingsModel.getParamZ2()));
-            expSettingsView.setTextParamRx(formatter.apply(expSettingsModel.getParamRx()));
-            expSettingsView.setTextParamRy(formatter.apply(expSettingsModel.getParamRy()));
+            expSettingsView.setNonUserSettings();
         };
 
         // Execute the update in the Swing event dispatch thread to ensure thread safety

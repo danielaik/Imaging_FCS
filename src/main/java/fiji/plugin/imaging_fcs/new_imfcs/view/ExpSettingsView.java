@@ -6,6 +6,7 @@ import fiji.plugin.imaging_fcs.new_imfcs.model.ExpSettingsModel;
 
 import javax.swing.*;
 import java.awt.*;
+import java.util.function.Function;
 
 import static fiji.plugin.imaging_fcs.new_imfcs.view.TextFieldFactory.createTextField;
 import static fiji.plugin.imaging_fcs.new_imfcs.view.UIUtils.createJLabel;
@@ -22,8 +23,8 @@ public final class ExpSettingsView extends BaseView {
     private static final Dimension SETTINGS_DIMENSION = new Dimension(370, 280);
     private final ExpSettingsModel model;
     private final MainPanelController controller;
-    private JTextField tfParamA, tfParamW, tfParamZ, tfParamW2, tfParamZ2, tfParamRx, tfParamRy, tfPixelSize,
-            tfMagnification, tfNA, tfEmLambda, tfEmLambda2, tfSigma, tfSigma2, tfSigmaZ, tfSigmaZ2;
+    private JTextField tfParamAx, tfParamAy, tfParamW, tfParamZ, tfParamW2, tfParamZ2, tfParamRx, tfParamRy,
+            tfPixelSize, tfMagnification, tfNA, tfEmLambda, tfEmLambda2, tfSigma, tfSigma2, tfSigmaZ, tfSigmaZ2;
 
     /**
      * Constructs an ExpSettingsView with references to a controller and a model.
@@ -70,7 +71,8 @@ public final class ExpSettingsView extends BaseView {
         tfSigmaZ2 = createTextField(model.getSigmaZ2(), "", controller.updateSettings(model::setSigmaZ2));
 
         // Initialize non-editable fields for displaying calculated parameters
-        tfParamA = createTextField("", "");
+        tfParamAx = createTextField("", "");
+        tfParamAy = createTextField("", "");
         tfParamW = createTextField("", "");
         tfParamZ = createTextField("", "");
         tfParamW2 = createTextField("", "");
@@ -81,10 +83,29 @@ public final class ExpSettingsView extends BaseView {
     }
 
     /**
+     * Sets the non-user-editable settings fields in the user interface using scientific notation.
+     * This method formats several parameters from the model and updates the corresponding text fields.
+     */
+    public void setNonUserSettings() {
+        // Use scientific notation for these fields
+        Function<Double, String> formatter = value -> String.format("%6.2e", value);
+
+        tfParamAx.setText(formatter.apply(model.getParamAx()));
+        tfParamAy.setText(formatter.apply(model.getParamAy()));
+        tfParamW.setText(formatter.apply(model.getParamW()));
+        tfParamW2.setText(formatter.apply(model.getParamW2()));
+        tfParamZ.setText(formatter.apply(model.getParamZ()));
+        tfParamZ2.setText(formatter.apply(model.getParamZ2()));
+        tfParamRx.setText(formatter.apply(model.getParamRx()));
+        tfParamRy.setText(formatter.apply(model.getParamRy()));
+    }
+
+    /**
      * Sets certain text fields to be non-editable, indicating they are for display only.
      */
     private void setNonEditable() {
-        JTextField[] nonEditFields = {tfParamA, tfParamW, tfParamZ, tfParamW2, tfParamZ2, tfParamRx, tfParamRy};
+        JTextField[] nonEditFields =
+                {tfParamAx, tfParamAy, tfParamW, tfParamZ, tfParamW2, tfParamZ2, tfParamRx, tfParamRy};
 
         for (JTextField textField : nonEditFields) {
             textField.setEditable(false);
@@ -139,56 +160,27 @@ public final class ExpSettingsView extends BaseView {
         add(createJLabel("", ""));
 
         // row 8
-        add(createJLabel("a [nm]: ", ""));
-        add(tfParamA);
-        add(createJLabel("w [nm]: ", ""));
-        add(tfParamW);
+        add(createJLabel("ax [nm]: ", ""));
+        add(tfParamAx);
+        add(createJLabel("ay [nm]: ", ""));
+        add(tfParamAy);
 
         // row 9
         add(createJLabel("z [nm]: ", ""));
         add(tfParamZ);
-        add(createJLabel("w2 [nm]: ", ""));
-        add(tfParamW2);
+        add(createJLabel("w [nm]: ", ""));
+        add(tfParamW);
 
         // row 10
         add(createJLabel("z2 [nm]: ", ""));
         add(tfParamZ2);
-        add(createJLabel("rx [nm]: ", ""));
-        add(tfParamRx);
+        add(createJLabel("w2 [nm]: ", ""));
+        add(tfParamW2);
 
         // row 11
+        add(createJLabel("rx [nm]: ", ""));
+        add(tfParamRx);
         add(createJLabel("ry [nm]: ", ""));
         add(tfParamRy);
-        add(createJLabel("", ""));
-        add(createJLabel("", ""));
-    }
-
-    public void setTextParamA(String text) {
-        tfParamA.setText(text);
-    }
-
-    public void setTextParamW(String text) {
-
-        tfParamW.setText(text);
-    }
-
-    public void setTextParamW2(String text) {
-        tfParamW2.setText(text);
-    }
-
-    public void setTextParamZ(String text) {
-        tfParamZ.setText(text);
-    }
-
-    public void setTextParamZ2(String text) {
-        tfParamZ2.setText(text);
-    }
-
-    public void setTextParamRx(String text) {
-        tfParamRx.setText(text);
-    }
-
-    public void setTextParamRy(String text) {
-        tfParamRy.setText(text);
     }
 }

@@ -22,7 +22,6 @@ import static fiji.plugin.imaging_fcs.version.VERSION.IMFCS_VERSION;
 public final class MainPanelView extends BaseView {
     // Constants for UI design
     private static final GridLayout PANEL_LAYOUT = new GridLayout(14, 4);
-    private static final String CORREL_Q = "8";
 
     // Colors for buttons
     private static final Color SAVE_BUTTON_COLOR = Color.BLUE;
@@ -138,7 +137,7 @@ public final class MainPanelView extends BaseView {
         cbDCCF = new JComboBox<>(new String[]{"x direction", "y direction", "diagonal /", "diagonal \\"});
 
         // add listeners
-        cbFitModel.addActionListener(updateComboBoxValue(expSettingsModel::setFitModel));
+        cbFitModel.addActionListener(controller.cbFitModelChanged());
         cbCorrelatorP.addActionListener(updateComboBoxValue(expSettingsModel::setCorrelatorP));
         cbParaCor.addActionListener(updateComboBoxValue(expSettingsModel::setParaCor));
         cbBleachCor.addActionListener(controller.cbBleachCorChanged());
