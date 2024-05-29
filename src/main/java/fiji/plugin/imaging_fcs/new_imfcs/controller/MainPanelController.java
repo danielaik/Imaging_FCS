@@ -77,6 +77,11 @@ public final class MainPanelController {
         this.view = new MainPanelView(this, this.expSettingsModel);
     }
 
+    /**
+     * Sets the last frame for the analysis and updates related fields.
+     *
+     * @param lastFrame The last frame number to be set.
+     */
     public void setLastFrame(int lastFrame) {
         view.setTfLastFrame(String.valueOf(lastFrame));
         expSettingsModel.setLastFrame(String.valueOf(lastFrame));
@@ -202,6 +207,12 @@ public final class MainPanelController {
         }
     }
 
+    /**
+     * Returns an action listener to handle the exit button press event.
+     * This listener disposes of the main panel view.
+     *
+     * @return an ActionListener that processes the exit button press event
+     */
     public ActionListener btnExitPressed() {
         return (ActionEvent ev) -> view.dispose();
     }
@@ -211,6 +222,12 @@ public final class MainPanelController {
         return null;
     }
 
+    /**
+     * Returns an action listener to handle the exit button press event.
+     * This listener disposes of the main panel view.
+     *
+     * @return an ActionListener that processes the exit button press event
+     */
     public ActionListener btnUseExistingPressed() {
         return (ActionEvent ev) -> {
             if (WindowManager.getImageCount() > 0) {
@@ -225,6 +242,12 @@ public final class MainPanelController {
         };
     }
 
+    /**
+     * Returns an action listener to handle the exit button press event.
+     * This listener disposes of the main panel view.
+     *
+     * @return an ActionListener that processes the exit button press event
+     */
     public ActionListener btnLoadNewPressed() {
         return (ActionEvent ev) -> {
             ImagePlus image = IJ.openImage();
@@ -263,10 +286,22 @@ public final class MainPanelController {
         return null;
     }
 
+    /**
+     * Returns an action listener to handle the "Options" button press event.
+     * This listener opens the options controller.
+     *
+     * @return an ActionListener that processes the "Options" button press event
+     */
     public ActionListener btnOptionsPressed() {
         return (ActionEvent ev) -> new OptionsController(optionsModel);
     }
 
+    /**
+     * Returns an action listener to handle the "Options" button press event.
+     * This listener opens the options controller.
+     *
+     * @return an ActionListener that processes the "Options" button press event
+     */
     public ItemListener tbNBPressed() {
         return (ItemEvent ev) -> {
             JToggleButton button = (JToggleButton) ev.getItemSelectable();
@@ -337,10 +372,22 @@ public final class MainPanelController {
         return null;
     }
 
+    /**
+     * Returns an item listener to handle the "Exp Settings" toggle button press event.
+     * This listener toggles the visibility of the experimental settings view.
+     *
+     * @return an ItemListener that processes the "Exp Settings" toggle button press event
+     */
     public ItemListener tbExpSettingsPressed() {
         return (ItemEvent ev) -> expSettingsView.setVisible(ev.getStateChange() == ItemEvent.SELECTED);
     }
 
+    /**
+     * Returns an item listener to handle the "Bleach Correction" toggle button press event.
+     * This listener toggles the visibility of the bleach correction view, ensuring an image is loaded first.
+     *
+     * @return an ItemListener that processes the "Bleach Correction" toggle button press event
+     */
     public ItemListener tbBleachCorStridePressed() {
         return (ItemEvent ev) -> {
             if (imageController.isImageLoaded()) {
@@ -353,6 +400,12 @@ public final class MainPanelController {
         };
     }
 
+    /**
+     * Returns an item listener to handle the "Fit" toggle button press event.
+     * This listener toggles the visibility of the FitController.
+     *
+     * @return an ItemListener that processes the "Fit" toggle button press event
+     */
     public ItemListener tbFitPressed() {
         return (ItemEvent ev) -> {
             JToggleButton button = (JToggleButton) ev.getItemSelectable();
@@ -363,6 +416,12 @@ public final class MainPanelController {
         };
     }
 
+    /**
+     * Returns an item listener to handle the "Sim" toggle button press event.
+     * This listener toggles the visibility of the SimulationController.
+     *
+     * @return an ItemListener that processes the "Sim" toggle button press event
+     */
     public ItemListener tbSimPressed() {
         return (ItemEvent ev) -> {
             JToggleButton button = (JToggleButton) ev.getItemSelectable();
@@ -378,6 +437,12 @@ public final class MainPanelController {
         return null;
     }
 
+    /**
+     * Returns an item listener to handle the "Overlap" toggle button press event.
+     * This listener toggles the overlap setting in the experimental settings model.
+     *
+     * @return an ItemListener that processes the "Overlap" toggle button press event
+     */
     public ItemListener tbOverlapPressed() {
         return (ItemEvent ev) -> {
             JToggleButton button = (JToggleButton) ev.getItemSelectable();
@@ -388,6 +453,12 @@ public final class MainPanelController {
         };
     }
 
+    /**
+     * Returns an item listener to handle the "Background" toggle button press event.
+     * This listener toggles the visibility of the BackgroundSubtractionController.
+     *
+     * @return an ItemListener that processes the "Background" toggle button press event
+     */
     public ItemListener tbBackgroundPressed() {
         return (ItemEvent ev) -> {
             boolean selected = (ev.getStateChange() == ItemEvent.SELECTED);
@@ -427,6 +498,11 @@ public final class MainPanelController {
         return createFocusListener(decoratedSetter);
     }
 
+    /**
+     * Updates the stride parameter fields based on the current model values.
+     * This method ensures that the stride parameter fields are accurately set
+     * based on the number of frames and the average stride.
+     */
     private void updateStrideParamFields() {
         Runnable doUpdateStrideParam = () -> {
             int numberOfFrames = expSettingsModel.getLastFrame() - expSettingsModel.getFirstFrame() + 1;
@@ -444,6 +520,13 @@ public final class MainPanelController {
         SwingUtilities.invokeLater(doUpdateStrideParam);
     }
 
+    /**
+     * Decorates a setter from the model to automatically update the stride parameter fields
+     * after the model value has been changed.
+     *
+     * @param setter A Consumer that sets a value in the model.
+     * @return A FocusListener that updates the model and then the view when focus is lost.
+     */
     public FocusListener updateStrideParam(Consumer<String> setter) {
         Consumer<String> decoratedSetter = (String value) -> {
             setter.accept(value);
