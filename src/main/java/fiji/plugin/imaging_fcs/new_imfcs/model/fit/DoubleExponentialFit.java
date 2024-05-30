@@ -53,8 +53,13 @@ public class DoubleExponentialFit extends BaseFit {
         final AbstractCurveFitter.TheoreticalValuesFunction model = new AbstractCurveFitter.TheoreticalValuesFunction(
                 function, points);
 
-        return new LeastSquaresBuilder().maxEvaluations(Integer.MAX_VALUE).maxIterations(Integer.MAX_VALUE)
-                .start(initialGuess).target(target).weight(new DiagonalMatrix(weights))
-                .model(model.getModelFunction(), model.getModelFunctionJacobian()).build();
+        return new LeastSquaresBuilder()
+                .maxEvaluations(Integer.MAX_VALUE)
+                .maxIterations(Integer.MAX_VALUE)
+                .start(initialGuess)
+                .target(target)
+                .weight(new DiagonalMatrix(weights))
+                .model(model.getModelFunction(), model.getModelFunctionJacobian())
+                .build();
     }
 }
