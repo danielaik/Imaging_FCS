@@ -1,6 +1,7 @@
 package fiji.plugin.imaging_fcs.new_imfcs.view;
 
 import fiji.plugin.imaging_fcs.new_imfcs.constants.Constants;
+import fiji.plugin.imaging_fcs.new_imfcs.controller.FitController;
 import fiji.plugin.imaging_fcs.new_imfcs.model.FitModel;
 
 import javax.swing.*;
@@ -19,18 +20,20 @@ public class FitView extends BaseView {
             new Point(10, Constants.MAIN_PANEL_POS.y + Constants.MAIN_PANEL_DIM.height + 10);
     private static final Dimension FIT_DIMENSION = new Dimension(370, 370);
     private final FitModel model;
+    private final FitController controller;
 
     private JTextField tfParamQ2, tfParamN, tfParamF2, tfParamD, tfParamD2, tfParamF3, tfParamD3, tfParamQ3, tfParamVx,
             tfParamVy, tfParamG, tfParamFTrip, tfParamTTrip, tfFitStart, tfFitEnd, tfFitModel, tfModProb1, tfModProb2,
             tfModProb3;
     private JButton btnTest, btnSetPar, btnCNNImage, btnCNNACF;
     private JToggleButton tbGLS, tbBayes, tbFixPar;
-    private JRadioButton holdQ2, holdN, holdF2, holdD, holdD2, holdF3, holdD3, holdQ3, holdVx, holdVy, holdG, holdFTrip,
-            holdTTtrip, rbtnCNNImage, rbtnCNNACF;
+    private JRadioButton holdN, holdF2, holdD, holdD2, holdF3, holdD3, holdVx, holdVy, holdG, holdFTrip, holdTTtrip,
+            rbtnCNNImage, rbtnCNNACF;
 
 
-    public FitView(FitModel model) {
+    public FitView(FitController controller, FitModel model) {
         super("Fit");
+        this.controller = controller;
         this.model = model;
         initializeUI();
     }
@@ -75,16 +78,21 @@ public class FitView extends BaseView {
         tfModProb3 = createTextField(model.getModProb3(), "", createFocusListener(model::setModProb3));
     }
 
-    private JRadioButton createHoldButton(boolean selected) {
+    private JRadioButton createHoldButton(FitModel.Parameter parameter) {
         JRadioButton radioButton = new JRadioButton("Hold");
-        radioButton.setSelected(selected);
+        radioButton.setSelected(parameter.isHeld());
+
+        radioButton.addActionListener(ev -> {
+            parameter.setHold(radioButton.isSelected());
+        });
+
         return radioButton;
     }
 
     @Override
     protected void initializeButtons() {
         btnTest = createJButton("Test", "", null, (ItemListener) null);
-        btnSetPar = createJButton("Default", "", null, (ItemListener) null);
+        btnSetPar = createJButton("Default", "", null, controller.btnResetParametersPressed());
         btnCNNImage = createJButton("ImFCSNet", "", null, (ItemListener) null);
         btnCNNACF = createJButton("FCSNet", "", null, (ItemListener) null);
 
@@ -94,21 +102,17 @@ public class FitView extends BaseView {
         tbBayes.setForeground(Color.lightGray);
         tbFixPar = createJToggleButton("Free", "", null, (ItemListener) null);
 
-        holdQ2 = createHoldButton(true);
-        holdQ2.setEnabled(false);
-        holdN = createHoldButton(false);
-        holdF2 = createHoldButton(true);
-        holdD = createHoldButton(false);
-        holdD2 = createHoldButton(true);
-        holdF3 = createHoldButton(true);
-        holdD3 = createHoldButton(true);
-        holdQ3 = createHoldButton(true);
-        holdQ3.setEnabled(false);
-        holdVx = createHoldButton(true);
-        holdVy = createHoldButton(true);
-        holdG = createHoldButton(false);
-        holdFTrip = createHoldButton(true);
-        holdTTtrip = createHoldButton(true);
+        holdN = createHoldButton(model.getN());
+        holdF2 = createHoldButton(model.getF2());
+        holdD = createHoldButton(model.getD());
+        holdD2 = createHoldButton(model.getD2());
+        holdF3 = createHoldButton(model.getF3());
+        holdD3 = createHoldButton(model.getD3());
+        holdVx = createHoldButton(model.getVx());
+        holdVy = createHoldButton(model.getVy());
+        holdG = createHoldButton(model.getG());
+        holdFTrip = createHoldButton(model.getFTrip());
+        holdTTtrip = createHoldButton(model.getTTrip());
 
         rbtnCNNImage = new JRadioButton("ImFCSNet");
         rbtnCNNImage.setVisible(false);
@@ -125,16 +129,16 @@ public class FitView extends BaseView {
         setText(tfParamQ2, model.getQ2());
         setText(tfParamN, model.getN());
         setText(tfParamF2, model.getF2());
-        setText(tfParamD, model.getD());
-        setText(tfParamD2, model.getD2());
+        setText(tfParamD, model.getDInterface());
+        setText(tfParamD2, model.getD2Interface());
         setText(tfParamF3, model.getF3());
-        setText(tfParamD3, model.getD3());
+        setText(tfParamD3, model.getD3Interface());
         setText(tfParamQ3, model.getQ3());
-        setText(tfParamVx, model.getVx());
-        setText(tfParamVy, model.getVy());
+        setText(tfParamVx, model.getVxInterface());
+        setText(tfParamVy, model.getVyInterface());
         setText(tfParamG, model.getG());
         setText(tfParamFTrip, model.getFTrip());
-        setText(tfParamTTrip, model.getTTrip());
+        setText(tfParamTTrip, model.getTTripInterface());
         setText(tfFitStart, model.getFitStart());
         setText(tfModProb1, model.getModProb1());
         setText(tfModProb2, model.getModProb2());
@@ -195,14 +199,6 @@ public class FitView extends BaseView {
         add(holdF3);
 
         // row 8
-        add(createJLabel("Q2: ", ""));
-        add(tfParamQ2);
-        add(holdQ2);
-        add(createJLabel("Q3: ", ""));
-        add(tfParamQ3);
-        add(holdQ3);
-
-        // row 9
         add(createJLabel("FTrip [μs]: ", ""));
         add(tfParamFTrip);
         add(holdFTrip);
@@ -210,7 +206,7 @@ public class FitView extends BaseView {
         add(tfParamVx);
         add(holdVx);
 
-        // row 10
+        // row 9
         add(createJLabel("TTrip [μs]: ", ""));
         add(tfParamTTrip);
         add(holdTTtrip);
@@ -218,7 +214,7 @@ public class FitView extends BaseView {
         add(tfParamVy);
         add(holdVy);
 
-        // row 11
+        // row 10
         add(createJLabel("G: ", ""));
         add(tfParamG);
         add(holdG);
@@ -226,17 +222,25 @@ public class FitView extends BaseView {
         add(createJLabel("", ""));
         add(createJLabel("", ""));
 
-        // row 12 (empty)
+        // row 11 (empty)
         for (int i = 0; i < FIT_LAYOUT.getColumns(); i++) {
             add(createJLabel("", ""));
         }
 
+        // row 12
+        add(createJLabel("Q2: ", ""));
+        add(tfParamQ2);
+        add(createJLabel("", ""));
+        add(createJLabel("Q3: ", ""));
+        add(tfParamQ3);
+        add(createJLabel("", ""));
+
         // row 13
         add(createJLabel("Fit start: ", ""));
         add(tfFitStart);
+        add(createJLabel("", ""));
         add(createJLabel("Fit end: ", ""));
         add(tfFitEnd);
-        add(createJLabel("", ""));
         add(createJLabel("", ""));
 
         // row 14 (empty)

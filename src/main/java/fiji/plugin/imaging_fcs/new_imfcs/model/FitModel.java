@@ -1,95 +1,150 @@
 package fiji.plugin.imaging_fcs.new_imfcs.model;
 
+import java.util.Arrays;
+
 import static fiji.plugin.imaging_fcs.new_imfcs.constants.Constants.DIFFUSION_COEFFICIENT_BASE;
 import static fiji.plugin.imaging_fcs.new_imfcs.constants.Constants.PIXEL_SIZE_REAL_SPACE_CONVERSION_FACTOR;
 
 public class FitModel {
-    private double D, Q2, Q3, N, F2, F3, D2, D3, G, vx, vy, fTrip, tTrip, modProb1, modProb2, modProb3;
+    private Parameter D, N, F2, F3, D2, D3, G, vx, vy, fTrip, tTrip;
+    private double modProb1, modProb2, modProb3, Q2, Q3;
     private int fitStart, fitEnd;
 
     public FitModel() {
-        setDefaultValues();
+        initValues();
     }
 
-    public void setDefaultValues() {
-        D = 1 / DIFFUSION_COEFFICIENT_BASE;
+    // TODO: Copy constructor, see how the field should be copied, like depending on the hold button
+    // Should it takes the value of the model if hold is not selected
+    // Should it takes two model? The one defining the user selection, and the last used on the previous pixel?
+    // If it takes two, then if hold takes the user selection else takes from the previous pixel?
+//    public FitModel(FitModel other) {
+//        setDefaultValues();
+//
+//        this.D = other.D;
+//    }
+//
+//    // Copy constructor taking the user model and the last used
+//    public FitModel(FitModel user, FitModel last) {
+//        // if hold
+//        this.D = user.D;
+//        // else
+//        this.D = last.D;
+//    }
+
+    private void initValues() {
+        D = new Parameter(1 / DIFFUSION_COEFFICIENT_BASE, false);
+        N = new Parameter(1, false);
+        F2 = new Parameter(0, true);
+        F3 = new Parameter(0, true);
+        D2 = new Parameter(0, true);
+        D3 = new Parameter(0, true);
+        vx = new Parameter(0, true);
+        vy = new Parameter(0, true);
+        G = new Parameter(0, false);
+        fTrip = new Parameter(0, true);
+        tTrip = new Parameter(0, true);
+
         Q2 = 1;
         Q3 = 1;
-        N = 1;
-        F2 = 0;
-        F3 = 0;
-        D2 = 0;
-        D3 = 0;
-        vx = 0;
-        vy = 0;
-        G = 0;
-        fTrip = 0;
-        tTrip = 0;
-        fitStart = 1;
-        fitEnd = 0;
         modProb1 = 0;
         modProb2 = 0;
         modProb3 = 0;
+
+        fitStart = 1;
+        fitEnd = 0;
     }
 
-    public double getD() {
+    public void setDefaultValues() {
+        D.value = 1 / DIFFUSION_COEFFICIENT_BASE;
+        N.value = 1;
+        F2.value = 0;
+        F3.value = 0;
+        D2.value = 0;
+        D3.value = 0;
+        vx.value = 0;
+        vy.value = 0;
+        G.value = 0;
+        fTrip.value = 0;
+        tTrip.value = 0;
+
+        Q2 = 1;
+        Q3 = 1;
+        modProb1 = 0;
+        modProb2 = 0;
+        modProb3 = 0;
+
+        fitStart = 1;
+        fitEnd = 0;
+    }
+
+    public double[] getNonHeldParameterValues() {
+        Parameter[] parameters = {N, D, vx, vy, G, F2, D2, F3, D3, fTrip, tTrip};
+
+        return Arrays.stream(parameters)
+                .filter(parameter -> !parameter.isHeld())
+                .mapToDouble(Parameter::getValue)
+                .toArray();
+    }
+
+    public Parameter getD() {
         return D;
     }
 
     public void setD(String D) {
-        this.D = Double.parseDouble(D) / DIFFUSION_COEFFICIENT_BASE;
+        this.D.value = Double.parseDouble(D) / DIFFUSION_COEFFICIENT_BASE;
     }
 
     public double getDInterface() {
-        return D * DIFFUSION_COEFFICIENT_BASE;
+        return D.value * DIFFUSION_COEFFICIENT_BASE;
     }
 
-    public double getN() {
+    public Parameter getN() {
         return N;
     }
 
     public void setN(String N) {
-        this.N = Double.parseDouble(N);
+        this.N.value = Double.parseDouble(N);
     }
 
-    public double getVx() {
+    public Parameter getVx() {
         return vx;
     }
 
     public void setVx(String vx) {
-        this.vx = Double.parseDouble(vx) / PIXEL_SIZE_REAL_SPACE_CONVERSION_FACTOR;
+        this.vx.value = Double.parseDouble(vx) / PIXEL_SIZE_REAL_SPACE_CONVERSION_FACTOR;
     }
 
     public double getVxInterface() {
-        return vx * PIXEL_SIZE_REAL_SPACE_CONVERSION_FACTOR;
+        return vx.value * PIXEL_SIZE_REAL_SPACE_CONVERSION_FACTOR;
     }
 
-    public double getVy() {
+    public Parameter getVy() {
         return vy;
     }
 
     public void setVy(String vy) {
-        this.vy = Double.parseDouble(vy) / PIXEL_SIZE_REAL_SPACE_CONVERSION_FACTOR;
+        this.vy.value = Double.parseDouble(vy) / PIXEL_SIZE_REAL_SPACE_CONVERSION_FACTOR;
     }
 
     public double getVyInterface() {
-        return vy * PIXEL_SIZE_REAL_SPACE_CONVERSION_FACTOR;
+        return vy.value * PIXEL_SIZE_REAL_SPACE_CONVERSION_FACTOR;
     }
 
-    public double getG() {
+    public Parameter getG() {
         return G;
     }
 
     public void setG(String G) {
-        this.G = Double.parseDouble(G);
+        this.G.value = Double.parseDouble(G);
     }
 
-    public double getF2() {
+    public Parameter getF2() {
         return F2;
     }
 
     public void setF2(String F2) {
-        this.F2 = Double.parseDouble(F2);
+        this.F2.value = Double.parseDouble(F2);
     }
 
     public double getQ2() {
@@ -100,56 +155,56 @@ public class FitModel {
         this.Q2 = Double.parseDouble(Q2);
     }
 
-    public double getF3() {
+    public Parameter getF3() {
         return F3;
     }
 
     public void setF3(String F3) {
-        this.F3 = Double.parseDouble(F3);
+        this.F3.value = Double.parseDouble(F3);
     }
 
-    public double getD2() {
+    public Parameter getD2() {
         return D2;
     }
 
     public void setD2(String D2) {
-        this.D2 = Double.parseDouble(D2) / DIFFUSION_COEFFICIENT_BASE;
+        this.D2.value = Double.parseDouble(D2) / DIFFUSION_COEFFICIENT_BASE;
     }
 
     public double getD2Interface() {
-        return D2 * DIFFUSION_COEFFICIENT_BASE;
+        return D2.value * DIFFUSION_COEFFICIENT_BASE;
     }
 
-    public double getD3() {
+    public Parameter getD3() {
         return D3;
     }
 
     public void setD3(String D3) {
-        this.D3 = Double.parseDouble(D3) / DIFFUSION_COEFFICIENT_BASE;
+        this.D3.value = Double.parseDouble(D3) / DIFFUSION_COEFFICIENT_BASE;
     }
 
     public double getD3Interface() {
-        return D3 * DIFFUSION_COEFFICIENT_BASE;
+        return D3.value * DIFFUSION_COEFFICIENT_BASE;
     }
 
-    public double getFTrip() {
+    public Parameter getFTrip() {
         return fTrip;
     }
 
     public void setFTrip(String fTrip) {
-        this.fTrip = Double.parseDouble(fTrip);
+        this.fTrip.value = Double.parseDouble(fTrip);
     }
 
-    public double getTTrip() {
+    public Parameter getTTrip() {
         return tTrip;
     }
 
     public void setTTrip(String tTrip) {
-        this.tTrip = Double.parseDouble(tTrip);
+        this.tTrip.value = Double.parseDouble(tTrip);
     }
 
     public double getTTripInterface() {
-        return tTrip * PIXEL_SIZE_REAL_SPACE_CONVERSION_FACTOR;
+        return tTrip.value * PIXEL_SIZE_REAL_SPACE_CONVERSION_FACTOR;
     }
 
     public double getModProb1() {
@@ -198,5 +253,36 @@ public class FitModel {
 
     public void setQ3(String Q3) {
         this.Q3 = Double.parseDouble(Q3);
+    }
+
+    public static class Parameter {
+        private double value;
+        private boolean hold;
+
+        public Parameter(double value, boolean hold) {
+            this.value = value;
+            this.hold = hold;
+        }
+
+        public double getValue() {
+            return value;
+        }
+
+        public void setValue(double value) {
+            this.value = value;
+        }
+
+        public boolean isHeld() {
+            return hold;
+        }
+
+        public void setHold(boolean hold) {
+            this.hold = hold;
+        }
+
+        @Override
+        public String toString() {
+            return String.valueOf(value);
+        }
     }
 }
