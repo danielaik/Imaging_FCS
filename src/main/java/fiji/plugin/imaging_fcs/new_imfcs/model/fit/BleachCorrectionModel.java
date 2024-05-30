@@ -3,6 +3,9 @@ package fiji.plugin.imaging_fcs.new_imfcs.model.fit;
 import fiji.plugin.imaging_fcs.new_imfcs.constants.Constants;
 import fiji.plugin.imaging_fcs.new_imfcs.model.ExpSettingsModel;
 import fiji.plugin.imaging_fcs.new_imfcs.model.ImageModel;
+import fiji.plugin.imaging_fcs.new_imfcs.model.fit.intensity_trace.DoubleExponentialFit;
+import fiji.plugin.imaging_fcs.new_imfcs.model.fit.intensity_trace.PolynomialFit;
+import fiji.plugin.imaging_fcs.new_imfcs.model.fit.intensity_trace.SingleExponentialFit;
 import ij.ImagePlus;
 import ij.process.ImageProcessor;
 

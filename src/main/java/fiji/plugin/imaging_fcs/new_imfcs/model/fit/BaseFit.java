@@ -1,28 +1,19 @@
 package fiji.plugin.imaging_fcs.new_imfcs.model.fit;
 
+import org.apache.commons.math3.analysis.ParametricUnivariateFunction;
 import org.apache.commons.math3.fitting.AbstractCurveFitter;
 import org.apache.commons.math3.fitting.WeightedObservedPoint;
+import org.apache.commons.math3.fitting.leastsquares.LeastSquaresBuilder;
+import org.apache.commons.math3.fitting.leastsquares.LeastSquaresProblem;
+import org.apache.commons.math3.linear.DiagonalMatrix;
 
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * Abstract class for curve fitting of intensity traces using time data.
+ * Abstract class for curve fitting.
  */
 public abstract class BaseFit extends AbstractCurveFitter {
-    protected final double[] intensityTime;
-
-    /**
-     * Constructs a BaseFit with specified time data.
-     *
-     * @param intensityTime Time data array for intensity measurements.
-     */
-    public BaseFit(double[] intensityTime) {
-        super();
-        this.intensityTime = intensityTime;
-    }
-
     /**
      * Fills the target and weights arrays with the Y values and weights from the given collection of
      * {@link WeightedObservedPoint} objects.
@@ -33,8 +24,8 @@ public abstract class BaseFit extends AbstractCurveFitter {
      * @throws IllegalArgumentException if the length of the target or weights array does not match the
      *                                  size of the points collection
      */
-    protected static void fillTargetAndWeights(Collection<WeightedObservedPoint> points, double[] target,
-                                               double[] weights) {
+    protected void fillTargetAndWeights(Collection<WeightedObservedPoint> points, double[] target,
+                                        double[] weights) {
         if (points.size() != target.length || points.size() != weights.length) {
             throw new IllegalArgumentException(
                     "The length of target and weights arrays must match the size of the points collection");
@@ -49,19 +40,30 @@ public abstract class BaseFit extends AbstractCurveFitter {
     }
 
     /**
-     * Fits a curve to the provided intensity trace data.
+     * Configures the least squares problem for curve fitting.
      *
-     * @param intensityTrace Array of intensity data to fit.
-     * @return Fitted parameters as a double array.
+     * @param points       Collection of weighted observed points for fitting.
+     * @param function     The parametric univariate function to fit.
+     * @param initialGuess The initial guess array for the fitting parameters.
+     * @param target       The target array of observed values.
+     * @param weights      The weights array.
+     * @return Configured least squares problem for the optimizer.
      */
-    public double[] fitIntensityTrace(double[] intensityTrace) {
-        ArrayList<WeightedObservedPoint> points = new ArrayList<>();
-        int numPoints = intensityTrace.length;
+    protected LeastSquaresProblem getLeastSquaresProblem(Collection<WeightedObservedPoint> points,
+                                                         ParametricUnivariateFunction function,
+                                                         double[] initialGuess,
+                                                         double[] target,
+                                                         double[] weights) {
+        final AbstractCurveFitter.TheoreticalValuesFunction model = new AbstractCurveFitter.TheoreticalValuesFunction(
+                function, points);
 
-        for (int i = 0; i < numPoints; i++) {
-            points.add(new WeightedObservedPoint(1, intensityTime[i], intensityTrace[i]));
-        }
-
-        return fit(points);
+        return new LeastSquaresBuilder()
+                .maxEvaluations(Integer.MAX_VALUE)
+                .maxIterations(Integer.MAX_VALUE)
+                .start(initialGuess)
+                .target(target)
+                .weight(new DiagonalMatrix(weights))
+                .model(model.getModelFunction(), model.getModelFunctionJacobian())
+                .build();
     }
 }

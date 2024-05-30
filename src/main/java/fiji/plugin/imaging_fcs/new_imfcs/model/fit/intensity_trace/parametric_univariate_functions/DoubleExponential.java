@@ -1,4 +1,4 @@
-package fiji.plugin.imaging_fcs.new_imfcs.model.fit.parametric_univariate_functions;
+package fiji.plugin.imaging_fcs.new_imfcs.model.fit.intensity_trace.parametric_univariate_functions;
 
 import org.apache.commons.math3.analysis.ParametricUnivariateFunction;
 

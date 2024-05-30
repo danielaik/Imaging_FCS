@@ -1,19 +1,16 @@
-package fiji.plugin.imaging_fcs.new_imfcs.model.fit;
+package fiji.plugin.imaging_fcs.new_imfcs.model.fit.intensity_trace;
 
-import fiji.plugin.imaging_fcs.new_imfcs.model.fit.parametric_univariate_functions.DoubleExponential;
+import fiji.plugin.imaging_fcs.new_imfcs.model.fit.intensity_trace.parametric_univariate_functions.DoubleExponential;
 import org.apache.commons.math3.analysis.ParametricUnivariateFunction;
-import org.apache.commons.math3.fitting.AbstractCurveFitter;
 import org.apache.commons.math3.fitting.WeightedObservedPoint;
-import org.apache.commons.math3.fitting.leastsquares.LeastSquaresBuilder;
 import org.apache.commons.math3.fitting.leastsquares.LeastSquaresProblem;
-import org.apache.commons.math3.linear.DiagonalMatrix;
 
 import java.util.Collection;
 
 /**
  * Implements curve fitting for intensity data using a double exponential decay model.
  */
-public class DoubleExponentialFit extends BaseFit {
+public class DoubleExponentialFit extends IntensityTraceFit {
     /**
      * Initializes a new instance with time data for intensity measurements.
      *
@@ -50,16 +47,6 @@ public class DoubleExponentialFit extends BaseFit {
 
         ParametricUnivariateFunction function = new DoubleExponential();
 
-        final AbstractCurveFitter.TheoreticalValuesFunction model = new AbstractCurveFitter.TheoreticalValuesFunction(
-                function, points);
-
-        return new LeastSquaresBuilder()
-                .maxEvaluations(Integer.MAX_VALUE)
-                .maxIterations(Integer.MAX_VALUE)
-                .start(initialGuess)
-                .target(target)
-                .weight(new DiagonalMatrix(weights))
-                .model(model.getModelFunction(), model.getModelFunctionJacobian())
-                .build();
+        return getLeastSquaresProblem(points, function, initialGuess, target, weights);
     }
 }
