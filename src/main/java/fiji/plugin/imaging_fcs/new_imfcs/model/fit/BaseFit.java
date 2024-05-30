@@ -14,6 +14,27 @@ import java.util.concurrent.atomic.AtomicInteger;
  * Abstract class for curve fitting.
  */
 public abstract class BaseFit extends AbstractCurveFitter {
+    protected int maxEvaluations = Integer.MAX_VALUE;
+    protected int maxIterations = Integer.MAX_VALUE;
+
+    /**
+     * Sets the maximum number of evaluations for the least squares problem.
+     *
+     * @param maxEvaluations The maximum number of evaluations.
+     */
+    protected void setMaxEvaluations(int maxEvaluations) {
+        this.maxEvaluations = maxEvaluations;
+    }
+
+    /**
+     * Sets the maximum number of iterations for the least squares problem.
+     *
+     * @param maxIterations The maximum number of iterations.
+     */
+    protected void setMaxIterations(int maxIterations) {
+        this.maxIterations = maxIterations;
+    }
+
     /**
      * Fills the target and weights arrays with the Y values and weights from the given collection of
      * {@link WeightedObservedPoint} objects.
@@ -58,8 +79,8 @@ public abstract class BaseFit extends AbstractCurveFitter {
                 function, points);
 
         return new LeastSquaresBuilder()
-                .maxEvaluations(Integer.MAX_VALUE)
-                .maxIterations(Integer.MAX_VALUE)
+                .maxEvaluations(maxEvaluations)
+                .maxIterations(maxIterations)
                 .start(initialGuess)
                 .target(target)
                 .weight(new DiagonalMatrix(weights))
