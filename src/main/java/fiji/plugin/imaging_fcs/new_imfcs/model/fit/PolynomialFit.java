@@ -40,12 +40,7 @@ public class PolynomialFit extends BaseFit {
         final double[] weights = new double[len];
         final double[] initialGuess = new double[polynomialOrder + 1];
 
-        int i = 0;
-        for (WeightedObservedPoint point : points) {
-            target[i] = point.getY();
-            weights[i] = point.getWeight();
-            i++;
-        }
+        fillTargetAndWeights(points, target, weights);
 
         // initial guesses
         initialGuess[0] = target[len - 1]; // use the last point as offset estimate

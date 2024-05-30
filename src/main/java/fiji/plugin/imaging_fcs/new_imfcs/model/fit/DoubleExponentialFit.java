@@ -36,12 +36,7 @@ public class DoubleExponentialFit extends BaseFit {
         final double[] weights = new double[len];
         final double[] initialGuess = new double[5];
 
-        int i = 0;
-        for (WeightedObservedPoint point : points) {
-            target[i] = point.getY();
-            weights[i] = point.getWeight();
-            i++;
-        }
+        fillTargetAndWeights(points, target, weights);
 
         // initial guesses
         initialGuess[0] = target[1] / 2; // amplitude for first and second decay are set equal; estimated from half
