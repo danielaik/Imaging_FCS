@@ -1,6 +1,7 @@
 package fiji.plugin.imaging_fcs.new_imfcs.model.fit.intensity_trace;
 
 import fiji.plugin.imaging_fcs.new_imfcs.model.fit.intensity_trace.parametric_univariate_functions.SingleExponential;
+import fiji.plugin.imaging_fcs.new_imfcs.utils.Pair;
 import org.apache.commons.math3.analysis.ParametricUnivariateFunction;
 import org.apache.commons.math3.fitting.WeightedObservedPoint;
 import org.apache.commons.math3.fitting.leastsquares.LeastSquaresProblem;
@@ -28,16 +29,15 @@ public class SingleExponentialFit extends IntensityTraceFit {
      */
     @Override
     protected LeastSquaresProblem getProblem(Collection<WeightedObservedPoint> points) {
-        final int numPoints = points.size();
-        final double[] target = new double[numPoints];
-        final double[] weights = new double[numPoints];
-        final double[] initialGuess = new double[3];
+        Pair<double[], double[]> targetAndWeights = createTargetAndWeights(points);
+        double[] target = targetAndWeights.getLeft();
+        double[] weights = targetAndWeights.getRight();
 
-        fillTargetAndWeights(points, target, weights);
+        double[] initialGuess = new double[3];
 
         // initial guesses
         initialGuess[0] = target[1]; // use first point as intercept estimate
-        initialGuess[1] = intensityTime[numPoints / 2]; // use half the intensity trace time as first estimate
+        initialGuess[1] = intensityTime[target.length / 2]; // use half the intensity trace time as first estimate
         // for the exponential decay
         initialGuess[2] = 0;
 

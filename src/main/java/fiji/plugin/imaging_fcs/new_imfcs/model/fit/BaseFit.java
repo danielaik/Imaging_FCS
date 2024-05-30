@@ -1,5 +1,6 @@
 package fiji.plugin.imaging_fcs.new_imfcs.model.fit;
 
+import fiji.plugin.imaging_fcs.new_imfcs.utils.Pair;
 import org.apache.commons.math3.analysis.ParametricUnivariateFunction;
 import org.apache.commons.math3.fitting.AbstractCurveFitter;
 import org.apache.commons.math3.fitting.WeightedObservedPoint;
@@ -36,21 +37,17 @@ public abstract class BaseFit extends AbstractCurveFitter {
     }
 
     /**
-     * Fills the target and weights arrays with the Y values and weights from the given collection of
+     * Creates and fills the target and weights arrays with the Y values and weights from the given collection of
      * {@link WeightedObservedPoint} objects.
      *
-     * @param points  the collection of {@link WeightedObservedPoint} objects to process
-     * @param target  the array to be filled with the Y values of the points
-     * @param weights the array to be filled with the weights of the points
-     * @throws IllegalArgumentException if the length of the target or weights array does not match the
-     *                                  size of the points collection
+     * @param points the collection of {@link WeightedObservedPoint} objects to process
+     * @return a two-dimensional array where the first element is the target array filled with Y values and the second
+     * element is the weights array filled with the weights of the points
      */
-    protected void fillTargetAndWeights(Collection<WeightedObservedPoint> points, double[] target,
-                                        double[] weights) {
-        if (points.size() != target.length || points.size() != weights.length) {
-            throw new IllegalArgumentException(
-                    "The length of target and weights arrays must match the size of the points collection");
-        }
+    protected Pair<double[], double[]> createTargetAndWeights(Collection<WeightedObservedPoint> points) {
+        int len = points.size();
+        double[] target = new double[len];
+        double[] weights = new double[len];
 
         AtomicInteger index = new AtomicInteger(0);
         points.forEach(point -> {
@@ -58,6 +55,8 @@ public abstract class BaseFit extends AbstractCurveFitter {
             target[i] = point.getY();
             weights[i] = point.getWeight();
         });
+
+        return new Pair<>(target, weights);
     }
 
     /**

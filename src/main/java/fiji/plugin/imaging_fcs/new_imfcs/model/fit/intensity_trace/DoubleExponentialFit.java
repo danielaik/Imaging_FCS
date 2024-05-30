@@ -1,6 +1,7 @@
 package fiji.plugin.imaging_fcs.new_imfcs.model.fit.intensity_trace;
 
 import fiji.plugin.imaging_fcs.new_imfcs.model.fit.intensity_trace.parametric_univariate_functions.DoubleExponential;
+import fiji.plugin.imaging_fcs.new_imfcs.utils.Pair;
 import org.apache.commons.math3.analysis.ParametricUnivariateFunction;
 import org.apache.commons.math3.fitting.WeightedObservedPoint;
 import org.apache.commons.math3.fitting.leastsquares.LeastSquaresProblem;
@@ -28,20 +29,19 @@ public class DoubleExponentialFit extends IntensityTraceFit {
      */
     @Override
     protected LeastSquaresProblem getProblem(Collection<WeightedObservedPoint> points) {
-        final int len = points.size();
-        final double[] target = new double[len];
-        final double[] weights = new double[len];
-        final double[] initialGuess = new double[5];
+        Pair<double[], double[]> targetAndWeights = createTargetAndWeights(points);
+        double[] target = targetAndWeights.getLeft();
+        double[] weights = targetAndWeights.getRight();
 
-        fillTargetAndWeights(points, target, weights);
+        final double[] initialGuess = new double[5];
 
         // initial guesses
         initialGuess[0] = target[1] / 2; // amplitude for first and second decay are set equal; estimated from half
         // of the first point
-        initialGuess[1] = intensityTime[len / 10]; // use a tenth of the intensity trace time as first
+        initialGuess[1] = intensityTime[target.length / 10]; // use a tenth of the intensity trace time as first
         // estimate for the first exponential decay
         initialGuess[2] = target[1] / 2; // amplitude estimated from half of the first point
-        initialGuess[3] = intensityTime[len / 2]; // use half the intensity trace time as first estimate
+        initialGuess[3] = intensityTime[target.length / 2]; // use half the intensity trace time as first estimate
         // for the second exponential decay
         initialGuess[4] = 0;
 
