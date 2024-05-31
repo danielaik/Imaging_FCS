@@ -78,4 +78,14 @@ public final class TextFieldFactory {
 
         return textField;
     }
+
+    /**
+     * Sets the text of an existing {@link JTextField}.
+     *
+     * @param textField The {@link JTextField} whose text is to be set.
+     * @param text      The text to set in the text field.
+     */
+    public static void setText(JTextField textField, Object text) {
+        textField.setText(String.valueOf(text));
+    }
 }

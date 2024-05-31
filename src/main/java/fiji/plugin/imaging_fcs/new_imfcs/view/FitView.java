@@ -12,6 +12,7 @@ import static fiji.plugin.imaging_fcs.new_imfcs.controller.FocusListenerFactory.
 import static fiji.plugin.imaging_fcs.new_imfcs.view.ButtonFactory.createJButton;
 import static fiji.plugin.imaging_fcs.new_imfcs.view.ButtonFactory.createJToggleButton;
 import static fiji.plugin.imaging_fcs.new_imfcs.view.TextFieldFactory.createTextField;
+import static fiji.plugin.imaging_fcs.new_imfcs.view.TextFieldFactory.setText;
 import static fiji.plugin.imaging_fcs.new_imfcs.view.UIUtils.createJLabel;
 
 public class FitView extends BaseView {
@@ -118,10 +119,6 @@ public class FitView extends BaseView {
         rbtnCNNImage.setVisible(false);
         rbtnCNNACF = new JRadioButton("FCSNet");
         rbtnCNNACF.setVisible(false);
-    }
-
-    private void setText(JTextField textField, Object value) {
-        textField.setText(String.valueOf(value));
     }
 
     // this method is called after the model has reset default value
