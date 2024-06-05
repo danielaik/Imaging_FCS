@@ -34,6 +34,8 @@ public final class Constants {
 
     // constants
     public static final double REFRACTIVE_INDEX = 1.333; // refractive index of water;
+    public static final double PI = Math.PI;
+    public static final double SQRT_PI = Math.sqrt(PI);
 
     // Private constructor to prevent instantiation
     private Constants() {
