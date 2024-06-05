@@ -19,7 +19,6 @@ public class Correlator {
     private final ExpSettingsModel settings;
     private final OptionsModel options;
     private final BleachCorrectionModel bleachCorrectionModel;
-    private final Plots plots;
     private int channelNumber;
     private int lagGroupNumber;
     private double median;
@@ -34,18 +33,15 @@ public class Correlator {
     private double[][] regularizedCovarianceMatrix;
 
 
-    public Correlator(ExpSettingsModel settings, OptionsModel options, BleachCorrectionModel bleachCorrectionModel,
-                      Plots plots) {
+    public Correlator(ExpSettingsModel settings, OptionsModel options, BleachCorrectionModel bleachCorrectionModel) {
         this.settings = settings;
         this.options = options;
         this.bleachCorrectionModel = bleachCorrectionModel;
-        this.plots = plots;
     }
 
-    private double[][] getIntensityBlock(ImagePlus img, int x, int y, int x2, int y2,
-                                         int initialFrame, int finalFrame, int mode) {
-        double[] intensityData = bleachCorrectionModel.getIntensity(img, x, y, mode,
-                initialFrame, finalFrame);
+    private double[][] getIntensityBlock(ImagePlus img, int x, int y, int x2, int y2, int initialFrame,
+                                         int finalFrame, int mode) {
+        double[] intensityData = bleachCorrectionModel.getIntensity(img, x, y, mode, initialFrame, finalFrame);
 
         double[][] intensityBlock = new double[2][intensityData.length];
         intensityBlock[0] = intensityData;
@@ -76,15 +72,15 @@ public class Correlator {
         }
 
         if (options.isPlotACFCurves()) {
-            plots.plotSingleACF(meanCovariance, lagTimes, channelNumber, x, y, settings.getBinning());
+            Plots.plotSingleACF(meanCovariance, lagTimes, channelNumber, x, y, settings.getBinning());
         }
 
         if (options.isPlotSDCurves()) {
-            plots.plotStandardDeviation(blockStandardDeviation, lagTimes, channelNumber, x, y);
+            Plots.plotStandardDeviation(blockStandardDeviation, lagTimes, channelNumber, x, y);
         }
 
         if (options.isPlotIntensityCurves()) {
-            plots.plotIntensityTrace(bleachCorrectionModel.getIntensityTrace1(),
+            Plots.plotIntensityTrace(bleachCorrectionModel.getIntensityTrace1(),
                     bleachCorrectionModel.getIntensityTime(), bleachCorrectionModel.getNumPointsIntensityTrace(), x, y);
         }
     }
@@ -93,10 +89,8 @@ public class Correlator {
                                                 int finalFrame) {
         int numFrames = finalFrame - initialFrame + 1;
         int numSlidingWindow = numFrames / bleachCorrectionModel.getSlidingWindowLength();
-        lagGroupNumber = (int) Math.floor((Math.log(
-                (double) bleachCorrectionModel.getSlidingWindowLength() /
-                        (SLIDING_WINDOW_MIN_FRAME + settings.getCorrelatorP()))
-                + 1) / Math.log(2));
+        lagGroupNumber = (int) Math.floor((Math.log((double) bleachCorrectionModel.getSlidingWindowLength() /
+                (SLIDING_WINDOW_MIN_FRAME + settings.getCorrelatorP())) + 1) / Math.log(2));
         channelNumber = settings.getCorrelatorP() + (lagGroupNumber - 1) * settings.getCorrelatorP() / 2 + 1;
 
         // allow smaller correlator Q value as minimum but not larger
@@ -104,11 +98,10 @@ public class Correlator {
 
         for (int i = 0; i < numSlidingWindow; i++) {
             int slidingWindowInitialFrame = i * bleachCorrectionModel.getSlidingWindowLength() + initialFrame;
-            int slidingWindowFinalFrame = (i + 1) * bleachCorrectionModel.getSlidingWindowLength() +
-                    initialFrame - 1;
+            int slidingWindowFinalFrame = (i + 1) * bleachCorrectionModel.getSlidingWindowLength() + initialFrame - 1;
 
-            double[][] intensityBlock = getIntensityBlock(img, x, y, x2, y2,
-                    slidingWindowInitialFrame, slidingWindowFinalFrame, 1);
+            double[][] intensityBlock =
+                    getIntensityBlock(img, x, y, x2, y2, slidingWindowInitialFrame, slidingWindowFinalFrame, 1);
 
             int index = blockTransform(deepCopy(intensityBlock), bleachCorrectionModel.getSlidingWindowLength());
             calculateCF(deepCopy(intensityBlock), bleachCorrectionModel.getSlidingWindowLength(), index);
@@ -119,8 +112,7 @@ public class Correlator {
                                             int finalFrame) {
         int numFrames = finalFrame - initialFrame + 1;
         lagGroupNumber = correlatorQ;
-        channelNumber = settings.getCorrelatorP() +
-                (correlatorQ - 1) * settings.getCorrelatorP() / 2 + 1;
+        channelNumber = settings.getCorrelatorP() + (correlatorQ - 1) * settings.getCorrelatorP() / 2 + 1;
 
         // TODO: check kcf (select 1, 2 or 3)
         int mode = settings.getFitModel().equals(Constants.DC_FCCS_2D) ? 2 : 1;
@@ -141,7 +133,7 @@ public class Correlator {
         int index = determineLastIndexMeetingCriteria(blockCount, varianceBlocks, lowerQuartile, upperQuartile);
 
         if (options.isPlotBlockingCurve()) {
-            plots.plotBlockingCurve(varianceBlocks, blockCount, index);
+            Plots.plotBlockingCurve(varianceBlocks, blockCount, index);
         }
 
         return index;
@@ -172,8 +164,8 @@ public class Correlator {
         for (int group = 1; group <= lagGroupNumber; group++) {
             for (int channel = 1; channel <= numChannelsHigherGroups; channel++) {
                 int index = group * numChannelsHigherGroups + channel;
-                lags[index] = (int) (Math.pow(2, group - 1) * channel +
-                        (numChannelsFirstGroup / 4) * Math.pow(2, group));
+                lags[index] =
+                        (int) (Math.pow(2, group - 1) * channel + (numChannelsFirstGroup / 4) * Math.pow(2, group));
                 lagTimes[index] = lags[index] * settings.getFrameTime();
             }
         }
@@ -253,9 +245,8 @@ public class Correlator {
         double sumProdSquared = 0.0;
 
         for (int i = 0; i < numProducts; i++) {
-            products[i] = intensityBlock[0][i] * intensityBlock[1][i + delay] -
-                    delayedMonitor * intensityBlock[0][i] - directMonitor * intensityBlock[1][i + delay] +
-                    delayedMonitor * directMonitor;
+            products[i] = intensityBlock[0][i] * intensityBlock[1][i + delay] - delayedMonitor * intensityBlock[0][i] -
+                    directMonitor * intensityBlock[1][i + delay] + delayedMonitor * directMonitor;
             sumProd += products[i];
             sumProdSquared += Math.pow(products[i], 2);
         }
@@ -297,21 +288,22 @@ public class Correlator {
         double delayedMonitor = monitors[1];
 
         double[] products = new double[numFrames];
-        double[] sumProds = calculateCorrelations(numProducts[0], intensityBlock, directMonitor, delayedMonitor,
-                products, delay);
+        double[] sumProds =
+                calculateCorrelations(numProducts[0], intensityBlock, directMonitor, delayedMonitor, products, delay);
         double sumProd = sumProds[0];
         double sumProdSquared = sumProds[1];
 
         varianceBlocks[0][0] = currentIncrement * settings.getFrameTime();
-        varianceBlocks[1][0] = (sumProdSquared / (numBinnedDataPoints - delay) -
-                Math.pow(sumProd / numProducts[0], 2)) / (numProducts[0] * Math.pow(directMonitor * delayedMonitor, 2));
+        varianceBlocks[1][0] =
+                (sumProdSquared / (numBinnedDataPoints - delay) - Math.pow(sumProd / numProducts[0], 2)) /
+                        (numProducts[0] * Math.pow(directMonitor * delayedMonitor, 2));
 
-        performBlockingOperations(blockCount, currentIncrement, varianceBlocks, directMonitor, delayedMonitor, products,
-                numProducts);
+        performBlockingOperations(blockCount, currentIncrement, varianceBlocks, directMonitor, delayedMonitor,
+                products, numProducts);
     }
 
-    private int determineLastIndexMeetingCriteria(int blockCount, double[][] varianceBlocks,
-                                                  double[] lowerQuartile, double[] upperQuartile) {
+    private int determineLastIndexMeetingCriteria(int blockCount, double[][] varianceBlocks, double[] lowerQuartile,
+                                                  double[] upperQuartile) {
         int lastIndexMeetingCriteria = -1;
         int firstOverlapingIndexAfterIncrease = -1;
 
@@ -417,8 +409,8 @@ public class Correlator {
         for (int i = 1; i < channelNumber; i++) {
             double tmp = 0;
             for (int j = 0; j < minProducts; j++) {
-                tmp += Math.pow(
-                        (Math.pow(products[i][j] / (directMonitors[i] * delayedMonitors[i]) - meanCovariance[i], 2) -
+                tmp += Math.pow((
+                        Math.pow(products[i][j] / (directMonitors[i] * delayedMonitors[i]) - meanCovariance[i], 2) -
                                 covarianceMatrix[i][i]), 2);
             }
             tmp *= minProducts / Math.pow(minProducts - 1, 3);
@@ -434,8 +426,8 @@ public class Correlator {
                                                       double[][] correlationMatrix, int minProducts) {
         for (int i = 1; i < channelNumber; i++) {
             for (int j = 1; j < channelNumber; j++) {
-                correlationMatrix[i][j] = covarianceMatrix[i][j] /
-                        Math.sqrt(covarianceMatrix[i][i] * covarianceMatrix[j][j]);
+                correlationMatrix[i][j] =
+                        covarianceMatrix[i][j] / Math.sqrt(covarianceMatrix[i][i] * covarianceMatrix[j][j]);
             }
         }
 
@@ -476,16 +468,17 @@ public class Correlator {
             for (int j = 1; j < i; j++) {
                 cmx = varianceShrinkageWeight * median + (1 - varianceShrinkageWeight) * covarianceMatrix[i][i];
                 cmy = varianceShrinkageWeight * median + (1 - varianceShrinkageWeight) * covarianceMatrix[j][j];
-                regularizedCovarianceMatrix[i - 1][j - 1] = (1 - covarianceShrinkageWeight) *
-                        correlationMatrix[i][j] * Math.sqrt(cmx * cmy) / minProducts;
+                regularizedCovarianceMatrix[i - 1][j - 1] =
+                        (1 - covarianceShrinkageWeight) * correlationMatrix[i][j] * Math.sqrt(cmx * cmy) / minProducts;
                 regularizedCovarianceMatrix[j - 1][i - 1] = regularizedCovarianceMatrix[i - 1][j - 1];
             }
         }
 
         // diagonal elements of the regularized variance-covariance matrix
         for (int i = 1; i < channelNumber; i++) {
-            regularizedCovarianceMatrix[i - 1][i - 1] = (varianceShrinkageWeight * median +
-                    (1 - varianceShrinkageWeight) * covarianceMatrix[i][i]) / minProducts;
+            regularizedCovarianceMatrix[i - 1][i - 1] =
+                    (varianceShrinkageWeight * median + (1 - varianceShrinkageWeight) * covarianceMatrix[i][i]) /
+                            minProducts;
         }
     }
 
@@ -535,8 +528,9 @@ public class Correlator {
             directMonitors[i] = monitors[0];
             delayedMonitors[i] = monitors[1];
 
-            double[] sumProds = calculateCorrelations(numProducts[i], intensityBlocks, directMonitors[i],
-                    delayedMonitors[i], products[i], delay);
+            double[] sumProds =
+                    calculateCorrelations(numProducts[i], intensityBlocks, directMonitors[i], delayedMonitors[i],
+                            products[i], delay);
 
             correlationMean[i] = sumProds[0] / (numProducts[i] * directMonitors[i] * delayedMonitors[i]);
 
@@ -554,8 +548,8 @@ public class Correlator {
             // use only the minimal number of products to achieve a symmetric variance matrix
             numProducts[i] = minProducts;
 
-            blockVariance[i] = calculateBlockVariance(products[i], directMonitors[i], delayedMonitors[i],
-                    numProducts[i]);
+            blockVariance[i] =
+                    calculateBlockVariance(products[i], directMonitors[i], delayedMonitors[i], numProducts[i]);
             blockStandardDeviation[i] = Math.sqrt(blockVariance[i]);
         }
 
@@ -565,8 +559,8 @@ public class Correlator {
             calculateMeanCovariance(products, directMonitors, delayedMonitors, minProducts);
             calculateCovarianceMatrix(covarianceMatrix, products, directMonitors, delayedMonitors, minProducts);
             double varianceShrinkageWeight =
-                    calculateVarianceShrinkageWeight(covarianceMatrix, products, directMonitors,
-                            delayedMonitors, minProducts);
+                    calculateVarianceShrinkageWeight(covarianceMatrix, products, directMonitors, delayedMonitors,
+                            minProducts);
 
             double[][] correlationMatrix = new double[channelNumber][channelNumber];
             double covarianceShrinkageWeight =
@@ -577,7 +571,7 @@ public class Correlator {
                     covarianceShrinkageWeight, minProducts);
 
             if (options.isPlotCovMats()) {
-                plots.plotCovarianceMatrix(channelNumber, regularizedCovarianceMatrix);
+                Plots.plotCovarianceMatrix(channelNumber, regularizedCovarianceMatrix);
             }
         } else {
             // hand over either the correlation function CorrelationMean; they differ only slightly

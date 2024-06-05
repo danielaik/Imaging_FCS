@@ -11,28 +11,28 @@ import ij.process.ImageProcessor;
 import java.awt.*;
 
 public class Plots {
-    private final Point ACF_POSITION = new Point(Constants.MAIN_PANEL_POS.x + Constants.MAIN_PANEL_DIM.width + 10,
-            Constants.MAIN_PANEL_POS.y + 100);
-    private final Dimension ACF_DIMENSION = new Dimension(200, 200);
-    private final Dimension BLOCKING_CURVE_DIMENSION = new Dimension(200, 100);
-    private final Point STANDARD_DEVIATION_POSITION = new Point(ACF_POSITION.x + ACF_DIMENSION.width + 115,
-            ACF_POSITION.y);
-    private final Dimension STANDARD_DEVIATION_DIMENSION = new Dimension(ACF_DIMENSION.width, 50);
-    private final Point BLOCKING_CURVE_POSITION =
-            new Point(STANDARD_DEVIATION_POSITION.x + STANDARD_DEVIATION_DIMENSION.width + 110,
-                    STANDARD_DEVIATION_POSITION.y);
-    private final Point COVARIANCE_POSITION = new Point(BLOCKING_CURVE_POSITION.x,
-            BLOCKING_CURVE_POSITION.y + BLOCKING_CURVE_DIMENSION.height + 150);
-    private final Point INTENSITY_POSITION = new Point(ACF_POSITION.x, ACF_POSITION.y + ACF_DIMENSION.height + 145);
-    private final Dimension INTENSITY_DIMENSION = new Dimension(ACF_DIMENSION.width, 50);
-    private PlotWindow blockingCurveWindow, acfWindow, standardDeviationWindow, intensityTraceWindow;
-    private ImageWindow imgCovarianceWindow;
+    private static final Point ACF_POSITION = new Point(
+            Constants.MAIN_PANEL_POS.x + Constants.MAIN_PANEL_DIM.width + 10, Constants.MAIN_PANEL_POS.y + 100);
+    private static final Dimension ACF_DIMENSION = new Dimension(200, 200);
+    private static final Dimension BLOCKING_CURVE_DIMENSION = new Dimension(200, 100);
+    private static final Point STANDARD_DEVIATION_POSITION =
+            new Point(ACF_POSITION.x + ACF_DIMENSION.width + 115, ACF_POSITION.y);
+    private static final Dimension STANDARD_DEVIATION_DIMENSION = new Dimension(ACF_DIMENSION.width, 50);
+    private static final Point BLOCKING_CURVE_POSITION = new Point(
+            STANDARD_DEVIATION_POSITION.x + STANDARD_DEVIATION_DIMENSION.width + 110, STANDARD_DEVIATION_POSITION.y);
+    private static final Point COVARIANCE_POSITION =
+            new Point(BLOCKING_CURVE_POSITION.x, BLOCKING_CURVE_POSITION.y + BLOCKING_CURVE_DIMENSION.height + 150);
+    private static final Point INTENSITY_POSITION =
+            new Point(ACF_POSITION.x, ACF_POSITION.y + ACF_DIMENSION.height + 145);
+    private static final Dimension INTENSITY_DIMENSION = new Dimension(ACF_DIMENSION.width, 50);
+    private static PlotWindow blockingCurveWindow, acfWindow, standardDeviationWindow, intensityTraceWindow;
+    private static ImageWindow imgCovarianceWindow;
 
-    public Plots() {
-        this.blockingCurveWindow = null;
+    // prevent instantiation
+    private Plots() {
     }
 
-    private double[] findAdjustedMinMax(double[] array, int len) {
+    private static double[] findAdjustedMinMax(double[] array, int len) {
         if (len <= 0) {
             throw new IllegalArgumentException("findAdjustedMinMax: len <= 0");
         }
@@ -51,7 +51,7 @@ public class Plots {
         return new double[]{min, max};
     }
 
-    private PlotWindow plotWindow(Plot plot, PlotWindow window, Point position) {
+    private static PlotWindow plotWindow(Plot plot, PlotWindow window, Point position) {
         // Display the plot in a new window or update the existing one
         if (window == null || window.isClosed()) {
             window = plot.show();
@@ -63,7 +63,7 @@ public class Plots {
         return window;
     }
 
-    public void plotBlockingCurve(double[][] varianceBlocks, int blockCount, int index) {
+    public static void plotBlockingCurve(double[][] varianceBlocks, int blockCount, int index) {
         Plot plot = getBlockingCurvePlot(varianceBlocks, blockCount);
         plot.setColor(Color.BLUE);
         plot.setJustification(Plot.CENTER);
@@ -86,7 +86,7 @@ public class Plots {
         blockingCurveWindow = plotWindow(plot, blockingCurveWindow, BLOCKING_CURVE_POSITION);
     }
 
-    private Plot getBlockingCurvePlot(double[][] varianceBlocks, int blockCount) {
+    private static Plot getBlockingCurvePlot(double[][] varianceBlocks, int blockCount) {
         double[] minMax = findAdjustedMinMax(varianceBlocks[1], blockCount);
         double minBlock = minMax[0];
         double maxBlock = minMax[1];
@@ -100,7 +100,7 @@ public class Plots {
         return plot;
     }
 
-    public void plotCovarianceMatrix(int channelNumber, double[][] regularizedCovarianceMatrix) {
+    public static void plotCovarianceMatrix(int channelNumber, double[][] regularizedCovarianceMatrix) {
         ImagePlus imgCovariance = IJ.createImage("Covariance", "GRAY32", channelNumber - 1, channelNumber - 1, 1);
 
         ImageProcessor ip = imgCovariance.getProcessor();
@@ -127,7 +127,7 @@ public class Plots {
         IJ.run(imgCovariance, "In [+]", "");
     }
 
-    public void plotSingleACF(double[] acf, double[] lagTimes, int channelNumber, int x, int y, Point binning) {
+    public static void plotSingleACF(double[] acf, double[] lagTimes, int channelNumber, int x, int y, Point binning) {
         double[] minMax = findAdjustedMinMax(acf, channelNumber);
         double minScale = minMax[0];
         double maxScale = minMax[1];
@@ -141,16 +141,15 @@ public class Plots {
         plot.setJustification(Plot.CENTER);
 
         // TODO: create plot label for CCF
-        plot.addLabel(0.5, 0, String.format(
-                " ACF of (%d, %d) at %dx%d binning.", x, y, binning.x, binning.y));
+        plot.addLabel(0.5, 0, String.format(" ACF of (%d, %d) at %dx%d binning.", x, y, binning.x, binning.y));
 
         plot.draw();
 
         acfWindow = plotWindow(plot, acfWindow, ACF_POSITION);
     }
 
-    public void plotStandardDeviation(double[] blockStandardDeviation, double[] lagTimes, int channelNumber,
-                                      int x, int y) {
+    public static void plotStandardDeviation(double[] blockStandardDeviation, double[] lagTimes, int channelNumber,
+                                             int x, int y) {
         double[] minMax = findAdjustedMinMax(blockStandardDeviation, channelNumber);
         double min = minMax[0];
         double max = minMax[1];
@@ -169,8 +168,8 @@ public class Plots {
         standardDeviationWindow = plotWindow(plot, standardDeviationWindow, STANDARD_DEVIATION_POSITION);
     }
 
-    public void plotIntensityTrace(double[] intensityTrace, double[] intensityTime, int numPointsIntensityTrace,
-                                   int x, int y) {
+    public static void plotIntensityTrace(double[] intensityTrace, double[] intensityTime,
+                                          int numPointsIntensityTrace, int x, int y) {
         double[] minMax = findAdjustedMinMax(intensityTrace, numPointsIntensityTrace);
         double min = minMax[0];
         double max = minMax[1];

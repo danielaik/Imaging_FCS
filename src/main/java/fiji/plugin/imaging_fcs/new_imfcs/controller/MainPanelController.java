@@ -6,7 +6,6 @@ import fiji.plugin.imaging_fcs.new_imfcs.model.fit.BleachCorrectionModel;
 import fiji.plugin.imaging_fcs.new_imfcs.view.BleachCorrectionView;
 import fiji.plugin.imaging_fcs.new_imfcs.view.ExpSettingsView;
 import fiji.plugin.imaging_fcs.new_imfcs.view.MainPanelView;
-import fiji.plugin.imaging_fcs.new_imfcs.view.Plots;
 import fiji.plugin.imaging_fcs.new_imfcs.view.dialogs.FilterLimitsSelectionView;
 import fiji.plugin.imaging_fcs.new_imfcs.view.dialogs.PolynomialOrderSelectionView;
 import fiji.plugin.imaging_fcs.new_imfcs.view.dialogs.SlidingWindowSelectionView;
@@ -30,7 +29,6 @@ public final class MainPanelController {
     private final MainPanelView view;
     private final ExpSettingsView expSettingsView;
     private final BleachCorrectionView bleachCorrectionView;
-    private final Plots plots;
     private final HardwareModel hardwareModel;
     private final OptionsModel optionsModel;
     private final ImageController imageController;
@@ -56,14 +54,13 @@ public final class MainPanelController {
         this.expSettingsView = new ExpSettingsView(this, expSettingsModel);
         updateSettingsField();
 
-        this.plots = new Plots();
-
         ImageModel imageModel = new ImageModel();
         this.backgroundSubtractionController = new BackgroundSubtractionController(imageModel);
         this.bleachCorrectionModel = new BleachCorrectionModel(expSettingsModel, imageModel);
-        this.correlator = new Correlator(expSettingsModel, optionsModel, bleachCorrectionModel, plots);
-        this.imageController = new ImageController(this, imageModel, backgroundSubtractionController,
-                bleachCorrectionModel, correlator, expSettingsModel);
+        this.correlator = new Correlator(expSettingsModel, optionsModel, bleachCorrectionModel);
+        this.imageController =
+                new ImageController(this, imageModel, backgroundSubtractionController, bleachCorrectionModel,
+                        correlator, expSettingsModel);
 
         this.bleachCorrectionView = new BleachCorrectionView(this, bleachCorrectionModel);
 
@@ -106,13 +103,12 @@ public final class MainPanelController {
                     // reset the combo box to default in no image is loaded.
                     ((JComboBox<?>) ev.getSource()).setSelectedIndex(0);
                 } else {
-                    new SlidingWindowSelectionView(
-                            this::onBleachCorrectionSlidingWindowAccepted,
+                    new SlidingWindowSelectionView(this::onBleachCorrectionSlidingWindowAccepted,
                             bleachCorrectionModel.getSlidingWindowLength());
                 }
             } else if ("Polynomial".equals(bleachCorrectionMode)) {
-                new PolynomialOrderSelectionView(
-                        this::onBleachCorrectionOrderAccepted, bleachCorrectionModel.getPolynomialOrder());
+                new PolynomialOrderSelectionView(this::onBleachCorrectionOrderAccepted,
+                        bleachCorrectionModel.getPolynomialOrder());
             }
         };
     }
@@ -128,8 +124,8 @@ public final class MainPanelController {
 
         if (slidingWindowLength <= 0 ||
                 slidingWindowLength > (expSettingsModel.getLastFrame() - expSettingsModel.getFirstFrame())) {
-            IJ.showMessage(String.format(
-                    "Invalid sliding window size. It must be inside 0 < order < %d", maxWindowSize));
+            IJ.showMessage(String.format("Invalid sliding window size. It must be inside 0 < order < %d",
+                    maxWindowSize));
             new SlidingWindowSelectionView(this::onBleachCorrectionSlidingWindowAccepted,
                     bleachCorrectionModel.getSlidingWindowLength());
         } else {
@@ -145,8 +141,7 @@ public final class MainPanelController {
      */
     private void onBleachCorrectionOrderAccepted(int order) {
         if (order <= 0 || order > BleachCorrectionModel.MAX_POLYNOMIAL_ORDER) {
-            IJ.showMessage(String.format(
-                    "Invalid polynomial order. It must be inside 0 < order <= %d",
+            IJ.showMessage(String.format("Invalid polynomial order. It must be inside 0 < order <= %d",
                     BleachCorrectionModel.MAX_POLYNOMIAL_ORDER));
             new PolynomialOrderSelectionView(this::onBleachCorrectionOrderAccepted,
                     bleachCorrectionModel.getPolynomialOrder());
@@ -169,8 +164,8 @@ public final class MainPanelController {
 
             // If a filter mode other than "none" is selected, show the filter limits dialog.
             if (!filterMode.equals("none")) {
-                new FilterLimitsSelectionView(this::onFilterSelectionAccepted, expSettingsModel.getFilterLowerLimit(),
-                        expSettingsModel.getFilterUpperLimit());
+                new FilterLimitsSelectionView(this::onFilterSelectionAccepted, expSettingsModel.getFilterLowerLimit()
+                        , expSettingsModel.getFilterUpperLimit());
             }
         };
     }
