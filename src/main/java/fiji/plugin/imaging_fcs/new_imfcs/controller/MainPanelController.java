@@ -7,6 +7,7 @@ import fiji.plugin.imaging_fcs.new_imfcs.view.BleachCorrectionView;
 import fiji.plugin.imaging_fcs.new_imfcs.view.ExpSettingsView;
 import fiji.plugin.imaging_fcs.new_imfcs.view.MainPanelView;
 import fiji.plugin.imaging_fcs.new_imfcs.view.dialogs.FilterLimitsSelectionView;
+import fiji.plugin.imaging_fcs.new_imfcs.view.dialogs.MSDView;
 import fiji.plugin.imaging_fcs.new_imfcs.view.dialogs.PolynomialOrderSelectionView;
 import fiji.plugin.imaging_fcs.new_imfcs.view.dialogs.SlidingWindowSelectionView;
 import ij.IJ;
@@ -427,9 +428,29 @@ public final class MainPanelController {
         };
     }
 
-    public ActionListener tbMSDPressed() {
-        // TODO: FIXME
-        return null;
+    /**
+     * Creates an ItemListener for the MSD toggle button.
+     * When the button is pressed, it toggles the MSD (Mean Squared Displacement) analysis on or off
+     * and updates the button text accordingly. If MSD is enabled, it opens an MSDView dialog to
+     * configure the MSD settings.
+     *
+     * @return an ItemListener for the MSD toggle button.
+     */
+    public ItemListener tbMSDPressed() {
+        return (ItemEvent ev) -> {
+            JToggleButton button = (JToggleButton) ev.getItemSelectable();
+
+            boolean selected = (ev.getStateChange() == ItemEvent.SELECTED);
+
+            if (selected) {
+                expSettingsModel.setDoMSD(true);
+                button.setText("MSD On");
+                new MSDView(expSettingsModel.isMSD3d(), expSettingsModel::setMSD3d);
+            } else {
+                expSettingsModel.setDoMSD(false);
+                button.setText("MSD Off");
+            }
+        };
     }
 
     /**

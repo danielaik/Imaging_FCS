@@ -41,6 +41,8 @@ public final class ExpSettingsModel {
     private int filterUpperLimit = 65536;
     private boolean FCSSDisp = false;
     private boolean overlap = false;
+    private boolean isMSD3d = false;
+    private boolean doMSD = false;
 
     // Non-user parameters (compute using user parameters)
     private double paramAx;
@@ -236,7 +238,8 @@ public final class ExpSettingsModel {
     public void setFirstFrame(String firstFrame) {
         int intFirstFrame = Integer.parseInt(firstFrame);
         if (intFirstFrame >= lastFrame || intFirstFrame < 1) {
-            throw new InvalidUserInputException("First frame set incorrectly, it needs to be between 1 and last frame.");
+            throw new InvalidUserInputException(
+                    "First frame set incorrectly, it needs to be between 1 and last frame" + ".");
         }
 
         this.firstFrame = intFirstFrame;
@@ -349,5 +352,21 @@ public final class ExpSettingsModel {
 
     public void setOverlap(boolean overlap) {
         this.overlap = overlap;
+    }
+
+    public boolean isMSD3d() {
+        return isMSD3d;
+    }
+
+    public void setMSD3d(boolean isMSD3d) {
+        this.isMSD3d = isMSD3d;
+    }
+
+    public boolean isDoMSD() {
+        return doMSD;
+    }
+
+    public void setDoMSD(boolean doMSD) {
+        this.doMSD = doMSD;
     }
 }
