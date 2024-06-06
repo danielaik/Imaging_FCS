@@ -97,11 +97,11 @@ public class FitView extends BaseView {
         btnCNNImage = createJButton("ImFCSNet", "", null, (ItemListener) null);
         btnCNNACF = createJButton("FCSNet", "", null, (ItemListener) null);
 
-        tbGLS = createJToggleButton("GLS", "", null, (ItemListener) null);
-        tbGLS.setForeground(Color.lightGray);
-        tbBayes = createJToggleButton("Bayes", "", null, (ItemListener) null);
-        tbBayes.setForeground(Color.lightGray);
-        tbFixPar = createJToggleButton("Free", "", null, (ItemListener) null);
+        tbGLS = createJToggleButton("GLS", "", null, controller.tbOptionPressed(model::setGLS));
+        tbGLS.setForeground(Color.LIGHT_GRAY);
+        tbBayes = createJToggleButton("Bayes", "", null, controller.tbOptionPressed(model::setBayes));
+        tbBayes.setForeground(Color.LIGHT_GRAY);
+        tbFixPar = createJToggleButton("Free", "", null, controller.tbFixParPressed());
 
         holdN = createHoldButton(model.getN());
         holdF2 = createHoldButton(model.getF2());

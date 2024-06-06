@@ -9,6 +9,9 @@ public class FitModel {
     private Parameter D, N, F2, F3, D2, D3, G, vx, vy, fTrip, tTrip;
     private double modProb1, modProb2, modProb3, Q2, Q3;
     private int fitStart, fitEnd;
+    private boolean fix = false;
+    private boolean GLS = false;
+    private boolean bayes = false;
 
     public FitModel() {
         initValues();
@@ -18,19 +21,18 @@ public class FitModel {
     // Should it takes the value of the model if hold is not selected
     // Should it takes two model? The one defining the user selection, and the last used on the previous pixel?
     // If it takes two, then if hold takes the user selection else takes from the previous pixel?
-//    public FitModel(FitModel other) {
-//        setDefaultValues();
-//
-//        this.D = other.D;
-//    }
-//
-//    // Copy constructor taking the user model and the last used
-//    public FitModel(FitModel user, FitModel last) {
-//        // if hold
-//        this.D = user.D;
-//        // else
-//        this.D = last.D;
-//    }
+    //    public FitModel(FitModel other) {
+    //        initValues();
+    //
+    //        this.D = other.D;
+    //    }
+    //
+    //    // Copy constructor taking the user model and the last used
+    //    public FitModel(FitModel user, FitModel last) {
+    //        initValues();
+    //
+    //        this.D = this.D.isHeld() ? user.D : last.D;
+    //    }
 
     private void initValues() {
         D = new Parameter(1 / DIFFUSION_COEFFICIENT_BASE, false);
@@ -253,6 +255,30 @@ public class FitModel {
 
     public void setQ3(String Q3) {
         this.Q3 = Double.parseDouble(Q3);
+    }
+
+    public boolean isFix() {
+        return fix;
+    }
+
+    public void setFix(boolean fix) {
+        this.fix = fix;
+    }
+
+    public boolean isGLS() {
+        return GLS;
+    }
+
+    public void setGLS(boolean GLS) {
+        this.GLS = GLS;
+    }
+
+    public boolean isBayes() {
+        return bayes;
+    }
+
+    public void setBayes(boolean bayes) {
+        this.bayes = bayes;
     }
 
     public static class Parameter {
