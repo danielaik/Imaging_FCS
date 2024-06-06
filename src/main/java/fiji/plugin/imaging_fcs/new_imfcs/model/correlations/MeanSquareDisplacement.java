@@ -51,9 +51,10 @@ public class MeanSquareDisplacement {
     private static int findCutoffIndex(double[] correlationFunction) {
         // Determine cutoff index
         int cutoffIndex = correlationFunction.length - 1;
-        for (int i = correlationFunction.length - 1; i > 1; i--) {
+        for (int i = 2; i < correlationFunction.length; i++) {
             if (correlationFunction[i] / correlationFunction[1] < 0.1) {
                 cutoffIndex = i;
+                break;
             }
         }
 
@@ -84,11 +85,9 @@ public class MeanSquareDisplacement {
      */
     private static double[] correlationToMSD2d(double[] correlationFunction, double pixelSizeX, double pixelSizeY,
                                                double psfWidth) {
-        int channelNumber = correlationFunction.length;
-        double[] msdArray = new double[channelNumber];
-
         int cutoffIndex = findCutoffIndex(correlationFunction);
 
+        double[] msdArray = new double[cutoffIndex];
         // Calculate MSD for each valid channel
         for (int i = 1; i < cutoffIndex; i++) {
             double d = Math.PI * correlationFunction[i] / correlationFunction[1] /
@@ -115,13 +114,11 @@ public class MeanSquareDisplacement {
      */
     private static double[] correlationToMSD3d(double[] correlationFunction, double pixelSizeX, double pixelSizeY,
                                                double psfWidth, double thickness) {
-        int channelNumber = correlationFunction.length;
-        double[] msdArray = new double[channelNumber];
+        int cutoffIndex = findCutoffIndex(correlationFunction);
 
+        double[] msdArray = new double[cutoffIndex];
         msdArray[0] = 0.0;
         msdArray[1] = 0.0;
-
-        int cutoffIndex = findCutoffIndex(correlationFunction);
 
         final double initialCorrelation = correlationFunction[1];
 
