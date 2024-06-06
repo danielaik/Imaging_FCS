@@ -1,5 +1,7 @@
 package fiji.plugin.imaging_fcs.new_imfcs.model;
 
+import fiji.plugin.imaging_fcs.new_imfcs.controller.InvalidUserInputException;
+
 import java.util.Arrays;
 
 import static fiji.plugin.imaging_fcs.new_imfcs.constants.Constants.DIFFUSION_COEFFICIENT_BASE;
@@ -16,23 +18,6 @@ public class FitModel {
     public FitModel() {
         initValues();
     }
-
-    // TODO: Copy constructor, see how the field should be copied, like depending on the hold button
-    // Should it takes the value of the model if hold is not selected
-    // Should it takes two model? The one defining the user selection, and the last used on the previous pixel?
-    // If it takes two, then if hold takes the user selection else takes from the previous pixel?
-    //    public FitModel(FitModel other) {
-    //        initValues();
-    //
-    //        this.D = other.D;
-    //    }
-    //
-    //    // Copy constructor taking the user model and the last used
-    //    public FitModel(FitModel user, FitModel last) {
-    //        initValues();
-    //
-    //        this.D = this.D.isHeld() ? user.D : last.D;
-    //    }
 
     private void initValues() {
         D = new Parameter(1 / DIFFUSION_COEFFICIENT_BASE, false);
@@ -89,12 +74,39 @@ public class FitModel {
                 .toArray();
     }
 
+    public double[] filterFitArray(double[] fitParams) {
+        Parameter[] parameters = {N, D, vx, vy, G, F2, D2, F3, D3, fTrip, tTrip};
+
+        return Arrays.stream(parameters)
+                .filter(parameter -> !parameter.isHeld())
+                .mapToDouble(parameter -> fitParams[Arrays.asList(parameters).indexOf(parameter)])
+                .toArray();
+    }
+
+    public void updateParameterValues(PixelModel.FitParameters parameters) {
+        D.value = parameters.getD();
+        N.value = parameters.getN();
+        F2.value = parameters.getF2();
+        F3.value = parameters.getF3();
+        D2.value = parameters.getD2();
+        D3.value = parameters.getD3();
+        vx.value = parameters.getVx();
+        vy.value = parameters.getVy();
+        G.value = parameters.getG();
+        fTrip.value = parameters.getFTrip();
+        tTrip.value = parameters.getTTrip();
+    }
+
     public Parameter getD() {
         return D;
     }
 
     public void setD(String D) {
-        this.D.value = Double.parseDouble(D) / DIFFUSION_COEFFICIENT_BASE;
+        double newValue = Double.parseDouble(D);
+        if (newValue < 0) {
+            throw new InvalidUserInputException("D must be positive.");
+        }
+        this.D.value = newValue / DIFFUSION_COEFFICIENT_BASE;
     }
 
     public double getDInterface() {
@@ -146,7 +158,11 @@ public class FitModel {
     }
 
     public void setF2(String F2) {
-        this.F2.value = Double.parseDouble(F2);
+        double newValue = Double.parseDouble(F2);
+        if (newValue < 0) {
+            throw new InvalidUserInputException("F2 must be positive.");
+        }
+        this.F2.value = newValue;
     }
 
     public double getQ2() {
@@ -154,7 +170,11 @@ public class FitModel {
     }
 
     public void setQ2(String Q2) {
-        this.Q2 = Double.parseDouble(Q2);
+        double newValue = Double.parseDouble(Q2);
+        if (newValue < 0) {
+            throw new InvalidUserInputException("Q2 must be superior to 0");
+        }
+        this.Q2 = newValue;
     }
 
     public Parameter getF3() {
@@ -162,7 +182,11 @@ public class FitModel {
     }
 
     public void setF3(String F3) {
-        this.F3.value = Double.parseDouble(F3);
+        double newValue = Double.parseDouble(F3);
+        if (newValue < 0) {
+            throw new InvalidUserInputException("F3 must be positive.");
+        }
+        this.F3.value = newValue;
     }
 
     public Parameter getD2() {
@@ -170,7 +194,11 @@ public class FitModel {
     }
 
     public void setD2(String D2) {
-        this.D2.value = Double.parseDouble(D2) / DIFFUSION_COEFFICIENT_BASE;
+        double newValue = Double.parseDouble(D2);
+        if (newValue < 0) {
+            throw new InvalidUserInputException("D2 must be positive.");
+        }
+        this.D2.value = newValue / DIFFUSION_COEFFICIENT_BASE;
     }
 
     public double getD2Interface() {
@@ -182,7 +210,11 @@ public class FitModel {
     }
 
     public void setD3(String D3) {
-        this.D3.value = Double.parseDouble(D3) / DIFFUSION_COEFFICIENT_BASE;
+        double newValue = Double.parseDouble(D3);
+        if (newValue < 0) {
+            throw new InvalidUserInputException("D3 must be positive.");
+        }
+        this.D3.value = newValue / DIFFUSION_COEFFICIENT_BASE;
     }
 
     public double getD3Interface() {
@@ -254,7 +286,11 @@ public class FitModel {
     }
 
     public void setQ3(String Q3) {
-        this.Q3 = Double.parseDouble(Q3);
+        double newValue = Double.parseDouble(Q3);
+        if (newValue < 0) {
+            throw new InvalidUserInputException("Q3 must be superior to 0");
+        }
+        this.Q3 = newValue;
     }
 
     public boolean isFix() {
