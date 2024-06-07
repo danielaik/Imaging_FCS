@@ -2,10 +2,8 @@ package fiji.plugin.imaging_fcs.new_imfcs.model.correlations;
 
 import fiji.plugin.imaging_fcs.new_imfcs.constants.Constants;
 import fiji.plugin.imaging_fcs.new_imfcs.model.ExpSettingsModel;
-import fiji.plugin.imaging_fcs.new_imfcs.model.OptionsModel;
 import fiji.plugin.imaging_fcs.new_imfcs.model.PixelModel;
 import fiji.plugin.imaging_fcs.new_imfcs.model.fit.BleachCorrectionModel;
-import fiji.plugin.imaging_fcs.new_imfcs.view.Plots;
 import ij.ImagePlus;
 
 import java.util.Arrays;
@@ -18,19 +16,17 @@ public class Correlator {
     // calculate a useful correlatorq
     private final int BLOCK_LAG = 1;
     private final ExpSettingsModel settings;
-    private final OptionsModel options;
     private final BleachCorrectionModel bleachCorrectionModel;
-    private int channelNumber, lagGroupNumber, correlatorQ;
+    private int channelNumber, lagGroupNumber, correlatorQ, blockIndex;
     private double median;
     private int[] numSamples, lags, sampleTimes;
     private double[] lagTimes;
-    private double[][] regularizedCovarianceMatrix;
+    private double[][] regularizedCovarianceMatrix, varianceBlocks;
     private PixelModel[][] pixelModels;
 
 
-    public Correlator(ExpSettingsModel settings, OptionsModel options, BleachCorrectionModel bleachCorrectionModel) {
+    public Correlator(ExpSettingsModel settings, BleachCorrectionModel bleachCorrectionModel) {
         this.settings = settings;
-        this.options = options;
         this.bleachCorrectionModel = bleachCorrectionModel;
     }
 
@@ -73,25 +69,6 @@ public class Correlator {
             // if sliding window is not selected, correlate the full intensity trace
             handleFullTraceCorrelation(img, pixelModel, x, y, x2, y2, initialFrame, finalFrame);
         }
-
-        if (options.isPlotACFCurves()) {
-            Plots.plotSingleACF(pixelModel.getAcf(), lagTimes, channelNumber, x, y, settings.getBinning());
-        }
-
-        if (options.isPlotSDCurves()) {
-            Plots.plotStandardDeviation(pixelModel.getStandardDeviationAcf(), lagTimes, channelNumber, x, y);
-        }
-
-        if (options.isPlotIntensityCurves()) {
-            Plots.plotIntensityTrace(bleachCorrectionModel.getIntensityTrace1(),
-                    bleachCorrectionModel.getIntensityTime(), bleachCorrectionModel.getNumPointsIntensityTrace(), x, y);
-        }
-
-        if (settings.isDoMSD()) {
-            pixelModel.setMSD(MeanSquareDisplacement.correlationToMSD(pixelModel.getAcf(), settings.getParamAx(),
-                    settings.getParamAy(), settings.getParamW(), settings.getSigmaZ(), settings.isMSD3d()));
-            Plots.plotMSD(pixelModel.getMSD(), lagTimes, x, y);
-        }
     }
 
     private void handleSlidingWindowCorrelation(ImagePlus img, PixelModel pixelModel, int x, int y, int x2, int y2,
@@ -114,9 +91,9 @@ public class Correlator {
             double[][] intensityBlock =
                     getIntensityBlock(img, x, y, x2, y2, slidingWindowInitialFrame, slidingWindowFinalFrame, 1);
 
-            int index = blockTransform(deepCopy(intensityBlock), bleachCorrectionModel.getSlidingWindowLength());
+            blockTransform(deepCopy(intensityBlock), bleachCorrectionModel.getSlidingWindowLength());
             calculateCF(tmpSlidingWindowModel, deepCopy(intensityBlock),
-                    bleachCorrectionModel.getSlidingWindowLength(), index);
+                    bleachCorrectionModel.getSlidingWindowLength());
             pixelModel.addPixelModelSlidingWindow(tmpSlidingWindowModel);
         }
         pixelModel.averageSlidingWindow(numSlidingWindow);
@@ -132,25 +109,19 @@ public class Correlator {
         int mode = settings.getFitModel().equals(Constants.DC_FCCS_2D) ? 2 : 1;
         double[][] intensityBlock = getIntensityBlock(img, x, y, x2, y2, initialFrame, finalFrame, mode);
 
-        int index = blockTransform(deepCopy(intensityBlock), numFrames);
-        calculateCF(pixelModel, deepCopy(intensityBlock), numFrames, index);
+        blockTransform(deepCopy(intensityBlock), numFrames);
+        calculateCF(pixelModel, deepCopy(intensityBlock), numFrames);
     }
 
-    private int blockTransform(double[][] intensityCorrelation, int numFrames) {
+    private void blockTransform(double[][] intensityCorrelation, int numFrames) {
         int blockCount = calculateBlockCount(numFrames);
 
-        double[][] varianceBlocks = new double[3][blockCount];
+        varianceBlocks = new double[3][blockCount];
         double[] lowerQuartile = new double[blockCount];
         double[] upperQuartile = new double[blockCount];
 
         processBlocks(intensityCorrelation, blockCount, numFrames, varianceBlocks, lowerQuartile, upperQuartile);
-        int index = determineLastIndexMeetingCriteria(blockCount, varianceBlocks, lowerQuartile, upperQuartile);
-
-        if (options.isPlotBlockingCurve()) {
-            Plots.plotBlockingCurve(varianceBlocks, blockCount, index);
-        }
-
-        return index;
+        blockIndex = determineLastIndexMeetingCriteria(blockCount, varianceBlocks, lowerQuartile, upperQuartile);
     }
 
     private int calculateBlockCount(int numFrames) {
@@ -504,7 +475,7 @@ public class Correlator {
         }
     }
 
-    private void calculateCF(PixelModel pixelModel, double[][] intensityBlocks, int numFrames, int index) {
+    private void calculateCF(PixelModel pixelModel, double[][] intensityBlocks, int numFrames) {
         // intensityBlocks is the array of intensity values for the two traces witch are correlated
         // FIXME: implement GLS button
         boolean GLS = true;
@@ -528,7 +499,7 @@ public class Correlator {
         int numBinnedDataPoints = numFrames;
         int currentIncrement = BLOCK_LAG;
         int minProducts = (int) (numSamples[channelNumber - 1] /
-                Math.pow(2, Math.max(index - Math.log(sampleTimes[channelNumber - 1]) / Math.log(2), 0)));
+                Math.pow(2, Math.max(blockIndex - Math.log(sampleTimes[channelNumber - 1]) / Math.log(2), 0)));
 
         // count how often the data was binned
         int binCount = 0;
@@ -555,7 +526,7 @@ public class Correlator {
 
             correlationMean[i] = sumProds[0] / (numProducts[i] * directMonitors[i] * delayedMonitors[i]);
 
-            int binTimes = index - binCount;
+            int binTimes = blockIndex - binCount;
             // bin the data until block time is reached
             for (int j = 1; j <= binTimes; j++) {
                 // for each binning the number of data point is halfed
@@ -591,10 +562,6 @@ public class Correlator {
 
             regularizeCovarianceMatrix(covarianceMatrix, correlationMatrix, varianceShrinkageWeight,
                     covarianceShrinkageWeight, minProducts);
-
-            if (options.isPlotCovMats()) {
-                Plots.plotCovarianceMatrix(channelNumber, regularizedCovarianceMatrix);
-            }
         } else {
             // hand over either the correlation function CorrelationMean; they differ only slightly
             pixelModel.setAcf(correlationMean);
@@ -603,5 +570,21 @@ public class Correlator {
 
     public double[][] getRegularizedCovarianceMatrix() {
         return regularizedCovarianceMatrix;
+    }
+
+    public PixelModel getPixelModel(int x, int y) {
+        return pixelModels[x][y];
+    }
+
+    public double[] getLagTimes() {
+        return lagTimes;
+    }
+
+    public double[][] getVarianceBlocks() {
+        return varianceBlocks;
+    }
+
+    public int getBlockIndex() {
+        return blockIndex;
     }
 }

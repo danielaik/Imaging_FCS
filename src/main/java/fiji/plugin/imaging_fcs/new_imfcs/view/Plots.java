@@ -37,16 +37,16 @@ public class Plots {
     private Plots() {
     }
 
-    private static Pair<Double, Double> findAdjustedMinMax(double[] array, int len) {
-        if (len <= 0) {
-            throw new IllegalArgumentException("findAdjustedMinMax: len <= 0");
+    private static Pair<Double, Double> findAdjustedMinMax(double[] array) {
+        if (array.length == 0) {
+            throw new IllegalArgumentException("findAdjustedMinMax: array is empty");
         }
         double min = Double.MAX_VALUE;
         double max = Double.MIN_VALUE;
 
-        for (int i = 0; i < len; i++) {
-            min = Math.min(min, array[i]);
-            max = Math.max(max, array[i]);
+        for (double value : array) {
+            min = Math.min(min, value);
+            max = Math.max(max, value);
         }
 
         // maximum scales need to be 10% larger than maximum value and 10% smaller than minimum value
@@ -68,8 +68,8 @@ public class Plots {
         return window;
     }
 
-    public static void plotBlockingCurve(double[][] varianceBlocks, int blockCount, int index) {
-        Plot plot = getBlockingCurvePlot(varianceBlocks, blockCount);
+    public static void plotBlockingCurve(double[][] varianceBlocks, int index) {
+        Plot plot = getBlockingCurvePlot(varianceBlocks);
         plot.setColor(Color.BLUE);
         plot.setJustification(Plot.CENTER);
         plot.addPoints(varianceBlocks[0], varianceBlocks[1], varianceBlocks[2], Plot.CIRCLE);
@@ -91,8 +91,8 @@ public class Plots {
         blockingCurveWindow = plotWindow(plot, blockingCurveWindow, BLOCKING_CURVE_POSITION);
     }
 
-    private static Plot getBlockingCurvePlot(double[][] varianceBlocks, int blockCount) {
-        Pair<Double, Double> minMax = findAdjustedMinMax(varianceBlocks[1], blockCount);
+    private static Plot getBlockingCurvePlot(double[][] varianceBlocks) {
+        Pair<Double, Double> minMax = findAdjustedMinMax(varianceBlocks[1]);
         double minBlock = minMax.getLeft();
         double maxBlock = minMax.getRight();
 
@@ -101,16 +101,18 @@ public class Plots {
 
         plot.setFrameSize(BLOCKING_CURVE_DIMENSION.width, BLOCKING_CURVE_DIMENSION.height);
         plot.setLogScaleX();
-        plot.setLimits(varianceBlocks[0][0] / 2, 2 * varianceBlocks[0][blockCount - 1], minBlock, maxBlock);
+        plot.setLimits(
+                varianceBlocks[0][0] / 2, 2 * varianceBlocks[0][varianceBlocks[0].length - 1], minBlock, maxBlock);
         return plot;
     }
 
-    public static void plotCovarianceMatrix(int channelNumber, double[][] regularizedCovarianceMatrix) {
-        ImagePlus imgCovariance = IJ.createImage("Covariance", "GRAY32", channelNumber - 1, channelNumber - 1, 1);
+    public static void plotCovarianceMatrix(double[][] regularizedCovarianceMatrix) {
+        int len = regularizedCovarianceMatrix.length;
+        ImagePlus imgCovariance = IJ.createImage("Covariance", "GRAY32", len, len, 1);
 
         ImageProcessor ip = imgCovariance.getProcessor();
-        for (int x = 0; x < channelNumber - 1; x++) {
-            for (int y = 0; y < channelNumber - 1; y++) {
+        for (int x = 0; x < len; x++) {
+            for (int y = 0; y < len; y++) {
                 ip.putPixelValue(x, y, regularizedCovarianceMatrix[x][y]);
             }
         }
@@ -132,8 +134,8 @@ public class Plots {
         IJ.run(imgCovariance, "In [+]", "");
     }
 
-    public static void plotSingleACF(double[] acf, double[] lagTimes, int channelNumber, int x, int y, Point binning) {
-        Pair<Double, Double> minMax = findAdjustedMinMax(acf, channelNumber);
+    public static void plotSingleACF(double[] acf, double[] lagTimes, int x, int y, Point binning) {
+        Pair<Double, Double> minMax = findAdjustedMinMax(acf);
         double minScale = minMax.getLeft();
         double maxScale = minMax.getRight();
 
@@ -142,7 +144,7 @@ public class Plots {
         plot.addPoints(lagTimes, acf, Plot.LINE);
         plot.setFrameSize(ACF_DIMENSION.width, ACF_DIMENSION.height);
         plot.setLogScaleX();
-        plot.setLimits(lagTimes[1], 2 * lagTimes[channelNumber - 1], minScale, maxScale);
+        plot.setLimits(lagTimes[1], 2 * lagTimes[lagTimes.length - 1], minScale, maxScale);
         plot.setJustification(Plot.CENTER);
 
         // TODO: create plot label for CCF
@@ -153,9 +155,8 @@ public class Plots {
         acfWindow = plotWindow(plot, acfWindow, ACF_POSITION);
     }
 
-    public static void plotStandardDeviation(double[] blockStandardDeviation, double[] lagTimes, int channelNumber,
-                                             int x, int y) {
-        Pair<Double, Double> minMax = findAdjustedMinMax(blockStandardDeviation, channelNumber);
+    public static void plotStandardDeviation(double[] blockStandardDeviation, double[] lagTimes, int x, int y) {
+        Pair<Double, Double> minMax = findAdjustedMinMax(blockStandardDeviation);
         double min = minMax.getLeft();
         double max = minMax.getRight();
 
@@ -164,7 +165,7 @@ public class Plots {
         plot.addPoints(lagTimes, blockStandardDeviation, Plot.LINE);
         plot.setFrameSize(STANDARD_DEVIATION_DIMENSION.width, STANDARD_DEVIATION_DIMENSION.height);
         plot.setLogScaleX();
-        plot.setLimits(lagTimes[1], lagTimes[channelNumber - 1], min, max);
+        plot.setLimits(lagTimes[1], lagTimes[lagTimes.length - 1], min, max);
         plot.setJustification(Plot.CENTER);
         plot.addLabel(0.5, 0, String.format(" StdDev (%d, %d)", x, y));
         plot.draw();
@@ -173,15 +174,14 @@ public class Plots {
         standardDeviationWindow = plotWindow(plot, standardDeviationWindow, STANDARD_DEVIATION_POSITION);
     }
 
-    public static void plotIntensityTrace(double[] intensityTrace, double[] intensityTime,
-                                          int numPointsIntensityTrace, int x, int y) {
-        Pair<Double, Double> minMax = findAdjustedMinMax(intensityTrace, numPointsIntensityTrace);
+    public static void plotIntensityTrace(double[] intensityTrace, double[] intensityTime, int x, int y) {
+        Pair<Double, Double> minMax = findAdjustedMinMax(intensityTrace);
         double min = minMax.getLeft();
         double max = minMax.getRight();
 
         Plot plot = new Plot("Intensity Trace", "time [s]", "Intensity");
         plot.setFrameSize(INTENSITY_DIMENSION.width, INTENSITY_DIMENSION.height);
-        plot.setLimits(intensityTime[1], intensityTime[numPointsIntensityTrace - 1], min, max);
+        plot.setLimits(intensityTime[1], intensityTime[intensityTime.length - 1], min, max);
         plot.setColor(Color.BLUE);
         plot.addPoints(intensityTime, intensityTrace, Plot.LINE);
         plot.setJustification(Plot.CENTER);
@@ -194,7 +194,7 @@ public class Plots {
     }
 
     public static void plotMSD(double[] msd, double[] lagTimes, int x, int y) {
-        Pair<Double, Double> minMax = findAdjustedMinMax(msd, msd.length);
+        Pair<Double, Double> minMax = findAdjustedMinMax(msd);
         double min = minMax.getLeft();
         double max = minMax.getRight();
 

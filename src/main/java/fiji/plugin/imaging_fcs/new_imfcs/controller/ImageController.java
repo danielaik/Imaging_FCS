@@ -2,10 +2,14 @@ package fiji.plugin.imaging_fcs.new_imfcs.controller;
 
 import fiji.plugin.imaging_fcs.new_imfcs.model.ExpSettingsModel;
 import fiji.plugin.imaging_fcs.new_imfcs.model.ImageModel;
+import fiji.plugin.imaging_fcs.new_imfcs.model.OptionsModel;
+import fiji.plugin.imaging_fcs.new_imfcs.model.PixelModel;
 import fiji.plugin.imaging_fcs.new_imfcs.model.correlations.Correlator;
+import fiji.plugin.imaging_fcs.new_imfcs.model.correlations.MeanSquareDisplacement;
 import fiji.plugin.imaging_fcs.new_imfcs.model.correlations.SelectedPixel;
 import fiji.plugin.imaging_fcs.new_imfcs.model.fit.BleachCorrectionModel;
 import fiji.plugin.imaging_fcs.new_imfcs.view.ImageView;
+import fiji.plugin.imaging_fcs.new_imfcs.view.Plots;
 import ij.IJ;
 import ij.ImagePlus;
 import ij.gui.Roi;
@@ -22,6 +26,7 @@ public final class ImageController {
     private final BleachCorrectionModel bleachCorrectionModel;
     private final Correlator correlator;
     private final ExpSettingsModel settings;
+    private final OptionsModel options;
     private ImageView imageView;
     private int previousX = -1;
     private int previousY = -1;
@@ -29,13 +34,14 @@ public final class ImageController {
     public ImageController(MainPanelController mainPanelController, ImageModel imageModel,
                            BackgroundSubtractionController backgroundSubtractionController,
                            BleachCorrectionModel bleachCorrectionModel, Correlator correlator,
-                           ExpSettingsModel settings) {
+                           ExpSettingsModel settings, OptionsModel options) {
         this.mainPanelController = mainPanelController;
         this.imageModel = imageModel;
         this.backgroundSubtractionController = backgroundSubtractionController;
         this.bleachCorrectionModel = bleachCorrectionModel;
         this.correlator = correlator;
         this.settings = settings;
+        this.options = options;
         imageView = null;
     }
 
@@ -59,6 +65,46 @@ public final class ImageController {
         backgroundSubtractionController.setTfBackground2(imageModel.getBackground2());
     }
 
+    private void correlatePixel(int x, int y) {
+        SelectedPixel selectedPixel = new SelectedPixel(imageModel, bleachCorrectionModel, correlator, settings);
+        try {
+            selectedPixel.performCFE(x, y);
+        } catch (RuntimeException e) {
+            IJ.showMessage("Error", e.getMessage());
+        }
+    }
+
+    private void plotResuts(int x, int y) {
+        PixelModel pixelModel = correlator.getPixelModel(x, y);
+
+        if (options.isPlotACFCurves()) {
+            Plots.plotSingleACF(pixelModel.getAcf(), correlator.getLagTimes(), x, y, settings.getBinning());
+        }
+
+        if (options.isPlotSDCurves()) {
+            Plots.plotStandardDeviation(pixelModel.getStandardDeviationAcf(), correlator.getLagTimes(), x, y);
+        }
+
+        if (options.isPlotIntensityCurves()) {
+            Plots.plotIntensityTrace(bleachCorrectionModel.getIntensityTrace1(),
+                    bleachCorrectionModel.getIntensityTime(), x, y);
+        }
+
+        if (options.isPlotBlockingCurve()) {
+            Plots.plotBlockingCurve(correlator.getVarianceBlocks(), correlator.getBlockIndex());
+        }
+
+        if (options.isPlotCovMats()) {
+            Plots.plotCovarianceMatrix(correlator.getRegularizedCovarianceMatrix());
+        }
+
+        if (settings.isMSD()) {
+            pixelModel.setMSD(MeanSquareDisplacement.correlationToMSD(pixelModel.getAcf(), settings.getParamAx(),
+                    settings.getParamAy(), settings.getParamW(), settings.getSigmaZ(), settings.isMSD3d()));
+            Plots.plotMSD(pixelModel.getMSD(), correlator.getLagTimes(), x, y);
+        }
+    }
+
     public MouseListener imageMouseClicked() {
         return new MouseListener() {
             @Override
@@ -74,12 +120,8 @@ public final class ImageController {
                     previousY = y * settings.getBinning().y;
                 }
 
-                SelectedPixel selectedPixel = new SelectedPixel(imageModel, bleachCorrectionModel, correlator, settings);
-                try {
-                    selectedPixel.performCFE(x, y);
-                } catch (RuntimeException e) {
-                    IJ.showMessage("Error", e.getMessage());
-                }
+                correlatePixel(x, y);
+                plotResuts(x, y);
             }
 
             @Override
@@ -131,13 +173,8 @@ public final class ImageController {
                         previousY = y * settings.getBinning().y;
                     }
 
-                    SelectedPixel selectedPixel =
-                            new SelectedPixel(imageModel, bleachCorrectionModel, correlator, settings);
-                    try {
-                        selectedPixel.performCFE(x, y);
-                    } catch (RuntimeException e) {
-                        IJ.showMessage("Error", e.getMessage());
-                    }
+                    correlatePixel(x, y);
+                    plotResuts(x, y);
                 }
             }
 
