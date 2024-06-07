@@ -41,8 +41,8 @@ public final class ExpSettingsModel {
     private int filterUpperLimit = 65536;
     private boolean FCSSDisp = false;
     private boolean overlap = false;
-    private boolean isMSD3d = false;
-    private boolean doMSD = false;
+    private boolean MSD3d = false;
+    private boolean MSD = false;
 
     // Non-user parameters (compute using user parameters)
     private double paramAx;
@@ -355,18 +355,18 @@ public final class ExpSettingsModel {
     }
 
     public boolean isMSD3d() {
-        return isMSD3d;
+        return MSD3d;
     }
 
     public void setMSD3d(boolean isMSD3d) {
-        this.isMSD3d = isMSD3d;
+        this.MSD3d = isMSD3d;
     }
 
-    public boolean isDoMSD() {
-        return doMSD;
+    public boolean isMSD() {
+        return MSD;
     }
 
-    public void setDoMSD(boolean doMSD) {
-        this.doMSD = doMSD;
+    public void setMSD(boolean MSD) {
+        this.MSD = MSD;
     }
 }

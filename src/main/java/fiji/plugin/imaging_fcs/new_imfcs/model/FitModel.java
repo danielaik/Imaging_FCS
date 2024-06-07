@@ -14,6 +14,7 @@ public class FitModel {
     private boolean fix = false;
     private boolean GLS = false;
     private boolean bayes = false;
+    private boolean activated = false;
 
     public FitModel() {
         initValues();
@@ -315,6 +316,14 @@ public class FitModel {
 
     public void setBayes(boolean bayes) {
         this.bayes = bayes;
+    }
+
+    public boolean isActivated() {
+        return activated;
+    }
+
+    public void setActivated(boolean activated) {
+        this.activated = activated;
     }
 
     public static class Parameter {

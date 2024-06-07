@@ -55,13 +55,16 @@ public final class MainPanelController {
         this.expSettingsView = new ExpSettingsView(this, expSettingsModel);
         updateSettingsField();
 
+        this.fitModel = new FitModel();
+        this.fitController = new FitController(fitModel);
+
         ImageModel imageModel = new ImageModel();
         this.backgroundSubtractionController = new BackgroundSubtractionController(imageModel);
         this.bleachCorrectionModel = new BleachCorrectionModel(expSettingsModel, imageModel);
-        this.correlator = new Correlator(expSettingsModel, bleachCorrectionModel);
+        this.correlator = new Correlator(expSettingsModel, bleachCorrectionModel, fitModel);
         this.imageController =
                 new ImageController(this, imageModel, backgroundSubtractionController, bleachCorrectionModel,
-                        correlator, expSettingsModel, optionsModel);
+                        correlator, fitModel, expSettingsModel, optionsModel);
 
         this.bleachCorrectionView = new BleachCorrectionView(this, bleachCorrectionModel);
 
@@ -69,8 +72,6 @@ public final class MainPanelController {
 
         this.nbController = new NBController(imageModel, expSettingsModel, optionsModel, bleachCorrectionModel);
 
-        this.fitModel = new FitModel();
-        this.fitController = new FitController(fitModel);
 
         this.view = new MainPanelView(this, this.expSettingsModel);
     }
@@ -408,7 +409,6 @@ public final class MainPanelController {
 
             boolean selected = (ev.getStateChange() == ItemEvent.SELECTED);
             button.setText(selected ? "Fit On" : "Fit Off");
-            expSettingsModel.setFit(selected);
             fitController.setVisible(selected);
         };
     }

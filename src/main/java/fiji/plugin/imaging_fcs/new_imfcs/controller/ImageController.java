@@ -1,9 +1,6 @@
 package fiji.plugin.imaging_fcs.new_imfcs.controller;
 
-import fiji.plugin.imaging_fcs.new_imfcs.model.ExpSettingsModel;
-import fiji.plugin.imaging_fcs.new_imfcs.model.ImageModel;
-import fiji.plugin.imaging_fcs.new_imfcs.model.OptionsModel;
-import fiji.plugin.imaging_fcs.new_imfcs.model.PixelModel;
+import fiji.plugin.imaging_fcs.new_imfcs.model.*;
 import fiji.plugin.imaging_fcs.new_imfcs.model.correlations.Correlator;
 import fiji.plugin.imaging_fcs.new_imfcs.model.correlations.MeanSquareDisplacement;
 import fiji.plugin.imaging_fcs.new_imfcs.model.correlations.SelectedPixel;
@@ -25,6 +22,7 @@ public final class ImageController {
     private final BackgroundSubtractionController backgroundSubtractionController;
     private final BleachCorrectionModel bleachCorrectionModel;
     private final Correlator correlator;
+    private final FitModel fitModel;
     private final ExpSettingsModel settings;
     private final OptionsModel options;
     private ImageView imageView;
@@ -33,13 +31,14 @@ public final class ImageController {
 
     public ImageController(MainPanelController mainPanelController, ImageModel imageModel,
                            BackgroundSubtractionController backgroundSubtractionController,
-                           BleachCorrectionModel bleachCorrectionModel, Correlator correlator,
+                           BleachCorrectionModel bleachCorrectionModel, Correlator correlator, FitModel fitModel,
                            ExpSettingsModel settings, OptionsModel options) {
         this.mainPanelController = mainPanelController;
         this.imageModel = imageModel;
         this.backgroundSubtractionController = backgroundSubtractionController;
         this.bleachCorrectionModel = bleachCorrectionModel;
         this.correlator = correlator;
+        this.fitModel = fitModel;
         this.settings = settings;
         this.options = options;
         imageView = null;
@@ -94,7 +93,7 @@ public final class ImageController {
             Plots.plotBlockingCurve(correlator.getVarianceBlocks(), correlator.getBlockIndex());
         }
 
-        if (options.isPlotCovMats()) {
+        if (options.isPlotCovMats() && fitModel.isGLS()) {
             Plots.plotCovarianceMatrix(correlator.getRegularizedCovarianceMatrix());
         }
 

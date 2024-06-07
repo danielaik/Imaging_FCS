@@ -2,6 +2,7 @@ package fiji.plugin.imaging_fcs.new_imfcs.model.correlations;
 
 import fiji.plugin.imaging_fcs.new_imfcs.constants.Constants;
 import fiji.plugin.imaging_fcs.new_imfcs.model.ExpSettingsModel;
+import fiji.plugin.imaging_fcs.new_imfcs.model.FitModel;
 import fiji.plugin.imaging_fcs.new_imfcs.model.PixelModel;
 import fiji.plugin.imaging_fcs.new_imfcs.model.fit.BleachCorrectionModel;
 import ij.ImagePlus;
@@ -17,6 +18,7 @@ public class Correlator {
     private final int BLOCK_LAG = 1;
     private final ExpSettingsModel settings;
     private final BleachCorrectionModel bleachCorrectionModel;
+    private final FitModel fitModel;
     private int channelNumber, lagGroupNumber, correlatorQ, blockIndex;
     private double median;
     private int[] numSamples, lags, sampleTimes;
@@ -25,9 +27,10 @@ public class Correlator {
     private PixelModel[][] pixelModels;
 
 
-    public Correlator(ExpSettingsModel settings, BleachCorrectionModel bleachCorrectionModel) {
+    public Correlator(ExpSettingsModel settings, BleachCorrectionModel bleachCorrectionModel, FitModel fitModel) {
         this.settings = settings;
         this.bleachCorrectionModel = bleachCorrectionModel;
+        this.fitModel = fitModel;
     }
 
     private double[][] getIntensityBlock(ImagePlus img, int x, int y, int x2, int y2, int initialFrame,
@@ -477,9 +480,6 @@ public class Correlator {
 
     private void calculateCF(PixelModel pixelModel, double[][] intensityBlocks, int numFrames) {
         // intensityBlocks is the array of intensity values for the two traces witch are correlated
-        // FIXME: implement GLS button
-        boolean GLS = true;
-
         pixelModel.setStandardDeviationAcf(new double[channelNumber]);
         pixelModel.setVarianceAcf(new double[channelNumber]);
 
@@ -547,7 +547,7 @@ public class Correlator {
 
         // TODO: check if GLS is selected, if it's selected then we do the following operations
         // if GLS is selected, then calculate the regularized covariance matrix
-        if (GLS) {
+        if (fitModel.isGLS()) {
             pixelModel.setAcf(calculateMeanCovariance(products, directMonitors, delayedMonitors, minProducts));
             calculateCovarianceMatrix(covarianceMatrix, products, pixelModel.getAcf(), directMonitors,
                     delayedMonitors, minProducts);
@@ -563,7 +563,7 @@ public class Correlator {
             regularizeCovarianceMatrix(covarianceMatrix, correlationMatrix, varianceShrinkageWeight,
                     covarianceShrinkageWeight, minProducts);
         } else {
-            // hand over either the correlation function CorrelationMean; they differ only slightly
+            // hand over the correlation function CorrelationMean; they differ only slightly
             pixelModel.setAcf(correlationMean);
         }
     }

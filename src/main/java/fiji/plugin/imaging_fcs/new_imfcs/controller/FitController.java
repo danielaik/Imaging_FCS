@@ -21,6 +21,7 @@ public class FitController {
     }
 
     public void setVisible(boolean b) {
+        model.setActivated(b);
         view.setVisible(b);
     }
 
