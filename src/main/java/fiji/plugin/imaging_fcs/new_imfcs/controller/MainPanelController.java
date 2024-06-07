@@ -58,10 +58,10 @@ public final class MainPanelController {
         ImageModel imageModel = new ImageModel();
         this.backgroundSubtractionController = new BackgroundSubtractionController(imageModel);
         this.bleachCorrectionModel = new BleachCorrectionModel(expSettingsModel, imageModel);
-        this.correlator = new Correlator(expSettingsModel, optionsModel, bleachCorrectionModel);
+        this.correlator = new Correlator(expSettingsModel, bleachCorrectionModel);
         this.imageController =
                 new ImageController(this, imageModel, backgroundSubtractionController, bleachCorrectionModel,
-                        correlator, expSettingsModel);
+                        correlator, expSettingsModel, optionsModel);
 
         this.bleachCorrectionView = new BleachCorrectionView(this, bleachCorrectionModel);
 
@@ -408,6 +408,7 @@ public final class MainPanelController {
 
             boolean selected = (ev.getStateChange() == ItemEvent.SELECTED);
             button.setText(selected ? "Fit On" : "Fit Off");
+            expSettingsModel.setFit(selected);
             fitController.setVisible(selected);
         };
     }
@@ -443,11 +444,11 @@ public final class MainPanelController {
             boolean selected = (ev.getStateChange() == ItemEvent.SELECTED);
 
             if (selected) {
-                expSettingsModel.setDoMSD(true);
+                expSettingsModel.setMSD(true);
                 button.setText("MSD On");
                 new MSDView(expSettingsModel.isMSD3d(), expSettingsModel::setMSD3d);
             } else {
-                expSettingsModel.setDoMSD(false);
+                expSettingsModel.setMSD(false);
                 button.setText("MSD Off");
             }
         };
