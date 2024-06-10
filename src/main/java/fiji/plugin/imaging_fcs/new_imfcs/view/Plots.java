@@ -44,9 +44,9 @@ public class Plots {
         double min = Double.MAX_VALUE;
         double max = Double.MIN_VALUE;
 
-        for (double value : array) {
-            min = Math.min(min, value);
-            max = Math.max(max, value);
+        for (int i = 1; i < array.length; i++) {
+            min = Math.min(min, array[i]);
+            max = Math.max(max, array[i]);
         }
 
         // maximum scales need to be 10% larger than maximum value and 10% smaller than minimum value
@@ -139,7 +139,7 @@ public class Plots {
         double minScale = minMax.getLeft();
         double maxScale = minMax.getRight();
 
-        Plot plot = new Plot("CF plot", "tay [s]", "G (tau)");
+        Plot plot = new Plot("CF plot", "tau [s]", "G (tau)");
         plot.setColor(Color.BLUE);
         plot.addPoints(lagTimes, acf, Plot.LINE);
         plot.setFrameSize(ACF_DIMENSION.width, ACF_DIMENSION.height);
