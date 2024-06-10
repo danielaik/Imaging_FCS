@@ -1,5 +1,6 @@
 package fiji.plugin.imaging_fcs.new_imfcs.controller;
 
+import fiji.plugin.imaging_fcs.new_imfcs.model.ExpSettingsModel;
 import fiji.plugin.imaging_fcs.new_imfcs.model.FitModel;
 import fiji.plugin.imaging_fcs.new_imfcs.view.FitView;
 
@@ -50,5 +51,15 @@ public class FitController {
             button.setForeground(selected ? Color.BLACK : Color.LIGHT_GRAY);
             setter.accept(selected);
         };
+    }
+
+    public void updateFitEnd(ExpSettingsModel settings) {
+        Runnable doUpdateFitEnd = () -> {
+            settings.updateChannelNumber();
+            model.resetFitEnd();
+            view.updateFitEnd();
+        };
+
+        SwingUtilities.invokeLater(doUpdateFitEnd);
     }
 }

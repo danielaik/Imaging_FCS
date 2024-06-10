@@ -19,7 +19,6 @@ public class BleachCorrectionModel {
     private final ExpSettingsModel settings;
     private final ImageModel imageModel;
     private int polynomialOrder = 0;
-    private int slidingWindowLength = 0;
     private int numPointsIntensityTrace = 1;
     private int averageStride = 50;
 
@@ -60,8 +59,8 @@ public class BleachCorrectionModel {
         int average = (finalFrame - initialFrame + 1) / numPointsIntensityTrace;
 
         int background1 = imageModel.getBackground();
-        int background2 = Constants.DC_FCCS_2D.equals(settings.getFitModel()) ?
-                imageModel.getBackground2() : background1;
+        int background2 =
+                Constants.DC_FCCS_2D.equals(settings.getFitModel()) ? imageModel.getBackground2() : background1;
 
         intensityTrace1 = new double[numPointsIntensityTrace];
         intensityTrace2 = new double[numPointsIntensityTrace];
@@ -131,14 +130,16 @@ public class BleachCorrectionModel {
      *
      * @param img           The image from which to extract intensity values.
      * @param mode          Determines which background model to use. If mode is 2 and the fit model is DC-FCCS (2D),
-     *                      a different background value (background2) is used; otherwise, the default background is used.
+     *                      a different background value (background2) is used; otherwise, the default background is
+     *                      used.
      * @param intensityData An array to be filled with the corrected intensity values.
      * @param x             The x-coordinate of the top left corner of the binning area.
      * @param y             The y-coordinate of the top left corner of the binning area.
      */
     private void fillIntensityData(ImagePlus img, int mode, double[] intensityData, int x, int y, int initialFrame) {
-        int background = (mode == 2 && Constants.DC_FCCS_2D.equals(settings.getFitModel())) ?
-                imageModel.getBackground2() : imageModel.getBackground();
+        int background = (mode == 2 &&
+                Constants.DC_FCCS_2D.equals(settings.getFitModel())) ? imageModel.getBackground2() :
+                imageModel.getBackground();
 
         for (int i = 0; i < intensityData.length; i++) {
             final ImageProcessor ip = img.getStack().getProcessor(initialFrame + i);
@@ -156,7 +157,8 @@ public class BleachCorrectionModel {
 
     /**
      * Applies a single exponential bleach correction to the intensity data based on a fitted exponential decay model.
-     * This method modifies the intensity data array to account for photobleaching effects observed in the intensity trace.
+     * This method modifies the intensity data array to account for photobleaching effects observed in the intensity
+     * trace.
      *
      * @param intensityData  The array containing the raw intensity data to be corrected.
      * @param intensityTrace The array containing sampled intensity data used to fit the exponential model.
@@ -170,24 +172,26 @@ public class BleachCorrectionModel {
             for (int i = 0; i < intensityData.length; i++) {
                 intensityData[i] = intensityData[i] / Math.sqrt(
                         (result[0] * Math.exp(-settings.getFrameTime() * (i + 0.5) / result[1]) + result[2]) /
-                                (result[0] + result[2])) + (result[0] + result[2]) *
-                        (1 - Math.sqrt((result[0] * Math.exp(-settings.getFrameTime() * (i + 0.5)
-                                / result[1]) + result[2]) / (result[0] + result[2])));
+                                (result[0] + result[2])) + (result[0] + result[2]) * (1 - Math.sqrt(
+                        (result[0] * Math.exp(-settings.getFrameTime() * (i + 0.5) / result[1]) + result[2]) /
+                                (result[0] + result[2])));
             }
 
             for (int i = 0; i < numPointsIntensityTrace; i++) {
-                intensityTrace[i] = intensityTrace[i] /
-                        Math.sqrt((result[0] * Math.exp(-intensityTime[i] / result[1]) + result[2]) /
-                                (result[0] + result[2])) + (result[0] + result[2]) *
-                        (1 - Math.sqrt((result[0] * Math.exp(-intensityTime[i] / result[1]) + result[2]) /
-                                (result[0] + result[2])));
+                intensityTrace[i] = intensityTrace[i] / Math.sqrt(
+                        (result[0] * Math.exp(-intensityTime[i] / result[1]) + result[2]) / (result[0] + result[2])) +
+                        (result[0] + result[2]) * (1 - Math.sqrt(
+                                (result[0] * Math.exp(-intensityTime[i] / result[1]) + result[2]) /
+                                        (result[0] + result[2])));
             }
         }
     }
 
     /**
-     * Applies a double exponential bleach correction to the intensity data based on a fitted double exponential decay model.
-     * This method is intended for cases where a single exponential model is insufficient to describe the photobleaching dynamics.
+     * Applies a double exponential bleach correction to the intensity data based on a fitted double exponential
+     * decay model.
+     * This method is intended for cases where a single exponential model is insufficient to describe the
+     * photobleaching dynamics.
      *
      * @param intensityData  The array containing the raw intensity data to be corrected.
      * @param intensityTrace The array containing sampled intensity data used to fit the double exponential model.
@@ -198,24 +202,22 @@ public class BleachCorrectionModel {
 
         if (result[0] * result[1] * result[2] * result[3] != 0) {
             for (int i = 0; i < intensityData.length; i++) {
-                intensityData[i] = intensityData[i] / Math.sqrt((result[0] *
-                        Math.exp(-settings.getFrameTime() * (i + 0.5) / result[1]) +
-                        result[2] * Math.exp(-settings.getFrameTime() * (i + 0.5) / result[3]) + result[4])
-                        / (result[0] + result[2] + result[4]))
-                        + (result[0] + result[2] + result[4])
-                        * (1 - Math.sqrt((result[0] * Math.exp(-settings.getFrameTime() * (i + 0.5) / result[1])
-                        + result[2] * Math.exp(-settings.getFrameTime() * (i + 0.5) / result[3]) + result[4])
-                        / (result[0] + result[2] + result[4])));
+                intensityData[i] = intensityData[i] / Math.sqrt(
+                        (result[0] * Math.exp(-settings.getFrameTime() * (i + 0.5) / result[1]) +
+                                result[2] * Math.exp(-settings.getFrameTime() * (i + 0.5) / result[3]) + result[4]) /
+                                (result[0] + result[2] + result[4])) + (result[0] + result[2] + result[4]) * (1 -
+                        Math.sqrt((result[0] * Math.exp(-settings.getFrameTime() * (i + 0.5) / result[1]) +
+                                result[2] * Math.exp(-settings.getFrameTime() * (i + 0.5) / result[3]) + result[4]) /
+                                (result[0] + result[2] + result[4])));
             }
 
             for (int i = 0; i < numPointsIntensityTrace; i++) {
-                intensityTrace[i] = intensityTrace[i] / Math.sqrt((result[0] * Math.exp(-intensityTime[i] / result[1])
-                        + result[2] * Math.exp(-intensityTime[i] / result[3]) + result[4])
-                        / (result[0] + result[2] + result[4]))
-                        + (result[0] + result[2] + result[4])
-                        * (1 - Math.sqrt((result[0] * Math.exp(-intensityTime[i] / result[1])
-                        + result[2] * Math.exp(-intensityTime[i] / result[3]) + result[4])
-                        / (result[0] + result[2] + result[4])));
+                intensityTrace[i] = intensityTrace[i] / Math.sqrt((result[0] * Math.exp(-intensityTime[i] / result[1]) +
+                        result[2] * Math.exp(-intensityTime[i] / result[3]) + result[4]) /
+                        (result[0] + result[2] + result[4])) + (result[0] + result[2] + result[4]) * (1 - Math.sqrt(
+                        (result[0] * Math.exp(-intensityTime[i] / result[1]) +
+                                result[2] * Math.exp(-intensityTime[i] / result[3]) + result[4]) /
+                                (result[0] + result[2] + result[4])));
             }
         }
     }
@@ -260,7 +262,7 @@ public class BleachCorrectionModel {
     private void handleLinearSegment(double[] intensityData, double[] intensityTrace) {
         int numFrames = intensityData.length;
 
-        int numLinearSegments = numFrames / slidingWindowLength;
+        int numLinearSegments = numFrames / settings.getSlidingWindowLength();
         int linearSegmentsAverage = numFrames / numLinearSegments;
 
         double[] bleachCorrectionTrace = new double[numLinearSegments];
@@ -278,8 +280,8 @@ public class BleachCorrectionModel {
 
         for (int i = 1; i < linearSegmentsAverage / 2; i++) {
             double correctionFactor = Math.sqrt((bleachCorrectionTrace[0] +
-                    (bleachCorrectionTrace[0] - bleachCorrectionTrace[1]) /
-                            linearSegmentsAverage * ((double) linearSegmentsAverage / 2 - i)) / initialIntensity);
+                    (bleachCorrectionTrace[0] - bleachCorrectionTrace[1]) / linearSegmentsAverage *
+                            ((double) linearSegmentsAverage / 2 - i)) / initialIntensity);
             applyCorrection(intensityData, i, correctionFactor, initialIntensity);
 
         }
@@ -288,14 +290,15 @@ public class BleachCorrectionModel {
             for (int j = 0; j < linearSegmentsAverage; j++) {
                 int nf = (i - 1) * linearSegmentsAverage + linearSegmentsAverage / 2 + j;
                 double correctionFactor = Math.sqrt((bleachCorrectionTrace[i - 1] +
-                        (bleachCorrectionTrace[i] - bleachCorrectionTrace[i - 1]) *
-                                j / linearSegmentsAverage) / initialIntensity);
+                        (bleachCorrectionTrace[i] - bleachCorrectionTrace[i - 1]) * j / linearSegmentsAverage) /
+                        initialIntensity);
                 applyCorrection(intensityData, nf, correctionFactor, initialIntensity);
             }
         }
 
         for (int i = (numLinearSegments - 1) * linearSegmentsAverage + linearSegmentsAverage / 2; i < numFrames; i++) {
-            int nf = i - (numLinearSegments - 1) * linearSegmentsAverage + linearSegmentsAverage / 2 + linearSegmentsAverage;
+            int nf = i - (numLinearSegments - 1) * linearSegmentsAverage + linearSegmentsAverage / 2 +
+                    linearSegmentsAverage;
             double correctionFactor = Math.sqrt((bleachCorrectionTrace[numLinearSegments - 2] +
                     (bleachCorrectionTrace[numLinearSegments - 1] - bleachCorrectionTrace[numLinearSegments - 2]) * nf /
                             linearSegmentsAverage) / initialIntensity);
@@ -311,7 +314,8 @@ public class BleachCorrectionModel {
 
     /**
      * Applies a correction factor to an individual intensity data point.
-     * This method modifies the intensity value at a specific index based on a correction factor and the initial intensity,
+     * This method modifies the intensity value at a specific index based on a correction factor and the initial
+     * intensity,
      * aiming to adjust the intensity data to account for photobleaching or other systematic variations.
      *
      * @param intensityData    The array of intensity data that needs correction.
@@ -329,14 +333,6 @@ public class BleachCorrectionModel {
 
     public void setPolynomialOrder(int polynomialOrder) {
         this.polynomialOrder = polynomialOrder;
-    }
-
-    public int getSlidingWindowLength() {
-        return slidingWindowLength;
-    }
-
-    public void setSlidingWindowLength(int slidingWindowLength) {
-        this.slidingWindowLength = slidingWindowLength;
     }
 
     public int getNumPointsIntensityTrace() {

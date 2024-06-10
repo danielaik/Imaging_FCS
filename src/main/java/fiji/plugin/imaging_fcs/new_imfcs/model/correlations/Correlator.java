@@ -12,14 +12,11 @@ import java.util.Arrays;
 import static fiji.plugin.imaging_fcs.new_imfcs.utils.MatrixDeepCopy.deepCopy;
 
 public class Correlator {
-    private final int SLIDING_WINDOW_MIN_FRAME = 20;
-    // minimum number of frames required for the sliding windows; this is used to
-    // calculate a useful correlatorq
     private final int BLOCK_LAG = 1;
     private final ExpSettingsModel settings;
     private final BleachCorrectionModel bleachCorrectionModel;
     private final FitModel fitModel;
-    private int channelNumber, lagGroupNumber, correlatorQ, blockIndex;
+    private int correlatorQ, blockIndex;
     private double median;
     private int[] numSamples, lags, sampleTimes;
     private double[] lagTimes;
@@ -77,26 +74,22 @@ public class Correlator {
     private void handleSlidingWindowCorrelation(ImagePlus img, PixelModel pixelModel, int x, int y, int x2, int y2,
                                                 int initialFrame, int finalFrame) {
         int numFrames = finalFrame - initialFrame + 1;
-        int numSlidingWindow = numFrames / bleachCorrectionModel.getSlidingWindowLength();
-        lagGroupNumber = (int) Math.floor((Math.log((double) bleachCorrectionModel.getSlidingWindowLength() /
-                (SLIDING_WINDOW_MIN_FRAME + settings.getCorrelatorP())) + 1) / Math.log(2));
-        channelNumber = settings.getCorrelatorP() + (lagGroupNumber - 1) * settings.getCorrelatorP() / 2 + 1;
+        int numSlidingWindow = numFrames / settings.getSlidingWindowLength();
 
         // allow smaller correlator Q value as minimum but not larger
-        correlatorQ = Math.min(correlatorQ, lagGroupNumber);
+        correlatorQ = Math.min(correlatorQ, settings.getLagGroupNumber());
 
         for (int i = 0; i < numSlidingWindow; i++) {
             PixelModel tmpSlidingWindowModel = new PixelModel();
 
-            int slidingWindowInitialFrame = i * bleachCorrectionModel.getSlidingWindowLength() + initialFrame;
-            int slidingWindowFinalFrame = (i + 1) * bleachCorrectionModel.getSlidingWindowLength() + initialFrame - 1;
+            int slidingWindowInitialFrame = i * settings.getSlidingWindowLength() + initialFrame;
+            int slidingWindowFinalFrame = (i + 1) * settings.getSlidingWindowLength() + initialFrame - 1;
 
             double[][] intensityBlock =
                     getIntensityBlock(img, x, y, x2, y2, slidingWindowInitialFrame, slidingWindowFinalFrame, 1);
 
-            blockTransform(deepCopy(intensityBlock), bleachCorrectionModel.getSlidingWindowLength());
-            calculateCF(tmpSlidingWindowModel, deepCopy(intensityBlock),
-                    bleachCorrectionModel.getSlidingWindowLength());
+            blockTransform(deepCopy(intensityBlock), settings.getSlidingWindowLength());
+            calculateCF(tmpSlidingWindowModel, deepCopy(intensityBlock), settings.getSlidingWindowLength());
             pixelModel.addPixelModelSlidingWindow(tmpSlidingWindowModel);
         }
         pixelModel.averageSlidingWindow(numSlidingWindow);
@@ -105,8 +98,6 @@ public class Correlator {
     private void handleFullTraceCorrelation(ImagePlus img, PixelModel pixelModel, int x, int y, int x2, int y2,
                                             int initialFrame, int finalFrame) {
         int numFrames = finalFrame - initialFrame + 1;
-        lagGroupNumber = correlatorQ;
-        channelNumber = settings.getCorrelatorP() + (correlatorQ - 1) * settings.getCorrelatorP() / 2 + 1;
 
         // TODO: check kcf (select 1, 2 or 3)
         int mode = settings.getFitModel().equals(Constants.DC_FCCS_2D) ? 2 : 1;
@@ -137,10 +128,10 @@ public class Correlator {
     }
 
     private void calculateParameters(int numFrames) {
-        lags = new int[channelNumber];
-        lagTimes = new double[channelNumber];
-        sampleTimes = new int[channelNumber];
-        numSamples = new int[channelNumber];
+        lags = new int[settings.getChannelNumber()];
+        lagTimes = new double[settings.getChannelNumber()];
+        sampleTimes = new int[settings.getChannelNumber()];
+        numSamples = new int[settings.getChannelNumber()];
 
         calculateLags(settings.getCorrelatorP(), settings.getCorrelatorP() / 2);
         calculateSampleTimes(settings.getCorrelatorP(), settings.getCorrelatorP() / 2);
@@ -153,7 +144,7 @@ public class Correlator {
             lagTimes[i] = i * settings.getFrameTime();
         }
 
-        for (int group = 1; group <= lagGroupNumber; group++) {
+        for (int group = 1; group <= settings.getLagGroupNumber(); group++) {
             for (int channel = 1; channel <= numChannelsHigherGroups; channel++) {
                 int index = group * numChannelsHigherGroups + channel;
                 lags[index] =
@@ -167,7 +158,7 @@ public class Correlator {
     private void calculateSampleTimes(int numChannelsFirstGroup, int numChannelsHigherGroups) {
         Arrays.fill(sampleTimes, 0, numChannelsFirstGroup + 1, 1);
 
-        for (int group = 2; group <= lagGroupNumber; group++) {
+        for (int group = 2; group <= settings.getLagGroupNumber(); group++) {
             for (int channel = 1; channel <= numChannelsHigherGroups; channel++) {
                 sampleTimes[group * numChannelsHigherGroups + channel] = (int) Math.pow(2, group - 1);
             }
@@ -175,7 +166,7 @@ public class Correlator {
     }
 
     private void calculateNumberOfSamples(int numFrames) {
-        for (int i = 0; i < channelNumber; i++) {
+        for (int i = 0; i < settings.getChannelNumber(); i++) {
             numSamples[i] = (numFrames - lags[i]) / sampleTimes[i];
         }
     }
@@ -193,7 +184,7 @@ public class Correlator {
         int numBinnedDataPoints = numFrames;
         double[] numProducts = new double[blockCount];
 
-        for (int i = 0; i < channelNumber; i++) {
+        for (int i = 0; i < settings.getChannelNumber(); i++) {
             // check whether the kcf width has changed
             if (currentIncrement != sampleTimes[i]) {
                 // set the current increment accordingly
@@ -353,8 +344,8 @@ public class Correlator {
 
     private double[] calculateMeanCovariance(double[][] products, double[] directMonitors, double[] delayedMonitors,
                                              int minProducts) {
-        double[] meanCovariance = new double[channelNumber];
-        for (int i = 1; i < channelNumber; i++) {
+        double[] meanCovariance = new double[settings.getChannelNumber()];
+        for (int i = 1; i < settings.getChannelNumber(); i++) {
             for (int j = 0; j < minProducts; j++) {
                 meanCovariance[i] += products[i][j] / (directMonitors[i] * delayedMonitors[i]);
             }
@@ -367,7 +358,7 @@ public class Correlator {
 
     private void calculateCovarianceMatrix(double[][] covarianceMatrix, double[][] products, double[] meanCovariance,
                                            double[] directMonitors, double[] delayedMonitors, int minProducts) {
-        for (int i = 1; i < channelNumber; i++) {
+        for (int i = 1; i < settings.getChannelNumber(); i++) {
             for (int j = 1; j <= i; j++) {
                 for (int k = 0; k < minProducts; k++) {
                     covarianceMatrix[i][j] += (products[i][k] / (directMonitors[i] * delayedMonitors[i]) *
@@ -383,9 +374,9 @@ public class Correlator {
     private double calculateVarianceShrinkageWeight(double[][] covarianceMatrix, double[][] products,
                                                     double[] meanCovariance, double[] directMonitors,
                                                     double[] delayedMonitors, int minProducts) {
-        double[] diagonalCovarianceMatrix = new double[channelNumber];
+        double[] diagonalCovarianceMatrix = new double[settings.getChannelNumber()];
 
-        for (int i = 1; i < channelNumber; i++) {
+        for (int i = 1; i < settings.getChannelNumber(); i++) {
             diagonalCovarianceMatrix[i] = covarianceMatrix[i][i];
         }
 
@@ -401,7 +392,7 @@ public class Correlator {
 
         double numerator = 0;
         double denominator = 0;
-        for (int i = 1; i < channelNumber; i++) {
+        for (int i = 1; i < settings.getChannelNumber(); i++) {
             double tmp = 0;
             for (int j = 0; j < minProducts; j++) {
                 tmp += Math.pow((
@@ -420,8 +411,8 @@ public class Correlator {
                                                       double[] directMonitors, double[] delayedMonitors,
                                                       double[][] covarianceMatrix, double[][] correlationMatrix,
                                                       int minProducts) {
-        for (int i = 1; i < channelNumber; i++) {
-            for (int j = 1; j < channelNumber; j++) {
+        for (int i = 1; i < settings.getChannelNumber(); i++) {
+            for (int j = 1; j < settings.getChannelNumber(); j++) {
                 correlationMatrix[i][j] =
                         covarianceMatrix[i][j] / Math.sqrt(covarianceMatrix[i][i] * covarianceMatrix[j][j]);
             }
@@ -433,7 +424,7 @@ public class Correlator {
         double cmx, cmy, tmp;
 
         // determine the variance of the covariance
-        for (int i = 1; i < channelNumber; i++) {
+        for (int i = 1; i < settings.getChannelNumber(); i++) {
             tmp = 0.0;
             // sum only the upper triangle as the matrix is symmetric
             for (int j = 1; j < i; j++) {
@@ -460,7 +451,7 @@ public class Correlator {
         double cmx, cmy;
 
         // calculate the off-diagonal elements of the regularized variance-covariance matrix
-        for (int i = 1; i < channelNumber; i++) {
+        for (int i = 1; i < settings.getChannelNumber(); i++) {
             for (int j = 1; j < i; j++) {
                 cmx = varianceShrinkageWeight * median + (1 - varianceShrinkageWeight) * covarianceMatrix[i][i];
                 cmy = varianceShrinkageWeight * median + (1 - varianceShrinkageWeight) * covarianceMatrix[j][j];
@@ -471,7 +462,7 @@ public class Correlator {
         }
 
         // diagonal elements of the regularized variance-covariance matrix
-        for (int i = 1; i < channelNumber; i++) {
+        for (int i = 1; i < settings.getChannelNumber(); i++) {
             regularizedCovarianceMatrix[i - 1][i - 1] =
                     (varianceShrinkageWeight * median + (1 - varianceShrinkageWeight) * covarianceMatrix[i][i]) /
                             minProducts;
@@ -480,31 +471,31 @@ public class Correlator {
 
     private void calculateCF(PixelModel pixelModel, double[][] intensityBlocks, int numFrames) {
         // intensityBlocks is the array of intensity values for the two traces witch are correlated
-        pixelModel.setStandardDeviationAcf(new double[channelNumber]);
-        pixelModel.setVarianceAcf(new double[channelNumber]);
+        pixelModel.setStandardDeviationAcf(new double[settings.getChannelNumber()]);
+        pixelModel.setVarianceAcf(new double[settings.getChannelNumber()]);
 
-        double[][] covarianceMatrix = new double[channelNumber][channelNumber];
+        double[][] covarianceMatrix = new double[settings.getChannelNumber()][settings.getChannelNumber()];
         // the final results does not contain information about the zero lagtime kcf
-        regularizedCovarianceMatrix = new double[channelNumber - 1][channelNumber - 1];
+        regularizedCovarianceMatrix = new double[settings.getChannelNumber() - 1][settings.getChannelNumber() - 1];
 
-        double[] numProducts = new double[channelNumber];
-        double[][] products = new double[channelNumber][numFrames];
+        double[] numProducts = new double[settings.getChannelNumber()];
+        double[][] products = new double[settings.getChannelNumber()][numFrames];
 
-        double[] correlationMean = new double[channelNumber];
+        double[] correlationMean = new double[settings.getChannelNumber()];
 
         // direct and delayed monitors required for ACF normalization
-        double[] directMonitors = new double[channelNumber];
-        double[] delayedMonitors = new double[channelNumber];
+        double[] directMonitors = new double[settings.getChannelNumber()];
+        double[] delayedMonitors = new double[settings.getChannelNumber()];
 
         int numBinnedDataPoints = numFrames;
         int currentIncrement = BLOCK_LAG;
-        int minProducts = (int) (numSamples[channelNumber - 1] /
-                Math.pow(2, Math.max(blockIndex - Math.log(sampleTimes[channelNumber - 1]) / Math.log(2), 0)));
+        int minProducts = (int) (numSamples[settings.getChannelNumber() - 1] / Math.pow(2, Math.max(
+                blockIndex - Math.log(sampleTimes[settings.getChannelNumber() - 1]) / Math.log(2), 0)));
 
         // count how often the data was binned
         int binCount = 0;
 
-        for (int i = 0; i < channelNumber; i++) {
+        for (int i = 0; i < settings.getChannelNumber(); i++) {
             if (currentIncrement != sampleTimes[i]) {
                 currentIncrement = sampleTimes[i];
                 numBinnedDataPoints /= 2;
@@ -555,7 +546,7 @@ public class Correlator {
                     calculateVarianceShrinkageWeight(covarianceMatrix, products, pixelModel.getAcf(), directMonitors,
                             delayedMonitors, minProducts);
 
-            double[][] correlationMatrix = new double[channelNumber][channelNumber];
+            double[][] correlationMatrix = new double[settings.getChannelNumber()][settings.getChannelNumber()];
             double covarianceShrinkageWeight =
                     calculateCovarianceShrinkageWeight(products, pixelModel.getAcf(), directMonitors, delayedMonitors
                             , covarianceMatrix, correlationMatrix, minProducts);

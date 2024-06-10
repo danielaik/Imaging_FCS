@@ -66,7 +66,6 @@ public class FitView extends BaseView {
         tfParamFTrip = createTextField(model.getFTrip(), "", createFocusListener(model::setFTrip));
         tfParamTTrip = createTextField(model.getTTripInterface(), "", createFocusListener(model::setTTrip));
         tfFitStart = createTextField(model.getFitStart(), "", createFocusListener(model::setFitStart));
-        // TODO: set this value to channel number
         tfFitEnd = createTextField(model.getFitEnd(), "", createFocusListener(model::setFitEnd));
 
         // TODO: set this value to the model currently selected
@@ -268,5 +267,9 @@ public class FitView extends BaseView {
         add(createJLabel("", ""));
         add(btnCNNACF);
         add(rbtnCNNACF);
+    }
+
+    public void updateFitEnd() {
+        setText(tfFitEnd, model.getFitEnd());
     }
 }

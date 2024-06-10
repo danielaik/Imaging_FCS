@@ -13,6 +13,10 @@ import java.awt.*;
  */
 public final class ExpSettingsModel {
     // User parameters with default values
+
+    // minimum number of frames required for the sliding windows; this is used to calculate a useful correlatorq
+    private final int SLIDING_WINDOW_MIN_FRAME = 20;
+
     //// Parameter that updates the non-user parameters
     private final Point binning = new Point(1, 1);
     private final Dimension CCF = new Dimension(0, 0);
@@ -43,6 +47,9 @@ public final class ExpSettingsModel {
     private boolean overlap = false;
     private boolean MSD3d = false;
     private boolean MSD = false;
+    private int slidingWindowLength = 0;
+    private int channelNumber = 0;
+    private int lagGroupNumber = 0;
 
     // Non-user parameters (compute using user parameters)
     private double paramAx;
@@ -59,6 +66,7 @@ public final class ExpSettingsModel {
      */
     public ExpSettingsModel() {
         updateSettings();
+        updateChannelNumber();
     }
 
     /**
@@ -86,6 +94,21 @@ public final class ExpSettingsModel {
 
         paramRx = pixelSize * 1000 / magnification * cfXShift;
         paramRy = pixelSize * 1000 / magnification * cfYShift;
+    }
+
+    /**
+     * Updates the channel number and lag group number based on the bleach correction method.
+     */
+    public void updateChannelNumber() {
+        if (bleachCorrection.equals(Constants.BLEACH_CORRECTION_SLIDING_WINDOW)) {
+            lagGroupNumber = (int) Math.floor(
+                    (Math.log((double) slidingWindowLength / (SLIDING_WINDOW_MIN_FRAME + correlatorP)) + 1) /
+                            Math.log(2));
+            channelNumber = correlatorP + (lagGroupNumber - 1) * correlatorP / 2 + 1;
+        } else {
+            lagGroupNumber = correlatorQ;
+            channelNumber = correlatorP + (correlatorQ - 1) * correlatorP / 2 + 1;
+        }
     }
 
     // Getters and setters for various parameters follow, allowing external modification and access to the settings.
@@ -368,5 +391,21 @@ public final class ExpSettingsModel {
 
     public void setMSD(boolean MSD) {
         this.MSD = MSD;
+    }
+
+    public int getChannelNumber() {
+        return channelNumber;
+    }
+
+    public int getLagGroupNumber() {
+        return lagGroupNumber;
+    }
+
+    public int getSlidingWindowLength() {
+        return slidingWindowLength;
+    }
+
+    public void setSlidingWindowLength(int slidingWindowLength) {
+        this.slidingWindowLength = slidingWindowLength;
     }
 }

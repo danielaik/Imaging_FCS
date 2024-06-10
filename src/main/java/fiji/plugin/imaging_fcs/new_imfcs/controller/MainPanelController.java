@@ -18,6 +18,7 @@ import javax.swing.*;
 import java.awt.event.*;
 import java.util.function.Consumer;
 
+import static fiji.plugin.imaging_fcs.new_imfcs.controller.ControllerUtils.getComboBoxSelectionFromEvent;
 import static fiji.plugin.imaging_fcs.new_imfcs.controller.FocusListenerFactory.createFocusListener;
 
 /**
@@ -35,7 +36,6 @@ public final class MainPanelController {
     private final ImageController imageController;
     private final ExpSettingsModel expSettingsModel;
     private final BleachCorrectionModel bleachCorrectionModel;
-    private final Correlator correlator;
     private final SimulationController simulationController;
     private final BackgroundSubtractionController backgroundSubtractionController;
     private final NBController nbController;
@@ -55,13 +55,13 @@ public final class MainPanelController {
         this.expSettingsView = new ExpSettingsView(this, expSettingsModel);
         updateSettingsField();
 
-        this.fitModel = new FitModel();
+        this.fitModel = new FitModel(expSettingsModel);
         this.fitController = new FitController(fitModel);
 
         ImageModel imageModel = new ImageModel();
         this.backgroundSubtractionController = new BackgroundSubtractionController(imageModel);
         this.bleachCorrectionModel = new BleachCorrectionModel(expSettingsModel, imageModel);
-        this.correlator = new Correlator(expSettingsModel, bleachCorrectionModel, fitModel);
+        Correlator correlator = new Correlator(expSettingsModel, bleachCorrectionModel, fitModel);
         this.imageController =
                 new ImageController(this, imageModel, backgroundSubtractionController, bleachCorrectionModel,
                         correlator, fitModel, expSettingsModel, optionsModel);
@@ -84,7 +84,7 @@ public final class MainPanelController {
     public void setLastFrame(int lastFrame) {
         view.setTfLastFrame(String.valueOf(lastFrame));
         expSettingsModel.setLastFrame(String.valueOf(lastFrame));
-        bleachCorrectionModel.setSlidingWindowLength(lastFrame / 20);
+        expSettingsModel.setSlidingWindowLength(lastFrame / 20);
         updateStrideParamFields();
     }
 
@@ -96,8 +96,9 @@ public final class MainPanelController {
      */
     public ActionListener cbBleachCorChanged() {
         return (ActionEvent ev) -> {
-            String bleachCorrectionMode = ControllerUtils.getComboBoxSelectionFromEvent(ev);
+            String bleachCorrectionMode = getComboBoxSelectionFromEvent(ev);
             expSettingsModel.setBleachCorrection(bleachCorrectionMode);
+            fitController.updateFitEnd(expSettingsModel);
 
             if ("Sliding Window".equals(bleachCorrectionMode) || "Lin Segment".equals(bleachCorrectionMode)) {
                 if (!imageController.isImageLoaded()) {
@@ -106,7 +107,7 @@ public final class MainPanelController {
                     ((JComboBox<?>) ev.getSource()).setSelectedIndex(0);
                 } else {
                     new SlidingWindowSelectionView(this::onBleachCorrectionSlidingWindowAccepted,
-                            bleachCorrectionModel.getSlidingWindowLength());
+                            expSettingsModel.getSlidingWindowLength());
                 }
             } else if ("Polynomial".equals(bleachCorrectionMode)) {
                 new PolynomialOrderSelectionView(this::onBleachCorrectionOrderAccepted,
@@ -124,14 +125,14 @@ public final class MainPanelController {
     private void onBleachCorrectionSlidingWindowAccepted(int slidingWindowLength) {
         int maxWindowSize = expSettingsModel.getLastFrame() - expSettingsModel.getFirstFrame();
 
-        if (slidingWindowLength <= 0 ||
-                slidingWindowLength > (expSettingsModel.getLastFrame() - expSettingsModel.getFirstFrame())) {
+        if (slidingWindowLength <= 0 || slidingWindowLength > maxWindowSize) {
             IJ.showMessage(String.format("Invalid sliding window size. It must be inside 0 < order < %d",
                     maxWindowSize));
             new SlidingWindowSelectionView(this::onBleachCorrectionSlidingWindowAccepted,
-                    bleachCorrectionModel.getSlidingWindowLength());
+                    expSettingsModel.getSlidingWindowLength());
         } else {
-            bleachCorrectionModel.setSlidingWindowLength(slidingWindowLength);
+            expSettingsModel.setSlidingWindowLength(slidingWindowLength);
+            fitController.updateFitEnd(expSettingsModel);
         }
     }
 
@@ -161,7 +162,7 @@ public final class MainPanelController {
      */
     public ActionListener cbFilterChanged() {
         return (ActionEvent ev) -> {
-            String filterMode = ControllerUtils.getComboBoxSelectionFromEvent(ev);
+            String filterMode = getComboBoxSelectionFromEvent(ev);
             expSettingsModel.setFilter(filterMode);
 
             // If a filter mode other than "none" is selected, show the filter limits dialog.
@@ -180,7 +181,7 @@ public final class MainPanelController {
      */
     public ActionListener cbFitModelChanged() {
         return (ActionEvent ev) -> {
-            String fitModel = ControllerUtils.getComboBoxSelectionFromEvent(ev);
+            String fitModel = getComboBoxSelectionFromEvent(ev);
             expSettingsModel.setFitModel(fitModel);
             updateSettingsField();
         };
@@ -551,5 +552,18 @@ public final class MainPanelController {
         };
 
         return createFocusListener(decoratedSetter);
+    }
+
+    /**
+     * Returns a Consumer that decorates the given setter to also update the fit end.
+     *
+     * @param setter the original setter Consumer
+     * @return a decorated Consumer that updates the fit end and calls the given setter
+     */
+    public Consumer<String> updateFitEnd(Consumer<String> setter) {
+        return (String value) -> {
+            setter.accept(value);
+            fitController.updateFitEnd(expSettingsModel);
+        };
     }
 }

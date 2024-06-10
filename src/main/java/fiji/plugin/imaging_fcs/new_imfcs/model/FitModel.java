@@ -1,6 +1,7 @@
 package fiji.plugin.imaging_fcs.new_imfcs.model;
 
 import fiji.plugin.imaging_fcs.new_imfcs.controller.InvalidUserInputException;
+import fiji.plugin.imaging_fcs.new_imfcs.model.fit.StandardFit;
 
 import java.util.Arrays;
 
@@ -8,6 +9,7 @@ import static fiji.plugin.imaging_fcs.new_imfcs.constants.Constants.DIFFUSION_CO
 import static fiji.plugin.imaging_fcs.new_imfcs.constants.Constants.PIXEL_SIZE_REAL_SPACE_CONVERSION_FACTOR;
 
 public class FitModel {
+    private final ExpSettingsModel settings;
     private Parameter D, N, F2, F3, D2, D3, G, vx, vy, fTrip, tTrip;
     private double modProb1, modProb2, modProb3, Q2, Q3;
     private int fitStart, fitEnd;
@@ -16,7 +18,8 @@ public class FitModel {
     private boolean bayes = false;
     private boolean activated = false;
 
-    public FitModel() {
+    public FitModel(ExpSettingsModel settings) {
+        this.settings = settings;
         initValues();
     }
 
@@ -40,7 +43,7 @@ public class FitModel {
         modProb3 = 0;
 
         fitStart = 1;
-        fitEnd = 0;
+        fitEnd = settings.getChannelNumber() - 1;
     }
 
     public void setDefaultValues() {
@@ -63,7 +66,11 @@ public class FitModel {
         modProb3 = 0;
 
         fitStart = 1;
-        fitEnd = 0;
+        fitEnd = settings.getChannelNumber() - 1;
+    }
+
+    public void resetFitEnd() {
+        fitEnd = settings.getChannelNumber() - 1;
     }
 
     public double[] getNonHeldParameterValues() {
@@ -96,6 +103,17 @@ public class FitModel {
         G.value = parameters.getG();
         fTrip.value = parameters.getFTrip();
         tTrip.value = parameters.getTTrip();
+    }
+
+    public void fit(PixelModel pixelModel, double[] lagTimes) {
+        if (bayes) {
+            // bayes fit
+        } else if (GLS) {
+            // GLS fit
+        } else {
+            StandardFit fitter = new StandardFit(this, settings);
+            fitter.fitPixel(pixelModel, lagTimes);
+        }
     }
 
     public Parameter getD() {
@@ -271,7 +289,13 @@ public class FitModel {
     }
 
     public void setFitStart(String fitStart) {
-        this.fitStart = Integer.parseInt(fitStart);
+        int newValue = Integer.parseInt(fitStart);
+        if (newValue < 1 || newValue >= settings.getChannelNumber()) {
+            throw new InvalidUserInputException(String.format(
+                    "Fit Start must be between 0 and the channel number " + "(%d)", settings.getChannelNumber()));
+        }
+
+        this.fitStart = newValue;
     }
 
     public int getFitEnd() {
@@ -279,7 +303,13 @@ public class FitModel {
     }
 
     public void setFitEnd(String fitEnd) {
-        this.fitEnd = Integer.parseInt(fitEnd);
+        int newValue = Integer.parseInt(fitEnd);
+        if (newValue < fitStart || newValue >= settings.getChannelNumber()) {
+            throw new InvalidUserInputException(String.format(
+                    "Fit End must be between Fit Start and the channel " + "number (%d)", settings.getChannelNumber()));
+        }
+
+        this.fitEnd = newValue;
     }
 
     public double getQ3() {
