@@ -39,7 +39,6 @@ public final class MainPanelController {
     private final SimulationController simulationController;
     private final BackgroundSubtractionController backgroundSubtractionController;
     private final NBController nbController;
-    private final FitModel fitModel;
     private final FitController fitController;
 
     /**
@@ -55,7 +54,7 @@ public final class MainPanelController {
         this.expSettingsView = new ExpSettingsView(this, expSettingsModel);
         updateSettingsField();
 
-        this.fitModel = new FitModel(expSettingsModel);
+        FitModel fitModel = new FitModel(expSettingsModel);
         this.fitController = new FitController(fitModel);
 
         ImageModel imageModel = new ImageModel();
@@ -63,8 +62,8 @@ public final class MainPanelController {
         this.bleachCorrectionModel = new BleachCorrectionModel(expSettingsModel, imageModel);
         Correlator correlator = new Correlator(expSettingsModel, bleachCorrectionModel, fitModel);
         this.imageController =
-                new ImageController(this, imageModel, backgroundSubtractionController, bleachCorrectionModel,
-                        correlator, fitModel, expSettingsModel, optionsModel);
+                new ImageController(this, imageModel, backgroundSubtractionController, fitController,
+                        bleachCorrectionModel, correlator, expSettingsModel, optionsModel);
 
         this.bleachCorrectionView = new BleachCorrectionView(this, bleachCorrectionModel);
 

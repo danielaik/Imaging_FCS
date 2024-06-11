@@ -82,6 +82,22 @@ public class FitModel {
                 .toArray();
     }
 
+    public double[] fillParamsArray(double[] params) {
+        Parameter[] parameters = {N, D, vx, vy, G, F2, D2, F3, D3, fTrip, tTrip};
+        double[] paramsFilled = new double[parameters.length];
+
+        int paramIndex = 0;
+        for (int i = 0; i < parameters.length; i++) {
+            if (parameters[i].isHeld()) {
+                paramsFilled[i] = parameters[i].value;
+            } else {
+                paramsFilled[i] = params[paramIndex++];
+            }
+        }
+
+        return paramsFilled;
+    }
+
     public double[] filterFitArray(double[] fitParams) {
         Parameter[] parameters = {N, D, vx, vy, G, F2, D2, F3, D3, fTrip, tTrip};
 
@@ -89,6 +105,10 @@ public class FitModel {
                 .filter(parameter -> !parameter.isHeld())
                 .mapToDouble(parameter -> fitParams[Arrays.asList(parameters).indexOf(parameter)])
                 .toArray();
+    }
+
+    public boolean canFit() {
+        return getNonHeldParameterValues().length > 0;
     }
 
     public void updateParameterValues(PixelModel.FitParameters parameters) {

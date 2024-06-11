@@ -1,5 +1,8 @@
 package fiji.plugin.imaging_fcs.new_imfcs.model;
 
+import static fiji.plugin.imaging_fcs.new_imfcs.constants.Constants.DIFFUSION_COEFFICIENT_BASE;
+import static fiji.plugin.imaging_fcs.new_imfcs.constants.Constants.PIXEL_SIZE_REAL_SPACE_CONVERSION_FACTOR;
+
 public class PixelModel {
     private double[] acf;
     private double[] varianceAcf;
@@ -140,12 +143,24 @@ public class PixelModel {
             return D;
         }
 
+        public double getDInterface() {
+            return D * DIFFUSION_COEFFICIENT_BASE;
+        }
+
         public double getVx() {
             return vx;
         }
 
+        public double getVxInterface() {
+            return vx * PIXEL_SIZE_REAL_SPACE_CONVERSION_FACTOR;
+        }
+
         public double getVy() {
             return vy;
+        }
+
+        public double getVyInterface() {
+            return vy * PIXEL_SIZE_REAL_SPACE_CONVERSION_FACTOR;
         }
 
         public double getG() {
@@ -160,6 +175,10 @@ public class PixelModel {
             return D2;
         }
 
+        public double getD2Interface() {
+            return D2 * DIFFUSION_COEFFICIENT_BASE;
+        }
+
         public double getF3() {
             return F3;
         }
@@ -168,12 +187,20 @@ public class PixelModel {
             return D3;
         }
 
+        public double getD3Interface() {
+            return D3 * DIFFUSION_COEFFICIENT_BASE;
+        }
+
         public double getFTrip() {
             return fTrip;
         }
 
         public double getTTrip() {
             return tTrip;
+        }
+
+        public double getTTripInterface() {
+            return tTrip * PIXEL_SIZE_REAL_SPACE_CONVERSION_FACTOR;
         }
     }
 }

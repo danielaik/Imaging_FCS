@@ -3,10 +3,12 @@ package fiji.plugin.imaging_fcs.new_imfcs.view;
 import fiji.plugin.imaging_fcs.new_imfcs.constants.Constants;
 import fiji.plugin.imaging_fcs.new_imfcs.controller.FitController;
 import fiji.plugin.imaging_fcs.new_imfcs.model.FitModel;
+import fiji.plugin.imaging_fcs.new_imfcs.model.PixelModel;
 
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ItemListener;
+import java.util.function.Function;
 
 import static fiji.plugin.imaging_fcs.new_imfcs.controller.FocusListenerFactory.createFocusListener;
 import static fiji.plugin.imaging_fcs.new_imfcs.view.ButtonFactory.createJButton;
@@ -136,9 +138,27 @@ public class FitView extends BaseView {
         setText(tfParamFTrip, model.getFTrip());
         setText(tfParamTTrip, model.getTTripInterface());
         setText(tfFitStart, model.getFitStart());
+        setText(tfFitEnd, model.getFitEnd());
         setText(tfModProb1, model.getModProb1());
         setText(tfModProb2, model.getModProb2());
         setText(tfModProb3, model.getModProb3());
+    }
+
+    public void updateFitParams(PixelModel.FitParameters params) {
+        // Use scientific notation for these fields
+        Function<Double, String> formatter = value -> String.format("%.2f", value);
+
+        setText(tfParamN, formatter.apply(params.getN()));
+        setText(tfParamF2, formatter.apply(params.getF2()));
+        setText(tfParamD, formatter.apply(params.getDInterface()));
+        setText(tfParamD2, formatter.apply(params.getD2Interface()));
+        setText(tfParamF3, formatter.apply(params.getF3()));
+        setText(tfParamD3, formatter.apply(params.getD3Interface()));
+        setText(tfParamVx, formatter.apply(params.getVxInterface()));
+        setText(tfParamVy, formatter.apply(params.getVyInterface()));
+        setText(tfParamG, formatter.apply(params.getG()));
+        setText(tfParamFTrip, formatter.apply(params.getFTrip()));
+        setText(tfParamTTrip, formatter.apply(params.getTTripInterface()));
     }
 
     @Override

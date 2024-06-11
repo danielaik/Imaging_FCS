@@ -2,6 +2,7 @@ package fiji.plugin.imaging_fcs.new_imfcs.controller;
 
 import fiji.plugin.imaging_fcs.new_imfcs.model.ExpSettingsModel;
 import fiji.plugin.imaging_fcs.new_imfcs.model.FitModel;
+import fiji.plugin.imaging_fcs.new_imfcs.model.PixelModel;
 import fiji.plugin.imaging_fcs.new_imfcs.view.FitView;
 
 import javax.swing.*;
@@ -19,6 +20,15 @@ public class FitController {
     public FitController(FitModel model) {
         this.model = model;
         this.view = new FitView(this, model);
+    }
+
+    public void fit(PixelModel pixelModel, double[] lagTimes) {
+        if (model.canFit()) {
+            model.fit(pixelModel, lagTimes);
+
+            // update view
+            view.updateFitParams(pixelModel.getFitParams());
+        }
     }
 
     public void setVisible(boolean b) {
@@ -61,5 +71,13 @@ public class FitController {
         };
 
         SwingUtilities.invokeLater(doUpdateFitEnd);
+    }
+
+    public boolean isActivated() {
+        return view.isVisible();
+    }
+
+    public boolean isGLS() {
+        return model.isGLS();
     }
 }
