@@ -54,8 +54,8 @@ public abstract class FCSFit implements ParametricUnivariateFunction {
             sz = Math.sqrt(Math.pow(lsThickness, 2) / 2 + Math.pow(lsThickness2, 2) / 2);
         }
 
-        rx = settings.getParamRx();
-        ry = settings.getParamRy();
+        rx = settings.getParamRx() / NANO_CONVERSION_FACTOR;
+        ry = settings.getParamRy() / NANO_CONVERSION_FACTOR;
 
         fitObservationVolume = getFitObservationVolume(ax, ay, s);
 
