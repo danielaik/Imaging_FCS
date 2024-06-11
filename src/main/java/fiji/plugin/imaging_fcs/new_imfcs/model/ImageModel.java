@@ -32,6 +32,12 @@ public final class ImageModel {
         this.backgroundImage = null;
     }
 
+    /**
+     * Adjusts the scale of the provided ImagePlus object.
+     * The image is scaled to fit within a specified zoom factor while maintaining its aspect ratio.
+     *
+     * @param image The ImagePlus object to be scaled.
+     */
     public static void adaptImageScale(ImagePlus image) {
         double scimp;
         if (image.getWidth() >= image.getHeight()) {
@@ -53,10 +59,20 @@ public final class ImageModel {
         IJ.run("In [+]", "");
     }
 
+    /**
+     * Checks if an image is currently loaded in the model.
+     *
+     * @return True if an image is loaded, false otherwise.
+     */
     public boolean isImageLoaded() {
         return image != null && image.getWindow() != null;
     }
 
+    /**
+     * Checks if a background image is currently loaded in the model.
+     *
+     * @return True if a background image is loaded, false otherwise.
+     */
     public boolean isBackgroundLoaded() {
         return backgroundImage != null;
     }
@@ -73,9 +89,15 @@ public final class ImageModel {
         }
     }
 
+    /**
+     * Checks if two ImagePlus objects have different sizes.
+     *
+     * @param img1 The first ImagePlus object.
+     * @param img2 The second ImagePlus object.
+     * @return True if the images are not the same size, false otherwise.
+     */
     private boolean areNotSameSize(ImagePlus img1, ImagePlus img2) {
-        return img1.getWidth() != img2.getWidth() ||
-                img1.getHeight() != img2.getHeight() ||
+        return img1.getWidth() != img2.getWidth() || img1.getHeight() != img2.getHeight() ||
                 img1.getStackSize() != img2.getStackSize();
     }
 
@@ -115,6 +137,9 @@ public final class ImageModel {
         this.image = image;
     }
 
+    /**
+     * Unloads the current image from the model.
+     */
     private void unloadImage() {
         if (image.getOverlay() != null) {
             image.deleteRoi();
@@ -129,12 +154,25 @@ public final class ImageModel {
         image = null;
     }
 
+    /**
+     * Removes listeners from the provided array using the specified removal function.
+     *
+     * @param listeners              The array of listeners to remove.
+     * @param removeListenerFunction The function to remove each listener.
+     * @param <T>                    The type of listener.
+     */
     private <T extends EventListener> void removeListeners(T[] listeners, Consumer<T> removeListenerFunction) {
         for (T listener : listeners) {
             removeListenerFunction.accept(listener);
         }
     }
 
+    /**
+     * Determines the minimum pixel value in the provided ImagePlus object.
+     *
+     * @param img The ImagePlus object to analyze.
+     * @return The minimum pixel value in the image.
+     */
     private int minDetermination(ImagePlus img) {
         int min = Integer.MAX_VALUE;
 
@@ -153,6 +191,12 @@ public final class ImageModel {
         return min;
     }
 
+    /**
+     * Loads a background image into the model, checking its type and computing statistics.
+     *
+     * @param backgroundImage The ImagePlus object to load as the background.
+     * @return True if the background image was successfully loaded, false otherwise.
+     */
     public boolean loadBackgroundImage(ImagePlus backgroundImage) {
         if (backgroundImage == null) {
             IJ.showMessage("Selected file does not exist or it is not an image.");
@@ -176,6 +220,9 @@ public final class ImageModel {
         return true;
     }
 
+    /**
+     * Computes the mean, variance, and covariance of the background image.
+     */
     private void computeBackgroundStats() {
         int width = backgroundImage.getWidth();
         int height = backgroundImage.getHeight();
@@ -192,8 +239,8 @@ public final class ImageModel {
 
         for (int stackIndex = 1; stackIndex <= stackSize; stackIndex++) {
             ImageProcessor ip = backgroundImage.getStack().getProcessor(stackIndex);
-            ImageProcessor ipNextFrame = (stackIndex < stackSize) ?
-                    backgroundImage.getStack().getProcessor(stackIndex + 1) : null;
+            ImageProcessor ipNextFrame =
+                    (stackIndex < stackSize) ? backgroundImage.getStack().getProcessor(stackIndex + 1) : null;
 
             // compute the means, variance and covariance
             for (int x = 0; x < width; x++) {
@@ -233,6 +280,9 @@ public final class ImageModel {
         image.show();
     }
 
+    /**
+     * Resets the background image, removing it from the model.
+     */
     public void resetBackgroundImage() {
         backgroundImage = null;
         background = minBackgroundValue;

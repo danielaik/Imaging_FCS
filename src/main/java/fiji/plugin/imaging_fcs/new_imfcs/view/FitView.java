@@ -17,6 +17,11 @@ import static fiji.plugin.imaging_fcs.new_imfcs.view.TextFieldFactory.createText
 import static fiji.plugin.imaging_fcs.new_imfcs.view.TextFieldFactory.setText;
 import static fiji.plugin.imaging_fcs.new_imfcs.view.UIUtils.createJLabel;
 
+/**
+ * The FitView class represents the graphical user interface for fitting parameters in FCS data analysis.
+ * It manages the layout and interactions with various UI components, and updates based on the FitModel and
+ * FitController.
+ */
 public class FitView extends BaseView {
     private static final GridLayout FIT_LAYOUT = new GridLayout(17, 6);
     private static final Point FIT_LOCATION =
@@ -34,6 +39,12 @@ public class FitView extends BaseView {
             rbtnCNNImage, rbtnCNNACF;
 
 
+    /**
+     * Constructs a new FitView with the given controller and model.
+     *
+     * @param controller The FitController instance.
+     * @param model      The FitModel instance.
+     */
     public FitView(FitController controller, FitModel model) {
         super("Fit");
         this.controller = controller;
@@ -80,6 +91,12 @@ public class FitView extends BaseView {
         tfModProb3 = createTextField(model.getModProb3(), "", createFocusListener(model::setModProb3));
     }
 
+    /**
+     * Creates a JRadioButton to hold a parameter, updating its hold state based on user interaction.
+     *
+     * @param parameter The parameter to hold.
+     * @return The created JRadioButton.
+     */
     private JRadioButton createHoldButton(FitModel.Parameter parameter) {
         JRadioButton radioButton = new JRadioButton("Hold");
         radioButton.setSelected(parameter.isHeld());
@@ -122,7 +139,9 @@ public class FitView extends BaseView {
         rbtnCNNACF.setVisible(false);
     }
 
-    // this method is called after the model has reset default value
+    /**
+     * Sets the text fields to their default values based on the model's current state.
+     */
     public void setDefaultValues() {
         setText(tfParamQ2, model.getQ2());
         setText(tfParamN, model.getN());
@@ -144,6 +163,11 @@ public class FitView extends BaseView {
         setText(tfModProb3, model.getModProb3());
     }
 
+    /**
+     * Updates the fit parameters displayed in the text fields based on the given fit parameters.
+     *
+     * @param params The fit parameters to display.
+     */
     public void updateFitParams(PixelModel.FitParameters params) {
         // Use scientific notation for these fields
         Function<Double, String> formatter = value -> String.format("%.2f", value);

@@ -8,16 +8,35 @@ import org.apache.commons.math3.special.Erf;
 import static fiji.plugin.imaging_fcs.new_imfcs.constants.Constants.NANO_CONVERSION_FACTOR;
 import static fiji.plugin.imaging_fcs.new_imfcs.constants.Constants.SQRT_PI;
 
+/**
+ * The FCSFit class provides the base functionality for fitting fluorescence correlation spectroscopy (FCS) data.
+ * It implements the ParametricUnivariateFunction interface from the Apache Commons Math library.
+ */
 public abstract class FCSFit implements ParametricUnivariateFunction {
     protected final FitModel fitModel;
     protected double ax, ay, s, sz, rx, ry, fitObservationVolume, q2, q3;
 
+    /**
+     * Constructs a new FCSFit instance with the given settings and fit model.
+     *
+     * @param settings The experimental settings model.
+     * @param fitModel The fit model.
+     * @param mode     The mode for the PSF size and light sheet thickness.
+     */
     public FCSFit(ExpSettingsModel settings, FitModel fitModel, int mode) {
         this.fitModel = fitModel;
 
         initParameters(settings, mode);
     }
 
+    /**
+     * Computes the observation volume for the fit.
+     *
+     * @param ax The axial size.
+     * @param ay The lateral size.
+     * @param s  The PSF size.
+     * @return The calculated fit observation volume.
+     */
     public static double getFitObservationVolume(double ax, double ay, double s) {
         // Compute helper values
         double expAxSqr = 2 * Math.exp(-Math.pow(ax / s, 2)) - 2;
@@ -33,6 +52,12 @@ public abstract class FCSFit implements ParametricUnivariateFunction {
         return 4 * Math.pow(ax * ay, 2) / (termX * termY);
     }
 
+    /**
+     * Initializes the parameters for the FCS fit.
+     *
+     * @param settings The experimental settings model.
+     * @param mode     The mode for the PSF size and light sheet thickness.
+     */
     protected void initParameters(ExpSettingsModel settings, int mode) {
         ax = settings.getParamAx() / NANO_CONVERSION_FACTOR;
         ay = settings.getParamAy() / NANO_CONVERSION_FACTOR;
@@ -63,6 +88,15 @@ public abstract class FCSFit implements ParametricUnivariateFunction {
         q3 = fitModel.getQ3();
     }
 
+    /**
+     * Calculates the component values for the FCS fit.
+     *
+     * @param x  The lag time.
+     * @param D  The diffusion coefficient.
+     * @param vx The flow velocity in the x direction.
+     * @param vy The flow velocity in the y direction.
+     * @return An array of calculated component values.
+     */
     private double[] calculateComponent(double x, double D, double vx, double vy) {
         double sqrtTerm = Math.sqrt(4 * D * x + Math.pow(s, 2));
         PerfTerms perfTermX = calculatePerfTerms(x, vx, ax, rx, sqrtTerm);
@@ -79,12 +113,29 @@ public abstract class FCSFit implements ParametricUnivariateFunction {
         return new double[]{plat, dDplat, perfTermX.dPerf, perfTermY.dPerf, pspim, dDpspim, acf};
     }
 
+    /**
+     * Calculates the plat value for the FCS fit.
+     *
+     * @param perfTermX The perf terms for the x direction.
+     * @param perfTermY The perf terms for the y direction.
+     * @param sqrtTerm  The square root term.
+     * @return The calculated plat value.
+     */
     private double calculatePlat(PerfTerms perfTermX, PerfTerms perfTermY, double sqrtTerm) {
         return (sqrtTerm / SQRT_PI * perfTermX.exp + perfTermX.perf) *
                 (sqrtTerm / SQRT_PI * perfTermY.exp + perfTermY.perf) /
                 (4 * Math.pow(ax * ay, 2) / fitObservationVolume);
     }
 
+    /**
+     * Calculates the dPlat value for the FCS fit.
+     *
+     * @param perfTermX The perf terms for the x direction.
+     * @param perfTermY The perf terms for the y direction.
+     * @param sqrtTerm  The square root term.
+     * @param x         The lag time.
+     * @return The calculated dPlat value.
+     */
     private double calculateDPlat(PerfTerms perfTermX, PerfTerms perfTermY, double sqrtTerm, double x) {
         return (1 / (SQRT_PI * sqrtTerm)) *
                 (perfTermY.dExp * x * (sqrtTerm / SQRT_PI * perfTermX.exp + perfTermX.perf) +
@@ -92,6 +143,16 @@ public abstract class FCSFit implements ParametricUnivariateFunction {
                 (4 * Math.pow(ax * ay, 2) / fitObservationVolume);
     }
 
+    /**
+     * Calculates the perf terms for the FCS fit.
+     *
+     * @param x        The lag time.
+     * @param v        The flow velocity.
+     * @param a        The axial size.
+     * @param r        The radial size.
+     * @param sqrtTerm The square root term.
+     * @return The calculated perf terms.
+     */
     private PerfTerms calculatePerfTerms(double x, double v, double a, double r, double sqrtTerm) {
         double term1 = a + r - v * x;
         double term2 = a - r + v * x;
@@ -176,18 +237,51 @@ public abstract class FCSFit implements ParametricUnivariateFunction {
         return fitModel.filterFitArray(results);
     }
 
+    /**
+     * Calculates the triplet correction for the FCS fit.
+     *
+     * @param x     The lag time.
+     * @param fTrip The triplet fraction.
+     * @param tTrip The triplet time.
+     * @return The calculated triplet correction.
+     */
     private double calculateTriplet(double x, double fTrip, double tTrip) {
         return 1 + fTrip / (1 - fTrip) * Math.exp(-x / tTrip);
     }
 
+    /**
+     * Calculates the derivative of the triplet correction with respect to the triplet fraction.
+     *
+     * @param x     The lag time.
+     * @param fTrip The triplet fraction.
+     * @param tTrip The triplet time.
+     * @return The calculated derivative.
+     */
     private double calculateDTripletFtrip(double x, double fTrip, double tTrip) {
         return Math.exp(-x / tTrip) * (1 / (1 - fTrip) + fTrip / Math.pow(1 - fTrip, 2));
     }
 
+    /**
+     * Calculates the derivative of the triplet correction with respect to the triplet time.
+     *
+     * @param x     The lag time.
+     * @param fTrip The triplet fraction.
+     * @param tTrip The triplet time.
+     * @return The calculated derivative.
+     */
     private double calculateDTripletTtrip(double x, double fTrip, double tTrip) {
         return Math.exp(-x / tTrip) * (fTrip * x) / ((1 - fTrip) * Math.pow(tTrip, 2));
     }
 
+    /**
+     * Calculates the correction factors for the FCS fit.
+     *
+     * @param F2 The fraction of the second component.
+     * @param F3 The fraction of the third component.
+     * @param q2 The relative amplitude of the second component.
+     * @param q3 The relative amplitude of the third component.
+     * @return An array of calculated correction factors.
+     */
     private double[] calculateCorrectionFactors(double F2, double F3, double q2, double q3) {
         double denominator = 1 - F2 - F3 + q2 * F2 + q3 * F3;
         double pf1 = (1 - F2 - F3) / denominator;
@@ -196,6 +290,15 @@ public abstract class FCSFit implements ParametricUnivariateFunction {
         return new double[]{pf1, pf2, pf3};
     }
 
+    /**
+     * Calculates the derivatives of the normalization factors for the FCS fit.
+     *
+     * @param F2 The fraction of the second component.
+     * @param F3 The fraction of the third component.
+     * @param q2 The relative amplitude of the second component.
+     * @param q3 The relative amplitude of the third component.
+     * @return An array of calculated derivatives.
+     */
     private double[] calculateDNomFactors(double F2, double F3, double q2, double q3) {
         double dfNom = Math.pow(1 - F2 - F3 + q2 * F2 + q3 * F3, 3);
         double df21 = 1 - F2 - F3 + q2 * F2 - q3 * F3 + 2 * q2 * F3 - 2 * q2;
@@ -235,6 +338,9 @@ public abstract class FCSFit implements ParametricUnivariateFunction {
         return (1 / N) * (weightedAcf / Math.pow(weightFactor, 2)) * triplet + G;
     }
 
+    /**
+     * The PerfTerms class encapsulates the performance terms for the FCS fit.
+     */
     private static class PerfTerms {
         private final double exp;
         private final double perf;

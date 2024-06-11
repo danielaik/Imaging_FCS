@@ -13,12 +13,24 @@ import javax.swing.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 
+/**
+ * Controller class for managing the Number & Brightness (NB) analysis workflow.
+ * It connects the NBView and NBModel, handling user interactions and updating the view.
+ */
 public final class NBController {
     private final NBView view;
     private final NBModel model;
 
     private final ImageModel imageModel;
 
+    /**
+     * Constructs an NBController with the specified models.
+     *
+     * @param imageModel            the model containing image data
+     * @param expSettingsModel      the model containing experiment settings
+     * @param options               the model containing options for the analysis
+     * @param bleachCorrectionModel the model for bleach correction settings
+     */
     public NBController(ImageModel imageModel, ExpSettingsModel expSettingsModel, OptionsModel options,
                         BleachCorrectionModel bleachCorrectionModel) {
         model = new NBModel(imageModel, expSettingsModel, options, bleachCorrectionModel);
@@ -26,10 +38,20 @@ public final class NBController {
         this.imageModel = imageModel;
     }
 
+    /**
+     * Sets the visibility of the NBView.
+     *
+     * @param b true to make the view visible, false to hide it
+     */
     public void setVisible(boolean b) {
         view.setVisible(b);
     }
 
+    /**
+     * Creates an ActionListener to handle changes in the NB mode selection.
+     *
+     * @return the ActionListener for NB mode changes
+     */
     public ActionListener cbNBModeChanged() {
         return (ActionEvent ev) -> {
             String mode = ControllerUtils.getComboBoxSelectionFromEvent(ev);
@@ -50,6 +72,11 @@ public final class NBController {
         };
     }
 
+    /**
+     * Creates an ActionListener to handle the NB analysis button press.
+     *
+     * @return the ActionListener for the NB analysis button
+     */
     public ActionListener btnNBPressed() {
         return (ActionEvent ev) -> {
             if (imageModel.isImageLoaded() && imageModel.isBackgroundLoaded()) {
@@ -60,6 +87,11 @@ public final class NBController {
         };
     }
 
+    /**
+     * Displays the given image in the ImageJ window and adapts its scale.
+     *
+     * @param image the ImagePlus object to be displayed
+     */
     public void showImage(ImagePlus image) {
         image.show();
         ImageModel.adaptImageScale(image);

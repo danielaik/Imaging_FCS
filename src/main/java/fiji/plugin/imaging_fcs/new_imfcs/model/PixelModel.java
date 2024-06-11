@@ -3,6 +3,12 @@ package fiji.plugin.imaging_fcs.new_imfcs.model;
 import static fiji.plugin.imaging_fcs.new_imfcs.constants.Constants.DIFFUSION_COEFFICIENT_BASE;
 import static fiji.plugin.imaging_fcs.new_imfcs.constants.Constants.PIXEL_SIZE_REAL_SPACE_CONVERSION_FACTOR;
 
+/**
+ * The PixelModel class represents a model for handling pixel data in fluorescence correlation spectroscopy (FCS)
+ * analysis.
+ * It includes methods for setting and getting various attributes related to autocorrelation function (ACF), variance,
+ * standard deviation, and fitting parameters.
+ */
 public class PixelModel {
     private double[] acf;
     private double[] varianceAcf;
@@ -16,10 +22,17 @@ public class PixelModel {
     private FitParameters fitParams;
 
 
+    /**
+     * Constructs a new PixelModel instance.
+     */
     public PixelModel() {
-
     }
 
+    /**
+     * Adds the values of another PixelModel to this one using a sliding window approach.
+     *
+     * @param other The other PixelModel whose values are to be added.
+     */
     public void addPixelModelSlidingWindow(PixelModel other) {
         if (acf == null || standardDeviationAcf == null || varianceAcf == null) {
             acf = other.acf;
@@ -34,6 +47,11 @@ public class PixelModel {
         }
     }
 
+    /**
+     * Averages the values in the sliding window over a given number of windows.
+     *
+     * @param numSlidingWindow The number of sliding windows to average over.
+     */
     public void averageSlidingWindow(int numSlidingWindow) {
         for (int i = 0; i < acf.length; i++) {
             acf[i] /= numSlidingWindow;
@@ -114,9 +132,18 @@ public class PixelModel {
         this.fitted = fitted;
     }
 
+    /**
+     * The FitParameters class encapsulates the fitting parameters for a pixel.
+     */
     public static class FitParameters {
         private final double N, D, vx, vy, G, F2, D2, F3, D3, fTrip, tTrip;
 
+        /**
+         * Constructs a new FitParameters instance with the given parameters and fit model.
+         *
+         * @param params   The array of parameter values.
+         * @param fitModel The fit model.
+         */
         public FitParameters(double[] params, FitModel fitModel) {
             N = selectValue(fitModel.getN(), params[0]);
             D = selectValue(fitModel.getD(), params[1]);
@@ -131,6 +158,13 @@ public class PixelModel {
             tTrip = selectValue(fitModel.getTTrip(), params[10]);
         }
 
+        /**
+         * Selects the value of the parameter, preferring the held value from the fit model if it exists.
+         *
+         * @param parameter The parameter from the fit model.
+         * @param value     The value to select.
+         * @return The selected value.
+         */
         private double selectValue(FitModel.Parameter parameter, double value) {
             return parameter.isHeld() ? parameter.getValue() : value;
         }

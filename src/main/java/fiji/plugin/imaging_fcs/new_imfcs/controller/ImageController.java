@@ -19,6 +19,10 @@ import java.awt.event.KeyListener;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 
+/**
+ * The ImageController class handles the interactions with the image data,
+ * managing the loading, processing, and analysis of images for FCS data.
+ */
 public final class ImageController {
     private final ImageModel imageModel;
     private final MainPanelController mainPanelController;
@@ -32,10 +36,19 @@ public final class ImageController {
     private int previousX = -1;
     private int previousY = -1;
 
-    public ImageController(MainPanelController mainPanelController, ImageModel imageModel,
-                           BackgroundSubtractionController backgroundSubtractionController,
-                           FitController fitController, BleachCorrectionModel bleachCorrectionModel,
-                           Correlator correlator, ExpSettingsModel settings, OptionsModel options) {
+    /**
+     * Constructs a new ImageController with the given dependencies.
+     *
+     * @param mainPanelController             The main panel controller.
+     * @param imageModel                      The image model.
+     * @param backgroundSubtractionController The background subtraction controller.
+     * @param fitController                   The fit controller.
+     * @param bleachCorrectionModel           The bleach correction model.
+     * @param correlator                      The correlator.
+     * @param settings                        The experimental settings model.
+     * @param options                         The options model.
+     */
+    public ImageController(MainPanelController mainPanelController, ImageModel imageModel, BackgroundSubtractionController backgroundSubtractionController, FitController fitController, BleachCorrectionModel bleachCorrectionModel, Correlator correlator, ExpSettingsModel settings, OptionsModel options) {
         this.mainPanelController = mainPanelController;
         this.imageModel = imageModel;
         this.backgroundSubtractionController = backgroundSubtractionController;
@@ -47,10 +60,20 @@ public final class ImageController {
         imageView = null;
     }
 
+    /**
+     * Checks if an image is currently loaded in the model.
+     *
+     * @return true if an image is loaded, false otherwise.
+     */
     public boolean isImageLoaded() {
         return imageModel.isImageLoaded();
     }
 
+    /**
+     * Loads the given image into the model and sets up the view and event listeners.
+     *
+     * @param image The ImagePlus instance to load.
+     */
     public void loadImage(ImagePlus image) {
         imageModel.loadImage(image);
 
@@ -67,19 +90,30 @@ public final class ImageController {
         backgroundSubtractionController.setTfBackground2(imageModel.getBackground2());
     }
 
+    /**
+     * Performs the correlation and fitting for a pixel at the given coordinates.
+     *
+     * @param x The x-coordinate of the pixel.
+     * @param y The y-coordinate of the pixel.
+     */
     private void correlatePixel(int x, int y) {
         SelectedPixel selectedPixel = new SelectedPixel(imageModel, bleachCorrectionModel, correlator, settings);
         try {
-            selectedPixel.performCFE(x, y);
+            selectedPixel.performCorrelationFunctionEvaluation(x, y);
+            fitController.fit(correlator.getPixelModel(x, y), correlator.getLagTimes());
+
+            plotResuts(x, y);
         } catch (RuntimeException e) {
             IJ.showMessage("Error", e.getMessage());
         }
-
-        if (fitController.isActivated()) {
-            fitController.fit(correlator.getPixelModel(x, y), correlator.getLagTimes());
-        }
     }
 
+    /**
+     * Plots the results for a pixel at the given coordinates.
+     *
+     * @param x The x-coordinate of the pixel.
+     * @param y The y-coordinate of the pixel.
+     */
     private void plotResuts(int x, int y) {
         PixelModel pixelModel = correlator.getPixelModel(x, y);
 
@@ -92,8 +126,7 @@ public final class ImageController {
         }
 
         if (options.isPlotIntensityCurves()) {
-            Plots.plotIntensityTrace(bleachCorrectionModel.getIntensityTrace1(),
-                    bleachCorrectionModel.getIntensityTime(), x, y);
+            Plots.plotIntensityTrace(bleachCorrectionModel.getIntensityTrace1(), bleachCorrectionModel.getIntensityTime(), x, y);
         }
 
         if (options.isPlotBlockingCurve()) {
@@ -105,12 +138,16 @@ public final class ImageController {
         }
 
         if (settings.isMSD()) {
-            pixelModel.setMSD(MeanSquareDisplacement.correlationToMSD(pixelModel.getAcf(), settings.getParamAx(),
-                    settings.getParamAy(), settings.getParamW(), settings.getSigmaZ(), settings.isMSD3d()));
+            pixelModel.setMSD(MeanSquareDisplacement.correlationToMSD(pixelModel.getAcf(), settings.getParamAx(), settings.getParamAy(), settings.getParamW(), settings.getSigmaZ(), settings.isMSD3d()));
             Plots.plotMSD(pixelModel.getMSD(), correlator.getLagTimes(), x, y);
         }
     }
 
+    /**
+     * Creates a MouseListener to handle mouse clicks on the image canvas.
+     *
+     * @return The MouseListener instance.
+     */
     public MouseListener imageMouseClicked() {
         return new MouseListener() {
             @Override
@@ -127,7 +164,6 @@ public final class ImageController {
                 }
 
                 correlatePixel(x, y);
-                plotResuts(x, y);
             }
 
             @Override
@@ -152,6 +188,11 @@ public final class ImageController {
         };
     }
 
+    /**
+     * Creates a KeyListener to handle key presses on the image canvas.
+     *
+     * @return The KeyListener instance.
+     */
     public KeyListener imageKeyPressed() {
         return new KeyListener() {
             @Override
@@ -180,7 +221,6 @@ public final class ImageController {
                     }
 
                     correlatePixel(x, y);
-                    plotResuts(x, y);
                 }
             }
 

@@ -8,19 +8,40 @@ import javax.swing.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 
+/**
+ * Controller for handling background subtraction logic in the ImageModel.
+ * It connects the ImageModel and the BackgroundSubtractionView.
+ */
 public class BackgroundSubtractionController {
     private final ImageModel imageModel;
     private final BackgroundSubtractionView view;
 
+    /**
+     * Constructs a BackgroundSubtractionController with the specified ImageModel.
+     * Initializes the view associated with this controller.
+     *
+     * @param imageModel The ImageModel to be controlled.
+     */
     public BackgroundSubtractionController(ImageModel imageModel) {
         this.imageModel = imageModel;
         view = new BackgroundSubtractionView(this, imageModel);
     }
 
+    /**
+     * Sets the visibility of the view.
+     *
+     * @param b true to make the view visible, false to hide it.
+     */
     public void setVisible(boolean b) {
         view.setVisible(b);
     }
 
+    /**
+     * Creates an ActionListener that handles changes to the background subtraction method.
+     * The listener updates the ImageModel and the view based on the selected method.
+     *
+     * @return An ActionListener for handling background subtraction method changes.
+     */
     public ActionListener cbBackgroundSubtractionMethodChanged() {
         return (ActionEvent ev) -> {
             String method = ControllerUtils.getComboBoxSelectionFromEvent(ev);

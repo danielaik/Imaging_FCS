@@ -16,7 +16,10 @@ import org.apache.commons.math3.fitting.leastsquares.LeastSquaresProblem;
 import java.util.ArrayList;
 import java.util.Collection;
 
-
+/**
+ * The StandardFit class performs the standard fitting procedure for fluorescence correlation spectroscopy (FCS) data.
+ * It extends the BaseFit class and uses a specific parametric univariate function for the fitting process.
+ */
 public class StandardFit extends BaseFit {
     private final int MAX_EVALUATIONS = 2000;
     private final int MAX_ITERATIONS = 2000;
@@ -24,6 +27,12 @@ public class StandardFit extends BaseFit {
     private final ParametricUnivariateFunction function;
     private int numFreeParameters;
 
+    /**
+     * Constructs a new StandardFit instance with the given model and settings.
+     *
+     * @param model    The FitModel instance containing the fitting parameters.
+     * @param settings The experimental settings model.
+     */
     public StandardFit(FitModel model, ExpSettingsModel settings) {
         this.model = model;
         function = selectFitFunction(settings);
@@ -32,6 +41,12 @@ public class StandardFit extends BaseFit {
         setMaxIterations(MAX_ITERATIONS);
     }
 
+    /**
+     * Selects the appropriate parametric univariate function based on the experimental settings.
+     *
+     * @param settings The experimental settings model.
+     * @return The selected parametric univariate function.
+     */
     private ParametricUnivariateFunction selectFitFunction(ExpSettingsModel settings) {
         switch (settings.getFitModel()) {
             case Constants.ITIR_FCS_2D:
@@ -57,6 +72,13 @@ public class StandardFit extends BaseFit {
         return getLeastSquaresProblem(points, function, initialGuess, target, weights);
     }
 
+    /**
+     * Fits the data for a pixel model using the given lag times.
+     *
+     * @param pixelModel The pixel model to fit.
+     * @param lagTimes   The lag times for fitting.
+     * @return An array of residuals.
+     */
     public double[] fitPixel(PixelModel pixelModel, double[] lagTimes) {
         ArrayList<WeightedObservedPoint> points = new ArrayList<>();
         int channelNumber = pixelModel.getAcf().length;

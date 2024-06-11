@@ -12,6 +12,12 @@ import ij.process.ImageProcessor;
 import java.awt.*;
 import java.util.Arrays;
 
+/**
+ * The Plots class provides static methods for generating various plots used in fluorescence correlation spectroscopy
+ * (FCS) analysis.
+ * This includes plotting autocorrelation functions (ACF), blocking curves, covariance matrices, standard deviations,
+ * intensity traces, and mean square displacements (MSD).
+ */
 public class Plots {
     private static final Point ACF_POSITION = new Point(
             Constants.MAIN_PANEL_POS.x + Constants.MAIN_PANEL_DIM.width + 10, Constants.MAIN_PANEL_POS.y + 100);
@@ -33,10 +39,16 @@ public class Plots {
     private static PlotWindow blockingCurveWindow, acfWindow, standardDeviationWindow, intensityTraceWindow, msdWindow;
     private static ImageWindow imgCovarianceWindow;
 
-    // prevent instantiation
+    // Prevent instantiation
     private Plots() {
     }
 
+    /**
+     * Finds the adjusted minimum and maximum values of an array, with a 10% margin.
+     *
+     * @param array The array of values.
+     * @return A Pair containing the adjusted minimum and maximum values.
+     */
     private static Pair<Double, Double> findAdjustedMinMax(double[] array) {
         if (array.length == 0) {
             throw new IllegalArgumentException("findAdjustedMinMax: array is empty");
@@ -56,6 +68,14 @@ public class Plots {
         return new Pair<>(min, max);
     }
 
+    /**
+     * Displays the plot in a new window or updates the existing window.
+     *
+     * @param plot     The Plot to display.
+     * @param window   The existing PlotWindow, if any.
+     * @param position The position to display the window.
+     * @return The updated PlotWindow.
+     */
     private static PlotWindow plotWindow(Plot plot, PlotWindow window, Point position) {
         // Display the plot in a new window or update the existing one
         if (window == null || window.isClosed()) {
@@ -68,6 +88,12 @@ public class Plots {
         return window;
     }
 
+    /**
+     * Plots the blocking curve with variance blocks and index highlighting.
+     *
+     * @param varianceBlocks The variance blocks.
+     * @param index          The index to highlight.
+     */
     public static void plotBlockingCurve(double[][] varianceBlocks, int index) {
         Plot plot = getBlockingCurvePlot(varianceBlocks);
         plot.setColor(Color.BLUE);
@@ -91,6 +117,12 @@ public class Plots {
         blockingCurveWindow = plotWindow(plot, blockingCurveWindow, BLOCKING_CURVE_POSITION);
     }
 
+    /**
+     * Creates a Plot for the blocking curve.
+     *
+     * @param varianceBlocks The variance blocks.
+     * @return The created Plot.
+     */
     private static Plot getBlockingCurvePlot(double[][] varianceBlocks) {
         Pair<Double, Double> minMax = findAdjustedMinMax(varianceBlocks[1]);
         double minBlock = minMax.getLeft();
@@ -106,6 +138,11 @@ public class Plots {
         return plot;
     }
 
+    /**
+     * Plots the covariance matrix.
+     *
+     * @param regularizedCovarianceMatrix The covariance matrix to plot.
+     */
     public static void plotCovarianceMatrix(double[][] regularizedCovarianceMatrix) {
         int len = regularizedCovarianceMatrix.length;
         ImagePlus imgCovariance = IJ.createImage("Covariance", "GRAY32", len, len, 1);
@@ -134,6 +171,15 @@ public class Plots {
         IJ.run(imgCovariance, "In [+]", "");
     }
 
+    /**
+     * Plots the single autocorrelation function (ACF) for a given pixel.
+     *
+     * @param acf      The ACF values.
+     * @param lagTimes The lag times corresponding to the ACF values.
+     * @param x        The x-coordinate of the pixel.
+     * @param y        The y-coordinate of the pixel.
+     * @param binning  The binning factor.
+     */
     public static void plotSingleACF(double[] acf, double[] lagTimes, int x, int y, Point binning) {
         Pair<Double, Double> minMax = findAdjustedMinMax(acf);
         double minScale = minMax.getLeft();
@@ -155,6 +201,14 @@ public class Plots {
         acfWindow = plotWindow(plot, acfWindow, ACF_POSITION);
     }
 
+    /**
+     * Plots the standard deviation for a given pixel.
+     *
+     * @param blockStandardDeviation The standard deviation values.
+     * @param lagTimes               The lag times corresponding to the standard deviation values.
+     * @param x                      The x-coordinate of the pixel.
+     * @param y                      The y-coordinate of the pixel.
+     */
     public static void plotStandardDeviation(double[] blockStandardDeviation, double[] lagTimes, int x, int y) {
         Pair<Double, Double> minMax = findAdjustedMinMax(blockStandardDeviation);
         double min = minMax.getLeft();
@@ -174,6 +228,14 @@ public class Plots {
         standardDeviationWindow = plotWindow(plot, standardDeviationWindow, STANDARD_DEVIATION_POSITION);
     }
 
+    /**
+     * Plots the intensity trace for a given pixel.
+     *
+     * @param intensityTrace The intensity trace values.
+     * @param intensityTime  The time points corresponding to the intensity trace values.
+     * @param x              The x-coordinate of the pixel.
+     * @param y              The y-coordinate of the pixel.
+     */
     public static void plotIntensityTrace(double[] intensityTrace, double[] intensityTime, int x, int y) {
         Pair<Double, Double> minMax = findAdjustedMinMax(intensityTrace);
         double min = minMax.getLeft();
@@ -193,6 +255,14 @@ public class Plots {
         intensityTraceWindow = plotWindow(plot, intensityTraceWindow, INTENSITY_POSITION);
     }
 
+    /**
+     * Plots the mean square displacement (MSD) for a given pixel.
+     *
+     * @param msd      The MSD values.
+     * @param lagTimes The lag times corresponding to the MSD values.
+     * @param x        The x-coordinate of the pixel.
+     * @param y        The y-coordinate of the pixel.
+     */
     public static void plotMSD(double[] msd, double[] lagTimes, int x, int y) {
         Pair<Double, Double> minMax = findAdjustedMinMax(msd);
         double min = minMax.getLeft();

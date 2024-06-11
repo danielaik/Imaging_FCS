@@ -11,6 +11,11 @@ import java.util.Arrays;
 
 import static fiji.plugin.imaging_fcs.new_imfcs.utils.MatrixDeepCopy.deepCopy;
 
+/**
+ * The Correlator class is responsible for performing correlation calculations
+ * on pixel intensity data from image frames. It utilizes various settings and
+ * models to compute correlation functions and covariance matrices.
+ */
 public class Correlator {
     private final int BLOCK_LAG = 1;
     private final ExpSettingsModel settings;
@@ -23,13 +28,32 @@ public class Correlator {
     private double[][] regularizedCovarianceMatrix, varianceBlocks;
     private PixelModel[][] pixelModels;
 
-
+    /**
+     * Constructs a Correlator with the specified settings, bleach correction model, and fit model.
+     *
+     * @param settings              The experimental settings model.
+     * @param bleachCorrectionModel The bleach correction model.
+     * @param fitModel              The fit model.
+     */
     public Correlator(ExpSettingsModel settings, BleachCorrectionModel bleachCorrectionModel, FitModel fitModel) {
         this.settings = settings;
         this.bleachCorrectionModel = bleachCorrectionModel;
         this.fitModel = fitModel;
     }
 
+    /**
+     * Retrieves a block of intensity data from the specified image and coordinates.
+     *
+     * @param img          The image.
+     * @param x            The x-coordinate of the first pixel.
+     * @param y            The y-coordinate of the first pixel.
+     * @param x2           The x-coordinate of the second pixel.
+     * @param y2           The y-coordinate of the second pixel.
+     * @param initialFrame The initial frame number.
+     * @param finalFrame   The final frame number.
+     * @param mode         The mode of intensity retrieval.
+     * @return A 2D array containing the intensity data.
+     */
     private double[][] getIntensityBlock(ImagePlus img, int x, int y, int x2, int y2, int initialFrame,
                                          int finalFrame, int mode) {
         double[] intensityData = bleachCorrectionModel.getIntensity(img, x, y, mode, initialFrame, finalFrame);
@@ -48,10 +72,30 @@ public class Correlator {
         return intensityBlock;
     }
 
+    /**
+     * Performs correlation on the specified pixel within the given image and frame range.
+     *
+     * @param img          The image.
+     * @param x            The x-coordinate of the pixel.
+     * @param y            The y-coordinate of the pixel.
+     * @param initialFrame The initial frame number.
+     * @param finalFrame   The final frame number.
+     */
     public void correlate(ImagePlus img, int x, int y, int initialFrame, int finalFrame) {
         correlate(img, x, y, x, y, initialFrame, finalFrame);
     }
 
+    /**
+     * Performs correlation between two pixels within the given image and frame range.
+     *
+     * @param img          The image.
+     * @param x            The x-coordinate of the first pixel.
+     * @param y            The y-coordinate of the first pixel.
+     * @param x2           The x-coordinate of the second pixel.
+     * @param y2           The y-coordinate of the second pixel.
+     * @param initialFrame The initial frame number.
+     * @param finalFrame   The final frame number.
+     */
     public void correlate(ImagePlus img, int x, int y, int x2, int y2, int initialFrame, int finalFrame) {
         // if the pixelModels array was never instantiated then we create it
         if (pixelModels == null) {
@@ -71,6 +115,18 @@ public class Correlator {
         }
     }
 
+    /**
+     * Handles correlation using a sliding window approach.
+     *
+     * @param img          The image.
+     * @param pixelModel   The pixel model.
+     * @param x            The x-coordinate of the first pixel.
+     * @param y            The y-coordinate of the first pixel.
+     * @param x2           The x-coordinate of the second pixel.
+     * @param y2           The y-coordinate of the second pixel.
+     * @param initialFrame The initial frame number.
+     * @param finalFrame   The final frame number.
+     */
     private void handleSlidingWindowCorrelation(ImagePlus img, PixelModel pixelModel, int x, int y, int x2, int y2,
                                                 int initialFrame, int finalFrame) {
         int numFrames = finalFrame - initialFrame + 1;
@@ -89,12 +145,25 @@ public class Correlator {
                     getIntensityBlock(img, x, y, x2, y2, slidingWindowInitialFrame, slidingWindowFinalFrame, 1);
 
             blockTransform(deepCopy(intensityBlock), settings.getSlidingWindowLength());
-            calculateCF(tmpSlidingWindowModel, deepCopy(intensityBlock), settings.getSlidingWindowLength());
+            calculateCorrelationFunction(tmpSlidingWindowModel, deepCopy(intensityBlock),
+                    settings.getSlidingWindowLength());
             pixelModel.addPixelModelSlidingWindow(tmpSlidingWindowModel);
         }
         pixelModel.averageSlidingWindow(numSlidingWindow);
     }
 
+    /**
+     * Handles correlation on the full intensity trace without using a sliding window.
+     *
+     * @param img          The image.
+     * @param pixelModel   The pixel model.
+     * @param x            The x-coordinate of the first pixel.
+     * @param y            The y-coordinate of the first pixel.
+     * @param x2           The x-coordinate of the second pixel.
+     * @param y2           The y-coordinate of the second pixel.
+     * @param initialFrame The initial frame number.
+     * @param finalFrame   The final frame number.
+     */
     private void handleFullTraceCorrelation(ImagePlus img, PixelModel pixelModel, int x, int y, int x2, int y2,
                                             int initialFrame, int finalFrame) {
         int numFrames = finalFrame - initialFrame + 1;
@@ -104,9 +173,15 @@ public class Correlator {
         double[][] intensityBlock = getIntensityBlock(img, x, y, x2, y2, initialFrame, finalFrame, mode);
 
         blockTransform(deepCopy(intensityBlock), numFrames);
-        calculateCF(pixelModel, deepCopy(intensityBlock), numFrames);
+        calculateCorrelationFunction(pixelModel, deepCopy(intensityBlock), numFrames);
     }
 
+    /**
+     * Transforms the intensity correlation data using block transformation.
+     *
+     * @param intensityCorrelation The intensity correlation data.
+     * @param numFrames            The number of frames.
+     */
     private void blockTransform(double[][] intensityCorrelation, int numFrames) {
         int blockCount = calculateBlockCount(numFrames);
 
@@ -118,6 +193,12 @@ public class Correlator {
         blockIndex = determineLastIndexMeetingCriteria(blockCount, varianceBlocks, lowerQuartile, upperQuartile);
     }
 
+    /**
+     * Calculates the number of blocks for the given number of frames.
+     *
+     * @param numFrames The number of frames.
+     * @return The number of blocks.
+     */
     private int calculateBlockCount(int numFrames) {
         // if the parameters are not instantiated then we compute them
         if (lags == null) {
@@ -127,6 +208,11 @@ public class Correlator {
         return (int) Math.floor(Math.log(numSamples[BLOCK_LAG]) / Math.log(2)) - 2;
     }
 
+    /**
+     * Calculates the parameters required for correlation calculations.
+     *
+     * @param numFrames The number of frames.
+     */
     private void calculateParameters(int numFrames) {
         lags = new int[settings.getChannelNumber()];
         lagTimes = new double[settings.getChannelNumber()];
@@ -138,6 +224,12 @@ public class Correlator {
         calculateNumberOfSamples(numFrames);
     }
 
+    /**
+     * Calculates the lag times for the given number of channels in the first and higher groups.
+     *
+     * @param numChannelsFirstGroup   The number of channels in the first group.
+     * @param numChannelsHigherGroups The number of channels in the higher groups.
+     */
     private void calculateLags(int numChannelsFirstGroup, int numChannelsHigherGroups) {
         for (int i = 0; i <= numChannelsHigherGroups; i++) {
             lags[i] = i;
@@ -154,7 +246,12 @@ public class Correlator {
         }
     }
 
-    // calculate sampletimes (bin width) for the 0 lagtime kcf
+    /**
+     * Calculates the sample times (bin width) for the 0 lag time kcf.
+     *
+     * @param numChannelsFirstGroup   The number of channels in the first group.
+     * @param numChannelsHigherGroups The number of channels in the higher groups.
+     */
     private void calculateSampleTimes(int numChannelsFirstGroup, int numChannelsHigherGroups) {
         Arrays.fill(sampleTimes, 0, numChannelsFirstGroup + 1, 1);
 
@@ -165,12 +262,23 @@ public class Correlator {
         }
     }
 
+    /**
+     * Calculates the number of samples for the given number of frames.
+     *
+     * @param numFrames The number of frames.
+     */
     private void calculateNumberOfSamples(int numFrames) {
         for (int i = 0; i < settings.getChannelNumber(); i++) {
             numSamples[i] = (numFrames - lags[i]) / sampleTimes[i];
         }
     }
 
+    /**
+     * Bins the data by combining pairs of data points.
+     *
+     * @param numBinnedDataPoints The number of binned data points.
+     * @param intensityBlock      The intensity data block.
+     */
     private void binData(int numBinnedDataPoints, double[][] intensityBlock) {
         for (int i = 0; i < numBinnedDataPoints; i++) {
             intensityBlock[0][i] = intensityBlock[0][2 * i] + intensityBlock[0][2 * i + 1];
@@ -178,6 +286,16 @@ public class Correlator {
         }
     }
 
+    /**
+     * Processes blocks of intensity data for correlation calculations.
+     *
+     * @param intensityBlock The intensity data block.
+     * @param blockCount     The number of blocks.
+     * @param numFrames      The number of frames.
+     * @param varianceBlocks The variance blocks.
+     * @param lowerQuartile  The lower quartile values.
+     * @param upperQuartile  The upper quartile values.
+     */
     private void processBlocks(double[][] intensityBlock, int blockCount, int numFrames, double[][] varianceBlocks,
                                double[] lowerQuartile, double[] upperQuartile) {
         int currentIncrement = BLOCK_LAG;
@@ -208,6 +326,14 @@ public class Correlator {
         }
     }
 
+    /**
+     * Calculates the monitors for correlation data.
+     *
+     * @param numProducts    The number of products.
+     * @param intensityBlock The intensity data block.
+     * @param delay          The delay.
+     * @return An array containing the direct and delayed monitors.
+     */
     private double[] calculateMonitors(double numProducts, double[][] intensityBlock, int delay) {
         double directMonitor = 0.0;
         double delayedMonitor = 0.0;
@@ -222,6 +348,17 @@ public class Correlator {
         return new double[]{directMonitor, delayedMonitor};
     }
 
+    /**
+     * Calculates the correlation products for the given intensity data.
+     *
+     * @param numProducts    The number of products.
+     * @param intensityBlock The intensity data block.
+     * @param directMonitor  The direct monitor value.
+     * @param delayedMonitor The delayed monitor value.
+     * @param products       The array to store the products.
+     * @param delay          The delay value.
+     * @return An array containing the sum of products and the sum of squared products.
+     */
     private double[] calculateCorrelations(double numProducts, double[][] intensityBlock, double directMonitor,
                                            double delayedMonitor, double[] products, int delay) {
         double sumProd = 0.0;
@@ -237,6 +374,17 @@ public class Correlator {
         return new double[]{sumProd, sumProdSquared};
     }
 
+    /**
+     * Performs blocking operations on the intensity data.
+     *
+     * @param blockCount       The number of blocks.
+     * @param currentIncrement The current increment value.
+     * @param varianceBlocks   The variance blocks.
+     * @param directMonitor    The direct monitor value.
+     * @param delayedMonitor   The delayed monitor value.
+     * @param products         The array of products.
+     * @param numProducts      The number of products.
+     */
     private void performBlockingOperations(int blockCount, int currentIncrement, double[][] varianceBlocks,
                                            double directMonitor, double delayedMonitor, double[] products,
                                            double[] numProducts) {
@@ -260,6 +408,18 @@ public class Correlator {
         }
     }
 
+    /**
+     * Processes the correlation data for a specific lag time.
+     *
+     * @param i                   The index of the lag time.
+     * @param blockCount          The number of blocks.
+     * @param numFrames           The number of frames.
+     * @param numBinnedDataPoints The number of binned data points.
+     * @param intensityBlock      The intensity data block.
+     * @param varianceBlocks      The variance blocks.
+     * @param numProducts         The number of products.
+     * @param currentIncrement    The current increment value.
+     */
     private void processCorrelationData(int i, int blockCount, int numFrames, int numBinnedDataPoints,
                                         double[][] intensityBlock, double[][] varianceBlocks, double[] numProducts,
                                         int currentIncrement) {
@@ -285,6 +445,15 @@ public class Correlator {
                 products, numProducts);
     }
 
+    /**
+     * Determines the last index meeting the criteria for blocking.
+     *
+     * @param blockCount     The number of blocks.
+     * @param varianceBlocks The variance blocks.
+     * @param lowerQuartile  The lower quartile values.
+     * @param upperQuartile  The upper quartile values.
+     * @return The last index meeting the criteria.
+     */
     private int determineLastIndexMeetingCriteria(int blockCount, double[][] varianceBlocks, double[] lowerQuartile,
                                                   double[] upperQuartile) {
         int lastIndexMeetingCriteria = -1;
@@ -318,14 +487,38 @@ public class Correlator {
         return Math.max(index, correlatorQ - 1);
     }
 
+    /**
+     * Checks if the error bars of neighboring points do not overlap.
+     *
+     * @param index         The index of the point.
+     * @param upperQuartile The upper quartile values.
+     * @param lowerQuartile The lower quartile values.
+     * @return True if the error bars do not overlap, false otherwise.
+     */
     private boolean haveNonOverlappingErrorBars(int index, double[] upperQuartile, double[] lowerQuartile) {
         return !(upperQuartile[index] > lowerQuartile[index + 1] && upperQuartile[index + 1] > lowerQuartile[index]);
     }
 
+    /**
+     * Checks if the variance values are increasing.
+     *
+     * @param index          The index of the point.
+     * @param varianceBlocks The variance blocks.
+     * @return True if the variance values are increasing, false otherwise.
+     */
     private boolean isIncreasing(int index, double[][] varianceBlocks) {
         return varianceBlocks[1][index + 1] - varianceBlocks[1][index] > 0;
     }
 
+    /**
+     * Calculates the block variance.
+     *
+     * @param products       The array of products.
+     * @param directMonitor  The direct monitor value.
+     * @param delayedMonitor The delayed monitor value.
+     * @param numProducts    The number of products.
+     * @return The block variance.
+     */
     private double calculateBlockVariance(double[] products, double directMonitor, double delayedMonitor,
                                           double numProducts) {
         double sumProd = 0.0;
@@ -342,6 +535,15 @@ public class Correlator {
                 ((numProducts - 1) * Math.pow(directMonitor * delayedMonitor, 2));
     }
 
+    /**
+     * Calculates the mean covariance for the given products and monitors.
+     *
+     * @param products        The array of products.
+     * @param directMonitors  The direct monitor values.
+     * @param delayedMonitors The delayed monitor values.
+     * @param minProducts     The minimum number of products.
+     * @return The mean covariance.
+     */
     private double[] calculateMeanCovariance(double[][] products, double[] directMonitors, double[] delayedMonitors,
                                              int minProducts) {
         double[] meanCovariance = new double[settings.getChannelNumber()];
@@ -356,6 +558,16 @@ public class Correlator {
         return meanCovariance;
     }
 
+    /**
+     * Calculates the covariance matrix for the given products and monitors.
+     *
+     * @param covarianceMatrix The covariance matrix.
+     * @param products         The array of products.
+     * @param meanCovariance   The mean covariance values.
+     * @param directMonitors   The direct monitor values.
+     * @param delayedMonitors  The delayed monitor values.
+     * @param minProducts      The minimum number of products.
+     */
     private void calculateCovarianceMatrix(double[][] covarianceMatrix, double[][] products, double[] meanCovariance,
                                            double[] directMonitors, double[] delayedMonitors, int minProducts) {
         for (int i = 1; i < settings.getChannelNumber(); i++) {
@@ -371,6 +583,17 @@ public class Correlator {
         }
     }
 
+    /**
+     * Calculates the variance shrinkage weight for the given covariance matrix and products.
+     *
+     * @param covarianceMatrix The covariance matrix.
+     * @param products         The array of products.
+     * @param meanCovariance   The mean covariance values.
+     * @param directMonitors   The direct monitor values.
+     * @param delayedMonitors  The delayed monitor values.
+     * @param minProducts      The minimum number of products.
+     * @return The variance shrinkage weight.
+     */
     private double calculateVarianceShrinkageWeight(double[][] covarianceMatrix, double[][] products,
                                                     double[] meanCovariance, double[] directMonitors,
                                                     double[] delayedMonitors, int minProducts) {
@@ -407,6 +630,18 @@ public class Correlator {
         return Math.max(Math.min(1, numerator / denominator), 0);
     }
 
+    /**
+     * Calculates the covariance shrinkage weight for the given products and covariance matrix.
+     *
+     * @param products          The array of products.
+     * @param meanCovariance    The mean covariance values.
+     * @param directMonitors    The direct monitor values.
+     * @param delayedMonitors   The delayed monitor values.
+     * @param covarianceMatrix  The covariance matrix.
+     * @param correlationMatrix The correlation matrix.
+     * @param minProducts       The minimum number of products.
+     * @return The covariance shrinkage weight.
+     */
     private double calculateCovarianceShrinkageWeight(double[][] products, double[] meanCovariance,
                                                       double[] directMonitors, double[] delayedMonitors,
                                                       double[][] covarianceMatrix, double[][] correlationMatrix,
@@ -445,6 +680,15 @@ public class Correlator {
         return Math.max(Math.min(1, numerator / denominator), 0);
     }
 
+    /**
+     * Regularizes the covariance matrix using the given weights and correlation matrix.
+     *
+     * @param covarianceMatrix          The covariance matrix.
+     * @param correlationMatrix         The correlation matrix.
+     * @param varianceShrinkageWeight   The variance shrinkage weight.
+     * @param covarianceShrinkageWeight The covariance shrinkage weight.
+     * @param minProducts               The minimum number of products.
+     */
     private void regularizeCovarianceMatrix(double[][] covarianceMatrix, double[][] correlationMatrix,
                                             double varianceShrinkageWeight, double covarianceShrinkageWeight,
                                             int minProducts) {
@@ -469,7 +713,14 @@ public class Correlator {
         }
     }
 
-    private void calculateCF(PixelModel pixelModel, double[][] intensityBlocks, int numFrames) {
+    /**
+     * Calculates the correlation function (CF) for the given pixel model and intensity blocks.
+     *
+     * @param pixelModel      The pixel model to store the results.
+     * @param intensityBlocks The array of intensity values for the two traces which are correlated.
+     * @param numFrames       The number of frames.
+     */
+    private void calculateCorrelationFunction(PixelModel pixelModel, double[][] intensityBlocks, int numFrames) {
         // intensityBlocks is the array of intensity values for the two traces witch are correlated
         pixelModel.setStandardDeviationAcf(new double[settings.getChannelNumber()]);
         pixelModel.setVarianceAcf(new double[settings.getChannelNumber()]);

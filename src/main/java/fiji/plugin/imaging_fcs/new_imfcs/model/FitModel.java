@@ -8,6 +8,10 @@ import java.util.Arrays;
 import static fiji.plugin.imaging_fcs.new_imfcs.constants.Constants.DIFFUSION_COEFFICIENT_BASE;
 import static fiji.plugin.imaging_fcs.new_imfcs.constants.Constants.PIXEL_SIZE_REAL_SPACE_CONVERSION_FACTOR;
 
+/**
+ * The FitModel class encapsulates the parameters and functionality required for
+ * performing fits in fluorescence correlation spectroscopy (FCS) data analysis.
+ */
 public class FitModel {
     private final ExpSettingsModel settings;
     private Parameter D, N, F2, F3, D2, D3, G, vx, vy, fTrip, tTrip;
@@ -16,13 +20,20 @@ public class FitModel {
     private boolean fix = false;
     private boolean GLS = false;
     private boolean bayes = false;
-    private boolean activated = false;
 
+    /**
+     * Constructs a new FitModel with the given experimental settings.
+     *
+     * @param settings The experimental settings.
+     */
     public FitModel(ExpSettingsModel settings) {
         this.settings = settings;
         initValues();
     }
 
+    /**
+     * Initializes the parameter values to their default settings.
+     */
     private void initValues() {
         D = new Parameter(1 / DIFFUSION_COEFFICIENT_BASE, false);
         N = new Parameter(1, false);
@@ -46,6 +57,9 @@ public class FitModel {
         fitEnd = settings.getChannelNumber() - 1;
     }
 
+    /**
+     * Resets the parameter values to their default settings.
+     */
     public void setDefaultValues() {
         D.value = 1 / DIFFUSION_COEFFICIENT_BASE;
         N.value = 1;
@@ -69,10 +83,18 @@ public class FitModel {
         fitEnd = settings.getChannelNumber() - 1;
     }
 
+    /**
+     * Resets the fit end position to the maximum channel number.
+     */
     public void resetFitEnd() {
         fitEnd = settings.getChannelNumber() - 1;
     }
 
+    /**
+     * Retrieves the values of parameters that are not held (fixed).
+     *
+     * @return An array of parameter values that are not held.
+     */
     public double[] getNonHeldParameterValues() {
         Parameter[] parameters = {N, D, vx, vy, G, F2, D2, F3, D3, fTrip, tTrip};
 
@@ -82,6 +104,12 @@ public class FitModel {
                 .toArray();
     }
 
+    /**
+     * Fills an array of parameters with given values, considering whether each parameter is held.
+     *
+     * @param params The array of parameter values to fill.
+     * @return An array of filled parameter values.
+     */
     public double[] fillParamsArray(double[] params) {
         Parameter[] parameters = {N, D, vx, vy, G, F2, D2, F3, D3, fTrip, tTrip};
         double[] paramsFilled = new double[parameters.length];
@@ -98,6 +126,12 @@ public class FitModel {
         return paramsFilled;
     }
 
+    /**
+     * Filters an array of fit parameters to include only those that are not held.
+     *
+     * @param fitParams The array of fit parameters.
+     * @return An array of filtered fit parameters.
+     */
     public double[] filterFitArray(double[] fitParams) {
         Parameter[] parameters = {N, D, vx, vy, G, F2, D2, F3, D3, fTrip, tTrip};
 
@@ -107,10 +141,20 @@ public class FitModel {
                 .toArray();
     }
 
+    /**
+     * Checks if there are any parameters that can be fit.
+     *
+     * @return true if there are parameters to fit, false otherwise.
+     */
     public boolean canFit() {
         return getNonHeldParameterValues().length > 0;
     }
 
+    /**
+     * Updates the parameter values based on the given fit parameters.
+     *
+     * @param parameters The fit parameters.
+     */
     public void updateParameterValues(PixelModel.FitParameters parameters) {
         D.value = parameters.getD();
         N.value = parameters.getN();
@@ -125,6 +169,12 @@ public class FitModel {
         tTrip.value = parameters.getTTrip();
     }
 
+    /**
+     * Performs the fitting operation on the given pixel model and lag times.
+     *
+     * @param pixelModel The pixel model to fit.
+     * @param lagTimes   The lag times for fitting.
+     */
     public void fit(PixelModel pixelModel, double[] lagTimes) {
         if (bayes) {
             // bayes fit
@@ -368,35 +418,56 @@ public class FitModel {
         this.bayes = bayes;
     }
 
-    public boolean isActivated() {
-        return activated;
-    }
-
-    public void setActivated(boolean activated) {
-        this.activated = activated;
-    }
-
+    /**
+     * The Parameter class encapsulates a parameter with a value and a hold state.
+     */
     public static class Parameter {
         private double value;
         private boolean hold;
 
+        /**
+         * Constructs a new Parameter with the given value and hold state.
+         *
+         * @param value The value of the parameter.
+         * @param hold  The hold state of the parameter.
+         */
         public Parameter(double value, boolean hold) {
             this.value = value;
             this.hold = hold;
         }
 
+        /**
+         * Gets the value of the parameter.
+         *
+         * @return The value of the parameter.
+         */
         public double getValue() {
             return value;
         }
 
+        /**
+         * Sets the value of the parameter.
+         *
+         * @param value The new value of the parameter.
+         */
         public void setValue(double value) {
             this.value = value;
         }
 
+        /**
+         * Checks if the parameter is held.
+         *
+         * @return true if the parameter is held, false otherwise.
+         */
         public boolean isHeld() {
             return hold;
         }
 
+        /**
+         * Sets the hold state of the parameter.
+         *
+         * @param hold The new hold state of the parameter.
+         */
         public void setHold(boolean hold) {
             this.hold = hold;
         }
