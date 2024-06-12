@@ -159,6 +159,25 @@ public class PixelModel {
         }
 
         /**
+         * Constructs a new FitParameters instance with the given array of parameter values.
+         *
+         * @param params The array of parameter values.
+         */
+        public FitParameters(double[] params) {
+            N = params[0];
+            D = params[1];
+            vx = params[2];
+            vy = params[3];
+            G = params[4];
+            F2 = params[5];
+            D2 = params[6];
+            F3 = params[7];
+            D3 = params[8];
+            fTrip = params[9];
+            tTrip = params[10];
+        }
+
+        /**
          * Selects the value of the parameter, preferring the held value from the fit model if it exists.
          *
          * @param parameter The parameter from the fit model.
