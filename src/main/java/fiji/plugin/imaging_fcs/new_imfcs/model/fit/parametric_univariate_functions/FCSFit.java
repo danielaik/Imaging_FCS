@@ -2,6 +2,7 @@ package fiji.plugin.imaging_fcs.new_imfcs.model.fit.parametric_univariate_functi
 
 import fiji.plugin.imaging_fcs.new_imfcs.model.ExpSettingsModel;
 import fiji.plugin.imaging_fcs.new_imfcs.model.FitModel;
+import fiji.plugin.imaging_fcs.new_imfcs.model.PixelModel;
 import org.apache.commons.math3.analysis.ParametricUnivariateFunction;
 import org.apache.commons.math3.special.Erf;
 
@@ -176,23 +177,11 @@ public abstract class FCSFit implements ParametricUnivariateFunction {
 
     @Override
     public double[] gradient(double x, double[] params) {
-        params = fitModel.fillParamsArray(params);
+        PixelModel.FitParameters p = new PixelModel.FitParameters(fitModel.fillParamsArray(params));
 
-        double N = params[0];
-        double D = params[1];
-        double vx = params[2];
-        double vy = params[3];
-        double G = params[4];
-        double F2 = params[5];
-        double D2 = params[6];
-        double F3 = params[7];
-        double D3 = params[8];
-        double fTrip = params[9];
-        double tTrip = params[10];
-
-        double[] component1 = calculateComponent(x, D, vx, vy);
-        double[] component2 = calculateComponent(x, D2, vx, vy);
-        double[] component3 = calculateComponent(x, D3, vx, vy);
+        double[] component1 = calculateComponent(x, p.getD(), p.getVx(), p.getVy());
+        double[] component2 = calculateComponent(x, p.getD2(), p.getVx(), p.getVy());
+        double[] component3 = calculateComponent(x, p.getD3(), p.getVx(), p.getVy());
 
         double plat1 = component1[0], dDplat1 = component1[1], dvxPerfXt1 = component1[2], dvyPerfYt1 = component1[3];
         double pspim1 = component1[4], dDpspim1 = component1[5], acf1 = component1[6];
@@ -204,31 +193,32 @@ public abstract class FCSFit implements ParametricUnivariateFunction {
         double pspim3 = component3[4], dDpspim3 = component3[5], acf3 = component3[6];
 
         // Triplet Correction
-        double triplet = calculateTriplet(x, fTrip, tTrip);
-        double dTripletFtrip = calculateDTripletFtrip(x, fTrip, tTrip);
-        double dTripletTtrip = calculateDTripletTtrip(x, fTrip, tTrip);
+        double triplet = calculateTriplet(x, p.getFTrip(), p.getTTrip());
+        double dTripletFtrip = calculateDTripletFtrip(x, p.getFTrip(), p.getTTrip());
+        double dTripletTtrip = calculateDTripletTtrip(x, p.getFTrip(), p.getTTrip());
 
         // Correction Factors
-        double[] pf = calculateCorrectionFactors(F2, F3, q2, q3);
+        double[] pf = calculateCorrectionFactors(p.getF2(), p.getF3(), q2, q3);
         double pf1 = pf[0], pf2 = pf[1], pf3 = pf[2];
-        double[] df = calculateDNomFactors(F2, F3, q2, q3);
+        double[] df = calculateDNomFactors(p.getF2(), p.getF3(), q2, q3);
         double dfNom = df[0], df21 = df[1], df22 = df[2], df23 = df[3], df31 = df[4], df32 = df[5], df33 = df[6];
 
-        double pacf = (1 / N) * ((1 - F2 - F3) * acf1 + Math.pow(q2, 2) * F2 * acf2 + Math.pow(q3, 2) * F3 * acf3) /
-                Math.pow(1 - F2 - F3 + q2 * F2 + q3 * F3, 2) * triplet + G;
+        double pacf = (1 / p.getN()) * ((1 - p.getF2() - p.getF3()) * acf1 + Math.pow(q2, 2) * p.getF2() * acf2 +
+                Math.pow(q3, 2) * p.getF3() * acf3) /
+                Math.pow(1 - p.getF2() - p.getF3() + q2 * p.getF2() + q3 * p.getF3(), 2) * triplet + p.getG();
 
         double[] results = new double[]{
-                (-1 / Math.pow(N, 2)) * (pf1 * acf1 + pf2 * acf2 + pf3 * acf3) * triplet,
-                (1 / N) * pf1 * (plat1 * dDpspim1 + pspim1 * dDplat1),
-                (1 / N) * (pf1 * dvxPerfXt1 * plat1 * pspim1 + pf2 * dvxPerfXt2 * plat2 * pspim2 +
+                (-1 / Math.pow(p.getN(), 2)) * (pf1 * acf1 + pf2 * acf2 + pf3 * acf3) * triplet,
+                (1 / p.getN()) * pf1 * (plat1 * dDpspim1 + pspim1 * dDplat1),
+                (1 / p.getN()) * (pf1 * dvxPerfXt1 * plat1 * pspim1 + pf2 * dvxPerfXt2 * plat2 * pspim2 +
                         pf3 * dvxPerfXt3 * plat3 * pspim3) * triplet,
-                (1 / N) * (pf1 * dvyPerfYt1 * plat1 * pspim1 + pf2 * dvyPerfYt2 * plat2 * pspim2 +
+                (1 / p.getN()) * (pf1 * dvyPerfYt1 * plat1 * pspim1 + pf2 * dvyPerfYt2 * plat2 * pspim2 +
                         pf3 * dvyPerfYt3 * plat3 * pspim3) * triplet,
                 1,
-                (1 / N) * (1 / dfNom) * (df21 * acf1 + df22 * acf2 + df23 * acf3) * triplet,
-                (1 / N) * pf2 * (plat2 * dDpspim2 + pspim2 * dDplat2) * triplet,
-                (1 / N) * (1 / dfNom) * (df31 * acf1 + df32 * acf2 + df33 * acf3) * triplet,
-                (1 / N) * pf3 * (plat3 * dDpspim3 + pspim3 * dDplat3) * triplet,
+                (1 / p.getN()) * (1 / dfNom) * (df21 * acf1 + df22 * acf2 + df23 * acf3) * triplet,
+                (1 / p.getN()) * pf2 * (plat2 * dDpspim2 + pspim2 * dDplat2) * triplet,
+                (1 / p.getN()) * (1 / dfNom) * (df31 * acf1 + df32 * acf2 + df33 * acf3) * triplet,
+                (1 / p.getN()) * pf3 * (plat3 * dDpspim3 + pspim3 * dDplat3) * triplet,
                 dTripletFtrip * pacf,
                 dTripletTtrip * pacf
         };
@@ -312,30 +302,19 @@ public abstract class FCSFit implements ParametricUnivariateFunction {
 
     @Override
     public double value(double x, double[] params) {
-        params = fitModel.fillParamsArray(params);
+        PixelModel.FitParameters p = new PixelModel.FitParameters(fitModel.fillParamsArray(params));
 
-        double N = params[0];
-        double D = params[1];
-        double vx = params[2];
-        double vy = params[3];
-        double G = params[4];
-        double F2 = params[5];
-        double D2 = params[6];
-        double F3 = params[7];
-        double D3 = params[8];
-        double fTrip = params[9];
-        double tTrip = params[10];
+        double acf1 = calculateComponent(x, p.getD(), p.getVx(), p.getVy())[6];
+        double acf2 = calculateComponent(x, p.getD2(), p.getVx(), p.getVy())[6];
+        double acf3 = calculateComponent(x, p.getD3(), p.getVx(), p.getVy())[6];
 
-        double acf1 = calculateComponent(x, D, vx, vy)[6];
-        double acf2 = calculateComponent(x, D2, vx, vy)[6];
-        double acf3 = calculateComponent(x, D3, vx, vy)[6];
+        double triplet = calculateTriplet(x, p.getFTrip(), p.getTTrip());
 
-        double triplet = calculateTriplet(x, fTrip, tTrip);
+        double weightFactor = 1 - p.getF2() - p.getF3() + q2 * p.getF2() + q3 * p.getF3();
+        double weightedAcf = (1 - p.getF2() - p.getF3()) * acf1 + Math.pow(q2, 2) * p.getF2() * acf2 +
+                Math.pow(q3, 2) * p.getF3() * acf3;
 
-        double weightFactor = 1 - F2 - F3 + q2 * F2 + q3 * F3;
-        double weightedAcf = (1 - F2 - F3) * acf1 + Math.pow(q2, 2) * F2 * acf2 + Math.pow(q3, 2) * F3 * acf3;
-
-        return (1 / N) * (weightedAcf / Math.pow(weightFactor, 2)) * triplet + G;
+        return (1 / p.getN()) * (weightedAcf / Math.pow(weightFactor, 2)) * triplet + p.getG();
     }
 
     /**

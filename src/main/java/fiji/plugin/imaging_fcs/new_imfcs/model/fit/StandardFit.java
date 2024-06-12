@@ -4,9 +4,9 @@ import fiji.plugin.imaging_fcs.new_imfcs.constants.Constants;
 import fiji.plugin.imaging_fcs.new_imfcs.model.ExpSettingsModel;
 import fiji.plugin.imaging_fcs.new_imfcs.model.FitModel;
 import fiji.plugin.imaging_fcs.new_imfcs.model.PixelModel;
-import fiji.plugin.imaging_fcs.new_imfcs.model.fit.parametric_univariate_functions.FCCS_2p;
-import fiji.plugin.imaging_fcs.new_imfcs.model.fit.parametric_univariate_functions.FCS_3p;
-import fiji.plugin.imaging_fcs.new_imfcs.model.fit.parametric_univariate_functions.FCS_3p_SPIM;
+import fiji.plugin.imaging_fcs.new_imfcs.model.fit.parametric_univariate_functions.FCCS2p;
+import fiji.plugin.imaging_fcs.new_imfcs.model.fit.parametric_univariate_functions.FCS3p;
+import fiji.plugin.imaging_fcs.new_imfcs.model.fit.parametric_univariate_functions.FCS3pSPIM;
 import fiji.plugin.imaging_fcs.new_imfcs.utils.Pair;
 import org.apache.commons.math3.analysis.ParametricUnivariateFunction;
 import org.apache.commons.math3.fitting.WeightedObservedPoint;
@@ -50,11 +50,11 @@ public class StandardFit extends BaseFit {
     private ParametricUnivariateFunction selectFitFunction(ExpSettingsModel settings) {
         switch (settings.getFitModel()) {
             case Constants.ITIR_FCS_2D:
-                return new FCS_3p(settings, model, 0); // TODO: Set mode
+                return new FCS3p(settings, model, 0); // TODO: Set mode
             case Constants.SPIM_FCS_3D:
-                return new FCS_3p_SPIM(settings, model);
+                return new FCS3pSPIM(settings, model);
             case Constants.DC_FCCS_2D:
-                return new FCCS_2p(settings, model);
+                return new FCCS2p(settings, model);
             default:
                 throw new IllegalArgumentException("Unknown fit model: " + settings.getFitModel());
         }
@@ -120,7 +120,7 @@ public class StandardFit extends BaseFit {
         pixelModel.setFittedAcf(fitAcf);
         pixelModel.setResiduals(residuals);
 
-        pixelModel.setFitParams(new PixelModel.FitParameters(model.fillParamsArray(result), model));
+        pixelModel.setFitParams(new PixelModel.FitParameters(model.fillParamsArray(result)));
         if (!model.isFix()) {
             model.updateParameterValues(pixelModel.getFitParams());
         }
