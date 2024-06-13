@@ -103,10 +103,11 @@ public final class ImageController {
     private void correlatePixel(int x, int y) {
         SelectedPixel selectedPixel = new SelectedPixel(imageModel, bleachCorrectionModel, correlator, settings);
         try {
-            Point pixel = selectedPixel.performCorrelationFunctionEvaluation(x, y);
+            Point[] cursorPositions = selectedPixel.performCorrelationFunctionEvaluation(x, y);
+            Point pixel = cursorPositions[0];
             fitController.fit(correlator.getPixelModel(pixel.x, pixel.y), correlator.getLagTimes());
 
-            plotResuts(pixel.x, pixel.y);
+            plotResuts(cursorPositions);
         } catch (RuntimeException e) {
             IJ.showMessage("Error", e.getMessage());
         }
@@ -115,24 +116,26 @@ public final class ImageController {
     /**
      * Plots the results for a pixel at the given coordinates.
      *
-     * @param x The x-coordinate of the pixel.
-     * @param y The y-coordinate of the pixel.
+     * @param cursorPositions The array of cursor positions where the two first elements represent the pixel
+     *                        coordinates.
      */
-    private void plotResuts(int x, int y) {
-        PixelModel pixelModel = correlator.getPixelModel(x, y);
+    private void plotResuts(Point[] cursorPositions) {
+        Point p = cursorPositions[0];
+        PixelModel pixelModel = correlator.getPixelModel(p.x, p.y);
 
         if (options.isPlotACFCurves()) {
-            Plots.plotCorrelationFunction(pixelModel, correlator.getLagTimes(), x, y, settings.getBinning(),
-                    fitController.getFitStart(), fitController.getFitEnd());
+            Plots.plotCorrelationFunction(pixelModel, correlator.getLagTimes(), cursorPositions,
+                    settings.getBinning(), fitController.getFitStart(), fitController.getFitEnd());
         }
 
         if (options.isPlotSDCurves()) {
-            Plots.plotStandardDeviation(pixelModel.getStandardDeviationAcf(), correlator.getLagTimes(), x, y);
+            Plots.plotStandardDeviation(pixelModel.getStandardDeviationAcf(), correlator.getLagTimes(), p);
         }
 
         if (options.isPlotIntensityCurves()) {
             Plots.plotIntensityTrace(bleachCorrectionModel.getIntensityTrace1(),
-                    bleachCorrectionModel.getIntensityTime(), x, y);
+                    bleachCorrectionModel.getIntensityTrace2(), bleachCorrectionModel.getIntensityTime(),
+                    cursorPositions);
         }
 
         if (options.isPlotBlockingCurve()) {
@@ -146,11 +149,11 @@ public final class ImageController {
         if (settings.isMSD()) {
             pixelModel.setMSD(MeanSquareDisplacement.correlationToMSD(pixelModel.getAcf(), settings.getParamAx(),
                     settings.getParamAy(), settings.getParamW(), settings.getSigmaZ(), settings.isMSD3d()));
-            Plots.plotMSD(pixelModel.getMSD(), correlator.getLagTimes(), x, y);
+            Plots.plotMSD(pixelModel.getMSD(), correlator.getLagTimes(), p);
         }
 
         if (options.isPlotResCurves() && pixelModel.isFitted()) {
-            Plots.plotResiduals(pixelModel.getResiduals(), correlator.getLagTimes(), x, y);
+            Plots.plotResiduals(pixelModel.getResiduals(), correlator.getLagTimes(), p);
         }
     }
 

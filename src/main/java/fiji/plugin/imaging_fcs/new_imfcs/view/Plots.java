@@ -177,18 +177,20 @@ public class Plots {
     }
 
     /**
-     * Plots the Correlation Function for a given pixel.
+     * Plots the Correlation Function for given pixels.
      *
      * @param pixelModel The model containing the ACF and fitted ACF values.
      * @param lagTimes   The lag times corresponding to the ACF values.
-     * @param x          The x-coordinate of the pixel.
-     * @param y          The y-coordinate of the pixel.
+     * @param pixels     The points representing the pixels.
      * @param binning    The binning factor.
      * @param fitStart   The starting index for the fitted ACF range.
      * @param fitEnd     The ending index for the fitted ACF range.
      */
-    public static void plotCorrelationFunction(PixelModel pixelModel, double[] lagTimes, int x, int y, Point binning,
-                                               int fitStart, int fitEnd) {
+    public static void plotCorrelationFunction(PixelModel pixelModel, double[] lagTimes, Point[] pixels,
+                                               Point binning, int fitStart, int fitEnd) {
+        Point p1 = pixels[0];
+        Point p2 = pixels[1];
+
         Pair<Double, Double> minMax = findAdjustedMinMax(pixelModel.getAcf());
         double minScale = minMax.getLeft();
         double maxScale = minMax.getRight();
@@ -201,8 +203,14 @@ public class Plots {
         plot.setLimits(lagTimes[1], 2 * lagTimes[lagTimes.length - 1], minScale, maxScale);
         plot.setJustification(Plot.CENTER);
 
-        // TODO: create plot label for CCF
-        plot.addLabel(0.5, 0, String.format(" ACF of (%d, %d) at %dx%d binning.", x, y, binning.x, binning.y));
+        String description = String.format(" ACF of (%d, %d) at %dx%d binning.", p1.x, p1.y, binning.x, binning.y);
+        if (!p1.equals(p2)) {
+            description =
+                    String.format(" CFF of (%d, %d) and (%d, %d) at %dx%d binning.", p1.x, p1.y, p2.x, p2.y,
+                            binning.x, binning.y);
+        }
+
+        plot.addLabel(0.5, 0, description);
 
         plot.draw();
 
@@ -222,10 +230,9 @@ public class Plots {
      *
      * @param blockStandardDeviation The standard deviation values.
      * @param lagTimes               The lag times corresponding to the standard deviation values.
-     * @param x                      The x-coordinate of the pixel.
-     * @param y                      The y-coordinate of the pixel.
+     * @param p                      The point representing the pixel.
      */
-    public static void plotStandardDeviation(double[] blockStandardDeviation, double[] lagTimes, int x, int y) {
+    public static void plotStandardDeviation(double[] blockStandardDeviation, double[] lagTimes, Point p) {
         Pair<Double, Double> minMax = findAdjustedMinMax(blockStandardDeviation);
         double min = minMax.getLeft();
         double max = minMax.getRight();
@@ -237,7 +244,7 @@ public class Plots {
         plot.setLogScaleX();
         plot.setLimits(lagTimes[1], lagTimes[lagTimes.length - 1], min, max);
         plot.setJustification(Plot.CENTER);
-        plot.addLabel(0.5, 0, String.format(" StdDev (%d, %d)", x, y));
+        plot.addLabel(0.5, 0, String.format(" StdDev (%d, %d)", p.x, p.y));
         plot.draw();
 
         // TODO: Add other lines if DC-FCCS(2D) and FCCSDisplay is selected
@@ -245,14 +252,18 @@ public class Plots {
     }
 
     /**
-     * Plots the intensity trace for a given pixel.
+     * Plots the intensity trace for given pixels.
      *
-     * @param intensityTrace The intensity trace values.
-     * @param intensityTime  The time points corresponding to the intensity trace values.
-     * @param x              The x-coordinate of the pixel.
-     * @param y              The y-coordinate of the pixel.
+     * @param intensityTrace  The intensity trace values.
+     * @param intensityTrace2 The second set of intensity trace values for comparison.
+     * @param intensityTime   The time points corresponding to the intensity trace values.
+     * @param pixels          The points representing the pixels.
      */
-    public static void plotIntensityTrace(double[] intensityTrace, double[] intensityTime, int x, int y) {
+    public static void plotIntensityTrace(double[] intensityTrace, double[] intensityTrace2, double[] intensityTime,
+                                          Point[] pixels) {
+        Point p1 = pixels[0];
+        Point p2 = pixels[1];
+
         Pair<Double, Double> minMax = findAdjustedMinMax(intensityTrace);
         double min = minMax.getLeft();
         double max = minMax.getRight();
@@ -262,11 +273,18 @@ public class Plots {
         plot.setLimits(intensityTime[1], intensityTime[intensityTime.length - 1], min, max);
         plot.setColor(Color.BLUE);
         plot.addPoints(intensityTime, intensityTrace, Plot.LINE);
-        plot.setJustification(Plot.CENTER);
-        plot.addLabel(0.5, 0, String.format(" Intensity Trace (%d, %d)", x, y));
-        plot.draw();
 
-        // TODO: add intensity trace 2 if needed
+        String description = String.format(" Intensity Trace (%d, %d)", p1.x, p1.y);
+        if (!p1.equals(p2)) {
+            description = String.format(" Intensity Trace (%d, %d) and (%d, %d)", p1.x, p1.y, p2.x, p2.y);
+            plot.setColor(Color.RED);
+            plot.addPoints(intensityTime, intensityTrace2, Plot.LINE);
+            plot.setColor(Color.BLUE);
+        }
+
+        plot.setJustification(Plot.CENTER);
+        plot.addLabel(0.5, 0, description);
+        plot.draw();
 
         intensityTraceWindow = plotWindow(plot, intensityTraceWindow, INTENSITY_POSITION);
     }
@@ -276,10 +294,9 @@ public class Plots {
      *
      * @param msd      The MSD values.
      * @param lagTimes The lag times corresponding to the MSD values.
-     * @param x        The x-coordinate of the pixel.
-     * @param y        The y-coordinate of the pixel.
+     * @param p        The point representing the pixel.
      */
-    public static void plotMSD(double[] msd, double[] lagTimes, int x, int y) {
+    public static void plotMSD(double[] msd, double[] lagTimes, Point p) {
         Pair<Double, Double> minMax = findAdjustedMinMax(msd);
         double min = minMax.getLeft();
         double max = minMax.getRight();
@@ -292,7 +309,7 @@ public class Plots {
         plot.setColor(Color.BLUE);
         plot.addPoints(msdTime, msd, Plot.LINE);
         plot.setJustification(Plot.CENTER);
-        plot.addLabel(0.5, 0, String.format(" MSD (%d, %d)", x, y));
+        plot.addLabel(0.5, 0, String.format(" MSD (%d, %d)", p.x, p.y));
         plot.draw();
 
         msdWindow = plotWindow(plot, msdWindow, MSD_POSITION);
@@ -303,10 +320,9 @@ public class Plots {
      *
      * @param residuals The residual values.
      * @param lagTimes  The lag times corresponding to the residual values.
-     * @param x         The x-coordinate of the pixel.
-     * @param y         The y-coordinate of the pixel.
+     * @param p         The point representing the pixel.
      */
-    public static void plotResiduals(double[] residuals, double[] lagTimes, int x, int y) {
+    public static void plotResiduals(double[] residuals, double[] lagTimes, Point p) {
         Pair<Double, Double> minMax = findAdjustedMinMax(residuals);
         double min = minMax.getLeft();
         double max = minMax.getRight();
@@ -318,7 +334,7 @@ public class Plots {
         plot.setColor(Color.BLUE);
         plot.addPoints(lagTimes, residuals, Plot.LINE);
         plot.setJustification(Plot.CENTER);
-        plot.addLabel(0.5, 0, String.format(" Residuals (%d, %d)", x, y));
+        plot.addLabel(0.5, 0, String.format(" Residuals (%d, %d)", p.x, p.y));
         plot.draw();
 
         residualsWindow = plotWindow(plot, residualsWindow, RESIDUALS_POSITION);
