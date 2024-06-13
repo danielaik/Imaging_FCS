@@ -14,6 +14,7 @@ import ij.IJ;
 import ij.ImagePlus;
 import ij.gui.Roi;
 
+import java.awt.*;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
 import java.awt.event.MouseEvent;
@@ -102,10 +103,10 @@ public final class ImageController {
     private void correlatePixel(int x, int y) {
         SelectedPixel selectedPixel = new SelectedPixel(imageModel, bleachCorrectionModel, correlator, settings);
         try {
-            selectedPixel.performCorrelationFunctionEvaluation(x, y);
-            fitController.fit(correlator.getPixelModel(x, y), correlator.getLagTimes());
+            Point pixel = selectedPixel.performCorrelationFunctionEvaluation(x, y);
+            fitController.fit(correlator.getPixelModel(pixel.x, pixel.y), correlator.getLagTimes());
 
-            plotResuts(x, y);
+            plotResuts(pixel.x, pixel.y);
         } catch (RuntimeException e) {
             IJ.showMessage("Error", e.getMessage());
         }

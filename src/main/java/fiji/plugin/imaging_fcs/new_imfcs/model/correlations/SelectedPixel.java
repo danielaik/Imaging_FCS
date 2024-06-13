@@ -46,8 +46,9 @@ public class SelectedPixel {
      *
      * @param x the x-coordinate of the pixel
      * @param y the y-coordinate of the pixel
+     * @return the position of the pixel after conversion to image space
      */
-    public void performCorrelationFunctionEvaluation(int x, int y) {
+    public Point performCorrelationFunctionEvaluation(int x, int y) {
         Point[] cursorPositions = convertToImageSpace(x, y);
         Point cursorPosition1 = cursorPositions[0];
         Point cursorPosition2 = cursorPositions[1];
@@ -61,6 +62,7 @@ public class SelectedPixel {
         }
 
         processPixels(cursorPosition1, cursorPosition2);
+        return cursorPosition1;
     }
 
     /**
