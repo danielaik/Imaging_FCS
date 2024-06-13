@@ -139,4 +139,12 @@ public class FitController {
     public boolean isGLS() {
         return model.isGLS();
     }
+
+    public int getFitStart() {
+        return model.getFitStart();
+    }
+
+    public int getFitEnd() {
+        return model.getFitEnd();
+    }
 }

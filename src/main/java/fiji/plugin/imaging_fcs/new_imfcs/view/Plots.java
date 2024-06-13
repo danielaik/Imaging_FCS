@@ -1,6 +1,7 @@
 package fiji.plugin.imaging_fcs.new_imfcs.view;
 
 import fiji.plugin.imaging_fcs.new_imfcs.constants.Constants;
+import fiji.plugin.imaging_fcs.new_imfcs.model.PixelModel;
 import fiji.plugin.imaging_fcs.new_imfcs.utils.Pair;
 import ij.IJ;
 import ij.ImagePlus;
@@ -172,22 +173,25 @@ public class Plots {
     }
 
     /**
-     * Plots the single autocorrelation function (ACF) for a given pixel.
+     * Plots the Correlation Function for a given pixel.
      *
-     * @param acf      The ACF values.
-     * @param lagTimes The lag times corresponding to the ACF values.
-     * @param x        The x-coordinate of the pixel.
-     * @param y        The y-coordinate of the pixel.
-     * @param binning  The binning factor.
+     * @param pixelModel The model containing the ACF and fitted ACF values.
+     * @param lagTimes   The lag times corresponding to the ACF values.
+     * @param x          The x-coordinate of the pixel.
+     * @param y          The y-coordinate of the pixel.
+     * @param binning    The binning factor.
+     * @param fitStart   The starting index for the fitted ACF range.
+     * @param fitEnd     The ending index for the fitted ACF range.
      */
-    public static void plotSingleACF(double[] acf, double[] lagTimes, int x, int y, Point binning) {
-        Pair<Double, Double> minMax = findAdjustedMinMax(acf);
+    public static void plotCorrelationFunction(PixelModel pixelModel, double[] lagTimes, int x, int y, Point binning,
+                                               int fitStart, int fitEnd) {
+        Pair<Double, Double> minMax = findAdjustedMinMax(pixelModel.getAcf());
         double minScale = minMax.getLeft();
         double maxScale = minMax.getRight();
 
         Plot plot = new Plot("CF plot", "tau [s]", "G (tau)");
         plot.setColor(Color.BLUE);
-        plot.addPoints(lagTimes, acf, Plot.LINE);
+        plot.addPoints(lagTimes, pixelModel.getAcf(), Plot.LINE);
         plot.setFrameSize(ACF_DIMENSION.width, ACF_DIMENSION.height);
         plot.setLogScaleX();
         plot.setLimits(lagTimes[1], 2 * lagTimes[lagTimes.length - 1], minScale, maxScale);
@@ -197,6 +201,14 @@ public class Plots {
         plot.addLabel(0.5, 0, String.format(" ACF of (%d, %d) at %dx%d binning.", x, y, binning.x, binning.y));
 
         plot.draw();
+
+        // Plot the fitted ACF
+        if (pixelModel.isFitted()) {
+            plot.setColor(Color.RED);
+            plot.addPoints(Arrays.copyOfRange(lagTimes, fitStart,
+                    fitEnd + 1), Arrays.copyOfRange(pixelModel.getFittedAcf(), fitStart, fitEnd + 1), Plot.LINE);
+            plot.draw();
+        }
 
         acfWindow = plotWindow(plot, acfWindow, ACF_POSITION);
     }

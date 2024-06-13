@@ -48,7 +48,10 @@ public final class ImageController {
      * @param settings                        The experimental settings model.
      * @param options                         The options model.
      */
-    public ImageController(MainPanelController mainPanelController, ImageModel imageModel, BackgroundSubtractionController backgroundSubtractionController, FitController fitController, BleachCorrectionModel bleachCorrectionModel, Correlator correlator, ExpSettingsModel settings, OptionsModel options) {
+    public ImageController(MainPanelController mainPanelController, ImageModel imageModel,
+                           BackgroundSubtractionController backgroundSubtractionController,
+                           FitController fitController, BleachCorrectionModel bleachCorrectionModel,
+                           Correlator correlator, ExpSettingsModel settings, OptionsModel options) {
         this.mainPanelController = mainPanelController;
         this.imageModel = imageModel;
         this.backgroundSubtractionController = backgroundSubtractionController;
@@ -118,7 +121,8 @@ public final class ImageController {
         PixelModel pixelModel = correlator.getPixelModel(x, y);
 
         if (options.isPlotACFCurves()) {
-            Plots.plotSingleACF(pixelModel.getAcf(), correlator.getLagTimes(), x, y, settings.getBinning());
+            Plots.plotCorrelationFunction(pixelModel, correlator.getLagTimes(), x, y, settings.getBinning(),
+                    fitController.getFitStart(), fitController.getFitEnd());
         }
 
         if (options.isPlotSDCurves()) {
@@ -126,7 +130,8 @@ public final class ImageController {
         }
 
         if (options.isPlotIntensityCurves()) {
-            Plots.plotIntensityTrace(bleachCorrectionModel.getIntensityTrace1(), bleachCorrectionModel.getIntensityTime(), x, y);
+            Plots.plotIntensityTrace(bleachCorrectionModel.getIntensityTrace1(),
+                    bleachCorrectionModel.getIntensityTime(), x, y);
         }
 
         if (options.isPlotBlockingCurve()) {
@@ -138,7 +143,8 @@ public final class ImageController {
         }
 
         if (settings.isMSD()) {
-            pixelModel.setMSD(MeanSquareDisplacement.correlationToMSD(pixelModel.getAcf(), settings.getParamAx(), settings.getParamAy(), settings.getParamW(), settings.getSigmaZ(), settings.isMSD3d()));
+            pixelModel.setMSD(MeanSquareDisplacement.correlationToMSD(pixelModel.getAcf(), settings.getParamAx(),
+                    settings.getParamAy(), settings.getParamW(), settings.getSigmaZ(), settings.isMSD3d()));
             Plots.plotMSD(pixelModel.getMSD(), correlator.getLagTimes(), x, y);
         }
     }
