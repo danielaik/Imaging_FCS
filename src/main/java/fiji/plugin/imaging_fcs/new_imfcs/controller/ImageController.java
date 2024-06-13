@@ -147,6 +147,10 @@ public final class ImageController {
                     settings.getParamAy(), settings.getParamW(), settings.getSigmaZ(), settings.isMSD3d()));
             Plots.plotMSD(pixelModel.getMSD(), correlator.getLagTimes(), x, y);
         }
+
+        if (options.isPlotResCurves() && pixelModel.isFitted()) {
+            Plots.plotResiduals(pixelModel.getResiduals(), correlator.getLagTimes(), x, y);
+        }
     }
 
     /**

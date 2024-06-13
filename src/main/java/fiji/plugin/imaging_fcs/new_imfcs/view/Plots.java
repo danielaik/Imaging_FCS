@@ -33,11 +33,15 @@ public class Plots {
             new Point(BLOCKING_CURVE_POSITION.x, BLOCKING_CURVE_POSITION.y + BLOCKING_CURVE_DIMENSION.height + 150);
     private static final Point MSD_POSITION =
             new Point(STANDARD_DEVIATION_POSITION.x + STANDARD_DEVIATION_DIMENSION.width + 165, ACF_POSITION.y);
+    private static final Point RESIDUALS_POSITION = new Point(STANDARD_DEVIATION_POSITION.x,
+            STANDARD_DEVIATION_POSITION.y + STANDARD_DEVIATION_DIMENSION.height + 145);
     private static final Point INTENSITY_POSITION =
             new Point(ACF_POSITION.x, ACF_POSITION.y + ACF_DIMENSION.height + 145);
     private static final Dimension INTENSITY_DIMENSION = new Dimension(ACF_DIMENSION.width, 50);
     private static final Dimension MSD_DIMENSION = new Dimension(ACF_DIMENSION);
-    private static PlotWindow blockingCurveWindow, acfWindow, standardDeviationWindow, intensityTraceWindow, msdWindow;
+    private static final Dimension RESIDUALS_DIMENSION = new Dimension(ACF_DIMENSION.width, 50);
+    private static PlotWindow blockingCurveWindow, acfWindow, standardDeviationWindow, intensityTraceWindow, msdWindow,
+            residualsWindow;
     private static ImageWindow imgCovarianceWindow;
 
     // Prevent instantiation
@@ -292,5 +296,31 @@ public class Plots {
         plot.draw();
 
         msdWindow = plotWindow(plot, msdWindow, MSD_POSITION);
+    }
+
+    /**
+     * Plots the residuals for a given pixel.
+     *
+     * @param residuals The residual values.
+     * @param lagTimes  The lag times corresponding to the residual values.
+     * @param x         The x-coordinate of the pixel.
+     * @param y         The y-coordinate of the pixel.
+     */
+    public static void plotResiduals(double[] residuals, double[] lagTimes, int x, int y) {
+        Pair<Double, Double> minMax = findAdjustedMinMax(residuals);
+        double min = minMax.getLeft();
+        double max = minMax.getRight();
+
+        Plot plot = new Plot("Residuals", "time [s]", "Res");
+        plot.setFrameSize(RESIDUALS_DIMENSION.width, RESIDUALS_DIMENSION.height);
+        plot.setLimits(lagTimes[1], lagTimes[lagTimes.length - 1], min, max);
+        plot.setLogScaleX();
+        plot.setColor(Color.BLUE);
+        plot.addPoints(lagTimes, residuals, Plot.LINE);
+        plot.setJustification(Plot.CENTER);
+        plot.addLabel(0.5, 0, String.format(" Residuals (%d, %d)", x, y));
+        plot.draw();
+
+        residualsWindow = plotWindow(plot, residualsWindow, RESIDUALS_POSITION);
     }
 }
