@@ -33,7 +33,7 @@ public final class Constants {
     public static final double NANO_CONVERSION_FACTOR = Math.pow(10, 9);
 
     // constants
-    public static final double REFRACTIVE_INDEX = 1.333; // refractive index of water;
+    public static final double REFRACTIVE_INDEX = 1.3333; // refractive index of water;
     public static final double PI = Math.PI;
     public static final double SQRT_PI = Math.sqrt(PI);
 
