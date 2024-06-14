@@ -1,5 +1,9 @@
 package fiji.plugin.imaging_fcs.new_imfcs.model;
 
+import fiji.plugin.imaging_fcs.new_imfcs.utils.Pair;
+
+import java.util.stream.IntStream;
+
 import static fiji.plugin.imaging_fcs.new_imfcs.constants.Constants.DIFFUSION_COEFFICIENT_BASE;
 import static fiji.plugin.imaging_fcs.new_imfcs.constants.Constants.PIXEL_SIZE_REAL_SPACE_CONVERSION_FACTOR;
 
@@ -58,6 +62,56 @@ public class PixelModel {
             varianceAcf[i] /= numSlidingWindow;
             standardDeviationAcf[i] /= numSlidingWindow;
         }
+    }
+
+    /**
+     * Retrieves an array of parameter pairs.
+     * This method constructs an array of {@link Pair} objects, where each pair consists of a parameter name (as a
+     * {@link String}) and its corresponding value (as a {@link Double}). The parameter names are predefined in the
+     * `paramsName` array, and the corresponding values are retrieved from the `fitParams` object.
+     *
+     * @return An array of {@link Pair} objects, each containing a parameter name and its corresponding value.
+     */
+    public Pair<String, Double>[] getParams() {
+        String[] paramsName = {
+                "N",
+                "D",
+                "vx",
+                "vy",
+                "G",
+                "F2",
+                "D2",
+                "F3",
+                "D3",
+                "FTrip",
+                "TTrip",
+                "reduced Chi2",
+                "blocked",
+                "valid pixels"
+        };
+
+        double[] params = {
+                fitParams.N,
+                fitParams.D,
+                fitParams.vx,
+                fitParams.vy,
+                fitParams.G,
+                fitParams.F2,
+                fitParams.D2,
+                fitParams.F3,
+                fitParams.D3,
+                fitParams.fTrip,
+                fitParams.tTrip,
+                chi2,
+                blocked,
+                validPixel
+        };
+
+        @SuppressWarnings("unchecked") Pair<String, Double>[] pairs = IntStream.range(0, paramsName.length)
+                .mapToObj(i -> new Pair<>(paramsName[i], params[i]))
+                .toArray(Pair[]::new);
+
+        return pairs;
     }
 
     public double[] getAcf() {

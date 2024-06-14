@@ -155,6 +155,10 @@ public final class ImageController {
         if (options.isPlotResCurves() && pixelModel.isFitted()) {
             Plots.plotResiduals(pixelModel.getResiduals(), correlator.getLagTimes(), p);
         }
+
+        if (pixelModel.isFitted()) {
+            Plots.plotParameterMaps(pixelModel, p, imageModel.getDimension());
+        }
     }
 
     /**

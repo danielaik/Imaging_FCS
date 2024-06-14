@@ -1,6 +1,7 @@
 package fiji.plugin.imaging_fcs.new_imfcs.view;
 
 import fiji.plugin.imaging_fcs.new_imfcs.constants.Constants;
+import fiji.plugin.imaging_fcs.new_imfcs.model.ImageModel;
 import fiji.plugin.imaging_fcs.new_imfcs.model.PixelModel;
 import fiji.plugin.imaging_fcs.new_imfcs.utils.Pair;
 import ij.IJ;
@@ -12,6 +13,7 @@ import ij.process.ImageProcessor;
 
 import java.awt.*;
 import java.util.Arrays;
+import java.util.stream.IntStream;
 
 /**
  * The Plots class provides static methods for generating various plots used in fluorescence correlation spectroscopy
@@ -35,6 +37,8 @@ public class Plots {
             new Point(STANDARD_DEVIATION_POSITION.x + STANDARD_DEVIATION_DIMENSION.width + 165, ACF_POSITION.y);
     private static final Point RESIDUALS_POSITION = new Point(STANDARD_DEVIATION_POSITION.x,
             STANDARD_DEVIATION_POSITION.y + STANDARD_DEVIATION_DIMENSION.height + 145);
+    private static final Point PARAMETER_POSITION =
+            new Point(ACF_POSITION.x + ACF_DIMENSION.width + 80, Constants.MAIN_PANEL_POS.y);
     private static final Point INTENSITY_POSITION =
             new Point(ACF_POSITION.x, ACF_POSITION.y + ACF_DIMENSION.height + 145);
     private static final Dimension INTENSITY_DIMENSION = new Dimension(ACF_DIMENSION.width, 50);
@@ -43,6 +47,7 @@ public class Plots {
     private static PlotWindow blockingCurveWindow, acfWindow, standardDeviationWindow, intensityTraceWindow, msdWindow,
             residualsWindow;
     private static ImageWindow imgCovarianceWindow;
+    private static ImagePlus imgParam;
 
     // Prevent instantiation
     private Plots() {
@@ -88,6 +93,26 @@ public class Plots {
             window.setLocation(position);
         } else {
             window.drawPlot(plot);
+        }
+
+        return window;
+    }
+
+    /**
+     * Displays the image in a new window or updates the existing window.
+     *
+     * @param img      The ImagePlus to display.
+     * @param window   The existing ImageWindow, if any.
+     * @param position The position to display the window.
+     * @return The updated ImageWindow.
+     */
+    private static ImageWindow plotImageWindow(ImagePlus img, ImageWindow window, Point position) {
+        if (window == null || window.isClosed()) {
+            img.show();
+            window = img.getWindow();
+            window.setLocation(position);
+        } else {
+            window.setImage(img);
         }
 
         return window;
@@ -159,13 +184,7 @@ public class Plots {
             }
         }
 
-        if (imgCovarianceWindow == null || imgCovarianceWindow.isClosed()) {
-            imgCovariance.show();
-            imgCovarianceWindow = imgCovariance.getWindow();
-            imgCovarianceWindow.setLocation(COVARIANCE_POSITION);
-        } else {
-            imgCovarianceWindow.setImage(imgCovariance);
-        }
+        imgCovarianceWindow = plotImageWindow(imgCovariance, imgCovarianceWindow, COVARIANCE_POSITION);
 
         // apply "Spectrum" LUT
         IJ.run(imgCovariance, "Spectrum", "");
@@ -338,5 +357,45 @@ public class Plots {
         plot.draw();
 
         residualsWindow = plotWindow(plot, residualsWindow, RESIDUALS_POSITION);
+    }
+
+    public static void plotParameterMaps(PixelModel pixelModel, Point p, Dimension imageSize) {
+        Pair<String, Double>[] params = pixelModel.getParams();
+
+        boolean initImg = false;
+        if (imgParam == null || !imgParam.isVisible()) {
+            initImg = true;
+            imgParam = IJ.createImage("Maps", "GRAY32", imageSize.width, imageSize.height, params.length);
+
+            // Set all pixel values to NaN
+            IntStream.range(1, imgParam.getStackSize() + 1).forEach(slice -> {
+                ImageProcessor ip = imgParam.getStack().getProcessor(slice);
+                for (int x = 0; x < imageSize.width; x++) {
+                    for (int y = 0; y < imageSize.height; y++) {
+                        ip.putPixelValue(x, y, Double.NaN);
+                    }
+                }
+            });
+        }
+
+        // Enter value from the end to be on the first slice on output
+        for (int i = params.length - 1; i >= 0; i--) {
+            ImageProcessor ip = imgParam.getStack().getProcessor(i + 1);
+            ip.putPixelValue(p.x, p.y, params[i].getRight());
+            if (initImg) {
+                imgParam.setSlice(i + 1);
+                IJ.run("Set Label...", "label=" + params[i].getLeft());
+            }
+        }
+
+        if (initImg) {
+
+            //        IJ.run(imgParam, "Red Hot", "");
+            imgParam.show();
+            ImageWindow window = imgParam.getWindow();
+            window.setLocation(PARAMETER_POSITION);
+            ImageModel.adaptImageScale(imgParam);
+        }
+        IJ.run(imgParam, "Enhance Contrast", "saturated=0.35");
     }
 }
