@@ -8,6 +8,7 @@ import ij.gui.Overlay;
 import ij.gui.Roi;
 import ij.process.ImageProcessor;
 
+import java.awt.*;
 import java.util.EventListener;
 import java.util.function.Consumer;
 
@@ -56,7 +57,7 @@ public final class ImageModel {
         String options = String.format("zoom=%f x=%d y=%d", scimp, image.getWidth() / 2, image.getHeight() / 2);
         IJ.run(image, "Set... ", options);
         // This workaround addresses a potential bug in ImageJ versions 1.48v and later
-        IJ.run("In [+]", "");
+        IJ.run(image, "In [+]", "");
     }
 
     /**
@@ -304,6 +305,10 @@ public final class ImageModel {
 
     public int getWidth() {
         return image.getWidth();
+    }
+
+    public Dimension getDimension() {
+        return new Dimension(image.getWidth(), image.getHeight());
     }
 
     public int getStackSize() {
