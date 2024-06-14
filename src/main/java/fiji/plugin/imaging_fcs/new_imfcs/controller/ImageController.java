@@ -15,10 +15,7 @@ import ij.ImagePlus;
 import ij.gui.Roi;
 
 import java.awt.*;
-import java.awt.event.KeyEvent;
-import java.awt.event.KeyListener;
-import java.awt.event.MouseEvent;
-import java.awt.event.MouseListener;
+import java.awt.event.*;
 
 /**
  * The ImageController class handles the interactions with the image data,
@@ -160,7 +157,7 @@ public final class ImageController {
             ImagePlus imgParams = Plots.plotParameterMaps(pixelModel, p, imageModel.getDimension());
 
             if (options.isPlotParaHist()) {
-                Plots.plotHistogramWindow(pixelModel, imgParams);
+                Plots.plotHistogramWindow(imgParams);
             }
         }
     }
@@ -216,11 +213,7 @@ public final class ImageController {
      * @return The KeyListener instance.
      */
     public KeyListener imageKeyPressed() {
-        return new KeyListener() {
-            @Override
-            public void keyTyped(KeyEvent event) {
-            }
-
+        return new KeyAdapter() {
             @Override
             public void keyPressed(KeyEvent event) {
                 Roi roi = imageModel.getRoi();
@@ -244,10 +237,6 @@ public final class ImageController {
 
                     correlatePixel(x, y);
                 }
-            }
-
-            @Override
-            public void keyReleased(KeyEvent event) {
             }
         };
     }
