@@ -6,10 +6,12 @@ import fiji.plugin.imaging_fcs.new_imfcs.model.PixelModel;
 import fiji.plugin.imaging_fcs.new_imfcs.utils.Pair;
 import ij.IJ;
 import ij.ImagePlus;
+import ij.gui.HistogramWindow;
 import ij.gui.ImageWindow;
 import ij.gui.Plot;
 import ij.gui.PlotWindow;
 import ij.process.ImageProcessor;
+import ij.process.ImageStatistics;
 
 import java.awt.*;
 import java.util.Arrays;
@@ -39,14 +41,17 @@ public class Plots {
             STANDARD_DEVIATION_POSITION.y + STANDARD_DEVIATION_DIMENSION.height + 145);
     private static final Point PARAMETER_POSITION =
             new Point(ACF_POSITION.x + ACF_DIMENSION.width + 80, Constants.MAIN_PANEL_POS.y);
+    private static final Point HISTOGRAM_POSITION = new Point(PARAMETER_POSITION.x + 280, PARAMETER_POSITION.y);
     private static final Point INTENSITY_POSITION =
             new Point(ACF_POSITION.x, ACF_POSITION.y + ACF_DIMENSION.height + 145);
     private static final Dimension INTENSITY_DIMENSION = new Dimension(ACF_DIMENSION.width, 50);
     private static final Dimension MSD_DIMENSION = new Dimension(ACF_DIMENSION);
     private static final Dimension RESIDUALS_DIMENSION = new Dimension(ACF_DIMENSION.width, 50);
+    private static final Dimension HISTOGRAM_DIMENSION = new Dimension(350, 250);
     private static PlotWindow blockingCurveWindow, acfWindow, standardDeviationWindow, intensityTraceWindow, msdWindow,
             residualsWindow;
     private static ImageWindow imgCovarianceWindow;
+    private static HistogramWindow histogramWindow;
     private static ImagePlus imgParam;
 
     // Prevent instantiation
@@ -359,7 +364,7 @@ public class Plots {
         residualsWindow = plotWindow(plot, residualsWindow, RESIDUALS_POSITION);
     }
 
-    public static void plotParameterMaps(PixelModel pixelModel, Point p, Dimension imageSize) {
+    public static ImagePlus plotParameterMaps(PixelModel pixelModel, Point p, Dimension imageSize) {
         Pair<String, Double>[] params = pixelModel.getParams();
 
         boolean initImg = false;
@@ -378,6 +383,15 @@ public class Plots {
             });
         }
 
+        // create the window and adapt the image scale
+        if (initImg) {
+            //        IJ.run(imgParam, "Red Hot", "");
+            imgParam.show();
+            ImageWindow window = imgParam.getWindow();
+            window.setLocation(PARAMETER_POSITION);
+            ImageModel.adaptImageScale(imgParam);
+        }
+
         // Enter value from the end to be on the first slice on output
         for (int i = params.length - 1; i >= 0; i--) {
             ImageProcessor ip = imgParam.getStack().getProcessor(i + 1);
@@ -388,14 +402,46 @@ public class Plots {
             }
         }
 
-        if (initImg) {
-
-            //        IJ.run(imgParam, "Red Hot", "");
-            imgParam.show();
-            ImageWindow window = imgParam.getWindow();
-            window.setLocation(PARAMETER_POSITION);
-            ImageModel.adaptImageScale(imgParam);
-        }
         IJ.run(imgParam, "Enhance Contrast", "saturated=0.35");
+
+        return imgParam;
+    }
+
+    public static void plotHistogramWindow(PixelModel pixelModel, ImagePlus imgParam) {
+        String title = pixelModel.getParams()[imgParam.getSlice() - 1].getLeft();
+
+        ImageStatistics statistics = imgParam.getStatistics();
+        int numBins = getNumBins(statistics);
+
+        if (histogramWindow == null || histogramWindow.isClosed()) {
+            histogramWindow =
+                    new HistogramWindow(title, imgParam, numBins, statistics.histMin, statistics.histMax,
+                            statistics.histYMax);
+            histogramWindow.setLocation(HISTOGRAM_POSITION);
+            histogramWindow.setSize(HISTOGRAM_DIMENSION);
+        } else {
+            histogramWindow.showHistogram(imgParam, numBins, statistics.histMin, statistics.histMax);
+            histogramWindow.setTitle(title);
+        }
+    }
+
+    private static int getNumBins(ImageStatistics statistics) {
+        int firstQuartile = 0;
+        long countQuartile = 0;
+
+        while (countQuartile < Math.ceil(statistics.pixelCount / 4.0)) {
+            countQuartile += statistics.getHistogram()[firstQuartile++];
+        }
+
+        int thirdQuartile = firstQuartile;
+        while (countQuartile < Math.ceil(3.0 * statistics.pixelCount / 4.0)) {
+            countQuartile += statistics.getHistogram()[thirdQuartile++];
+        }
+
+        double interQuartileDistance = (thirdQuartile - firstQuartile) * statistics.binSize;
+
+        return interQuartileDistance > 0 ? (int) Math.ceil(
+                Math.cbrt(statistics.pixelCount) * (statistics.histMax - statistics.histMin) /
+                        (2.0 * interQuartileDistance)) : 10;
     }
 }
