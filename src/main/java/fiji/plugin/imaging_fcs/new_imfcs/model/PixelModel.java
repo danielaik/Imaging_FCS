@@ -14,15 +14,32 @@ import static fiji.plugin.imaging_fcs.new_imfcs.constants.Constants.PIXEL_SIZE_R
  * standard deviation, and fitting parameters.
  */
 public class PixelModel {
+    public static final String[] paramsName = {
+            "N",
+            "D",
+            "vx",
+            "vy",
+            "G",
+            "F2",
+            "D2",
+            "F3",
+            "D3",
+            "FTrip",
+            "TTrip",
+            "reduced Chi2",
+            "blocked",
+            "valid pixels"
+    };
     private double[] acf;
     private double[] varianceAcf;
     private double[] standardDeviationAcf;
+    private double[][] covariance;
     private double[] fittedAcf;
     private double[] residuals;
     private double[] MSD;
     private double chi2 = 0;
     private boolean fitted = false;
-    private int blocked, validPixel;
+    private int blocked;
     private FitParameters fitParams;
 
 
@@ -73,23 +90,6 @@ public class PixelModel {
      * @return An array of {@link Pair} objects, each containing a parameter name and its corresponding value.
      */
     public Pair<String, Double>[] getParams() {
-        String[] paramsName = {
-                "N",
-                "D",
-                "vx",
-                "vy",
-                "G",
-                "F2",
-                "D2",
-                "F3",
-                "D3",
-                "FTrip",
-                "TTrip",
-                "reduced Chi2",
-                "blocked",
-                "valid pixels"
-        };
-
         double[] params = {
                 fitParams.N,
                 fitParams.D,
@@ -104,8 +104,8 @@ public class PixelModel {
                 fitParams.tTrip,
                 chi2,
                 blocked,
-                validPixel
-        };
+                fitted ? 1.0 : 0.0,
+                };
 
         @SuppressWarnings("unchecked") Pair<String, Double>[] pairs = IntStream.range(0, paramsName.length)
                 .mapToObj(i -> new Pair<>(paramsName[i], params[i]))
@@ -184,6 +184,14 @@ public class PixelModel {
 
     public void setFitted(boolean fitted) {
         this.fitted = fitted;
+    }
+
+    public double[][] getCovariance() {
+        return covariance;
+    }
+
+    public void setCovariance(double[][] covariance) {
+        this.covariance = covariance;
     }
 
     /**

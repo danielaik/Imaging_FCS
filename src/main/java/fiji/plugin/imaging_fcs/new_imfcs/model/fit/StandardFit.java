@@ -93,6 +93,7 @@ public class StandardFit extends BaseFit {
         double[] result = optimum.getPoint().toArray();
         double[] tmpResiduals = optimum.getResiduals().toArray();
         double[] tres = new double[channelNumber - 1];
+        double[][] covariance = optimum.getCovariances(1).getData();
 
         double[] fitAcf = new double[channelNumber];
         double[] residuals = new double[channelNumber];
@@ -119,6 +120,7 @@ public class StandardFit extends BaseFit {
 
         pixelModel.setFittedAcf(fitAcf);
         pixelModel.setResiduals(residuals);
+        pixelModel.setCovariance(covariance);
 
         pixelModel.setFitParams(new PixelModel.FitParameters(model.fillParamsArray(result)));
         if (!model.isFix()) {

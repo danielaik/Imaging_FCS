@@ -102,7 +102,7 @@ public final class ImageController {
         try {
             Point[] cursorPositions = selectedPixel.performCorrelationFunctionEvaluation(x, y);
             Point pixel = cursorPositions[0];
-            fitController.fit(correlator.getPixelModel(pixel.x, pixel.y), correlator.getLagTimes());
+            fitController.fit(correlator.getPixelModel(pixel.x, pixel.y), correlator.getLagTimes(), x, y);
 
             plotResuts(cursorPositions);
         } catch (RuntimeException e) {

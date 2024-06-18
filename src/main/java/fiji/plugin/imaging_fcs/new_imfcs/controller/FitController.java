@@ -38,15 +38,18 @@ public class FitController {
      *
      * @param pixelModel The pixel model to fit.
      * @param lagTimes   The lag times for fitting.
+     * @param x          The x coordinate of the pixel.
+     * @param y          The y coordinate of the pixel.
      */
-    public void fit(PixelModel pixelModel, double[] lagTimes) {
+    public void fit(PixelModel pixelModel, double[] lagTimes, int x, int y) {
         if (isActivated() && model.canFit()) {
             try {
                 model.fit(pixelModel, lagTimes);
                 // update view
                 view.updateFitParams(pixelModel.getFitParams());
             } catch (RuntimeException e) {
-                IJ.showMessage("Fit error", e.getMessage());
+                IJ.log(String.format("%s at pixel x=%d, y=%d", e.getClass().getName(), x, y));
+                pixelModel.setFitted(false);
             }
         }
     }
