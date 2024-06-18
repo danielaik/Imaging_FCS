@@ -3,6 +3,7 @@ package fiji.plugin.imaging_fcs.new_imfcs.view;
 import fiji.plugin.imaging_fcs.new_imfcs.constants.Constants;
 import fiji.plugin.imaging_fcs.new_imfcs.model.ImageModel;
 import fiji.plugin.imaging_fcs.new_imfcs.model.PixelModel;
+import fiji.plugin.imaging_fcs.new_imfcs.utils.ApplyCustomLUT;
 import fiji.plugin.imaging_fcs.new_imfcs.utils.Pair;
 import ij.IJ;
 import ij.ImagePlus;
@@ -385,6 +386,7 @@ public class Plots {
             ImageWindow window = imgParam.getWindow();
             window.setLocation(PARAMETER_POSITION);
             ImageModel.adaptImageScale(imgParam);
+            ApplyCustomLUT.applyCustomLUT(imgParam, "Red Hot");
 
             // add key listener on both the window on the canvas to support if the user uses its keyboard after clicking
             // on the window only or after clicking on the image.

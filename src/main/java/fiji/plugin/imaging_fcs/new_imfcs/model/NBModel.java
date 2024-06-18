@@ -7,7 +7,7 @@ import ij.ImagePlus;
 import ij.process.ImageProcessor;
 
 import java.util.Arrays;
-import java.util.function.Consumer;
+import java.util.function.BiConsumer;
 
 /**
  * The NBModel class represents the model for performing number and brightness (N&B) analysis.
@@ -49,7 +49,7 @@ public final class NBModel {
      * @param evaluation A boolean indicating whether to perform evaluation.
      * @param showImage  A consumer to display the resulting image.
      */
-    public void performNB(ImagePlus img, boolean evaluation, Consumer<ImagePlus> showImage) {
+    public void performNB(ImagePlus img, boolean evaluation, BiConsumer<ImagePlus, String> showImage) {
         int width = img.getWidth();
         int height = img.getHeight();
 
@@ -133,8 +133,9 @@ public final class NBModel {
         for (int i = 0; i < img.getWidth(); i++) {
             for (int j = 0; j < img.getHeight(); j++) {
                 bleachCorrectionModel.calcIntensityTrace(img, i, j, settings.getFirstFrame(), settings.getLastFrame());
-                double[] data = bleachCorrectionModel.getIntensity(
-                        img, i, j, 1, settings.getFirstFrame(), settings.getLastFrame());
+                double[] data =
+                        bleachCorrectionModel.getIntensity(img, i, j, 1, settings.getFirstFrame(),
+                                settings.getLastFrame());
 
                 double mean = 0.0;
                 double meanNextElement = 0.0;
@@ -173,8 +174,7 @@ public final class NBModel {
         for (int i = 0; i < img.getWidth(); i++) {
             for (int j = 0; j < img.getHeight(); j++) {
                 bleachCorrectionModel.calcIntensityTrace(img, i, j, 1, img.getStackSize());
-                double[] data = bleachCorrectionModel.getIntensity(
-                        img, i, j, 1, 1, img.getStackSize());
+                double[] data = bleachCorrectionModel.getIntensity(img, i, j, 1, 1, img.getStackSize());
 
                 double mean = 0;
                 double variance = 0;
@@ -237,22 +237,22 @@ public final class NBModel {
      * @param img       The ImagePlus object representing the input image.
      * @param showImage A consumer to display the resulting image.
      */
-    private void createNBImages(ImagePlus img, Consumer<ImagePlus> showImage) {
+    private void createNBImages(ImagePlus img, BiConsumer<ImagePlus, String> showImage) {
         int height = img.getHeight();
         int width = img.getWidth();
 
         ImagePlus imageN = createAndFillImage("Num N&B", width, height, NBN);
         ImagePlus imageB = createAndFillImage("Brightness N&B", width, height, NBB);
 
-        showImage.accept(imageN);
-        showImage.accept(imageB);
+        showImage.accept(imageN, "Cyan Hot");
+        showImage.accept(imageB, "Yellow Hot");
 
         if ("Calibrated".equals(mode)) {
             ImagePlus imageNum = createAndFillImage("Num", width, height, NBNum);
             ImagePlus imageEpsilon = createAndFillImage("Epsilon", width, height, NBEpsilon);
 
-            showImage.accept(imageNum);
-            showImage.accept(imageEpsilon);
+            showImage.accept(imageNum, "Cyan Hot");
+            showImage.accept(imageEpsilon, "Yellow Hot");
         }
     }
 
