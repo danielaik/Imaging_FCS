@@ -5,6 +5,7 @@ import fiji.plugin.imaging_fcs.new_imfcs.model.ImageModel;
 import fiji.plugin.imaging_fcs.new_imfcs.model.NBModel;
 import fiji.plugin.imaging_fcs.new_imfcs.model.OptionsModel;
 import fiji.plugin.imaging_fcs.new_imfcs.model.fit.BleachCorrectionModel;
+import fiji.plugin.imaging_fcs.new_imfcs.utils.ApplyCustomLUT;
 import fiji.plugin.imaging_fcs.new_imfcs.view.NBView;
 import ij.IJ;
 import ij.ImagePlus;
@@ -90,10 +91,13 @@ public final class NBController {
     /**
      * Displays the given image in the ImageJ window and adapts its scale.
      *
-     * @param image the ImagePlus object to be displayed
+     * @param image    the ImagePlus object to be displayed
+     * @param lutColor the custom LUT file to use
      */
-    public void showImage(ImagePlus image) {
+    public void showImage(ImagePlus image, String lutColor) {
         image.show();
         ImageModel.adaptImageScale(image);
+        ApplyCustomLUT.applyCustomLUT(image, lutColor);
+        IJ.run(image, "Enhance Contrast", "saturated=0.35");
     }
 }
