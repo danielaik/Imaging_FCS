@@ -6,14 +6,12 @@ import fiji.plugin.imaging_fcs.new_imfcs.model.PixelModel;
 import fiji.plugin.imaging_fcs.new_imfcs.utils.Pair;
 import ij.IJ;
 import ij.ImagePlus;
-import ij.gui.HistogramWindow;
-import ij.gui.ImageWindow;
-import ij.gui.Plot;
-import ij.gui.PlotWindow;
+import ij.gui.*;
 import ij.process.ImageProcessor;
 import ij.process.ImageStatistics;
 
 import java.awt.*;
+import java.awt.event.*;
 import java.util.Arrays;
 import java.util.stream.IntStream;
 
@@ -381,15 +379,21 @@ public class Plots {
                     }
                 }
             });
-        }
 
-        // create the window and adapt the image scale
-        if (initImg) {
-            //        IJ.run(imgParam, "Red Hot", "");
+            // create the window and adapt the image scale
             imgParam.show();
             ImageWindow window = imgParam.getWindow();
             window.setLocation(PARAMETER_POSITION);
             ImageModel.adaptImageScale(imgParam);
+
+            // Add listener to switch the histogram if the slice is changed
+            for (Component component : window.getComponents()) {
+                if (component instanceof ScrollbarWithLabel) {
+                    ScrollbarWithLabel scrollbar = (ScrollbarWithLabel) component;
+                    scrollbar.addKeyListener(keyAdjustmentListener());
+                    scrollbar.addAdjustmentListener(imageAdjusted());
+                }
+            }
         }
 
         // Enter value from the end to be on the first slice on output
@@ -407,8 +411,8 @@ public class Plots {
         return imgParam;
     }
 
-    public static void plotHistogramWindow(PixelModel pixelModel, ImagePlus imgParam) {
-        String title = pixelModel.getParams()[imgParam.getSlice() - 1].getLeft();
+    public static void plotHistogramWindow(ImagePlus imgParam) {
+        String title = PixelModel.paramsName[imgParam.getSlice() - 1];
 
         ImageStatistics statistics = imgParam.getStatistics();
         int numBins = getNumBins(statistics);
@@ -417,8 +421,8 @@ public class Plots {
             histogramWindow =
                     new HistogramWindow(title, imgParam, numBins, statistics.histMin, statistics.histMax,
                             statistics.histYMax);
-            histogramWindow.setLocation(HISTOGRAM_POSITION);
-            histogramWindow.setSize(HISTOGRAM_DIMENSION);
+            histogramWindow.setLocationAndSize(HISTOGRAM_POSITION.x, HISTOGRAM_POSITION.y, HISTOGRAM_DIMENSION.width,
+                    HISTOGRAM_DIMENSION.height);
         } else {
             histogramWindow.showHistogram(imgParam, numBins, statistics.histMin, statistics.histMax);
             histogramWindow.setTitle(title);
@@ -443,5 +447,22 @@ public class Plots {
         return interQuartileDistance > 0 ? (int) Math.ceil(
                 Math.cbrt(statistics.pixelCount) * (statistics.histMax - statistics.histMin) /
                         (2.0 * interQuartileDistance)) : 10;
+    }
+
+    private static AdjustmentListener imageAdjusted() {
+        return (AdjustmentEvent ev) -> {
+            IJ.run(imgParam, "Enhance Contrast", "saturated=0.35");
+            plotHistogramWindow(imgParam);
+        };
+    }
+
+    private static KeyListener keyAdjustmentListener() {
+        return new KeyAdapter() {
+            @Override
+            public void keyPressed(KeyEvent e) {
+                IJ.run(imgParam, "Enhance Contrast", "saturated=0.35");
+                plotHistogramWindow(imgParam);
+            }
+        };
     }
 }
