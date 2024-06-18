@@ -386,11 +386,15 @@ public class Plots {
             window.setLocation(PARAMETER_POSITION);
             ImageModel.adaptImageScale(imgParam);
 
+            // add key listener on both the window on the canvas to support if the user uses its keyboard after clicking
+            // on the window only or after clicking on the image.
+            window.addKeyListener(keyAdjustmentListener());
+            imgParam.getCanvas().addKeyListener(keyAdjustmentListener());
+
             // Add listener to switch the histogram if the slice is changed
             for (Component component : window.getComponents()) {
                 if (component instanceof ScrollbarWithLabel) {
                     ScrollbarWithLabel scrollbar = (ScrollbarWithLabel) component;
-                    scrollbar.addKeyListener(keyAdjustmentListener());
                     scrollbar.addAdjustmentListener(imageAdjusted());
                 }
             }
@@ -458,10 +462,29 @@ public class Plots {
 
     private static KeyListener keyAdjustmentListener() {
         return new KeyAdapter() {
+            private int currentSlice = 0;
+
+            @Override
+            public void keyReleased(KeyEvent e) {
+                updateHistogram();
+            }
+
+            @Override
+            public void keyTyped(KeyEvent e) {
+                updateHistogram();
+            }
+
             @Override
             public void keyPressed(KeyEvent e) {
-                IJ.run(imgParam, "Enhance Contrast", "saturated=0.35");
-                plotHistogramWindow(imgParam);
+                updateHistogram();
+            }
+
+            private void updateHistogram() {
+                if (currentSlice != imgParam.getSlice()) {
+                    IJ.run(imgParam, "Enhance Contrast", "saturated=0.35");
+                    plotHistogramWindow(imgParam);
+                    currentSlice = imgParam.getSlice();
+                }
             }
         };
     }
