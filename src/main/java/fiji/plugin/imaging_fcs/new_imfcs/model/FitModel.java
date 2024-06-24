@@ -1,6 +1,7 @@
 package fiji.plugin.imaging_fcs.new_imfcs.model;
 
 import fiji.plugin.imaging_fcs.new_imfcs.controller.InvalidUserInputException;
+import fiji.plugin.imaging_fcs.new_imfcs.model.fit.GLSFit;
 import fiji.plugin.imaging_fcs.new_imfcs.model.fit.StandardFit;
 
 import java.util.Arrays;
@@ -175,15 +176,19 @@ public class FitModel {
      * @param pixelModel The pixel model to fit.
      * @param lagTimes   The lag times for fitting.
      */
-    public void fit(PixelModel pixelModel, double[] lagTimes) {
+    public void fit(PixelModel pixelModel, double[] lagTimes, double[][] covarianceMatrix) {
+        StandardFit fitter = null;
+
         if (bayes) {
-            // bayes fit
+            // TODO: implement bayes fit
+            fitter = new StandardFit(this, settings);
         } else if (GLS) {
-            // GLS fit
+            fitter = new GLSFit(this, settings, lagTimes, pixelModel.getAcf(), covarianceMatrix);
         } else {
-            StandardFit fitter = new StandardFit(this, settings);
-            fitter.fitPixel(pixelModel, lagTimes);
+            fitter = new StandardFit(this, settings);
         }
+
+        fitter.fitPixel(pixelModel, lagTimes);
     }
 
     public Parameter getD() {

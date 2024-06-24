@@ -15,17 +15,18 @@ import org.apache.commons.math3.fitting.leastsquares.LeastSquaresProblem;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
 
 /**
  * The StandardFit class performs the standard fitting procedure for fluorescence correlation spectroscopy (FCS) data.
  * It extends the BaseFit class and uses a specific parametric univariate function for the fitting process.
  */
 public class StandardFit extends BaseFit {
+    protected final FitModel model;
+    protected final ParametricUnivariateFunction function;
+    protected final int numFreeParameters;
     private final int MAX_EVALUATIONS = 2000;
     private final int MAX_ITERATIONS = 2000;
-    private final FitModel model;
-    private final ParametricUnivariateFunction function;
-    private int numFreeParameters;
 
     /**
      * Constructs a new StandardFit instance with the given model and settings.
@@ -36,6 +37,7 @@ public class StandardFit extends BaseFit {
     public StandardFit(FitModel model, ExpSettingsModel settings) {
         this.model = model;
         function = selectFitFunction(settings);
+        numFreeParameters = model.getNonHeldParameterValues().length;
 
         setMaxEvaluations(MAX_EVALUATIONS);
         setMaxIterations(MAX_ITERATIONS);
@@ -67,9 +69,37 @@ public class StandardFit extends BaseFit {
         double[] weights = targetAndWeights.getRight();
 
         double[] initialGuess = model.getNonHeldParameterValues();
-        numFreeParameters = initialGuess.length;
 
         return getLeastSquaresProblem(points, function, initialGuess, target, weights);
+    }
+
+    /**
+     * Fills the list of weighted observed points using the pixel model and lag times.
+     *
+     * @param pixelModel The pixel model to be used.
+     * @param lagTimes   The array of lag times.
+     * @return The list of weighted observed points.
+     */
+    private List<WeightedObservedPoint> fillPoints(PixelModel pixelModel, double[] lagTimes) {
+        List<WeightedObservedPoint> points = new ArrayList<>(model.getFitEnd() - model.getFitStart() + 1);
+
+        for (int i = model.getFitStart(); i <= model.getFitEnd(); i++) {
+            points.add(createPoint(pixelModel, lagTimes, i));
+        }
+
+        return points;
+    }
+
+    /**
+     * Creates a single weighted observed point.
+     *
+     * @param pixelModel The pixel model to be used.
+     * @param lagTimes   The array of lag times.
+     * @param i          The index for the point.
+     * @return The created weighted observed point.
+     */
+    protected WeightedObservedPoint createPoint(PixelModel pixelModel, double[] lagTimes, int i) {
+        return new WeightedObservedPoint(1 / pixelModel.getVarianceAcf()[i], lagTimes[i], pixelModel.getAcf()[i]);
     }
 
     /**
@@ -80,14 +110,9 @@ public class StandardFit extends BaseFit {
      * @return An array of residuals.
      */
     public double[] fitPixel(PixelModel pixelModel, double[] lagTimes) {
-        ArrayList<WeightedObservedPoint> points = new ArrayList<>();
         int channelNumber = pixelModel.getAcf().length;
 
-        for (int i = model.getFitStart(); i <= model.getFitEnd(); i++) {
-            points.add(new WeightedObservedPoint(
-                    1 / pixelModel.getVarianceAcf()[i], lagTimes[i], pixelModel.getAcf()[i]));
-        }
-
+        List<WeightedObservedPoint> points = fillPoints(pixelModel, lagTimes);
         LeastSquaresOptimizer.Optimum optimum = getOptimizer().optimize(getProblem(points));
 
         double[] result = optimum.getPoint().toArray();

@@ -41,10 +41,10 @@ public class FitController {
      * @param x          The x coordinate of the pixel.
      * @param y          The y coordinate of the pixel.
      */
-    public void fit(PixelModel pixelModel, double[] lagTimes, int x, int y) {
+    public void fit(PixelModel pixelModel, double[] lagTimes, double[][] correlationMatrix, int x, int y) {
         if (isActivated() && model.canFit()) {
             try {
-                model.fit(pixelModel, lagTimes);
+                model.fit(pixelModel, lagTimes, correlationMatrix);
                 // update view
                 view.updateFitParams(pixelModel.getFitParams());
             } catch (RuntimeException e) {
