@@ -33,7 +33,6 @@ public class PixelModel {
     private double[] acf;
     private double[] varianceAcf;
     private double[] standardDeviationAcf;
-    private double[][] covariance;
     private double[] fittedAcf;
     private double[] residuals;
     private double[] MSD;
@@ -184,14 +183,6 @@ public class PixelModel {
 
     public void setFitted(boolean fitted) {
         this.fitted = fitted;
-    }
-
-    public double[][] getCovariance() {
-        return covariance;
-    }
-
-    public void setCovariance(double[][] covariance) {
-        this.covariance = covariance;
     }
 
     /**

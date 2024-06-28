@@ -1,6 +1,7 @@
 package fiji.plugin.imaging_fcs.new_imfcs.model;
 
 import fiji.plugin.imaging_fcs.new_imfcs.controller.InvalidUserInputException;
+import fiji.plugin.imaging_fcs.new_imfcs.model.fit.BayesFit;
 import fiji.plugin.imaging_fcs.new_imfcs.model.fit.GLSFit;
 import fiji.plugin.imaging_fcs.new_imfcs.model.fit.StandardFit;
 
@@ -30,6 +31,40 @@ public class FitModel {
     public FitModel(ExpSettingsModel settings) {
         this.settings = settings;
         initValues();
+    }
+
+    /**
+     * Copy constructor for FitModel.
+     *
+     * @param other The FitModel instance to copy.
+     */
+    public FitModel(FitModel other) {
+        this.settings = other.settings;
+
+        this.D = new Parameter(other.D);
+        this.N = new Parameter(other.N);
+        this.F2 = new Parameter(other.F2);
+        this.F3 = new Parameter(other.F3);
+        this.D2 = new Parameter(other.D2);
+        this.D3 = new Parameter(other.D3);
+        this.G = new Parameter(other.G);
+        this.vx = new Parameter(other.vx);
+        this.vy = new Parameter(other.vy);
+        this.fTrip = new Parameter(other.fTrip);
+        this.tTrip = new Parameter(other.tTrip);
+
+        this.modProb1 = other.modProb1;
+        this.modProb2 = other.modProb2;
+        this.modProb3 = other.modProb3;
+        this.Q2 = other.Q2;
+        this.Q3 = other.Q3;
+
+        this.fitStart = other.fitStart;
+        this.fitEnd = other.fitEnd;
+
+        this.fix = other.fix;
+        this.GLS = other.GLS;
+        this.bayes = other.bayes;
     }
 
     /**
@@ -176,19 +211,19 @@ public class FitModel {
      * @param pixelModel The pixel model to fit.
      * @param lagTimes   The lag times for fitting.
      */
-    public void fit(PixelModel pixelModel, double[] lagTimes, double[][] covarianceMatrix) {
-        StandardFit fitter = null;
-
+    public double[] fit(PixelModel pixelModel, double[] lagTimes, double[][] covarianceMatrix) {
         if (bayes) {
-            // TODO: implement bayes fit
-            fitter = new StandardFit(this, settings);
+            BayesFit fitter = new BayesFit(this, settings);
+            return fitter.bayesFit(pixelModel, lagTimes, covarianceMatrix);
         } else if (GLS) {
-            fitter = new GLSFit(this, settings, lagTimes, pixelModel.getAcf(), covarianceMatrix);
+            GLSFit fitter = new GLSFit(this, settings, lagTimes, pixelModel.getAcf(), covarianceMatrix);
+            fitter.fitPixel(pixelModel, lagTimes);
         } else {
-            fitter = new StandardFit(this, settings);
+            StandardFit fitter = new StandardFit(this, settings);
+            fitter.fitPixel(pixelModel, lagTimes);
         }
 
-        fitter.fitPixel(pixelModel, lagTimes);
+        return null;
     }
 
     public Parameter getD() {
@@ -439,6 +474,11 @@ public class FitModel {
         public Parameter(double value, boolean hold) {
             this.value = value;
             this.hold = hold;
+        }
+
+        public Parameter(Parameter other) {
+            this.value = other.value;
+            this.hold = other.hold;
         }
 
         /**

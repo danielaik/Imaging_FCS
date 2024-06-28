@@ -44,9 +44,13 @@ public class FitController {
     public void fit(PixelModel pixelModel, double[] lagTimes, double[][] correlationMatrix, int x, int y) {
         if (isActivated() && model.canFit()) {
             try {
-                model.fit(pixelModel, lagTimes, correlationMatrix);
+                double[] modProbs = model.fit(pixelModel, lagTimes, correlationMatrix);
                 // update view
                 view.updateFitParams(pixelModel.getFitParams());
+                if (model.isBayes()) {
+                    view.updateModProbs(modProbs);
+                    view.updateHoldStatus();
+                }
             } catch (RuntimeException e) {
                 IJ.log(String.format("%s at pixel x=%d, y=%d", e.getClass().getName(), x, y));
                 pixelModel.setFitted(false);

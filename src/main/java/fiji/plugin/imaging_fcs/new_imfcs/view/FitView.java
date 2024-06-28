@@ -4,6 +4,7 @@ import fiji.plugin.imaging_fcs.new_imfcs.constants.Constants;
 import fiji.plugin.imaging_fcs.new_imfcs.controller.FitController;
 import fiji.plugin.imaging_fcs.new_imfcs.model.FitModel;
 import fiji.plugin.imaging_fcs.new_imfcs.model.PixelModel;
+import ij.IJ;
 
 import javax.swing.*;
 import java.awt.*;
@@ -313,7 +314,29 @@ public class FitView extends BaseView {
         add(rbtnCNNACF);
     }
 
+    /**
+     * Updates the fit end value in the user interface.
+     */
     public void updateFitEnd() {
         setText(tfFitEnd, model.getFitEnd());
+    }
+
+    /**
+     * Updates the model probabilities displayed in the user interface.
+     *
+     * @param modProbs an array containing the model probabilities to update.
+     */
+    public void updateModProbs(double[] modProbs) {
+        setText(tfModProb1, IJ.d2s(modProbs[0]));
+        setText(tfModProb2, IJ.d2s(modProbs[1]));
+    }
+
+    /**
+     * Updates the hold status of parameters in the user interface.
+     */
+    public void updateHoldStatus() {
+        holdD.setSelected(model.getD().isHeld());
+        holdD2.setSelected(model.getD2().isHeld());
+        holdF2.setSelected(model.getF2().isHeld());
     }
 }
