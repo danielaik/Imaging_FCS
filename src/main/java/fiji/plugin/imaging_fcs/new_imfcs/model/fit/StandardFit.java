@@ -107,9 +107,9 @@ public class StandardFit extends BaseFit {
      *
      * @param pixelModel The pixel model to fit.
      * @param lagTimes   The lag times for fitting.
-     * @return An array of residuals.
+     * @return A FitOutput object storing the covariance, residuals and sigma.
      */
-    public double[] fitPixel(PixelModel pixelModel, double[] lagTimes) {
+    public FitOutput fitPixel(PixelModel pixelModel, double[] lagTimes) {
         int channelNumber = pixelModel.getAcf().length;
 
         List<WeightedObservedPoint> points = fillPoints(pixelModel, lagTimes);
@@ -118,7 +118,6 @@ public class StandardFit extends BaseFit {
         double[] result = optimum.getPoint().toArray();
         double[] tmpResiduals = optimum.getResiduals().toArray();
         double[] tres = new double[channelNumber - 1];
-        double[][] covariance = optimum.getCovariances(1).getData();
 
         double[] fitAcf = new double[channelNumber];
         double[] residuals = new double[channelNumber];
@@ -145,13 +144,48 @@ public class StandardFit extends BaseFit {
 
         pixelModel.setFittedAcf(fitAcf);
         pixelModel.setResiduals(residuals);
-        pixelModel.setCovariance(covariance);
 
         pixelModel.setFitParams(new PixelModel.FitParameters(model.fillParamsArray(result)));
         if (!model.isFix()) {
             model.updateParameterValues(pixelModel.getFitParams());
         }
 
-        return tres;
+        return new FitOutput(optimum.getCovariances(1).getData(), tres, optimum.getSigma(1).toArray());
+    }
+
+    /**
+     * A static class representing the output of a fitting process.
+     * It contains the covariance matrix, residuals, and sigma values.
+     */
+    public static class FitOutput {
+        private final double[][] covariance;
+        private final double[] residuals;
+        private final double[] sigma;
+
+        /**
+         * Constructs a new FitOutput object with the specified covariance matrix,
+         * residuals, and sigma values.
+         *
+         * @param covariance the covariance matrix of the fitting parameters
+         * @param residuals the residuals of the fitting process
+         * @param sigma the sigma values of the fitting parameters
+         */
+        public FitOutput(double[][] covariance, double[] residuals, double[] sigma) {
+            this.covariance = covariance;
+            this.residuals = residuals;
+            this.sigma = sigma;
+        }
+
+        public double[][] getCovariance() {
+            return covariance;
+        }
+
+        public double[] getResiduals() {
+            return residuals;
+        }
+
+        public double[] getSigma() {
+            return sigma;
+        }
     }
 }
