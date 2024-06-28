@@ -457,46 +457,51 @@ public class Correlator {
     private int determineLastIndexMeetingCriteria(int blockCount, double[][] varianceBlocks, double[] lowerQuartile,
                                                   double[] upperQuartile) {
         int lastIndexMeetingCriteria = -1;
-        int firstOverlapingIndexAfterIncrease = -1;
+        int index = 0;
 
         for (int i = 0; i < blockCount - 2; i++) {
-            // Check if neighboring points have non overlapping error bars
-            if (haveNonOverlappingErrorBars(i, upperQuartile, lowerQuartile) &&
-                    haveNonOverlappingErrorBars(i + 1, upperQuartile, lowerQuartile)) {
-                // Check if these three points are the last triple with increasing differences
-                if (isIncreasing(i, varianceBlocks) && isIncreasing(i + 1, varianceBlocks)) {
-                    lastIndexMeetingCriteria = i;
-                }
-            } else if (i < blockCount - 4 && lastIndexMeetingCriteria > firstOverlapingIndexAfterIncrease) {
-                // the last two points can't be part of the blocking triple
-                firstOverlapingIndexAfterIncrease = i;
+            // Check if neighboring points have overlapping error bars
+            boolean overlap = haveOverlappingErrorBars(i, upperQuartile, lowerQuartile) &&
+                    haveOverlappingErrorBars(i + 1, upperQuartile, lowerQuartile);
+            // Check if these three points are the last triple with increasing differences
+            boolean isIncreasing = isIncreasing(i, varianceBlocks) && isIncreasing(i + 1, varianceBlocks);
+
+            if (!overlap && isIncreasing) {
+                lastIndexMeetingCriteria = i;
             }
         }
 
-        int index = firstOverlapingIndexAfterIncrease + 1;
+        if (lastIndexMeetingCriteria != -1) {
+            for (int i = lastIndexMeetingCriteria + 1; i < blockCount - 4; i++) {
+                // Check if neighboring points have overlapping error bars
+                boolean overlap = haveOverlappingErrorBars(i, upperQuartile, lowerQuartile) &&
+                        haveOverlappingErrorBars(i + 1, upperQuartile, lowerQuartile);
 
-        if (lastIndexMeetingCriteria == -1 || index < lastIndexMeetingCriteria) {
-            // optimal blocking is not possible, use maximal blocking
-            if (blockCount > 3) {
-                index = blockCount - 3;
-            } else {
-                index = blockCount - 1;
+                if (overlap) {
+                    index = i + 1;
+                    break;
+                }
             }
+        }
+
+        if (index == 0) {
+            // optimal blocking is not possible, use maximal blocking
+            index = (blockCount > 3) ? blockCount - 3 : blockCount - 1;
         }
 
         return Math.max(index, correlatorQ - 1);
     }
 
     /**
-     * Checks if the error bars of neighboring points do not overlap.
+     * Checks if the error bars of neighboring points overlap.
      *
      * @param index         The index of the point.
      * @param upperQuartile The upper quartile values.
      * @param lowerQuartile The lower quartile values.
-     * @return True if the error bars do not overlap, false otherwise.
+     * @return True if the error bars overlap, false otherwise.
      */
-    private boolean haveNonOverlappingErrorBars(int index, double[] upperQuartile, double[] lowerQuartile) {
-        return !(upperQuartile[index] > lowerQuartile[index + 1] && upperQuartile[index + 1] > lowerQuartile[index]);
+    private boolean haveOverlappingErrorBars(int index, double[] upperQuartile, double[] lowerQuartile) {
+        return upperQuartile[index] > lowerQuartile[index + 1] && upperQuartile[index + 1] > lowerQuartile[index];
     }
 
     /**
