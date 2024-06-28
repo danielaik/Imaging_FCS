@@ -155,7 +155,8 @@ public final class ImageController {
         }
 
         if (pixelModel.isFitted()) {
-            ImagePlus imgParams = Plots.plotParameterMaps(pixelModel, p, imageModel.getDimension());
+            ImagePlus imgParams =
+                    Plots.plotParameterMaps(pixelModel, p, imageModel.getDimension(), settings.getBinning());
 
             if (options.isPlotParaHist()) {
                 Plots.plotHistogramWindow(imgParams);

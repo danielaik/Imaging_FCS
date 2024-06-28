@@ -363,19 +363,48 @@ public class Plots {
         residualsWindow = plotWindow(plot, residualsWindow, RESIDUALS_POSITION);
     }
 
-    public static ImagePlus plotParameterMaps(PixelModel pixelModel, Point p, Dimension imageSize) {
+    /**
+     * Converts a point and dimension to a different scale based on binning factors.
+     *
+     * @param p       the original point.
+     * @param d       the original dimension.
+     * @param binning the binning factors to be applied.
+     * @return a Pair containing the converted point and dimension.
+     */
+    private static Pair<Point, Dimension> convertDimensionToBinning(Point p, Dimension d, Point binning) {
+        Point convertedPoint = new Point(p.x / binning.x, p.y / binning.y);
+        Dimension convertedDimension = new Dimension(d.width / binning.x, d.height / binning.y);
+
+        return new Pair<>(convertedPoint, convertedDimension);
+    }
+
+    /**
+     * Plots parameter maps based on the pixel model and given image dimensions.
+     *
+     * @param pixelModel the model containing pixel parameters.
+     * @param p          the point to be plotted.
+     * @param imageSize  the size of the image.
+     * @param binning    the binning factors to be applied.
+     * @return the ImagePlus object containing the plotted parameter maps.
+     */
+    public static ImagePlus plotParameterMaps(PixelModel pixelModel, Point p, Dimension imageSize, Point binning) {
         Pair<String, Double>[] params = pixelModel.getParams();
+
+        // convert dimension using binning
+        Pair<Point, Dimension> convertedDimensions = convertDimensionToBinning(p, imageSize, binning);
+        Point binningPoint = convertedDimensions.getLeft();
+        Dimension imageDimBinning = convertedDimensions.getRight();
 
         boolean initImg = false;
         if (imgParam == null || !imgParam.isVisible()) {
             initImg = true;
-            imgParam = IJ.createImage("Maps", "GRAY32", imageSize.width, imageSize.height, params.length);
+            imgParam = IJ.createImage("Maps", "GRAY32", imageDimBinning.width, imageDimBinning.height, params.length);
 
             // Set all pixel values to NaN
             IntStream.range(1, imgParam.getStackSize() + 1).forEach(slice -> {
                 ImageProcessor ip = imgParam.getStack().getProcessor(slice);
-                for (int x = 0; x < imageSize.width; x++) {
-                    for (int y = 0; y < imageSize.height; y++) {
+                for (int x = 0; x < imageDimBinning.width; x++) {
+                    for (int y = 0; y < imageDimBinning.height; y++) {
                         ip.putPixelValue(x, y, Double.NaN);
                     }
                 }
@@ -405,7 +434,7 @@ public class Plots {
         // Enter value from the end to be on the first slice on output
         for (int i = params.length - 1; i >= 0; i--) {
             ImageProcessor ip = imgParam.getStack().getProcessor(i + 1);
-            ip.putPixelValue(p.x, p.y, params[i].getRight());
+            ip.putPixelValue(binningPoint.x, binningPoint.y, params[i].getRight());
             if (initImg) {
                 imgParam.setSlice(i + 1);
                 IJ.run("Set Label...", "label=" + params[i].getLeft());
@@ -417,6 +446,11 @@ public class Plots {
         return imgParam;
     }
 
+    /**
+     * Plots a histogram window for the given parameter image.
+     *
+     * @param imgParam the ImagePlus object for which the histogram is to be plotted.
+     */
     public static void plotHistogramWindow(ImagePlus imgParam) {
         String title = PixelModel.paramsName[imgParam.getSlice() - 1];
 
@@ -435,6 +469,12 @@ public class Plots {
         }
     }
 
+    /**
+     * Calculates the number of bins for a histogram based on image statistics.
+     *
+     * @param statistics the image statistics.
+     * @return the number of bins for the histogram.
+     */
     private static int getNumBins(ImageStatistics statistics) {
         int firstQuartile = 0;
         long countQuartile = 0;
@@ -455,6 +495,11 @@ public class Plots {
                         (2.0 * interQuartileDistance)) : 10;
     }
 
+    /**
+     * Creates an AdjustmentListener that adjusts the image and plots the histogram when the image is adjusted.
+     *
+     * @return the AdjustmentListener.
+     */
     private static AdjustmentListener imageAdjusted() {
         return (AdjustmentEvent ev) -> {
             IJ.run(imgParam, "Enhance Contrast", "saturated=0.35");
@@ -462,6 +507,11 @@ public class Plots {
         };
     }
 
+    /**
+     * Creates a KeyListener that updates the histogram when a key is pressed, released, or typed.
+     *
+     * @return the KeyListener.
+     */
     private static KeyListener keyAdjustmentListener() {
         return new KeyAdapter() {
             private int currentSlice = 0;
