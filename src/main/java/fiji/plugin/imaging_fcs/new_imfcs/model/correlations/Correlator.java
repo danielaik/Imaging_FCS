@@ -823,6 +823,10 @@ public class Correlator {
         return pixelModels[x][y];
     }
 
+    public PixelModel[][] getPixelsModel() {
+        return pixelModels;
+    }
+
     public double[] getLagTimes() {
         return lagTimes;
     }

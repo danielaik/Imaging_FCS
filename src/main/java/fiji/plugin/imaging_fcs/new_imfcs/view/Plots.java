@@ -47,8 +47,10 @@ public class Plots {
     private static final Dimension MSD_DIMENSION = new Dimension(ACF_DIMENSION);
     private static final Dimension RESIDUALS_DIMENSION = new Dimension(ACF_DIMENSION.width, 50);
     private static final Dimension HISTOGRAM_DIMENSION = new Dimension(350, 250);
+    private static final Dimension SCATTER_DIMENSION = new Dimension(200, 200);
+    private static final Point SCATTER_POSITION = new Point(ACF_POSITION.x + 30, ACF_POSITION.y + 30);
     private static PlotWindow blockingCurveWindow, acfWindow, standardDeviationWindow, intensityTraceWindow, msdWindow,
-            residualsWindow;
+            residualsWindow, scatterWindow;
     private static ImageWindow imgCovarianceWindow;
     private static HistogramWindow histogramWindow;
     private static ImagePlus imgParam;
@@ -68,7 +70,7 @@ public class Plots {
             throw new IllegalArgumentException("findAdjustedMinMax: array is empty");
         }
         double min = Double.MAX_VALUE;
-        double max = Double.MIN_VALUE;
+        double max = -Double.MAX_VALUE;
 
         for (int i = 1; i < array.length; i++) {
             min = Math.min(min, array[i]);
@@ -539,5 +541,35 @@ public class Plots {
                 }
             }
         };
+    }
+
+    /**
+     * Plots a scatter plot using the given data and labels.
+     *
+     * @param scPlot A 2D array containing the scatter plot data. The first row (scPlot[0])
+     *               represents the y-values, and the second row (scPlot[1]) represents the x-values.
+     * @param labelX The label for the x-axis.
+     * @param labelY The label for the y-axis.
+     */
+    public static void scatterPlot(double[][] scPlot, String labelX, String labelY) {
+        Pair<Double, Double> minMax = findAdjustedMinMax(scPlot[1]);
+        double minX = minMax.getLeft();
+        double maxX = minMax.getRight();
+
+        minMax = findAdjustedMinMax(scPlot[0]);
+        double minY = minMax.getLeft();
+        double maxY = minMax.getRight();
+
+        Plot plot = new Plot("Scatter plot", labelX, labelY);
+        plot.setFrameSize(SCATTER_DIMENSION.width, SCATTER_DIMENSION.height);
+        plot.setLimits(minX, maxX, minY, maxY);
+        plot.setColor(Color.BLUE);
+        plot.addPoints(scPlot[1], scPlot[0], Plot.CIRCLE);
+        plot.setJustification(Plot.CENTER);
+        plot.draw();
+
+        plot.addLabel(0.5, 0, labelX + " vs " + labelY);
+
+        scatterWindow = plotWindow(plot, scatterWindow, SCATTER_POSITION);
     }
 }

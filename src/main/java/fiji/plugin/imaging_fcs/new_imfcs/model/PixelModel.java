@@ -2,6 +2,7 @@ package fiji.plugin.imaging_fcs.new_imfcs.model;
 
 import fiji.plugin.imaging_fcs.new_imfcs.utils.Pair;
 
+import java.util.function.Function;
 import java.util.stream.IntStream;
 
 import static fiji.plugin.imaging_fcs.new_imfcs.constants.Constants.DIFFUSION_COEFFICIENT_BASE;
@@ -46,6 +47,59 @@ public class PixelModel {
      * Constructs a new PixelModel instance.
      */
     public PixelModel() {
+    }
+
+    /**
+     * Returns a function that retrieves a specific parameter from a FitParameters instance.
+     *
+     * @param param The name of the parameter to retrieve.
+     * @return A function that takes a FitParameters instance and returns the value of the specified parameter.
+     */
+    private static Function<FitParameters, Double> getParamFromString(String param) {
+        switch (param) {
+            case "N":
+                return FitParameters::getN;
+            case "D":
+                return FitParameters::getDInterface;
+            case "F2":
+                return FitParameters::getF2;
+            case "D2":
+                return FitParameters::getD2Interface;
+            case "N*(1-F2)":
+                return fp -> fp.getN() * (1 - fp.getF2());
+            case "N*F2":
+                return fp -> fp.getN() * fp.getF2();
+            case "Sqrt(vx^2+vy^2)":
+                return fp -> Math.sqrt(Math.pow(fp.getVxInterface(), 2) + Math.pow(fp.getVyInterface(), 2));
+            default:
+                throw new RuntimeException("The scatter method doesn't exist for this param " + param);
+        }
+    }
+
+    /**
+     * Generates a scatter plot array based on the specified mode and pixel data.
+     *
+     * @param pixels A 2D array of PixelModel instances.
+     * @param mode   The mode specifying which parameters to plot. Should be in the format "param1 vs param2".
+     * @return A pair containing the scatter plot data and the parameter names used for the plot.
+     */
+    public static Pair<double[][], String[]> getScatterPlotArray(PixelModel[][] pixels, String mode) {
+        String[] params = mode.split(" vs ");
+        Function<FitParameters, Double> getter1 = getParamFromString(params[0]);
+        Function<FitParameters, Double> getter2 = getParamFromString(params[1]);
+
+        double[][] scPlot = new double[2][pixels.length * pixels[0].length];
+
+        for (int i = 0; i < pixels.length; i++) {
+            for (int j = 0; j < pixels[0].length; j++) {
+                if (pixels[i][j] != null && pixels[i][j].getFitParams() != null) {
+                    scPlot[0][i * pixels[0].length + j] = getter1.apply(pixels[i][j].getFitParams());
+                    scPlot[1][i * pixels[0].length + j] = getter2.apply(pixels[i][j].getFitParams());
+                }
+            }
+        }
+
+        return new Pair<>(scPlot, params);
     }
 
     /**

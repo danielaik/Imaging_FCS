@@ -3,9 +3,11 @@ package fiji.plugin.imaging_fcs.new_imfcs.controller;
 import fiji.plugin.imaging_fcs.new_imfcs.model.*;
 import fiji.plugin.imaging_fcs.new_imfcs.model.correlations.Correlator;
 import fiji.plugin.imaging_fcs.new_imfcs.model.fit.BleachCorrectionModel;
+import fiji.plugin.imaging_fcs.new_imfcs.utils.Pair;
 import fiji.plugin.imaging_fcs.new_imfcs.view.BleachCorrectionView;
 import fiji.plugin.imaging_fcs.new_imfcs.view.ExpSettingsView;
 import fiji.plugin.imaging_fcs.new_imfcs.view.MainPanelView;
+import fiji.plugin.imaging_fcs.new_imfcs.view.Plots;
 import fiji.plugin.imaging_fcs.new_imfcs.view.dialogs.FilterLimitsSelectionView;
 import fiji.plugin.imaging_fcs.new_imfcs.view.dialogs.MSDView;
 import fiji.plugin.imaging_fcs.new_imfcs.view.dialogs.PolynomialOrderSelectionView;
@@ -40,6 +42,7 @@ public final class MainPanelController {
     private final BackgroundSubtractionController backgroundSubtractionController;
     private final NBController nbController;
     private final FitController fitController;
+    private final Correlator correlator;
 
     /**
      * Constructor that initializes models, views, and other controllers needed for the main panel.
@@ -60,7 +63,7 @@ public final class MainPanelController {
         ImageModel imageModel = new ImageModel();
         this.backgroundSubtractionController = new BackgroundSubtractionController(imageModel);
         this.bleachCorrectionModel = new BleachCorrectionModel(expSettingsModel, imageModel);
-        Correlator correlator = new Correlator(expSettingsModel, bleachCorrectionModel, fitModel);
+        this.correlator = new Correlator(expSettingsModel, bleachCorrectionModel, fitModel);
         this.imageController =
                 new ImageController(this, imageModel, backgroundSubtractionController, fitController,
                         bleachCorrectionModel, correlator, expSettingsModel, optionsModel);
@@ -319,9 +322,20 @@ public final class MainPanelController {
         return null;
     }
 
+    /**
+     * Creates an ActionListener for the button press event that generates a scatter plot.
+     *
+     * @return An ActionListener that handles the button press event.
+     */
     public ActionListener btnParaCorPressed() {
-        // TODO: FIXME
-        return null;
+        return (ActionEvent ev) -> {
+            Pair<double[][], String[]> scatterArrayAndLabels =
+                    PixelModel.getScatterPlotArray(correlator.getPixelsModel(), expSettingsModel.getParaCor());
+            double[][] scPlot = scatterArrayAndLabels.getLeft();
+            String[] labels = scatterArrayAndLabels.getRight();
+
+            Plots.scatterPlot(scPlot, labels[0], labels[1]);
+        };
     }
 
     public ActionListener btnDCCFPressed() {
