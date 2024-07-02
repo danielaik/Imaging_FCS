@@ -566,9 +566,9 @@ public class Plots {
         plot.setColor(Color.BLUE);
         plot.addPoints(scPlot[1], scPlot[0], Plot.CIRCLE);
         plot.setJustification(Plot.CENTER);
-        plot.draw();
-
         plot.addLabel(0.5, 0, labelX + " vs " + labelY);
+
+        plot.draw();
 
         scatterWindow = plotWindow(plot, scatterWindow, SCATTER_POSITION);
     }

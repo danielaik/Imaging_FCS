@@ -329,12 +329,18 @@ public final class MainPanelController {
      */
     public ActionListener btnParaCorPressed() {
         return (ActionEvent ev) -> {
-            Pair<double[][], String[]> scatterArrayAndLabels =
-                    PixelModel.getScatterPlotArray(correlator.getPixelsModel(), expSettingsModel.getParaCor());
-            double[][] scPlot = scatterArrayAndLabels.getLeft();
-            String[] labels = scatterArrayAndLabels.getRight();
+            if (!imageController.isImageLoaded()) {
+                IJ.showMessage("No image open.");
+            } else if (correlator.getPixelsModel() == null) {
+                IJ.showMessage("Nothing to plot, please run the fit on at least one pixel before.");
+            } else {
+                Pair<double[][], String[]> scatterArrayAndLabels =
+                        PixelModel.getScatterPlotArray(correlator.getPixelsModel(), expSettingsModel.getParaCor());
+                double[][] scPlot = scatterArrayAndLabels.getLeft();
+                String[] labels = scatterArrayAndLabels.getRight();
 
-            Plots.scatterPlot(scPlot, labels[0], labels[1]);
+                Plots.scatterPlot(scPlot, labels[0], labels[1]);
+            }
         };
     }
 

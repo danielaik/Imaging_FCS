@@ -88,13 +88,19 @@ public class PixelModel {
         Function<FitParameters, Double> getter1 = getParamFromString(params[0]);
         Function<FitParameters, Double> getter2 = getParamFromString(params[1]);
 
-        double[][] scPlot = new double[2][pixels.length * pixels[0].length];
+        int rows = pixels.length;
+        int cols = pixels[0].length;
+        double[][] scPlot = new double[2][rows * cols];
 
-        for (int i = 0; i < pixels.length; i++) {
-            for (int j = 0; j < pixels[0].length; j++) {
+        for (int i = 0; i < rows; i++) {
+            for (int j = 0; j < cols; j++) {
+                int index = i * cols + j;
                 if (pixels[i][j] != null && pixels[i][j].getFitParams() != null) {
-                    scPlot[0][i * pixels[0].length + j] = getter1.apply(pixels[i][j].getFitParams());
-                    scPlot[1][i * pixels[0].length + j] = getter2.apply(pixels[i][j].getFitParams());
+                    scPlot[0][index] = getter1.apply(pixels[i][j].getFitParams());
+                    scPlot[1][index] = getter2.apply(pixels[i][j].getFitParams());
+                } else {
+                    scPlot[0][index] = Double.NaN;
+                    scPlot[1][index] = Double.NaN;
                 }
             }
         }
