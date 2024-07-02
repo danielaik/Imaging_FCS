@@ -170,7 +170,7 @@ public final class ImageController {
      * @return The MouseListener instance.
      */
     public MouseListener imageMouseClicked() {
-        return new MouseListener() {
+        return new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent event) {
                 int x = imageModel.getCanvas().offScreenX(event.getX());
@@ -185,26 +185,6 @@ public final class ImageController {
                 }
 
                 correlatePixel(x, y);
-            }
-
-            @Override
-            public void mousePressed(MouseEvent event) {
-
-            }
-
-            @Override
-            public void mouseReleased(MouseEvent event) {
-
-            }
-
-            @Override
-            public void mouseEntered(MouseEvent event) {
-
-            }
-
-            @Override
-            public void mouseExited(MouseEvent event) {
-
             }
         };
     }
