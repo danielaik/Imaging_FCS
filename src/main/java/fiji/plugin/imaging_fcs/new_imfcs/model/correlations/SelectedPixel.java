@@ -3,7 +3,6 @@ package fiji.plugin.imaging_fcs.new_imfcs.model.correlations;
 import fiji.plugin.imaging_fcs.new_imfcs.constants.Constants;
 import fiji.plugin.imaging_fcs.new_imfcs.model.ExpSettingsModel;
 import fiji.plugin.imaging_fcs.new_imfcs.model.ImageModel;
-import fiji.plugin.imaging_fcs.new_imfcs.model.fit.BleachCorrectionModel;
 import ij.gui.Overlay;
 import ij.gui.Roi;
 
@@ -14,7 +13,6 @@ import java.awt.*;
  */
 public class SelectedPixel {
     private final ImageModel imageModel;
-    private final BleachCorrectionModel bleachCorrectionModel;
     private final Correlator correlator;
     private final ExpSettingsModel settings;
 
@@ -28,15 +26,12 @@ public class SelectedPixel {
     /**
      * Constructs a SelectedPixel instance with the given models and settings.
      *
-     * @param imageModel            the image model
-     * @param bleachCorrectionModel the bleach correction model
-     * @param correlator            the correlator
-     * @param settings              the experimental settings model
+     * @param imageModel the image model
+     * @param correlator the correlator
+     * @param settings   the experimental settings model
      */
-    public SelectedPixel(ImageModel imageModel, BleachCorrectionModel bleachCorrectionModel, Correlator correlator,
-                         ExpSettingsModel settings) {
+    public SelectedPixel(ImageModel imageModel, Correlator correlator, ExpSettingsModel settings) {
         this.imageModel = imageModel;
-        this.bleachCorrectionModel = bleachCorrectionModel;
         this.correlator = correlator;
         this.settings = settings;
     }
@@ -168,9 +163,6 @@ public class SelectedPixel {
 
         if (settings.getFitModel().equals(Constants.ITIR_FCS_2D) ||
                 settings.getFitModel().equals(Constants.SPIM_FCS_3D)) {
-            bleachCorrectionModel.calcIntensityTrace(imageModel.getImage(), cursorPosition1.x, cursorPosition1.y,
-                    cursorPosition2.x, cursorPosition2.y, settings.getFirstFrame(), settings.getLastFrame());
-
             // TODO: in correlate we need to divide by pixelBinning to set the auto-correlation function
             correlator.correlate(imageModel.getImage(), cursorPosition1.x, cursorPosition1.y, cursorPosition2.x,
                     cursorPosition2.y, settings.getFirstFrame(), settings.getLastFrame());

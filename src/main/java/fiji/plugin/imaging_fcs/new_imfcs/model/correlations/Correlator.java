@@ -97,6 +97,9 @@ public class Correlator {
      * @param finalFrame   The final frame number.
      */
     public void correlate(ImagePlus img, int x, int y, int x2, int y2, int initialFrame, int finalFrame) {
+        // calculate the intensity trace beforehand since it will be needed to perform the correlation
+        bleachCorrectionModel.calcIntensityTrace(img, x, y, x2, y2, initialFrame, finalFrame);
+
         // if the pixelModels array was never instantiated then we create it
         if (pixelModels == null) {
             pixelModels = new PixelModel[img.getWidth()][img.getHeight()];

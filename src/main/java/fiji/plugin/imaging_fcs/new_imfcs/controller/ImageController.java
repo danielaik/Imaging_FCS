@@ -98,7 +98,7 @@ public final class ImageController {
      * @param y The y-coordinate of the pixel.
      */
     private void correlatePixel(int x, int y) {
-        SelectedPixel selectedPixel = new SelectedPixel(imageModel, bleachCorrectionModel, correlator, settings);
+        SelectedPixel selectedPixel = new SelectedPixel(imageModel, correlator, settings);
         try {
             Point[] cursorPositions = selectedPixel.performCorrelationFunctionEvaluation(x, y);
             Point pixel = cursorPositions[0];
