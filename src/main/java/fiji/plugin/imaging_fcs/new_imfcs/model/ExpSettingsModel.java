@@ -2,6 +2,7 @@ package fiji.plugin.imaging_fcs.new_imfcs.model;
 
 import fiji.plugin.imaging_fcs.new_imfcs.constants.Constants;
 import fiji.plugin.imaging_fcs.new_imfcs.controller.InvalidUserInputException;
+import ij.ImagePlus;
 
 import java.awt.*;
 
@@ -108,6 +109,95 @@ public final class ExpSettingsModel {
         } else {
             lagGroupNumber = correlatorQ;
             channelNumber = correlatorP + (correlatorQ - 1) * correlatorP / 2 + 1;
+        }
+    }
+
+    /**
+     * Determines the number of pixels that can be correlated, depending on whether overlap is allowed
+     *
+     * @param img the img to get the shape from
+     * @return the dimension of the useful area
+     */
+    public Dimension getUsefulArea(ImagePlus img) {
+        if (overlap) {
+            return new Dimension(img.getWidth() - binning.x, img.getHeight() - binning.y);
+        } else {
+            return new Dimension((img.getWidth() / binning.x) - 1, (img.getHeight() / binning.y) - 1);
+        }
+    }
+
+    /**
+     * Calculates the minimum cursor position based on the given distance and pixel binning factor.
+     *
+     * @param distance     the distance between the two pixels
+     * @param pixelBinning the pixel binning factor
+     * @return the calculated minimum cursor position
+     */
+    private int calculateMinCursorPosition(int distance, int pixelBinning) {
+        if (distance < 0) {
+            return -(int) Math.floor((double) distance / pixelBinning);
+        }
+        return 0;
+    }
+
+    /**
+     * Calculates the minimum cursor position in the image.
+     *
+     * @return the calculated minimum cursor position
+     */
+    public Point getMinCursorPosition() {
+        Point pixelBinning = getPixelBinning();
+
+        return new Point(calculateMinCursorPosition(CCF.width, pixelBinning.x),
+                calculateMinCursorPosition(CCF.height, pixelBinning.y));
+    }
+
+    /**
+     * Calculates the maximum cursor position based on given parameters.
+     *
+     * @param pixelDimension the pixel dimension
+     * @param distance       the distance to be calculated
+     * @param imageDimension the image dimension
+     * @param pixelBinning   the pixel binning factor
+     * @param binning        the binning factor
+     * @return the calculated maximum cursor position
+     */
+    private int calculateMaxCursorPosition(int pixelDimension, int distance, int imageDimension, int pixelBinning,
+                                           int binning) {
+        if (distance >= 0) {
+            int effectiveWidth = pixelDimension * pixelBinning + binning;
+            double adjustedDistance = distance - (imageDimension - effectiveWidth);
+            return (int) (pixelDimension - adjustedDistance / pixelBinning);
+        }
+
+        return pixelDimension;
+    }
+
+    /**
+     * Calculates the maximum cursor position in the image.
+     *
+     * @return the calculated maximum cursor position
+     */
+    public Point getMaxCursorPosition(ImagePlus img) {
+        Dimension usefulArea = getUsefulArea(img);
+        Point pixelBinning = getPixelBinning();
+
+        return new Point(
+                calculateMaxCursorPosition(usefulArea.width, CCF.width, img.getWidth(), pixelBinning.x, binning.x),
+                calculateMaxCursorPosition(usefulArea.height, CCF.height, img.getHeight(), pixelBinning.y, binning.y));
+    }
+
+    /**
+     * Multiplication factor to determine positions in the image window; it is 1 for overlap, otherwise equal to
+     * binning
+     *
+     * @return the binning to use in the image window
+     */
+    public Point getPixelBinning() {
+        if (overlap) {
+            return new Point(1, 1);
+        } else {
+            return binning;
         }
     }
 
