@@ -13,9 +13,8 @@ import java.awt.*;
  */
 public final class ImageView {
     // Constants defining the zoom factor and the initial position of the image window
-    private static final Point IMAGE_POSITION = new Point(
-            Constants.MAIN_PANEL_POS.x + Constants.MAIN_PANEL_DIM.width + 10,
-            Constants.MAIN_PANEL_POS.y);
+    public static final Point IMAGE_POSITION =
+            new Point(Constants.MAIN_PANEL_POS.x + Constants.MAIN_PANEL_DIM.width + 10, Constants.MAIN_PANEL_POS.y);
 
     /**
      * Default constructor for ImageView.

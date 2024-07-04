@@ -14,6 +14,8 @@ import ij.process.ImageStatistics;
 import java.awt.*;
 import java.awt.event.*;
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.stream.IntStream;
 
 /**
@@ -23,15 +25,17 @@ import java.util.stream.IntStream;
  * intensity traces, and mean square displacements (MSD).
  */
 public class Plots {
-    private static final Point ACF_POSITION = new Point(
-            Constants.MAIN_PANEL_POS.x + Constants.MAIN_PANEL_DIM.width + 10, Constants.MAIN_PANEL_POS.y + 100);
+    private static final Point ACF_POSITION =
+            new Point(Constants.MAIN_PANEL_POS.x + Constants.MAIN_PANEL_DIM.width + 10,
+                    Constants.MAIN_PANEL_POS.y + 100);
     private static final Dimension ACF_DIMENSION = new Dimension(200, 200);
     private static final Dimension BLOCKING_CURVE_DIMENSION = new Dimension(200, 100);
     private static final Point STANDARD_DEVIATION_POSITION =
             new Point(ACF_POSITION.x + ACF_DIMENSION.width + 115, ACF_POSITION.y);
     private static final Dimension STANDARD_DEVIATION_DIMENSION = new Dimension(ACF_DIMENSION.width, 50);
-    private static final Point BLOCKING_CURVE_POSITION = new Point(
-            STANDARD_DEVIATION_POSITION.x + STANDARD_DEVIATION_DIMENSION.width + 110, STANDARD_DEVIATION_POSITION.y);
+    private static final Point BLOCKING_CURVE_POSITION =
+            new Point(STANDARD_DEVIATION_POSITION.x + STANDARD_DEVIATION_DIMENSION.width + 110,
+                    STANDARD_DEVIATION_POSITION.y);
     private static final Point COVARIANCE_POSITION =
             new Point(BLOCKING_CURVE_POSITION.x, BLOCKING_CURVE_POSITION.y + BLOCKING_CURVE_DIMENSION.height + 150);
     private static final Point MSD_POSITION =
@@ -40,19 +44,25 @@ public class Plots {
             STANDARD_DEVIATION_POSITION.y + STANDARD_DEVIATION_DIMENSION.height + 145);
     private static final Point PARAMETER_POSITION =
             new Point(ACF_POSITION.x + ACF_DIMENSION.width + 80, Constants.MAIN_PANEL_POS.y);
-    private static final Point HISTOGRAM_POSITION = new Point(PARAMETER_POSITION.x + 280, PARAMETER_POSITION.y);
+    private static final Point PARAM_HISTOGRAM_POSITION = new Point(PARAMETER_POSITION.x + 280, PARAMETER_POSITION.y);
     private static final Point INTENSITY_POSITION =
             new Point(ACF_POSITION.x, ACF_POSITION.y + ACF_DIMENSION.height + 145);
     private static final Dimension INTENSITY_DIMENSION = new Dimension(ACF_DIMENSION.width, 50);
     private static final Dimension MSD_DIMENSION = new Dimension(ACF_DIMENSION);
     private static final Dimension RESIDUALS_DIMENSION = new Dimension(ACF_DIMENSION.width, 50);
-    private static final Dimension HISTOGRAM_DIMENSION = new Dimension(350, 250);
+    private static final Dimension PARAM_HISTOGRAM_DIMENSION = new Dimension(350, 250);
     private static final Dimension SCATTER_DIMENSION = new Dimension(200, 200);
     private static final Point SCATTER_POSITION = new Point(ACF_POSITION.x + 30, ACF_POSITION.y + 30);
+    private static final Point DCCF_POSITION =
+            new Point(ImageView.IMAGE_POSITION.x + 50, ImageView.IMAGE_POSITION.y + 50);
+    private static final Dimension DCCF_HISTOGRAM_DIMENSION = new Dimension(350, 250);
+    private static final Point DCCF_HISTOGRAM_POSITION = new Point(DCCF_POSITION.x + 280, DCCF_POSITION.y);
+    private static final Map<String, ImageWindow> dccfWindows = new HashMap<>();
+    private static final Map<String, HistogramWindow> dccfHistogramWindows = new HashMap<>();
     private static PlotWindow blockingCurveWindow, acfWindow, standardDeviationWindow, intensityTraceWindow, msdWindow,
             residualsWindow, scatterWindow;
     private static ImageWindow imgCovarianceWindow;
-    private static HistogramWindow histogramWindow;
+    private static HistogramWindow paramHistogramWindow;
     private static ImagePlus imgParam;
 
     // Prevent instantiation
@@ -125,6 +135,33 @@ public class Plots {
     }
 
     /**
+     * Plots the histogram window for the given image, creating a new window or updating an existing one.
+     *
+     * @param img       The ImagePlus object representing the image for which the histogram is plotted.
+     * @param window    The existing HistogramWindow object, if any.
+     * @param title     The title of the histogram window.
+     * @param numBins   The number of bins for the histogram.
+     * @param position  The position of the histogram window on the screen.
+     * @param dimension The dimensions of the histogram window.
+     * @return The HistogramWindow object representing the histogram window.
+     */
+    private static HistogramWindow plotHistogramWindow(ImagePlus img, HistogramWindow window, String title,
+                                                       int numBins, Point position, Dimension dimension) {
+        ImageStatistics statistics = img.getStatistics();
+
+        if (window == null || window.isClosed()) {
+            window = new HistogramWindow(title, img, numBins, statistics.histMin, statistics.histMax,
+                    statistics.histYMax);
+            window.setLocationAndSize(position.x, position.y, dimension.width, dimension.height);
+        } else {
+            window.showHistogram(img, numBins, statistics.histMin, statistics.histMax);
+            window.setTitle(title);
+        }
+
+        return window;
+    }
+
+    /**
      * Plots the blocking curve with variance blocks and index highlighting.
      *
      * @param varianceBlocks The variance blocks.
@@ -169,8 +206,8 @@ public class Plots {
 
         plot.setFrameSize(BLOCKING_CURVE_DIMENSION.width, BLOCKING_CURVE_DIMENSION.height);
         plot.setLogScaleX();
-        plot.setLimits(
-                varianceBlocks[0][0] / 2, 2 * varianceBlocks[0][varianceBlocks[0].length - 1], minBlock, maxBlock);
+        plot.setLimits(varianceBlocks[0][0] / 2, 2 * varianceBlocks[0][varianceBlocks[0].length - 1], minBlock,
+                maxBlock);
         return plot;
     }
 
@@ -231,8 +268,8 @@ public class Plots {
         String description = String.format(" ACF of (%d, %d) at %dx%d binning.", p1.x, p1.y, binning.x, binning.y);
         if (!p1.equals(p2)) {
             description =
-                    String.format(" CFF of (%d, %d) and (%d, %d) at %dx%d binning.", p1.x, p1.y, p2.x, p2.y,
-                            binning.x, binning.y);
+                    String.format(" CFF of (%d, %d) and (%d, %d) at %dx%d binning.", p1.x, p1.y, p2.x, p2.y, binning.x,
+                            binning.y);
         }
 
         plot.addLabel(0.5, 0, description);
@@ -242,8 +279,8 @@ public class Plots {
         // Plot the fitted ACF
         if (pixelModel.isFitted()) {
             plot.setColor(Color.RED);
-            plot.addPoints(Arrays.copyOfRange(lagTimes, fitStart,
-                    fitEnd + 1), Arrays.copyOfRange(pixelModel.getFittedAcf(), fitStart, fitEnd + 1), Plot.LINE);
+            plot.addPoints(Arrays.copyOfRange(lagTimes, fitStart, fitEnd + 1),
+                    Arrays.copyOfRange(pixelModel.getFittedAcf(), fitStart, fitEnd + 1), Plot.LINE);
             plot.draw();
         }
 
@@ -453,22 +490,14 @@ public class Plots {
      *
      * @param imgParam the ImagePlus object for which the histogram is to be plotted.
      */
-    public static void plotHistogramWindow(ImagePlus imgParam) {
+    public static void plotParamHistogramWindow(ImagePlus imgParam) {
         String title = PixelModel.paramsName[imgParam.getSlice() - 1];
 
-        ImageStatistics statistics = imgParam.getStatistics();
-        int numBins = getNumBins(statistics);
+        int numBins = getNumBins(imgParam.getStatistics());
 
-        if (histogramWindow == null || histogramWindow.isClosed()) {
-            histogramWindow =
-                    new HistogramWindow(title, imgParam, numBins, statistics.histMin, statistics.histMax,
-                            statistics.histYMax);
-            histogramWindow.setLocationAndSize(HISTOGRAM_POSITION.x, HISTOGRAM_POSITION.y, HISTOGRAM_DIMENSION.width,
-                    HISTOGRAM_DIMENSION.height);
-        } else {
-            histogramWindow.showHistogram(imgParam, numBins, statistics.histMin, statistics.histMax);
-            histogramWindow.setTitle(title);
-        }
+        paramHistogramWindow =
+                plotHistogramWindow(imgParam, paramHistogramWindow, title, numBins, PARAM_HISTOGRAM_POSITION,
+                        PARAM_HISTOGRAM_DIMENSION);
     }
 
     /**
@@ -505,7 +534,7 @@ public class Plots {
     private static AdjustmentListener imageAdjusted() {
         return (AdjustmentEvent ev) -> {
             IJ.run(imgParam, "Enhance Contrast", "saturated=0.35");
-            plotHistogramWindow(imgParam);
+            plotParamHistogramWindow(imgParam);
         };
     }
 
@@ -536,7 +565,7 @@ public class Plots {
             private void updateHistogram() {
                 if (currentSlice != imgParam.getSlice()) {
                     IJ.run(imgParam, "Enhance Contrast", "saturated=0.35");
-                    plotHistogramWindow(imgParam);
+                    plotParamHistogramWindow(imgParam);
                     currentSlice = imgParam.getSlice();
                 }
             }
@@ -571,5 +600,47 @@ public class Plots {
         plot.draw();
 
         scatterWindow = plotWindow(plot, scatterWindow, SCATTER_POSITION);
+    }
+
+    /**
+     * Plots the DCCF window using the given DCCF data and direction name.
+     *
+     * @param dcff          A 2D array representing the computed DCCF values.
+     * @param directionName The name of the direction for DCCF computation.
+     */
+    public static void plotDCCFWindow(double[][] dcff, String directionName) {
+        int width = dcff.length;
+        int height = dcff[0].length;
+
+        ImagePlus img = IJ.createImage("DCCF - " + directionName, "GRAY32", width, height, 1);
+        ImageProcessor ip = img.getStack().getProcessor(1);
+        for (int x = 0; x < width; x++) {
+            for (int y = 0; y < height; y++) {
+                ip.putPixelValue(x, y, dcff[x][y]);
+            }
+        }
+
+        // Plot the image in a new window or update the existing window
+        dccfWindows.put(directionName, plotImageWindow(img, dccfWindows.get(directionName), DCCF_POSITION));
+
+        IJ.run(img, "Enhance Contrast", "saturated=0.35");
+        ImageModel.adaptImageScale(img);
+
+        plotDCCFHistogram(img, directionName);
+    }
+
+    /**
+     * Plots the histogram of the given DCCF image using the specified direction name.
+     *
+     * @param dcffImg       The ImagePlus object representing the DCCF image.
+     * @param directionName The name of the direction for DCCF computation.
+     */
+    private static void plotDCCFHistogram(ImagePlus dcffImg, String directionName) {
+        ImageStatistics stats = dcffImg.getStatistics();
+        int numBins = (int) (Math.cbrt(stats.pixelCount) * (stats.histMax - stats.histMin) / (4 * stats.stdDev)) + 1;
+
+        dccfHistogramWindows.put(directionName,
+                plotHistogramWindow(dcffImg, dccfHistogramWindows.get(directionName), "Histogram - " + directionName,
+                        numBins, DCCF_HISTOGRAM_POSITION, DCCF_HISTOGRAM_DIMENSION));
     }
 }
