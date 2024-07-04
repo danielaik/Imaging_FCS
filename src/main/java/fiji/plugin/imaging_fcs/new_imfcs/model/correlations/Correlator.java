@@ -8,6 +8,8 @@ import fiji.plugin.imaging_fcs.new_imfcs.model.fit.BleachCorrectionModel;
 import ij.ImagePlus;
 
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
 
 import static fiji.plugin.imaging_fcs.new_imfcs.utils.MatrixDeepCopy.deepCopy;
 
@@ -27,6 +29,7 @@ public class Correlator {
     private double[] lagTimes;
     private double[][] regularizedCovarianceMatrix, varianceBlocks;
     private PixelModel[][] pixelModels;
+    private Map<String, double[][]> dccf = new HashMap<>();
 
     /**
      * Constructs a Correlator with the specified settings, bleach correction model, and fit model.
@@ -97,9 +100,6 @@ public class Correlator {
      * @param finalFrame   The final frame number.
      */
     public void correlate(ImagePlus img, int x, int y, int x2, int y2, int initialFrame, int finalFrame) {
-        // calculate the intensity trace beforehand since it will be needed to perform the correlation
-        bleachCorrectionModel.calcIntensityTrace(img, x, y, x2, y2, initialFrame, finalFrame);
-
         // if the pixelModels array was never instantiated then we create it
         if (pixelModels == null) {
             pixelModels = new PixelModel[img.getWidth()][img.getHeight()];
@@ -107,6 +107,26 @@ public class Correlator {
 
         pixelModels[x][y] = new PixelModel();
         PixelModel pixelModel = pixelModels[x][y];
+
+        correlatePixelModel(pixelModel, img, x, y, x2, y2, initialFrame, finalFrame);
+    }
+
+    /**
+     * Correlates the specified PixelModel using the given image, pixel coordinates, and frame range.
+     *
+     * @param pixelModel   The PixelModel to be correlated.
+     * @param img          The image.
+     * @param x            The x-coordinate of the first pixel.
+     * @param y            The y-coordinate of the first pixel.
+     * @param x2           The x-coordinate of the second pixel.
+     * @param y2           The y-coordinate of the second pixel.
+     * @param initialFrame The initial frame number.
+     * @param finalFrame   The final frame number.
+     */
+    public void correlatePixelModel(PixelModel pixelModel, ImagePlus img, int x, int y, int x2, int y2,
+                                    int initialFrame, int finalFrame) {
+        // calculate the intensity trace beforehand since it will be needed to perform the correlation
+        bleachCorrectionModel.calcIntensityTrace(img, x, y, x2, y2, initialFrame, finalFrame);
 
         correlatorQ = settings.getCorrelatorQ();
 
@@ -444,8 +464,8 @@ public class Correlator {
                 (sumProdSquared / (numBinnedDataPoints - delay) - Math.pow(sumProd / numProducts[0], 2)) /
                         (numProducts[0] * Math.pow(directMonitor * delayedMonitor, 2));
 
-        performBlockingOperations(blockCount, currentIncrement, varianceBlocks, directMonitor, delayedMonitor,
-                products, numProducts);
+        performBlockingOperations(blockCount, currentIncrement, varianceBlocks, directMonitor, delayedMonitor, products,
+                numProducts);
     }
 
     /**
@@ -626,8 +646,8 @@ public class Correlator {
         for (int i = 1; i < settings.getChannelNumber(); i++) {
             double tmp = 0;
             for (int j = 0; j < minProducts; j++) {
-                tmp += Math.pow((
-                        Math.pow(products[i][j] / (directMonitors[i] * delayedMonitors[i]) - meanCovariance[i], 2) -
+                tmp += Math.pow(
+                        (Math.pow(products[i][j] / (directMonitors[i] * delayedMonitors[i]) - meanCovariance[i], 2) -
                                 covarianceMatrix[i][i]), 2);
             }
             tmp *= minProducts / Math.pow(minProducts - 1, 3);
@@ -748,8 +768,8 @@ public class Correlator {
 
         int numBinnedDataPoints = numFrames;
         int currentIncrement = BLOCK_LAG;
-        int minProducts = (int) (numSamples[settings.getChannelNumber() - 1] / Math.pow(2, Math.max(
-                blockIndex - Math.log(sampleTimes[settings.getChannelNumber() - 1]) / Math.log(2), 0)));
+        int minProducts = (int) (numSamples[settings.getChannelNumber() - 1] / Math.pow(2,
+                Math.max(blockIndex - Math.log(sampleTimes[settings.getChannelNumber() - 1]) / Math.log(2), 0)));
 
         // count how often the data was binned
         int binCount = 0;
@@ -795,20 +815,19 @@ public class Correlator {
             pixelModel.getStandardDeviationAcf()[i] = Math.sqrt(pixelModel.getVarianceAcf()[i]);
         }
 
-        // TODO: check if GLS is selected, if it's selected then we do the following operations
         // if GLS is selected, then calculate the regularized covariance matrix
         if (fitModel.isGLS()) {
             pixelModel.setAcf(calculateMeanCovariance(products, directMonitors, delayedMonitors, minProducts));
-            calculateCovarianceMatrix(covarianceMatrix, products, pixelModel.getAcf(), directMonitors,
-                    delayedMonitors, minProducts);
+            calculateCovarianceMatrix(covarianceMatrix, products, pixelModel.getAcf(), directMonitors, delayedMonitors,
+                    minProducts);
             double varianceShrinkageWeight =
                     calculateVarianceShrinkageWeight(covarianceMatrix, products, pixelModel.getAcf(), directMonitors,
                             delayedMonitors, minProducts);
 
             double[][] correlationMatrix = new double[settings.getChannelNumber()][settings.getChannelNumber()];
             double covarianceShrinkageWeight =
-                    calculateCovarianceShrinkageWeight(products, pixelModel.getAcf(), directMonitors, delayedMonitors
-                            , covarianceMatrix, correlationMatrix, minProducts);
+                    calculateCovarianceShrinkageWeight(products, pixelModel.getAcf(), directMonitors, delayedMonitors,
+                            covarianceMatrix, correlationMatrix, minProducts);
 
             regularizeCovarianceMatrix(covarianceMatrix, correlationMatrix, varianceShrinkageWeight,
                     covarianceShrinkageWeight, minProducts);
@@ -816,6 +835,14 @@ public class Correlator {
             // hand over the correlation function CorrelationMean; they differ only slightly
             pixelModel.setAcf(correlationMean);
         }
+    }
+
+    public double[][] getDccf(String directionName) {
+        return dccf.get(directionName);
+    }
+
+    public void setDccf(String directionName, double[][] dccf) {
+        this.dccf.put(directionName, dccf);
     }
 
     public double[][] getRegularizedCovarianceMatrix() {
