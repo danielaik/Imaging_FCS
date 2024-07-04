@@ -2,6 +2,7 @@ package fiji.plugin.imaging_fcs.new_imfcs.controller;
 
 import fiji.plugin.imaging_fcs.new_imfcs.model.*;
 import fiji.plugin.imaging_fcs.new_imfcs.model.correlations.Correlator;
+import fiji.plugin.imaging_fcs.new_imfcs.model.correlations.DCCFWorker;
 import fiji.plugin.imaging_fcs.new_imfcs.model.fit.BleachCorrectionModel;
 import fiji.plugin.imaging_fcs.new_imfcs.utils.Pair;
 import fiji.plugin.imaging_fcs.new_imfcs.view.BleachCorrectionView;
@@ -64,9 +65,8 @@ public final class MainPanelController {
         this.backgroundSubtractionController = new BackgroundSubtractionController(imageModel);
         this.bleachCorrectionModel = new BleachCorrectionModel(expSettingsModel, imageModel);
         this.correlator = new Correlator(expSettingsModel, bleachCorrectionModel, fitModel);
-        this.imageController =
-                new ImageController(this, imageModel, backgroundSubtractionController, fitController,
-                        bleachCorrectionModel, correlator, expSettingsModel, optionsModel);
+        this.imageController = new ImageController(this, imageModel, backgroundSubtractionController, fitController,
+                bleachCorrectionModel, correlator, expSettingsModel, optionsModel);
 
         this.bleachCorrectionView = new BleachCorrectionView(this, bleachCorrectionModel);
 
@@ -128,8 +128,8 @@ public final class MainPanelController {
         int maxWindowSize = expSettingsModel.getLastFrame() - expSettingsModel.getFirstFrame();
 
         if (slidingWindowLength <= 0 || slidingWindowLength > maxWindowSize) {
-            IJ.showMessage(String.format("Invalid sliding window size. It must be inside 0 < order < %d",
-                    maxWindowSize));
+            IJ.showMessage(
+                    String.format("Invalid sliding window size. It must be inside 0 < order < %d", maxWindowSize));
             new SlidingWindowSelectionView(this::onBleachCorrectionSlidingWindowAccepted,
                     expSettingsModel.getSlidingWindowLength());
         } else {
@@ -169,8 +169,8 @@ public final class MainPanelController {
 
             // If a filter mode other than "none" is selected, show the filter limits dialog.
             if (!filterMode.equals("none")) {
-                new FilterLimitsSelectionView(this::onFilterSelectionAccepted, expSettingsModel.getFilterLowerLimit()
-                        , expSettingsModel.getFilterUpperLimit());
+                new FilterLimitsSelectionView(this::onFilterSelectionAccepted, expSettingsModel.getFilterLowerLimit(),
+                        expSettingsModel.getFilterUpperLimit());
             }
         };
     }
@@ -344,9 +344,27 @@ public final class MainPanelController {
         };
     }
 
+    /**
+     * Creates an ActionListener that handles the DCCF button press event.
+     *
+     * @return An ActionListener that initiates the DCCF computation when the button is pressed.
+     */
     public ActionListener btnDCCFPressed() {
-        // TODO: FIXME
-        return null;
+        return (ActionEvent ev) -> {
+            if (!imageController.isImageLoaded()) {
+                IJ.showMessage("No image open.");
+            } else {
+                String directionName = expSettingsModel.getdCCF();
+                IJ.showStatus("Correlating all pixels");
+                DCCFWorker dccfWorker =
+                        new DCCFWorker(expSettingsModel, correlator, imageController.getImage(), directionName,
+                                (dccfArray, direction) -> {
+                                    IJ.showStatus("Done");
+                                    Plots.plotDCCFWindow(dccfArray, direction);
+                                });
+                dccfWorker.execute();
+            }
+        };
     }
 
     public ActionListener btnRTPressed() {

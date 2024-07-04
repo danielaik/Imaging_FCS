@@ -71,6 +71,15 @@ public final class ImageController {
     }
 
     /**
+     * Retrieves the currently loaded image from the model.
+     *
+     * @return The ImagePlus object representing the currently loaded image.
+     */
+    public ImagePlus getImage() {
+        return imageModel.getImage();
+    }
+
+    /**
      * Loads the given image into the model and sets up the view and event listeners.
      *
      * @param image The ImagePlus instance to load.
@@ -122,8 +131,8 @@ public final class ImageController {
         PixelModel pixelModel = correlator.getPixelModel(p.x, p.y);
 
         if (options.isPlotACFCurves()) {
-            Plots.plotCorrelationFunction(pixelModel, correlator.getLagTimes(), cursorPositions,
-                    settings.getBinning(), fitController.getFitStart(), fitController.getFitEnd());
+            Plots.plotCorrelationFunction(pixelModel, correlator.getLagTimes(), cursorPositions, settings.getBinning(),
+                    fitController.getFitStart(), fitController.getFitEnd());
         }
 
         if (options.isPlotSDCurves()) {
@@ -159,7 +168,7 @@ public final class ImageController {
                     Plots.plotParameterMaps(pixelModel, p, imageModel.getDimension(), settings.getBinning());
 
             if (options.isPlotParaHist()) {
-                Plots.plotHistogramWindow(imgParams);
+                Plots.plotParamHistogramWindow(imgParams);
             }
         }
     }
