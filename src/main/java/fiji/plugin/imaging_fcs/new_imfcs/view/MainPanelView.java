@@ -80,30 +80,26 @@ public final class MainPanelView extends BaseView {
      */
     @Override
     protected void initializeTextFields() {
-        tfFirstFrame =
-                createTextField(expSettingsModel.getFirstFrame(), "",
-                        controller.updateStrideParam(expSettingsModel::setFirstFrame));
+        tfFirstFrame = createTextField(expSettingsModel.getFirstFrame(), "",
+                controller.updateStrideParam(expSettingsModel::setFirstFrame));
 
         tfFrameTime = createTextField(expSettingsModel.getFrameTime(),
-                "Time per this. NOTE: Changing this value will " +
-                        "reinitialize all arrays.", createFocusListener(expSettingsModel::setFrameTime));
+                "Time per this. NOTE: Changing this value will " + "reinitialize all arrays.",
+                createFocusListener(expSettingsModel::setFrameTime));
 
-        tfLastFrame =
-                createTextField(expSettingsModel.getLastFrame(), "",
-                        controller.updateStrideParam(expSettingsModel::setLastFrame));
+        tfLastFrame = createTextField(expSettingsModel.getLastFrame(), "",
+                controller.updateStrideParam(expSettingsModel::setLastFrame));
 
         tfBinning = createTextField(expSettingsModel.getBinningString(),
-                "Pixel binning used in the evaluations. NOTE: " +
-                        "Changing this value will reinitialize all arrays.",
+                "Pixel binning used in the evaluations. NOTE: " + "Changing this value will reinitialize all arrays.",
                 controller.updateSettings(expSettingsModel::setBinning));
 
         tfCCFDistance = createTextField(expSettingsModel.getCCFString(), "Distance in x- and y-direction for spatial " +
-                "cross-correlation. NOTE: Changing this value will reinitialize all arrays.",
+                        "cross-correlation. NOTE: Changing this value will reinitialize all arrays.",
                 controller.updateSettings(expSettingsModel::setCCF));
 
-        tfCorrelatorQ =
-                createTextField(expSettingsModel.getCorrelatorQ(), "",
-                        createFocusListener(controller.updateFitEnd(expSettingsModel::setCorrelatorQ)));
+        tfCorrelatorQ = createTextField(expSettingsModel.getCorrelatorQ(), "",
+                createFocusListener(controller.updateFitEnd(expSettingsModel::setCorrelatorQ)));
     }
 
     /**
@@ -136,7 +132,12 @@ public final class MainPanelView extends BaseView {
                 "D2 vs Sqrt(vx^2+vy^2)"
         });
 
-        cbDCCF = new JComboBox<>(new String[]{"x direction", "y direction", "diagonal /", "diagonal \\"});
+        cbDCCF = new JComboBox<>(new String[]{
+                Constants.X_DIRECTION,
+                Constants.Y_DIRECTION,
+                Constants.DIAGONAL_UP_DIRECTION,
+                Constants.DIAGONAL_DOWN_DIRECTION
+        });
 
         // add listeners
         cbFitModel.addActionListener(controller.cbFitModelChanged());
@@ -144,6 +145,7 @@ public final class MainPanelView extends BaseView {
         cbParaCor.addActionListener(updateComboBoxValue(expSettingsModel::setParaCor));
         cbBleachCor.addActionListener(controller.cbBleachCorChanged());
         cbFilter.addActionListener(controller.cbFilterChanged());
+        cbDCCF.addActionListener(updateComboBoxValue(expSettingsModel::setdCCF));
     }
 
     @Override
@@ -154,8 +156,9 @@ public final class MainPanelView extends BaseView {
 
     private void createJButtons() {
         // create the IO colored buttons
-        btnSave = createJButton("Save", "Save the evaluation of the data as binary files. Which data to save can be " +
-                "selected in a dialog.", null, controller.btnSavePressed());
+        btnSave = createJButton("Save",
+                "Save the evaluation of the data as binary files. Which data to save can be " + "selected in a dialog.",
+                null, controller.btnSavePressed());
         btnSave.setForeground(SAVE_BUTTON_COLOR);
 
         btnRead = createJButton("Read", "Load a previously saved experiment. Note that the original image is not " +
@@ -166,71 +169,60 @@ public final class MainPanelView extends BaseView {
         btnExit.setForeground(EXIT_BUTTON_COLOR);
 
         // Buttons
-        btnUseExisting =
-                createJButton("Use", "Uses the active existing image in ImageJ.", null,
-                        controller.btnUseExistingPressed());
+        btnUseExisting = createJButton("Use", "Uses the active existing image in ImageJ.", null,
+                controller.btnUseExistingPressed());
         btnLoad = createJButton("Load", "Opens a dialog to open a new image.", null, controller.btnLoadNewPressed());
-        btnBatch =
-                createJButton("Batch", "Allow to select a list of evaluations to be performed on a range of images.",
-                        null, controller.btnBatchPressed());
+        btnBatch = createJButton("Batch", "Allow to select a list of evaluations to be performed on a range of images.",
+                null, controller.btnBatchPressed());
         btnWriteConfig = createJButton("Write Conf",
-                "Writes a configuration file int user.home that will be read at next " +
-                        "ImFCS start", new Font(Constants.PANEL_FONT, Font.BOLD, 11),
-                controller.btnWriteConfigPressed());
-        btnDCR =
-                createJButton("LiveReadout", "", new Font(Constants.PANEL_FONT, Font.BOLD, 10),
-                        controller.btnDCRPressed());
+                "Writes a configuration file int user.home that will be read at next " + "ImFCS start",
+                new Font(Constants.PANEL_FONT, Font.BOLD, 11), controller.btnWriteConfigPressed());
+        btnDCR = createJButton("LiveReadout", "", new Font(Constants.PANEL_FONT, Font.BOLD, 10),
+                controller.btnDCRPressed());
         btnParamVideo =
                 createJButton("PVideo", "Creates videos of parameter maps", null, controller.btnParamVideoPressed());
         btnDebug = createJButton("", "", null, controller.btnDebugPressed());
-        btnOptions =
-                createJButton("Options", "Select various options regarding the display of results.", null,
-                        controller.btnOptionsPressed());
+        btnOptions = createJButton("Options", "Select various options regarding the display of results.", null,
+                controller.btnOptionsPressed());
         btnAve = createJButton("Average", "Calculate the average ACF from all valid ACFs and fit if fit is switched " +
                 "on; this does not calculate residuals or sd.", null, controller.btnAvePressed());
         btnParaCor = createJButton("Scatter",
-                "Calculates a scatter plot for a pair of two parameters from the scroll down" +
-                        " menu.", null, controller.btnParaCorPressed());
+                "Calculates a scatter plot for a pair of two parameters from the scroll down" + " menu.", null,
+                controller.btnParaCorPressed());
         btnDCCF = createJButton("dCCF", "Create a dCCF image to see differences between forward and backward " +
                 "correlation in a direction (see scroll down menu).", null, controller.btnDCCFPressed());
         btnPSF = createJButton("PSF", "Calculates the calibration for the PSF.", null, controller.btnPSFPressed());
         btnAll = createJButton("All", "Calculates all ACFs.", null, controller.btnAllPressed());
         btnRT = createJButton("Res. Table", "Create a results table.", null, controller.btnRTPressed());
-        btnROI =
-                createJButton("ROI", "Calculates ACFs only in the currently chose ROI.", null,
-                        controller.btnROIPressed());
-        btnBtf =
-                createJButton("To Front", "Bring all windows of this plugin instance to the front.", null,
-                        controller.btnBtfPressed());
+        btnROI = createJButton("ROI", "Calculates ACFs only in the currently chose ROI.", null,
+                controller.btnROIPressed());
+        btnBtf = createJButton("To Front", "Bring all windows of this plugin instance to the front.", null,
+                controller.btnBtfPressed());
     }
 
     private void createJToggleButtons() {
-        tbExpSettings =
-                createJToggleButton("Exp Set", "Opens a dialog with experimental settings.", null,
-                        controller.tbExpSettingsPressed());
-        tbFCCSDisplay =
-                createJToggleButton("FCCS Disp Off", "", new Font(Constants.PANEL_FONT, Font.BOLD, 9),
-                        controller.tbFCCSDisplayPressed());
-        tbOverlap =
-                createJToggleButton("Overlap Off", "", new Font(Constants.PANEL_FONT, Font.BOLD, 11),
-                        controller.tbOverlapPressed());
+        tbExpSettings = createJToggleButton("Exp Set", "Opens a dialog with experimental settings.", null,
+                controller.tbExpSettingsPressed());
+        tbFCCSDisplay = createJToggleButton("FCCS Disp Off", "", new Font(Constants.PANEL_FONT, Font.BOLD, 9),
+                controller.tbFCCSDisplayPressed());
+        tbOverlap = createJToggleButton("Overlap Off", "", new Font(Constants.PANEL_FONT, Font.BOLD, 11),
+                controller.tbOverlapPressed());
         tbBackground =
                 createJToggleButton("Background", "Panel for different methods to perform background subtraction.",
                         new Font(Constants.PANEL_FONT, Font.BOLD, 10), controller.tbBackgroundPressed());
         tbNB = createJToggleButton("N&B Off", "", null, controller.tbNBPressed());
-        tbFiltering = createJToggleButton("Threshold", "Filters the values in parameters maps using user-defined " +
-                "thresholds", null, controller.tbFilteringPressed());
+        tbFiltering = createJToggleButton("Threshold",
+                "Filters the values in parameters maps using user-defined " + "thresholds", null,
+                controller.tbFilteringPressed());
         tbBleachCorStride = createJToggleButton("Bleach Cor",
-                "Set number of intensity points to be averaged before bleach " +
-                        "correction is performed.", null, controller.tbBleachCorStridePressed());
+                "Set number of intensity points to be averaged before bleach " + "correction is performed.", null,
+                controller.tbBleachCorStridePressed());
         tbDL = createJToggleButton("Diff. Law", "Calculates the Diffusion Law.", null, controller.tbDLPressed());
-        tbFit =
-                createJToggleButton("Fit Off", "Switches Fit on/off; opens/closes Fit panel.", null,
-                        controller.tbFitPressed());
+        tbFit = createJToggleButton("Fit Off", "Switches Fit on/off; opens/closes Fit panel.", null,
+                controller.tbFitPressed());
         tbSim = createJToggleButton("Sim Off", "Opens/closes Simulation panel.", null, controller.tbSimPressed());
-        tbMSD =
-                createJToggleButton("MSD Off", "Switches Mean Square Displacement calculation and plot on/off.", null
-                        , controller.tbMSDPressed());
+        tbMSD = createJToggleButton("MSD Off", "Switches Mean Square Displacement calculation and plot on/off.", null,
+                controller.tbMSDPressed());
     }
 
     /**
