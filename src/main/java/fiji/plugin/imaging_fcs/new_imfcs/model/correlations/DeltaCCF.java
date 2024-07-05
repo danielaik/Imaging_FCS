@@ -11,14 +11,15 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.IntStream;
 
 /**
- * The DCCF class provides methods to compute the Directional Cross-Correlation Function (DCCF)
- * for an image using a specified direction and experimental settings.
+ * The DCCF class provides methods to compute the Delta Cross-Correlation Function (DCCF) for an image using a
+ * specified direction and experimental settings. It computes the correlation between p1 and p2,
+ * then p2 and p1 and subtract those correlations.
  */
-public final class DCCF {
+public final class DeltaCCF {
     /**
      * Private constructor to prevent instantiation.
      */
-    private DCCF() {
+    private DeltaCCF() {
     }
 
     /**

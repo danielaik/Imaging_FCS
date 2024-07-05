@@ -2,7 +2,7 @@ package fiji.plugin.imaging_fcs.new_imfcs.controller;
 
 import fiji.plugin.imaging_fcs.new_imfcs.model.*;
 import fiji.plugin.imaging_fcs.new_imfcs.model.correlations.Correlator;
-import fiji.plugin.imaging_fcs.new_imfcs.model.correlations.DCCFWorker;
+import fiji.plugin.imaging_fcs.new_imfcs.model.correlations.DeltaCCFWorker;
 import fiji.plugin.imaging_fcs.new_imfcs.model.fit.BleachCorrectionModel;
 import fiji.plugin.imaging_fcs.new_imfcs.utils.Pair;
 import fiji.plugin.imaging_fcs.new_imfcs.view.BleachCorrectionView;
@@ -356,8 +356,8 @@ public final class MainPanelController {
             } else {
                 String directionName = expSettingsModel.getdCCF();
                 IJ.showStatus("Correlating all pixels");
-                DCCFWorker dccfWorker =
-                        new DCCFWorker(expSettingsModel, correlator, imageController.getImage(), directionName,
+                DeltaCCFWorker dccfWorker =
+                        new DeltaCCFWorker(expSettingsModel, correlator, imageController.getImage(), directionName,
                                 (dccfArray, direction) -> {
                                     IJ.showStatus("Done");
                                     Plots.plotDCCFWindow(dccfArray, direction);

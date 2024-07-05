@@ -11,7 +11,7 @@ import java.util.function.BiConsumer;
  * The DCCFWorker class extends SwingWorker to perform the DCCF computation in a separate thread,
  * ensuring that the UI remains responsive.
  */
-public final class DCCFWorker extends SwingWorker<double[][], Void> {
+public final class DeltaCCFWorker extends SwingWorker<double[][], Void> {
     private final ExpSettingsModel settings;
     private final Correlator correlator;
     private final ImagePlus image;
@@ -28,8 +28,8 @@ public final class DCCFWorker extends SwingWorker<double[][], Void> {
      * @param runOnCompletion A BiConsumer to run upon completion, accepting the computed DCCF array and direction
      *                        name for plotting.
      */
-    public DCCFWorker(ExpSettingsModel settings, Correlator correlator, ImagePlus image, String directionName,
-                      BiConsumer<double[][], String> runOnCompletion) {
+    public DeltaCCFWorker(ExpSettingsModel settings, Correlator correlator, ImagePlus image, String directionName,
+                          BiConsumer<double[][], String> runOnCompletion) {
         this.settings = settings;
         this.correlator = correlator;
         this.image = image;
@@ -45,7 +45,7 @@ public final class DCCFWorker extends SwingWorker<double[][], Void> {
      */
     @Override
     protected double[][] doInBackground() throws Exception {
-        return DCCF.dccf(correlator, image, directionName, settings);
+        return DeltaCCF.dccf(correlator, image, directionName, settings);
     }
 
     /**
