@@ -70,7 +70,7 @@ public final class NBModel {
         // If mean is selected we consider all the frames, else just the first frame
         final int framesToConsider = Constants.FILTER_MEAN.equals(settings.getFilter()) ? frameCount : 1;
 
-        if ("none".equals(settings.getFilter())) {
+        if (Constants.NO_FILTER.equals(settings.getFilter())) {
             for (int i = 0; i < width; i++) {
                 Arrays.fill(filterArray[i], 1.0);
             }
@@ -133,9 +133,8 @@ public final class NBModel {
         for (int i = 0; i < img.getWidth(); i++) {
             for (int j = 0; j < img.getHeight(); j++) {
                 bleachCorrectionModel.calcIntensityTrace(img, i, j, settings.getFirstFrame(), settings.getLastFrame());
-                double[] data =
-                        bleachCorrectionModel.getIntensity(img, i, j, 1, settings.getFirstFrame(),
-                                settings.getLastFrame());
+                double[] data = bleachCorrectionModel.getIntensity(img, i, j, 1, settings.getFirstFrame(),
+                        settings.getLastFrame());
 
                 double mean = 0.0;
                 double meanNextElement = 0.0;

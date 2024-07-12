@@ -19,6 +19,7 @@ public final class Constants {
     public static final String BLEACH_CORRECTION_LINEAR_SEGMENT = "Lin Segment";
 
     // filtering method
+    public static final String NO_FILTER = "none";
     public static final String FILTER_INTENSITY = "Intensity";
     public static final String FILTER_MEAN = "Mean";
 

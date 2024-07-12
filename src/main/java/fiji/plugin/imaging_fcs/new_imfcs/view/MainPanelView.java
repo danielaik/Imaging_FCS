@@ -111,7 +111,8 @@ public final class MainPanelView extends BaseView {
     protected void initializeComboBoxes() {
         cbFitModel = new JComboBox<>(new String[]{Constants.ITIR_FCS_2D, Constants.SPIM_FCS_3D, Constants.DC_FCCS_2D});
         cbCorrelatorP = new JComboBox<>(new String[]{"16", "32"});
-        cbFilter = new JComboBox<>(new String[]{"none", Constants.FILTER_INTENSITY, Constants.FILTER_MEAN});
+        cbFilter =
+                new JComboBox<>(new String[]{Constants.NO_FILTER, Constants.FILTER_INTENSITY, Constants.FILTER_MEAN});
 
         cbBleachCor = new JComboBox<>(new String[]{
                 "none",
