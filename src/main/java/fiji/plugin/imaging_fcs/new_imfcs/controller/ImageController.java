@@ -8,6 +8,7 @@ import fiji.plugin.imaging_fcs.new_imfcs.model.correlations.Correlator;
 import fiji.plugin.imaging_fcs.new_imfcs.model.correlations.MeanSquareDisplacement;
 import fiji.plugin.imaging_fcs.new_imfcs.model.correlations.SelectedPixel;
 import fiji.plugin.imaging_fcs.new_imfcs.model.fit.BleachCorrectionModel;
+import fiji.plugin.imaging_fcs.new_imfcs.utils.Range;
 import fiji.plugin.imaging_fcs.new_imfcs.view.ImageView;
 import fiji.plugin.imaging_fcs.new_imfcs.view.Plots;
 import ij.IJ;
@@ -16,6 +17,9 @@ import ij.gui.Roi;
 
 import java.awt.*;
 import java.awt.event.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 /**
  * The ImageController class handles the interactions with the image data,
@@ -106,18 +110,69 @@ public final class ImageController {
      * @param x The x-coordinate of the pixel.
      * @param y The y-coordinate of the pixel.
      */
-    private void correlatePixel(int x, int y) {
+    private Point[] correlatePixel(int x, int y, boolean singlePixelCorrelation) {
         SelectedPixel selectedPixel = new SelectedPixel(imageModel, correlator, settings);
         try {
-            Point[] cursorPositions = selectedPixel.performCorrelationFunctionEvaluation(x, y);
+            Point[] cursorPositions = selectedPixel.performCorrelationFunctionEvaluation(x, y, singlePixelCorrelation);
             Point pixel = cursorPositions[0];
             fitController.fit(correlator.getPixelModel(pixel.x, pixel.y), correlator.getLagTimes(),
                     correlator.getRegularizedCovarianceMatrix(), x, y);
 
-            plotResuts(cursorPositions);
+            return cursorPositions;
         } catch (RuntimeException e) {
             IJ.showMessage("Error", e.getMessage());
         }
+
+        return null;
+    }
+
+    /**
+     * Correlates a single pixel at the specified coordinates and plots the results.
+     *
+     * @param x The x-coordinate of the pixel.
+     * @param y The y-coordinate of the pixel.
+     */
+    private void correlateSinglePixelAndPlot(int x, int y) {
+        Point[] cursorPositions = correlatePixel(x, y, true);
+        if (cursorPositions == null) {
+            return;
+        }
+
+        try {
+            plotResuts(cursorPositions);
+        } catch (RuntimeException e) {
+            IJ.showMessage("Plot error", e.getMessage());
+        }
+    }
+
+    /**
+     * Correlates a Region of Interest (ROI) in the image.
+     *
+     * @param imgRoi The ROI to be correlated.
+     */
+    public void correlateROI(Roi imgRoi) {
+        Point pixelBinning = settings.getPixelBinning();
+        Rectangle rect = imgRoi.getBounds();
+
+        Range xRange = new Range(rect.x, rect.x + rect.width - settings.getBinning().x, pixelBinning.x);
+        Range yRange = new Range(rect.y, rect.y + rect.height - settings.getBinning().y, pixelBinning.y);
+
+        List<PixelModel> correlatedPixels = new ArrayList<>();
+
+        for (int x = xRange.getStart(); x <= xRange.getEnd(); x += xRange.getStep()) {
+            for (int y = yRange.getStart(); y <= yRange.getEnd(); y += yRange.getStep()) {
+                Point[] points = correlatePixel(x, y, false);
+                // TODO: Manage error correctly
+                if (points == null) {
+                    IJ.log("Fail to get points");
+                    continue;
+                }
+                correlatedPixels.add(correlator.getPixelModel(points[0].x, points[0].y));
+            }
+        }
+
+        Plots.plotCorrelationFunction(correlatedPixels, correlator.getLagTimes(), null, settings.getBinning(),
+                settings.getCCF(), fitController.getFitStart(), fitController.getFitEnd());
     }
 
     /**
@@ -131,8 +186,12 @@ public final class ImageController {
         PixelModel pixelModel = correlator.getPixelModel(p.x, p.y);
 
         if (options.isPlotACFCurves()) {
-            Plots.plotCorrelationFunction(pixelModel, correlator.getLagTimes(), cursorPositions, settings.getBinning(),
-                    fitController.getFitStart(), fitController.getFitEnd());
+            //            Plots.plotCorrelationFunction(pixelModel, correlator.getLagTimes(), cursorPositions,
+            //            settings.getBinning(),
+            //                    fitController.getFitStart(), fitController.getFitEnd());
+            Plots.plotCorrelationFunction(Collections.singletonList(pixelModel), correlator.getLagTimes(),
+                    cursorPositions, settings.getBinning(), settings.getCCF(), fitController.getFitStart(),
+                    fitController.getFitEnd());
         }
 
         if (options.isPlotSDCurves()) {
@@ -193,7 +252,7 @@ public final class ImageController {
                     previousY = y * settings.getBinning().y;
                 }
 
-                correlatePixel(x, y);
+                correlateSinglePixelAndPlot(x, y);
             }
         };
     }
@@ -226,7 +285,7 @@ public final class ImageController {
                         previousY = y * settings.getBinning().y;
                     }
 
-                    correlatePixel(x, y);
+                    correlateSinglePixelAndPlot(x, y);
                 }
             }
         };

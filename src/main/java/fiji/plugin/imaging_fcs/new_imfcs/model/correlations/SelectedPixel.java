@@ -36,7 +36,7 @@ public class SelectedPixel {
      * @param y the y-coordinate of the pixel
      * @return the position of the pixels after conversion to image space
      */
-    public Point[] performCorrelationFunctionEvaluation(int x, int y) {
+    public Point[] performCorrelationFunctionEvaluation(int x, int y, boolean singlePixelCorrelation) {
         Point[] cursorPositions = convertToImageSpace(x, y);
         Point cursorPosition1 = cursorPositions[0];
         Point cursorPosition2 = cursorPositions[1];
@@ -49,7 +49,7 @@ public class SelectedPixel {
             throw new RuntimeException("Cross-correlation areas overlap.");
         }
 
-        processPixels(cursorPosition1, cursorPosition2);
+        processPixels(cursorPosition1, cursorPosition2, singlePixelCorrelation);
         return cursorPositions;
     }
 
@@ -102,8 +102,10 @@ public class SelectedPixel {
      * @param cursorPosition1 the first cursor position
      * @param cursorPosition2 the second cursor position
      */
-    private void processPixels(Point cursorPosition1, Point cursorPosition2) {
-        setupROIs(cursorPosition1, cursorPosition2);
+    private void processPixels(Point cursorPosition1, Point cursorPosition2, boolean singlePixelCorrelation) {
+        if (singlePixelCorrelation) {
+            setupROIs(cursorPosition1, cursorPosition2);
+        }
 
         if (settings.getFitModel().equals(Constants.ITIR_FCS_2D) ||
                 settings.getFitModel().equals(Constants.SPIM_FCS_3D)) {

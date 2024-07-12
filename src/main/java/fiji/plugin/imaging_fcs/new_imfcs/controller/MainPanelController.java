@@ -16,8 +16,11 @@ import fiji.plugin.imaging_fcs.new_imfcs.view.dialogs.SlidingWindowSelectionView
 import ij.IJ;
 import ij.ImagePlus;
 import ij.WindowManager;
+import ij.gui.Overlay;
+import ij.gui.Roi;
 
 import javax.swing.*;
+import java.awt.*;
 import java.awt.event.*;
 import java.util.function.Consumer;
 
@@ -37,7 +40,7 @@ public final class MainPanelController {
     private final HardwareModel hardwareModel;
     private final OptionsModel optionsModel;
     private final ImageController imageController;
-    private final ExpSettingsModel expSettingsModel;
+    private final ExpSettingsModel settings;
     private final BleachCorrectionModel bleachCorrectionModel;
     private final SimulationController simulationController;
     private final BackgroundSubtractionController backgroundSubtractionController;
@@ -54,28 +57,28 @@ public final class MainPanelController {
         this.hardwareModel = hardwareModel;
         this.optionsModel = new OptionsModel(hardwareModel.isCuda());
 
-        this.expSettingsModel = new ExpSettingsModel();
-        this.expSettingsView = new ExpSettingsView(this, expSettingsModel);
+        this.settings = new ExpSettingsModel();
+        this.expSettingsView = new ExpSettingsView(this, settings);
         updateSettingsField();
 
-        FitModel fitModel = new FitModel(expSettingsModel);
+        FitModel fitModel = new FitModel(settings);
         this.fitController = new FitController(fitModel);
 
         ImageModel imageModel = new ImageModel();
         this.backgroundSubtractionController = new BackgroundSubtractionController(imageModel);
-        this.bleachCorrectionModel = new BleachCorrectionModel(expSettingsModel, imageModel);
-        this.correlator = new Correlator(expSettingsModel, bleachCorrectionModel, fitModel);
+        this.bleachCorrectionModel = new BleachCorrectionModel(settings, imageModel);
+        this.correlator = new Correlator(settings, bleachCorrectionModel, fitModel);
         this.imageController = new ImageController(this, imageModel, backgroundSubtractionController, fitController,
-                bleachCorrectionModel, correlator, expSettingsModel, optionsModel);
+                bleachCorrectionModel, correlator, settings, optionsModel);
 
         this.bleachCorrectionView = new BleachCorrectionView(this, bleachCorrectionModel);
 
-        this.simulationController = new SimulationController(imageController, expSettingsModel);
+        this.simulationController = new SimulationController(imageController, settings);
 
-        this.nbController = new NBController(imageModel, expSettingsModel, optionsModel, bleachCorrectionModel);
+        this.nbController = new NBController(imageModel, settings, optionsModel, bleachCorrectionModel);
 
 
-        this.view = new MainPanelView(this, this.expSettingsModel);
+        this.view = new MainPanelView(this, this.settings);
     }
 
     /**
@@ -85,8 +88,8 @@ public final class MainPanelController {
      */
     public void setLastFrame(int lastFrame) {
         view.setTfLastFrame(String.valueOf(lastFrame));
-        expSettingsModel.setLastFrame(String.valueOf(lastFrame));
-        expSettingsModel.setSlidingWindowLength(lastFrame / 20);
+        settings.setLastFrame(String.valueOf(lastFrame));
+        settings.setSlidingWindowLength(lastFrame / 20);
         updateStrideParamFields();
     }
 
@@ -99,8 +102,8 @@ public final class MainPanelController {
     public ActionListener cbBleachCorChanged() {
         return (ActionEvent ev) -> {
             String bleachCorrectionMode = getComboBoxSelectionFromEvent(ev);
-            expSettingsModel.setBleachCorrection(bleachCorrectionMode);
-            fitController.updateFitEnd(expSettingsModel);
+            settings.setBleachCorrection(bleachCorrectionMode);
+            fitController.updateFitEnd(settings);
 
             if ("Sliding Window".equals(bleachCorrectionMode) || "Lin Segment".equals(bleachCorrectionMode)) {
                 if (!imageController.isImageLoaded()) {
@@ -109,7 +112,7 @@ public final class MainPanelController {
                     ((JComboBox<?>) ev.getSource()).setSelectedIndex(0);
                 } else {
                     new SlidingWindowSelectionView(this::onBleachCorrectionSlidingWindowAccepted,
-                            expSettingsModel.getSlidingWindowLength());
+                            settings.getSlidingWindowLength());
                 }
             } else if ("Polynomial".equals(bleachCorrectionMode)) {
                 new PolynomialOrderSelectionView(this::onBleachCorrectionOrderAccepted,
@@ -125,16 +128,16 @@ public final class MainPanelController {
      * @param slidingWindowLength The length of the sliding window chosen by the user.
      */
     private void onBleachCorrectionSlidingWindowAccepted(int slidingWindowLength) {
-        int maxWindowSize = expSettingsModel.getLastFrame() - expSettingsModel.getFirstFrame();
+        int maxWindowSize = settings.getLastFrame() - settings.getFirstFrame();
 
         if (slidingWindowLength <= 0 || slidingWindowLength > maxWindowSize) {
             IJ.showMessage(
                     String.format("Invalid sliding window size. It must be inside 0 < order < %d", maxWindowSize));
             new SlidingWindowSelectionView(this::onBleachCorrectionSlidingWindowAccepted,
-                    expSettingsModel.getSlidingWindowLength());
+                    settings.getSlidingWindowLength());
         } else {
-            expSettingsModel.setSlidingWindowLength(slidingWindowLength);
-            fitController.updateFitEnd(expSettingsModel);
+            settings.setSlidingWindowLength(slidingWindowLength);
+            fitController.updateFitEnd(settings);
         }
     }
 
@@ -165,12 +168,12 @@ public final class MainPanelController {
     public ActionListener cbFilterChanged() {
         return (ActionEvent ev) -> {
             String filterMode = getComboBoxSelectionFromEvent(ev);
-            expSettingsModel.setFilter(filterMode);
+            settings.setFilter(filterMode);
 
             // If a filter mode other than "none" is selected, show the filter limits dialog.
             if (!filterMode.equals("none")) {
-                new FilterLimitsSelectionView(this::onFilterSelectionAccepted, expSettingsModel.getFilterLowerLimit(),
-                        expSettingsModel.getFilterUpperLimit());
+                new FilterLimitsSelectionView(this::onFilterSelectionAccepted, settings.getFilterLowerLimit(),
+                        settings.getFilterUpperLimit());
             }
         };
     }
@@ -184,7 +187,7 @@ public final class MainPanelController {
     public ActionListener cbFitModelChanged() {
         return (ActionEvent ev) -> {
             String fitModel = getComboBoxSelectionFromEvent(ev);
-            expSettingsModel.setFitModel(fitModel);
+            settings.setFitModel(fitModel);
             updateSettingsField();
         };
     }
@@ -199,11 +202,11 @@ public final class MainPanelController {
     private void onFilterSelectionAccepted(int lowerLimit, int upperLimit) {
         if (lowerLimit < 0 || lowerLimit > upperLimit) {
             IJ.showMessage("Illegal filter limits");
-            new FilterLimitsSelectionView(this::onFilterSelectionAccepted, expSettingsModel.getFilterLowerLimit(),
-                    expSettingsModel.getFilterUpperLimit());
+            new FilterLimitsSelectionView(this::onFilterSelectionAccepted, settings.getFilterLowerLimit(),
+                    settings.getFilterUpperLimit());
         } else {
-            expSettingsModel.setFilterLowerLimit(lowerLimit);
-            expSettingsModel.setFilterUpperLimit(upperLimit);
+            settings.setFilterLowerLimit(lowerLimit);
+            settings.setFilterUpperLimit(upperLimit);
         }
     }
 
@@ -335,7 +338,7 @@ public final class MainPanelController {
                 IJ.showMessage("Nothing to plot, please run the fit on at least one pixel before.");
             } else {
                 Pair<double[][], String[]> scatterArrayAndLabels =
-                        PixelModel.getScatterPlotArray(correlator.getPixelsModel(), expSettingsModel.getParaCor());
+                        PixelModel.getScatterPlotArray(correlator.getPixelsModel(), settings.getParaCor());
                 double[][] scPlot = scatterArrayAndLabels.getLeft();
                 String[] labels = scatterArrayAndLabels.getRight();
 
@@ -354,10 +357,10 @@ public final class MainPanelController {
             if (!imageController.isImageLoaded()) {
                 IJ.showMessage("No image open.");
             } else {
-                String directionName = expSettingsModel.getdCCF();
+                String directionName = settings.getdCCF();
                 IJ.showStatus("Correlating all pixels");
                 DeltaCCFWorker dccfWorker =
-                        new DeltaCCFWorker(expSettingsModel, correlator, imageController.getImage(), directionName,
+                        new DeltaCCFWorker(settings, correlator, imageController.getImage(), directionName,
                                 (dccfArray, direction) -> {
                                     IJ.showStatus("Done");
                                     Plots.plotDCCFWindow(dccfArray, direction);
@@ -392,9 +395,30 @@ public final class MainPanelController {
         return null;
     }
 
+    /**
+     * Creates an ActionListener that handles the event when the ROI button is pressed.
+     *
+     * @return An ActionListener that processes the ROI selection and performs correlation.
+     */
     public ActionListener btnROIPressed() {
-        // TODO: FIXME
-        return null;
+        return (ActionEvent ev) -> {
+            Roi imgRoi = imageController.getImage().getRoi();
+
+            if (imgRoi == null) {
+                IJ.showMessage("No ROI chosen.");
+            } else {
+                // create another ROI if the distance is not null
+                if (settings.getCCF().width != 0 || settings.getCCF().height != 0) {
+                    Roi CCFRoi = (Roi) imgRoi.clone();
+                    CCFRoi.setLocation(imgRoi.getBounds().getX() + settings.getCCF().width,
+                            imgRoi.getBounds().getY() + settings.getCCF().height);
+                    CCFRoi.setStrokeColor(Color.RED);
+                    imageController.getImage().setOverlay(new Overlay(CCFRoi));
+                }
+                // Perform ROI
+                imageController.correlateROI(imgRoi);
+            }
+        };
     }
 
     public ActionListener btnAllPressed() {
@@ -482,11 +506,11 @@ public final class MainPanelController {
             boolean selected = (ev.getStateChange() == ItemEvent.SELECTED);
 
             if (selected) {
-                expSettingsModel.setMSD(true);
+                settings.setMSD(true);
                 button.setText("MSD On");
-                new MSDView(expSettingsModel.isMSD3d(), expSettingsModel::setMSD3d);
+                new MSDView(settings.isMSD3d(), settings::setMSD3d);
             } else {
-                expSettingsModel.setMSD(false);
+                settings.setMSD(false);
                 button.setText("MSD Off");
             }
         };
@@ -504,7 +528,7 @@ public final class MainPanelController {
             boolean selected = (ev.getStateChange() == ItemEvent.SELECTED);
 
             button.setText(selected ? "Overlap On" : "Overlap Off");
-            expSettingsModel.setOverlap(selected);
+            settings.setOverlap(selected);
         };
     }
 
@@ -527,7 +551,7 @@ public final class MainPanelController {
      */
     private void updateSettingsField() {
         Runnable doUpdateSettingsField = () -> {
-            expSettingsModel.updateSettings();
+            settings.updateSettings();
             expSettingsView.setNonUserSettings();
         };
 
@@ -560,7 +584,7 @@ public final class MainPanelController {
      */
     private void updateStrideParamFields() {
         Runnable doUpdateStrideParam = () -> {
-            int numberOfFrames = expSettingsModel.getLastFrame() - expSettingsModel.getFirstFrame() + 1;
+            int numberOfFrames = settings.getLastFrame() - settings.getFirstFrame() + 1;
 
             // Use variable points for the intensity, except when less than 1000 frames are present.
             int numPointsIntensityTrace = numberOfFrames;
@@ -600,7 +624,7 @@ public final class MainPanelController {
     public Consumer<String> updateFitEnd(Consumer<String> setter) {
         return (String value) -> {
             setter.accept(value);
-            fitController.updateFitEnd(expSettingsModel);
+            fitController.updateFitEnd(settings);
         };
     }
 }

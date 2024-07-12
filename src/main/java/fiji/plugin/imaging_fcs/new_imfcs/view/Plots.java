@@ -15,6 +15,7 @@ import java.awt.*;
 import java.awt.event.*;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.stream.IntStream;
 
@@ -241,50 +242,81 @@ public class Plots {
     /**
      * Plots the Correlation Function for given pixels.
      *
-     * @param pixelModel The model containing the ACF and fitted ACF values.
-     * @param lagTimes   The lag times corresponding to the ACF values.
-     * @param pixels     The points representing the pixels.
-     * @param binning    The binning factor.
-     * @param fitStart   The starting index for the fitted ACF range.
-     * @param fitEnd     The ending index for the fitted ACF range.
+     * @param pixelModels The models containing the CF and fitted CF values.
+     * @param lagTimes    The lag times corresponding to the CF values.
+     * @param pixels      The points representing the pixels (or null if we are using an ROI).
+     * @param binning     The binning factor.
+     * @param distance    The distance used for cross-correlation function.
+     * @param fitStart    The starting index for the fitted CF range.
+     * @param fitEnd      The ending index for the fitted CF range.
      */
-    public static void plotCorrelationFunction(PixelModel pixelModel, double[] lagTimes, Point[] pixels,
-                                               Point binning, int fitStart, int fitEnd) {
-        Point p1 = pixels[0];
-        Point p2 = pixels[1];
-
-        Pair<Double, Double> minMax = findAdjustedMinMax(pixelModel.getAcf());
-        double minScale = minMax.getLeft();
-        double maxScale = minMax.getRight();
+    public static void plotCorrelationFunction(List<PixelModel> pixelModels, double[] lagTimes, Point[] pixels,
+                                               Point binning, Dimension distance, int fitStart, int fitEnd) {
+        double minScale = Double.MAX_VALUE;
+        double maxScale = -Double.MAX_VALUE;
 
         Plot plot = new Plot("CF plot", "tau [s]", "G (tau)");
-        plot.setColor(Color.BLUE);
-        plot.addPoints(lagTimes, pixelModel.getAcf(), Plot.LINE);
         plot.setFrameSize(ACF_DIMENSION.width, ACF_DIMENSION.height);
         plot.setLogScaleX();
-        plot.setLimits(lagTimes[1], 2 * lagTimes[lagTimes.length - 1], minScale, maxScale);
         plot.setJustification(Plot.CENTER);
+        String description = getDescription(pixels, binning, distance);
 
-        String description = String.format(" ACF of (%d, %d) at %dx%d binning.", p1.x, p1.y, binning.x, binning.y);
-        if (!p1.equals(p2)) {
-            description =
-                    String.format(" CFF of (%d, %d) and (%d, %d) at %dx%d binning.", p1.x, p1.y, p2.x, p2.y, binning.x,
-                            binning.y);
-        }
-
+        plot.setColor(Color.BLUE);
         plot.addLabel(0.5, 0, description);
 
-        plot.draw();
+        for (PixelModel pixelModel : pixelModels) {
+            Pair<Double, Double> minMax = findAdjustedMinMax(pixelModel.getAcf());
+            minScale = Math.min(minScale, minMax.getLeft());
+            maxScale = Math.max(maxScale, minMax.getRight());
 
-        // Plot the fitted ACF
-        if (pixelModel.isFitted()) {
-            plot.setColor(Color.RED);
-            plot.addPoints(Arrays.copyOfRange(lagTimes, fitStart, fitEnd + 1),
-                    Arrays.copyOfRange(pixelModel.getFittedAcf(), fitStart, fitEnd + 1), Plot.LINE);
-            plot.draw();
+            plot.setColor(Color.BLUE);
+            plot.addPoints(lagTimes, pixelModel.getAcf(), Plot.LINE);
+
+            // Plot the fitted ACF
+            if (pixelModel.isFitted()) {
+                plot.setColor(Color.RED);
+                plot.addPoints(Arrays.copyOfRange(lagTimes, fitStart, fitEnd + 1),
+                        Arrays.copyOfRange(pixelModel.getFittedAcf(), fitStart, fitEnd + 1), Plot.LINE);
+            }
         }
 
+        plot.setLimits(lagTimes[1], 2 * lagTimes[lagTimes.length - 1], minScale, maxScale);
+        plot.draw();
+
         acfWindow = plotWindow(plot, acfWindow, ACF_POSITION);
+    }
+
+    /**
+     * Generates a description string based on the given pixel points, binning, and distance.
+     * The description indicates the type of correlation (ACF or CFF) and the coordinates or region of interest (ROI).
+     *
+     * @param pixels   An array of Point objects representing pixel coordinates. If not null, should contain exactly
+     *                 two points.
+     * @param binning  A Point object representing the binning dimensions (x and y).
+     * @param distance A Dimension object representing the separation distance between regions of interest (width and
+     *                height).
+     * @return A formatted string describing the correlation type, points or ROIs, and binning dimensions.
+     */
+    private static String getDescription(Point[] pixels, Point binning, Dimension distance) {
+        String correlationType = "ACF";
+        String points = "ROI";
+        if (distance.width != 0 || distance.height != 0) {
+            correlationType = "CFF";
+            points = String.format("ROIs with %dx%d separation", distance.width, distance.height);
+        }
+
+        if (pixels != null) {
+            Point p1 = pixels[0];
+            Point p2 = pixels[1];
+
+            if (p1.equals(p2)) {
+                points = String.format("(%d, %d)", p1.x, p1.y);
+            } else {
+                points = String.format("(%d, %d) and (%d, %d)", p1.x, p1.y, p2.x, p2.y);
+            }
+        }
+
+        return String.format(" %s of %s at %dx%d binning.", correlationType, points, binning.x, binning.y);
     }
 
     /**
