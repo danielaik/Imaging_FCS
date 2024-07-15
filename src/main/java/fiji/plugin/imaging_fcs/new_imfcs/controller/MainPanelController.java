@@ -3,6 +3,7 @@ package fiji.plugin.imaging_fcs.new_imfcs.controller;
 import fiji.plugin.imaging_fcs.new_imfcs.model.*;
 import fiji.plugin.imaging_fcs.new_imfcs.model.correlations.Correlator;
 import fiji.plugin.imaging_fcs.new_imfcs.model.correlations.DeltaCCFWorker;
+import fiji.plugin.imaging_fcs.new_imfcs.model.correlations.ROIWorker;
 import fiji.plugin.imaging_fcs.new_imfcs.model.fit.BleachCorrectionModel;
 import fiji.plugin.imaging_fcs.new_imfcs.utils.Pair;
 import fiji.plugin.imaging_fcs.new_imfcs.view.BleachCorrectionView;
@@ -426,8 +427,11 @@ public final class MainPanelController {
                     }
                     imageController.getImage().setOverlay(new Overlay(CCFRoi));
                 }
+
                 // Perform ROI
-                imageController.correlateROI(imgRoi);
+                IJ.showStatus("Correlating pixels");
+                ROIWorker worker = new ROIWorker(() -> imageController.correlateROI(imgRoi));
+                worker.execute();
             }
         };
     }

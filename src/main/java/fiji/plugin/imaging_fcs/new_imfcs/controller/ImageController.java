@@ -178,6 +178,7 @@ public final class ImageController {
                             settings.getBinning());
                 }
             }
+            IJ.showProgress(x - xRange.getStart(), xRange.length());
         }
 
         if (imgParams != null && options.isPlotParaHist()) {
