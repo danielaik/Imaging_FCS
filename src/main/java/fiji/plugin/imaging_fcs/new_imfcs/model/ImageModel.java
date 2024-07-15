@@ -275,6 +275,18 @@ public final class ImageModel {
     }
 
     /**
+     * Validates if the given ROI is within the image bounds.
+     *
+     * @param roi The Region of Interest to check.
+     * @return {@code true} if the ROI is within bounds, {@code false} otherwise.
+     */
+    public boolean isROIValid(Roi roi) {
+        Rectangle rect = roi.getBounds();
+
+        return rect.x >= 0 && rect.y >= 0 && rect.x + rect.width <= getWidth() && rect.y + rect.height <= getHeight();
+    }
+
+    /**
      * Displays the image in a new window.
      */
     public void show() {

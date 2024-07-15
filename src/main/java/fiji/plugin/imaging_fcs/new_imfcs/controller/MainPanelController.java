@@ -397,11 +397,18 @@ public final class MainPanelController {
 
     /**
      * Creates an ActionListener that handles the event when the ROI button is pressed.
+     * It checks if an image is loaded and if an ROI is selected. If a CCF distance is set, it creates
+     * an additional ROI for correlation, validates it, and performs correlation.
      *
      * @return An ActionListener that processes the ROI selection and performs correlation.
      */
     public ActionListener btnROIPressed() {
         return (ActionEvent ev) -> {
+            if (!imageController.isImageLoaded()) {
+                IJ.showMessage("No image open.");
+                return;
+            }
+
             Roi imgRoi = imageController.getImage().getRoi();
 
             if (imgRoi == null) {
@@ -413,6 +420,10 @@ public final class MainPanelController {
                     CCFRoi.setLocation(imgRoi.getBounds().getX() + settings.getCCF().width,
                             imgRoi.getBounds().getY() + settings.getCCF().height);
                     CCFRoi.setStrokeColor(Color.RED);
+                    if (!imageController.isROIValid(CCFRoi)) {
+                        IJ.showMessage("Correlation points are not within image.");
+                        return;
+                    }
                     imageController.getImage().setOverlay(new Overlay(CCFRoi));
                 }
                 // Perform ROI
@@ -421,9 +432,39 @@ public final class MainPanelController {
         };
     }
 
+    /**
+     * Creates an ActionListener that handles the event when the "All" button is pressed.
+     * It checks if an image is loaded and then sets the ROI to cover the entire image,
+     * adjusted for CCF and binning settings, before performing correlation.
+     *
+     * @return An ActionListener that sets the ROI and performs correlation.
+     */
     public ActionListener btnAllPressed() {
-        // TODO: FIXME
-        return null;
+        return (ActionEvent ev) -> {
+            if (!imageController.isImageLoaded()) {
+                IJ.showMessage("No image open.");
+                return;
+            }
+
+            int roiStartX = settings.getCCF().width >= 0 ? 0 : -settings.getCCF().width;
+            int roiStartY = settings.getCCF().height >= 0 ? 0 : -settings.getCCF().height;
+
+            int roiWidth = (int) ((double) (imageController.getImage().getWidth() - Math.abs(settings.getCCF().width)) /
+                    settings.getBinning().x) * settings.getBinning().x;
+            int roiHeight =
+                    (int) ((double) (imageController.getImage().getHeight() - Math.abs(settings.getCCF().height)) /
+                            settings.getBinning().y) * settings.getBinning().y;
+
+            if (settings.isOverlap()) {
+                roiWidth = imageController.getImage().getWidth() - Math.abs(settings.getCCF().width);
+                roiHeight = imageController.getImage().getHeight() - Math.abs(settings.getCCF().height);
+            }
+
+            Roi imgRoi = new Roi(roiStartX, roiStartY, roiWidth, roiHeight);
+            imageController.getImage().setRoi(imgRoi);
+
+            btnROIPressed().actionPerformed(ev);
+        };
     }
 
     public ItemListener tbFCCSDisplayPressed() {

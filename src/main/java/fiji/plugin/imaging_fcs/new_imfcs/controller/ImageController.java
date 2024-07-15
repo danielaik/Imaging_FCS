@@ -159,6 +159,8 @@ public final class ImageController {
 
         List<PixelModel> correlatedPixels = new ArrayList<>();
 
+        ImagePlus imgParams = null;
+
         for (int x = xRange.getStart(); x <= xRange.getEnd(); x += xRange.getStep()) {
             for (int y = yRange.getStart(); y <= yRange.getEnd(); y += yRange.getStep()) {
                 Point[] points = correlatePixel(x, y, false);
@@ -167,12 +169,33 @@ public final class ImageController {
                     IJ.log("Fail to get points");
                     continue;
                 }
-                correlatedPixels.add(correlator.getPixelModel(points[0].x, points[0].y));
+
+                PixelModel pixelModel = correlator.getPixelModel(points[0].x, points[0].y);
+                correlatedPixels.add(pixelModel);
+
+                if (pixelModel.isFitted()) {
+                    imgParams = Plots.plotParameterMaps(pixelModel, points[0], imageModel.getDimension(),
+                            settings.getBinning());
+                }
             }
+        }
+
+        if (imgParams != null && options.isPlotParaHist()) {
+            Plots.plotParamHistogramWindow(imgParams);
         }
 
         Plots.plotCorrelationFunction(correlatedPixels, correlator.getLagTimes(), null, settings.getBinning(),
                 settings.getCCF(), fitController.getFitStart(), fitController.getFitEnd());
+    }
+
+    /**
+     * Validates if the given ROI is within the image bounds.
+     *
+     * @param roi The Region of Interest to check.
+     * @return {@code true} if the ROI is within bounds, {@code false} otherwise.
+     */
+    public boolean isROIValid(Roi roi) {
+        return imageModel.isROIValid(roi);
     }
 
     /**
