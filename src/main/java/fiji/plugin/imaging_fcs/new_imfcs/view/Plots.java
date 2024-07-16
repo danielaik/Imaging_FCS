@@ -294,7 +294,7 @@ public class Plots {
      *                 two points.
      * @param binning  A Point object representing the binning dimensions (x and y).
      * @param distance A Dimension object representing the separation distance between regions of interest (width and
-     *                height).
+     *                 height).
      * @return A formatted string describing the correlation type, points or ROIs, and binning dimensions.
      */
     private static String getDescription(Point[] pixels, Point binning, Dimension distance) {
@@ -458,7 +458,8 @@ public class Plots {
      * @param binning    the binning factors to be applied.
      * @return the ImagePlus object containing the plotted parameter maps.
      */
-    public static ImagePlus plotParameterMaps(PixelModel pixelModel, Point p, Dimension imageSize, Point binning) {
+    public static ImagePlus plotParameterMaps(PixelModel pixelModel, Point p, Dimension imageSize, Point binning,
+                                              MouseListener mouseListener) {
         Pair<String, Double>[] params = pixelModel.getParams();
 
         // convert dimension using binning
@@ -500,6 +501,9 @@ public class Plots {
                     scrollbar.addAdjustmentListener(imageAdjusted());
                 }
             }
+
+            // Add a mouse listener to plot the correlations functions
+            imgParam.getCanvas().addMouseListener(mouseListener);
         }
 
         // Enter value from the end to be on the first slice on output

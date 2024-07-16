@@ -13,6 +13,8 @@ import fiji.plugin.imaging_fcs.new_imfcs.view.ImageView;
 import fiji.plugin.imaging_fcs.new_imfcs.view.Plots;
 import ij.IJ;
 import ij.ImagePlus;
+import ij.gui.ImageCanvas;
+import ij.gui.ImageWindow;
 import ij.gui.Roi;
 
 import java.awt.*;
@@ -140,6 +142,7 @@ public final class ImageController {
 
         try {
             plotResuts(cursorPositions);
+            plotFittedParams(cursorPositions);
         } catch (RuntimeException e) {
             IJ.showMessage("Plot error", e.getMessage());
         }
@@ -159,30 +162,20 @@ public final class ImageController {
 
         List<PixelModel> correlatedPixels = new ArrayList<>();
 
-        ImagePlus imgParams = null;
-
         for (int x = xRange.getStart(); x <= xRange.getEnd(); x += xRange.getStep()) {
             for (int y = yRange.getStart(); y <= yRange.getEnd(); y += yRange.getStep()) {
-                Point[] points = correlatePixel(x, y, false);
-                // TODO: Manage error correctly
+                Point[] points = correlatePixel(x / pixelBinning.x, y / pixelBinning.y, false);
                 if (points == null) {
-                    IJ.log("Fail to get points");
+                    IJ.log(String.format("Fail to correlate points for x=%d, y=%d", x, y));
                     continue;
                 }
 
                 PixelModel pixelModel = correlator.getPixelModel(points[0].x, points[0].y);
                 correlatedPixels.add(pixelModel);
 
-                if (pixelModel.isFitted()) {
-                    imgParams = Plots.plotParameterMaps(pixelModel, points[0], imageModel.getDimension(),
-                            settings.getBinning());
-                }
+                plotFittedParams(points);
             }
             IJ.showProgress(x - xRange.getStart(), xRange.length());
-        }
-
-        if (imgParams != null && options.isPlotParaHist()) {
-            Plots.plotParamHistogramWindow(imgParams);
         }
 
         Plots.plotCorrelationFunction(correlatedPixels, correlator.getLagTimes(), null, settings.getBinning(),
@@ -245,10 +238,24 @@ public final class ImageController {
         if (options.isPlotResCurves() && pixelModel.isFitted()) {
             Plots.plotResiduals(pixelModel.getResiduals(), correlator.getLagTimes(), p);
         }
+    }
+
+    /**
+     * Plots the fitted parameters at the specified cursor positions.
+     * This method retrieves the pixel model at the given position, checks if it has been fitted,
+     * and if so, plots the parameter maps. Additionally, if the option is enabled, it plots the
+     * parameter histograms.
+     *
+     * @param cursorPositions An array of Points representing the cursor positions.
+     */
+    private void plotFittedParams(Point[] cursorPositions) {
+        Point p = cursorPositions[0];
+        PixelModel pixelModel = correlator.getPixelModel(p.x, p.y);
 
         if (pixelModel.isFitted()) {
             ImagePlus imgParams =
-                    Plots.plotParameterMaps(pixelModel, p, imageModel.getDimension(), settings.getBinning());
+                    Plots.plotParameterMaps(pixelModel, p, imageModel.getDimension(), settings.getBinning(),
+                            imageParamClicked());
 
             if (options.isPlotParaHist()) {
                 Plots.plotParamHistogramWindow(imgParams);
@@ -310,6 +317,49 @@ public final class ImageController {
                     }
 
                     correlateSinglePixelAndPlot(x, y);
+                }
+            }
+        };
+    }
+
+    /**
+     * Creates and returns a MouseListener that responds to mouse clicks on an ImageCanvas.
+     * This listener retrieves pixel coordinates from the clicked location, checks if the pixel
+     * model is correlated, updates fit parameters on the view, and plots the results.
+     *
+     * @return a MouseListener that handles mouse click events on an ImageCanvas.
+     */
+    public MouseListener imageParamClicked() {
+        return new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent event) {
+                Object source = event.getSource();
+
+                if (source instanceof ImageCanvas) {
+                    ImageCanvas canvas = (ImageCanvas) source;
+                    ImageWindow window = (ImageWindow) canvas.getParent();
+                    ImagePlus img = window.getImagePlus();
+
+                    int x = canvas.offScreenX(event.getX()) * settings.getBinning().x;
+                    int y = canvas.offScreenY(event.getY()) * settings.getBinning().y;
+
+                    PixelModel pixelModel = correlator.getPixelModel(x, y);
+
+                    // if the pixel model is not correlated we do not plot
+                    if (pixelModel == null || Double.isNaN(img.getStack().getProcessor(1).getPixelValue(x, y))) {
+                        return;
+                    }
+
+                    if (pixelModel.isFitted()) {
+                        fitController.updateFitParams(pixelModel.getFitParams());
+                    }
+
+                    int x2 = x + settings.getCCF().width;
+                    int y2 = y + settings.getCCF().height;
+
+                    Point[] points = new Point[]{new Point(x, y), new Point(x2, y2)};
+
+                    plotResuts(points);
                 }
             }
         };

@@ -130,6 +130,15 @@ public class FitController {
     }
 
     /**
+     * Updates the fit parameters in the view using the provided fit parameters.
+     *
+     * @param fitParams The fit parameters from the pixel model.
+     */
+    public void updateFitParams(PixelModel.FitParameters fitParams) {
+        view.updateFitParams(fitParams);
+    }
+
+    /**
      * Checks if the view is currently visible (activated).
      *
      * @return true if the view is visible, false otherwise.
