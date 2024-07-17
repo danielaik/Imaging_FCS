@@ -42,7 +42,7 @@ public class SelectedPixel {
         Point cursorPosition2 = cursorPositions[1];
 
         if (!isPixelWithinImage(x, y)) {
-            throw new RuntimeException("Pixel coordinates are out of the image");
+            throw new RuntimeException(String.format("x=%d, y=%d are out of the image.", x, y));
         }
 
         if (isOverlapInDCFCCS()) {
