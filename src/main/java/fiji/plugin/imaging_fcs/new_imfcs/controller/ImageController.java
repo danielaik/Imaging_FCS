@@ -157,14 +157,24 @@ public final class ImageController {
         Point pixelBinning = settings.getPixelBinning();
         Rectangle rect = imgRoi.getBounds();
 
-        Range xRange = new Range(rect.x, rect.x + rect.width - settings.getBinning().x, pixelBinning.x);
-        Range yRange = new Range(rect.y, rect.y + rect.height - settings.getBinning().y, pixelBinning.y);
+        Range xRange, yRange;
+
+        try {
+            xRange = new Range((int) Math.ceil(rect.x / (double) pixelBinning.x),
+                    (int) Math.ceil((rect.x + rect.width - settings.getBinning().x) / (double) pixelBinning.x), 1);
+            yRange = new Range((int) Math.ceil(rect.y / (double) pixelBinning.y),
+                    (int) Math.ceil((rect.y + rect.height - settings.getBinning().y) / (double) pixelBinning.y), 1);
+        } catch (IllegalArgumentException e) {
+            // catch if the range isn't valid
+            IJ.showMessage("ROI does not cover a whole single pixel in the binned image.");
+            return;
+        }
 
         List<PixelModel> correlatedPixels = new ArrayList<>();
 
         for (int x = xRange.getStart(); x <= xRange.getEnd(); x += xRange.getStep()) {
             for (int y = yRange.getStart(); y <= yRange.getEnd(); y += yRange.getStep()) {
-                Point[] points = correlatePixel(x / pixelBinning.x, y / pixelBinning.y, false);
+                Point[] points = correlatePixel(x, y, false);
                 if (points == null) {
                     IJ.log(String.format("Fail to correlate points for x=%d, y=%d", x, y));
                     continue;
@@ -203,9 +213,6 @@ public final class ImageController {
         PixelModel pixelModel = correlator.getPixelModel(p.x, p.y);
 
         if (options.isPlotACFCurves()) {
-            //            Plots.plotCorrelationFunction(pixelModel, correlator.getLagTimes(), cursorPositions,
-            //            settings.getBinning(),
-            //                    fitController.getFitStart(), fitController.getFitEnd());
             Plots.plotCorrelationFunction(Collections.singletonList(pixelModel), correlator.getLagTimes(),
                     cursorPositions, settings.getBinning(), settings.getCCF(), fitController.getFitStart(),
                     fitController.getFitEnd());
@@ -253,8 +260,11 @@ public final class ImageController {
         PixelModel pixelModel = correlator.getPixelModel(p.x, p.y);
 
         if (pixelModel.isFitted()) {
+            Point minimumPosition = settings.getMinCursorPosition();
+            Point maximumPosition = settings.getMaxCursorPosition(imageModel.getImage());
+
             ImagePlus imgParams =
-                    Plots.plotParameterMaps(pixelModel, p, imageModel.getDimension(), settings.getBinning(),
+                    Plots.plotParameterMaps(pixelModel, p, minimumPosition, maximumPosition, settings.getPixelBinning(),
                             imageParamClicked());
 
             if (options.isPlotParaHist()) {
@@ -340,13 +350,23 @@ public final class ImageController {
                     ImageWindow window = (ImageWindow) canvas.getParent();
                     ImagePlus img = window.getImagePlus();
 
-                    int x = canvas.offScreenX(event.getX()) * settings.getBinning().x;
-                    int y = canvas.offScreenY(event.getY()) * settings.getBinning().y;
+                    int x = canvas.offScreenX(event.getX());
+                    int y = canvas.offScreenY(event.getY());
 
+                    // The pixel is not correlated on this pixel
+                    if (Double.isNaN(img.getStack().getProcessor(1).getPixelValue(x, y))) {
+                        return;
+                    }
+
+                    Point pixelBinning = settings.getPixelBinning();
+                    Point minimumPosition = settings.getMinCursorPosition();
+
+                    x = (x + minimumPosition.x) * pixelBinning.x;
+                    y = (y + minimumPosition.y) * pixelBinning.y;
                     PixelModel pixelModel = correlator.getPixelModel(x, y);
 
                     // if the pixel model is not correlated we do not plot
-                    if (pixelModel == null || Double.isNaN(img.getStack().getProcessor(1).getPixelValue(x, y))) {
+                    if (pixelModel == null) {
                         return;
                     }
 

@@ -435,48 +435,58 @@ public class Plots {
     }
 
     /**
-     * Converts a point and dimension to a different scale based on binning factors.
+     * Converts a point to a different scale based on binning factors and adjusts based on the minimum position.
      *
-     * @param p       the original point.
-     * @param d       the original dimension.
-     * @param binning the binning factors to be applied.
-     * @return a Pair containing the converted point and dimension.
+     * @param p               the original point.
+     * @param minimumPosition the minimum position to adjust the point.
+     * @param binning         the binning factors to be applied.
+     * @return the converted point with binning factors applied.
      */
-    private static Pair<Point, Dimension> convertDimensionToBinning(Point p, Dimension d, Point binning) {
-        Point convertedPoint = new Point(p.x / binning.x, p.y / binning.y);
-        Dimension convertedDimension = new Dimension(d.width / binning.x, d.height / binning.y);
-
-        return new Pair<>(convertedPoint, convertedDimension);
+    private static Point convertPointToBinning(Point p, Point minimumPosition, Point binning) {
+        return new Point(p.x / binning.x - minimumPosition.x, p.y / binning.y - minimumPosition.y);
     }
 
     /**
-     * Plots parameter maps based on the pixel model and given image dimensions.
+     * Calculates the dimensions of an image based on the minimum and maximum positions.
      *
-     * @param pixelModel the model containing pixel parameters.
-     * @param p          the point to be plotted.
-     * @param imageSize  the size of the image.
-     * @param binning    the binning factors to be applied.
+     * @param minimumPosition the minimum position in the image.
+     * @param maximumPosition the maximum position in the image.
+     * @return the dimension of the image calculated from the positions.
+     */
+    private static Dimension getConvertedImageDimension(Point minimumPosition, Point maximumPosition) {
+        return new Dimension(maximumPosition.x - minimumPosition.x + 1, maximumPosition.y - minimumPosition.y + 1);
+    }
+
+    /**
+     * Plots parameter maps based on the pixel model and given image dimensions, creating an ImagePlus object.
+     *
+     * @param pixelModel      the model containing pixel parameters.
+     * @param p               the point to be plotted.
+     * @param minimumPosition the minimum position in the image.
+     * @param maximumPosition the maximum position in the image.
+     * @param binning         the binning factors to be applied.
+     * @param mouseListener   the mouse listener to handle mouse events on the plotted image.
      * @return the ImagePlus object containing the plotted parameter maps.
      */
-    public static ImagePlus plotParameterMaps(PixelModel pixelModel, Point p, Dimension imageSize, Point binning,
-                                              MouseListener mouseListener) {
+    public static ImagePlus plotParameterMaps(PixelModel pixelModel, Point p, Point minimumPosition,
+                                              Point maximumPosition, Point binning, MouseListener mouseListener) {
         Pair<String, Double>[] params = pixelModel.getParams();
 
         // convert dimension using binning
-        Pair<Point, Dimension> convertedDimensions = convertDimensionToBinning(p, imageSize, binning);
-        Point binningPoint = convertedDimensions.getLeft();
-        Dimension imageDimBinning = convertedDimensions.getRight();
+        Point binningPoint = convertPointToBinning(p, minimumPosition, binning);
+        Dimension convertedDimension = getConvertedImageDimension(minimumPosition, maximumPosition);
 
         boolean initImg = false;
         if (imgParam == null || !imgParam.isVisible()) {
             initImg = true;
-            imgParam = IJ.createImage("Maps", "GRAY32", imageDimBinning.width, imageDimBinning.height, params.length);
+            imgParam = IJ.createImage("Maps", "GRAY32", convertedDimension.width, convertedDimension.height,
+                    params.length);
 
             // Set all pixel values to NaN
             IntStream.range(1, imgParam.getStackSize() + 1).forEach(slice -> {
                 ImageProcessor ip = imgParam.getStack().getProcessor(slice);
-                for (int x = 0; x < imageDimBinning.width; x++) {
-                    for (int y = 0; y < imageDimBinning.height; y++) {
+                for (int x = 0; x < convertedDimension.width; x++) {
+                    for (int y = 0; y < convertedDimension.height; y++) {
                         ip.putPixelValue(x, y, Double.NaN);
                     }
                 }

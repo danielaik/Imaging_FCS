@@ -450,21 +450,21 @@ public final class MainPanelController {
                 return;
             }
 
-            int roiStartX = settings.getCCF().width >= 0 ? 0 : -settings.getCCF().width;
-            int roiStartY = settings.getCCF().height >= 0 ? 0 : -settings.getCCF().height;
-
-            int roiWidth = (int) ((double) (imageController.getImage().getWidth() - Math.abs(settings.getCCF().width)) /
-                    settings.getBinning().x) * settings.getBinning().x;
-            int roiHeight =
-                    (int) ((double) (imageController.getImage().getHeight() - Math.abs(settings.getCCF().height)) /
-                            settings.getBinning().y) * settings.getBinning().y;
-
-            if (settings.isOverlap()) {
-                roiWidth = imageController.getImage().getWidth() - Math.abs(settings.getCCF().width);
-                roiHeight = imageController.getImage().getHeight() - Math.abs(settings.getCCF().height);
+            Overlay overlay = imageController.getImage().getOverlay();
+            if (overlay != null) {
+                overlay.clear();
             }
 
-            Roi imgRoi = new Roi(roiStartX, roiStartY, roiWidth, roiHeight);
+            Point startLocation = settings.getMinCursorPosition();
+            Point endLocation = settings.getMaxCursorPosition(imageController.getImage());
+            Point pixelBinning = settings.getPixelBinning();
+
+            int startX = startLocation.x * pixelBinning.x;
+            int width = (endLocation.x - startLocation.x + 1) * pixelBinning.x;
+            int startY = startLocation.y * pixelBinning.y;
+            int height = (endLocation.y - startLocation.y + 1) * pixelBinning.y;
+
+            Roi imgRoi = new Roi(startX, startY, width, height);
             imageController.getImage().setRoi(imgRoi);
 
             btnROIPressed().actionPerformed(ev);
