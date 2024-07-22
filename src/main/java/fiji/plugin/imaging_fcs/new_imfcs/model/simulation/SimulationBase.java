@@ -1,6 +1,5 @@
 package fiji.plugin.imaging_fcs.new_imfcs.model.simulation;
 
-import fiji.plugin.imaging_fcs.new_imfcs.constants.Constants;
 import fiji.plugin.imaging_fcs.new_imfcs.model.ExpSettingsModel;
 import fiji.plugin.imaging_fcs.new_imfcs.model.SimulationModel;
 import ij.IJ;
@@ -14,7 +13,6 @@ import ij.process.ImageProcessor;
  */
 public abstract class SimulationBase {
     protected static final double OBSERVATION_WAVELENGTH_CONVERSION_FACTOR = Math.pow(10, 9);
-
     protected final RandomCustom random;
     protected double tStep, darkF, pixelSize, wavelength, PSFSize, midPos, sizeLowerLimit, sizeUpperLimit, bleachFactor,
             blinkOnFactor, blinkOffFactor, sqrtCameraNoiseFactor, D1, D2, D3;
@@ -70,18 +68,14 @@ public abstract class SimulationBase {
         // Calculate the fraction of molecules in the dark state
         darkF = model.getKoff() / (model.getKoff() + model.getKon());
 
-        // Calculate real pixel size based on settings and a conversion factor
-        double pixelSizeRealSize =
-                settingsModel.getPixelSize() / Constants.PIXEL_SIZE_REAL_SPACE_CONVERSION_FACTOR;
-
         // Calculate the wavelength based on settings and a conversion factor
-        wavelength = settingsModel.getEmLambda() / OBSERVATION_WAVELENGTH_CONVERSION_FACTOR;
+        wavelength = settingsModel.getEmLambda();
 
         // Sigma0 from settings
         double sigma0 = settingsModel.getSigma();
 
         // Calculate the pixel size in object space
-        pixelSize = pixelSizeRealSize / settingsModel.getMagnification();
+        pixelSize = settingsModel.getPixelSize() / settingsModel.getMagnification();
 
         // Calculate the PSF (Point Spread Function) size
         PSFSize = 0.5 * sigma0 * wavelength / settingsModel.getNA();
