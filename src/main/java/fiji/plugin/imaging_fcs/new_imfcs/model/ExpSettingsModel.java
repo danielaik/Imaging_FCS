@@ -6,6 +6,9 @@ import ij.ImagePlus;
 
 import java.awt.*;
 
+import static fiji.plugin.imaging_fcs.new_imfcs.constants.Constants.NANO_CONVERSION_FACTOR;
+import static fiji.plugin.imaging_fcs.new_imfcs.constants.Constants.PIXEL_SIZE_REAL_SPACE_CONVERSION_FACTOR;
+
 /**
  * Represents the experimental settings for imaging FCS.
  * This model includes various parameters related to imaging,
@@ -21,13 +24,13 @@ public final class ExpSettingsModel {
     //// Parameter that updates the non-user parameters
     private final Point binning = new Point(1, 1);
     private final Dimension CCF = new Dimension(0, 0);
-    private double pixelSize = 24;
+    private double pixelSize = 24 / PIXEL_SIZE_REAL_SPACE_CONVERSION_FACTOR;
     private double magnification = 100;
     private double NA = 1.49;
     private double sigma = 0.8;
-    private double emLambda = 515;
+    private double emLambda = 515 / NANO_CONVERSION_FACTOR;
     private double sigma2 = 0.8;
-    private double emLamdba2 = 600;
+    private double emLambda2 = 600 / NANO_CONVERSION_FACTOR;
     private double sigmaZ = 1000000;
     private double sigmaZ2 = 1000000;
 
@@ -76,14 +79,14 @@ public final class ExpSettingsModel {
      */
     public void updateSettings() {
         // Calculation of the axial resolution adjustment parameter based on pixel size and magnification.
-        paramAx = pixelSize * 1000 / magnification * binning.x;
-        paramAy = pixelSize * 1000 / magnification * binning.y;
+        paramAx = pixelSize / magnification * binning.x;
+        paramAy = pixelSize / magnification * binning.y;
 
         // Calculation of lateral and axial resolutions for both emission wavelengths.
         paramW = sigma * emLambda / NA;
-        paramW2 = sigma2 * emLamdba2 / NA;
+        paramW2 = sigma2 * emLambda2 / NA;
         paramZ = sigmaZ * emLambda / NA;
-        paramZ2 = sigmaZ2 * emLamdba2 / NA;
+        paramZ2 = sigmaZ2 * emLambda2 / NA;
 
         // Adjustments for lateral displacements.
         int cfXShift = 0;
@@ -93,8 +96,8 @@ public final class ExpSettingsModel {
             cfYShift = CCF.height;
         }
 
-        paramRx = pixelSize * 1000 / magnification * cfXShift;
-        paramRy = pixelSize * 1000 / magnification * cfYShift;
+        paramRx = pixelSize / magnification * cfXShift;
+        paramRy = pixelSize / magnification * cfYShift;
     }
 
     /**
@@ -210,7 +213,11 @@ public final class ExpSettingsModel {
     }
 
     public void setPixelSize(String pixelSize) {
-        this.pixelSize = Double.parseDouble(pixelSize);
+        this.pixelSize = Double.parseDouble(pixelSize) / PIXEL_SIZE_REAL_SPACE_CONVERSION_FACTOR;
+    }
+
+    public double getPixelSizeInterface() {
+        return pixelSize * PIXEL_SIZE_REAL_SPACE_CONVERSION_FACTOR;
     }
 
     public double getMagnification() {
@@ -242,7 +249,11 @@ public final class ExpSettingsModel {
     }
 
     public void setEmLambda(String emLambda) {
-        this.emLambda = Double.parseDouble(emLambda);
+        this.emLambda = Double.parseDouble(emLambda) / NANO_CONVERSION_FACTOR;
+    }
+
+    public double getEmLambdaInterface() {
+        return emLambda * NANO_CONVERSION_FACTOR;
     }
 
     public double getSigma2() {
@@ -253,12 +264,16 @@ public final class ExpSettingsModel {
         this.sigma2 = Double.parseDouble(sigma2);
     }
 
-    public double getEmLamdba2() {
-        return emLamdba2;
+    public double getEmLambda2() {
+        return emLambda2;
     }
 
-    public void setEmLamdba2(String emLamdba2) {
-        this.emLamdba2 = Double.parseDouble(emLamdba2);
+    public void setEmLambda2(String emLambda2) {
+        this.emLambda2 = Double.parseDouble(emLambda2) / NANO_CONVERSION_FACTOR;
+    }
+
+    public double getEmLambda2Interface() {
+        return emLambda2 * NANO_CONVERSION_FACTOR;
     }
 
     public double getSigmaZ() {
@@ -281,28 +296,64 @@ public final class ExpSettingsModel {
         return paramAx;
     }
 
+    public double getParamAxInterface() {
+        return paramAx * NANO_CONVERSION_FACTOR;
+    }
+
     public double getParamAy() {
         return paramAy;
+    }
+
+    public double getParamAyInterface() {
+        return paramAy * NANO_CONVERSION_FACTOR;
     }
 
     public double getParamW() {
         return paramW;
     }
 
+    public double getParamW2() {
+        return paramW2;
+    }
+
+    public double getParamW2Interface() {
+        return paramW2 * NANO_CONVERSION_FACTOR;
+    }
+
+    public double getParamWInterface() {
+        return paramW * NANO_CONVERSION_FACTOR;
+    }
+
     public double getParamZ() {
         return paramZ;
+    }
+
+    public double getParamZInterface() {
+        return paramZ * NANO_CONVERSION_FACTOR;
     }
 
     public double getParamZ2() {
         return paramZ2;
     }
 
+    public double getParamZ2Interface() {
+        return paramZ2 * NANO_CONVERSION_FACTOR;
+    }
+
     public double getParamRx() {
         return paramRx;
     }
 
+    public double getParamRxInterface() {
+        return paramRx * NANO_CONVERSION_FACTOR;
+    }
+
     public double getParamRy() {
         return paramRy;
+    }
+
+    public double getParamRyInterface() {
+        return paramRy * NANO_CONVERSION_FACTOR;
     }
 
     public Point getBinning() {
@@ -338,10 +389,6 @@ public final class ExpSettingsModel {
 
     public String getCCFString() {
         return String.format("%d x %d", CCF.width, CCF.height);
-    }
-
-    public double getParamW2() {
-        return paramW2;
     }
 
     public int getFirstFrame() {

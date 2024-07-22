@@ -6,7 +6,6 @@ import fiji.plugin.imaging_fcs.new_imfcs.model.PixelModel;
 import org.apache.commons.math3.analysis.ParametricUnivariateFunction;
 import org.apache.commons.math3.special.Erf;
 
-import static fiji.plugin.imaging_fcs.new_imfcs.constants.Constants.NANO_CONVERSION_FACTOR;
 import static fiji.plugin.imaging_fcs.new_imfcs.constants.Constants.SQRT_PI;
 
 /**
@@ -60,14 +59,14 @@ public abstract class FCSFit implements ParametricUnivariateFunction {
      * @param mode     The mode for the PSF size and light sheet thickness.
      */
     protected void initParameters(ExpSettingsModel settings, int mode) {
-        ax = settings.getParamAx() / NANO_CONVERSION_FACTOR;
-        ay = settings.getParamAy() / NANO_CONVERSION_FACTOR;
+        ax = settings.getParamAx();
+        ay = settings.getParamAy();
 
-        double psfSize = settings.getParamW() / NANO_CONVERSION_FACTOR;
-        double psfSize2 = settings.getParamW2() / NANO_CONVERSION_FACTOR;
+        double psfSize = settings.getParamW();
+        double psfSize2 = settings.getParamW2();
 
-        double lsThickness = settings.getParamZ() / NANO_CONVERSION_FACTOR;
-        double lsThickness2 = settings.getParamZ2() / NANO_CONVERSION_FACTOR;
+        double lsThickness = settings.getParamZ();
+        double lsThickness2 = settings.getParamZ2();
 
         if (mode == 0) {
             s = psfSize;
@@ -80,8 +79,8 @@ public abstract class FCSFit implements ParametricUnivariateFunction {
             sz = Math.sqrt(Math.pow(lsThickness, 2) / 2 + Math.pow(lsThickness2, 2) / 2);
         }
 
-        rx = settings.getParamRx() / NANO_CONVERSION_FACTOR;
-        ry = settings.getParamRy() / NANO_CONVERSION_FACTOR;
+        rx = settings.getParamRx();
+        ry = settings.getParamRy();
 
         fitObservationVolume = getFitObservationVolume(ax, ay, s);
 

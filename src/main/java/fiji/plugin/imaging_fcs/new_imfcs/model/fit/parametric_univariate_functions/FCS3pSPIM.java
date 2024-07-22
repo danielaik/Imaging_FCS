@@ -51,7 +51,7 @@ public class FCS3pSPIM extends FCSFit {
         // Additional calculations for 3D volume
         // size of PSF in axial direction convolution of two Gaussians depending on illumination profile and
         // detection PSF
-        double psfZ = 2 * settings.getEmLambda() / NANO_CONVERSION_FACTOR * REFRACTIVE_INDEX / Math.pow(NA, 2.0);
+        double psfZ = 2 * settings.getEmLambda() * REFRACTIVE_INDEX / Math.pow(NA, 2.0);
         double szEff = Math.sqrt(1 / (Math.pow(sz, -2.0) + Math.pow(psfZ, -2.0)));
 
         double volume3d = SQRT_PI * szEff * fitObservationVolume;

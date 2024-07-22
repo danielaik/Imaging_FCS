@@ -18,8 +18,8 @@ import static fiji.plugin.imaging_fcs.new_imfcs.view.UIUtils.createJLabel;
  */
 public final class ExpSettingsView extends BaseView {
     private static final GridLayout SETTINGS_LAYOUT = new GridLayout(11, 4);
-    private static final Point SETTINGS_LOCATION = new Point(
-            Constants.MAIN_PANEL_POS.x + Constants.MAIN_PANEL_DIM.width + 10, 125);
+    private static final Point SETTINGS_LOCATION =
+            new Point(Constants.MAIN_PANEL_POS.x + Constants.MAIN_PANEL_DIM.width + 10, 125);
     private static final Dimension SETTINGS_DIMENSION = new Dimension(370, 280);
     private final ExpSettingsModel model;
     private final MainPanelController controller;
@@ -60,11 +60,14 @@ public final class ExpSettingsView extends BaseView {
     @Override
     protected void initializeTextFields() {
         // Initialize editable fields with model data and controller actions
-        tfPixelSize = createTextField(model.getPixelSize(), "", controller.updateSettings(model::setPixelSize));
-        tfMagnification = createTextField(model.getMagnification(), "", controller.updateSettings(model::setMagnification));
+        tfPixelSize =
+                createTextField(model.getPixelSizeInterface(), "", controller.updateSettings(model::setPixelSize));
+        tfMagnification =
+                createTextField(model.getMagnification(), "", controller.updateSettings(model::setMagnification));
         tfNA = createTextField(model.getNA(), "", controller.updateSettings(model::setNA));
-        tfEmLambda = createTextField(model.getEmLambda(), "", controller.updateSettings(model::setEmLambda));
-        tfEmLambda2 = createTextField(model.getEmLamdba2(), "", controller.updateSettings(model::setEmLamdba2));
+        tfEmLambda = createTextField(model.getEmLambdaInterface(), "", controller.updateSettings(model::setEmLambda));
+        tfEmLambda2 =
+                createTextField(model.getEmLambda2Interface(), "", controller.updateSettings(model::setEmLambda2));
         tfSigma = createTextField(model.getSigma(), "", controller.updateSettings(model::setSigma));
         tfSigma2 = createTextField(model.getSigma2(), "", controller.updateSettings(model::setSigma2));
         tfSigmaZ = createTextField(model.getSigmaZ(), "", controller.updateSettings(model::setSigmaZ));
@@ -90,14 +93,14 @@ public final class ExpSettingsView extends BaseView {
         // Use scientific notation for these fields
         Function<Double, String> formatter = value -> String.format("%6.2e", value);
 
-        tfParamAx.setText(formatter.apply(model.getParamAx()));
-        tfParamAy.setText(formatter.apply(model.getParamAy()));
-        tfParamW.setText(formatter.apply(model.getParamW()));
-        tfParamW2.setText(formatter.apply(model.getParamW2()));
-        tfParamZ.setText(formatter.apply(model.getParamZ()));
-        tfParamZ2.setText(formatter.apply(model.getParamZ2()));
-        tfParamRx.setText(formatter.apply(model.getParamRx()));
-        tfParamRy.setText(formatter.apply(model.getParamRy()));
+        tfParamAx.setText(formatter.apply(model.getParamAxInterface()));
+        tfParamAy.setText(formatter.apply(model.getParamAyInterface()));
+        tfParamW.setText(formatter.apply(model.getParamWInterface()));
+        tfParamW2.setText(formatter.apply(model.getParamW2Interface()));
+        tfParamZ.setText(formatter.apply(model.getParamZInterface()));
+        tfParamZ2.setText(formatter.apply(model.getParamZ2Interface()));
+        tfParamRx.setText(formatter.apply(model.getParamRxInterface()));
+        tfParamRy.setText(formatter.apply(model.getParamRyInterface()));
     }
 
     /**
