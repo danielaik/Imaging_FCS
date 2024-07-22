@@ -1,0 +1,5 @@
+mvn clean
+
+mvn clean package -DgenerateJniHeaders=true
+
+mvn clean package -DcompileLibs=true -e
