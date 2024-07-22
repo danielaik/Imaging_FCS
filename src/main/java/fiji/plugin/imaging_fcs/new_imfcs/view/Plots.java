@@ -384,26 +384,43 @@ public class Plots {
     }
 
     /**
-     * Plots the mean square displacement (MSD) for a given pixel.
+     * Plots the mean square displacement (MSD) for a list of pixel models.
      *
-     * @param msd      The MSD values.
-     * @param lagTimes The lag times corresponding to the MSD values.
-     * @param p        The point representing the pixel.
+     * @param pixelModels The list of PixelModel objects containing MSD values.
+     * @param lagTimes    The lag times corresponding to the MSD values.
+     * @param p           The point representing the pixel (can be null for the entire ROI).
+     * @param binning     The binning point representing the binning factor in x and y directions.
      */
-    public static void plotMSD(double[] msd, double[] lagTimes, Point p) {
-        Pair<Double, Double> minMax = findAdjustedMinMax(msd);
-        double min = minMax.getLeft();
-        double max = minMax.getRight();
-
-        double[] msdTime = Arrays.copyOfRange(lagTimes, 0, msd.length);
-
+    public static void plotMSD(List<PixelModel> pixelModels, double[] lagTimes, Point p, Point binning) {
         Plot plot = new Plot("MSD", "time [s]", "MSD (um^2)");
         plot.setFrameSize(MSD_DIMENSION.width, MSD_DIMENSION.height);
-        plot.setLimits(msdTime[1], msdTime[msdTime.length - 1], min, max);
         plot.setColor(Color.BLUE);
-        plot.addPoints(msdTime, msd, Plot.LINE);
         plot.setJustification(Plot.CENTER);
-        plot.addLabel(0.5, 0, String.format(" MSD (%d, %d)", p.x, p.y));
+
+        double minScale = Double.MAX_VALUE;
+        double maxScale = -Double.MAX_VALUE;
+
+        int msdMinLen = Integer.MAX_VALUE;
+
+        for (PixelModel pixelModel : pixelModels) {
+            double[] msd = pixelModel.getMSD();
+            Pair<Double, Double> minMax = findAdjustedMinMax(msd);
+            minScale = Math.min(minScale, minMax.getLeft());
+            maxScale = Math.max(maxScale, minMax.getRight());
+
+            double[] msdTime = Arrays.copyOfRange(lagTimes, 0, msd.length);
+            msdMinLen = Math.min(msdMinLen, msdTime.length);
+
+            plot.addPoints(msdTime, msd, Plot.LINE);
+        }
+
+        plot.setLimits(lagTimes[1], lagTimes[msdMinLen - 1], minScale, maxScale);
+        String label = String.format("the ROI at %dx%d binning.", binning.x, binning.y);
+        if (p != null) {
+            label = String.format("(%d, %d).", p.x, p.y);
+        }
+
+        plot.addLabel(0.5, 0, "MSD of " + label);
         plot.draw();
 
         msdWindow = plotWindow(plot, msdWindow, MSD_POSITION);

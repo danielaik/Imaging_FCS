@@ -1,5 +1,6 @@
 package fiji.plugin.imaging_fcs.new_imfcs.model.correlations;
 
+import fiji.plugin.imaging_fcs.new_imfcs.constants.Constants;
 import org.apache.commons.math3.analysis.UnivariateFunction;
 import org.apache.commons.math3.analysis.solvers.BrentSolver;
 import org.apache.commons.math3.analysis.solvers.UnivariateSolver;
@@ -88,13 +89,16 @@ public class MeanSquareDisplacement {
         int cutoffIndex = findCutoffIndex(correlationFunction);
 
         double[] msdArray = new double[cutoffIndex];
+        double pixelSizeConverted = pixelSizeX * Constants.PIXEL_SIZE_REAL_SPACE_CONVERSION_FACTOR;
+        double psfWidthConverted = psfWidth * Constants.PIXEL_SIZE_REAL_SPACE_CONVERSION_FACTOR;
+
         // Calculate MSD for each valid channel
         for (int i = 1; i < cutoffIndex; i++) {
             double d = Math.PI * correlationFunction[i] / correlationFunction[1] /
-                    (getFitObservationVolume(pixelSizeX, pixelSizeY, psfWidth) * 1e12) * Math.pow(pixelSizeX, 2) *
-                    1260.0 / 29.0;
+                    (getFitObservationVolume(pixelSizeX, pixelSizeY, psfWidth) * 1e12) *
+                    Math.pow(pixelSizeConverted, 2) * 1260.0 / 29.0;
             double[] roots = solveQuartic(FACTOR_A, FACTOR_B, FACTOR_C, d);
-            msdArray[i] = (Math.pow(pixelSizeX, 2) / roots[1]) - Math.pow(psfWidth, 2);
+            msdArray[i] = (Math.pow(pixelSizeConverted, 2) / roots[1]) - Math.pow(psfWidthConverted, 2);
         }
 
         handleNaNValues(msdArray);

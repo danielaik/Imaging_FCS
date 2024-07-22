@@ -117,8 +117,14 @@ public final class ImageController {
         try {
             Point[] cursorPositions = selectedPixel.performCorrelationFunctionEvaluation(x, y, singlePixelCorrelation);
             Point pixel = cursorPositions[0];
-            fitController.fit(correlator.getPixelModel(pixel.x, pixel.y), correlator.getLagTimes(),
-                    correlator.getRegularizedCovarianceMatrix(), x, y);
+            PixelModel pixelModel = correlator.getPixelModel(pixel.x, pixel.y);
+
+            fitController.fit(pixelModel, correlator.getLagTimes(), correlator.getRegularizedCovarianceMatrix(), x, y);
+
+            if (settings.isMSD()) {
+                pixelModel.setMSD(MeanSquareDisplacement.correlationToMSD(pixelModel.getAcf(), settings.getParamAx(),
+                        settings.getParamAy(), settings.getParamW(), settings.getSigmaZ(), settings.isMSD3d()));
+            }
 
             return cursorPositions;
         } catch (RuntimeException e) {
@@ -190,6 +196,7 @@ public final class ImageController {
 
         Plots.plotCorrelationFunction(correlatedPixels, correlator.getLagTimes(), null, settings.getBinning(),
                 settings.getCCF(), fitController.getFitStart(), fitController.getFitEnd());
+        Plots.plotMSD(correlatedPixels, correlator.getLagTimes(), null, settings.getBinning());
     }
 
     /**
@@ -237,9 +244,7 @@ public final class ImageController {
         }
 
         if (settings.isMSD()) {
-            pixelModel.setMSD(MeanSquareDisplacement.correlationToMSD(pixelModel.getAcf(), settings.getParamAx(),
-                    settings.getParamAy(), settings.getParamW(), settings.getSigmaZ(), settings.isMSD3d()));
-            Plots.plotMSD(pixelModel.getMSD(), correlator.getLagTimes(), p);
+            Plots.plotMSD(Collections.singletonList(pixelModel), correlator.getLagTimes(), p, settings.getBinning());
         }
 
         if (options.isPlotResCurves() && pixelModel.isFitted()) {
