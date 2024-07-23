@@ -5,6 +5,8 @@ import fiji.plugin.imaging_fcs.new_imfcs.controller.InvalidUserInputException;
 import ij.ImagePlus;
 
 import java.awt.*;
+import java.util.HashMap;
+import java.util.Map;
 
 import static fiji.plugin.imaging_fcs.new_imfcs.constants.Constants.NANO_CONVERSION_FACTOR;
 import static fiji.plugin.imaging_fcs.new_imfcs.constants.Constants.PIXEL_SIZE_REAL_SPACE_CONVERSION_FACTOR;
@@ -72,6 +74,57 @@ public final class ExpSettingsModel {
         updateSettings();
         updateChannelNumber();
     }
+
+    /**
+     * Converts the current settings to a map.
+     * The keys are strings representing the parameter names, and the values are the parameter values.
+     *
+     * @return a map containing the settings.
+     */
+    public Map<String, Object> toMap() {
+        Map<String, Object> data = new HashMap<>();
+        data.put("Binning", getBinningString());
+        data.put("CCF", getCCFString());
+        data.put("Pixel size", getPixelSizeInterface());
+        data.put("Magnification", getMagnification());
+        data.put("NA", getNA());
+        data.put("Sigma", getSigma());
+        data.put("Sigma 2", getSigma2());
+        data.put("Sigma Z", getSigmaZ());
+        data.put("Sigma Z 2", getSigmaZ2());
+        data.put("Lambda", getEmLambdaInterface());
+        data.put("Lambda 2", getEmLambda2Interface());
+        data.put("Frame time", getFrameTime());
+
+        return data;
+    }
+
+    /**
+     * Loads settings from a map.
+     * The map keys should correspond to the parameter names used in the toMap method,
+     * and the values should be the parameter values to set.
+     *
+     * @param data a map containing the settings to be loaded.
+     */
+    public void fromMap(Map<String, Object> data) {
+        setBinning(data.get("Binning").toString());
+        setCCF(data.get("CCF").toString());
+        setPixelSize(data.get("Pixel size").toString());
+        setMagnification(data.get("Magnification").toString());
+        setNA(data.get("NA").toString());
+        setSigma(data.get("Sigma").toString());
+        setSigma2(data.get("Sigma 2").toString());
+        setSigmaZ(data.get("Sigma Z").toString());
+        setSigmaZ2(data.get("Sigma Z 2").toString());
+        setEmLambda(data.get("Lambda").toString());
+        setEmLambda2(data.get("Lambda 2").toString());
+        setFrameTime(data.get("Frame time").toString());
+
+        // Update the settings accordingly.
+        updateSettings();
+        updateChannelNumber();
+    }
+
 
     /**
      * Updates the derived parameters based on the current settings.

@@ -19,10 +19,18 @@ import ij.ImagePlus;
 import ij.WindowManager;
 import ij.gui.Overlay;
 import ij.gui.Roi;
+import org.yaml.snakeyaml.DumperOptions;
+import org.yaml.snakeyaml.Yaml;
 
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
+import java.io.FileInputStream;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.nio.file.FileSystems;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.function.Consumer;
 
 import static fiji.plugin.imaging_fcs.new_imfcs.controller.ControllerUtils.getComboBoxSelectionFromEvent;
@@ -59,6 +67,8 @@ public final class MainPanelController {
         this.optionsModel = new OptionsModel(hardwareModel.isCuda());
 
         this.settings = new ExpSettingsModel();
+        loadConfig();
+
         this.expSettingsView = new ExpSettingsView(this, settings);
         updateSettingsField();
 
@@ -80,6 +90,33 @@ public final class MainPanelController {
 
 
         this.view = new MainPanelView(this, this.settings);
+    }
+
+    /**
+     * Constructs the file path to the configuration file in the user's home directory.
+     *
+     * @return the file path to the configuration file.
+     */
+    private String getConfigPath() {
+        String userHomeDir = System.getProperty("user.home");
+        String configFileName = ".ImFCS_config.yaml";
+        return userHomeDir + FileSystems.getDefault().getSeparator() + configFileName;
+    }
+
+    /**
+     * Loads the configuration from the YAML file located at the path specified by getConfigPath.
+     * The method reads the file, parses the YAML content, and updates the settings and options models.
+     * If an error occurs during reading or parsing, a message is logged.
+     */
+    private void loadConfig() {
+        Yaml yaml = new Yaml();
+        try (FileInputStream inputStream = new FileInputStream(getConfigPath())) {
+            Map<String, Map<String, Object>> data = yaml.load(inputStream);
+            settings.fromMap(data.get("Settings"));
+            optionsModel.fromMap(data.get("Options"));
+        } catch (Exception e) {
+            IJ.log("Can't read configuration file.");
+        }
     }
 
     /**
@@ -376,9 +413,30 @@ public final class MainPanelController {
         return null;
     }
 
+    /**
+     * Returns an ActionListener that writes the current configuration to a YAML file.
+     * The configuration includes settings and options which are serialized and saved to the file path
+     * specified by getConfigPath. If an error occurs during writing, a message is displayed.
+     *
+     * @return an ActionListener that writes the configuration to a file when triggered.
+     */
     public ActionListener btnWriteConfigPressed() {
-        // TODO: FIXME
-        return null;
+        return (ActionEvent ev) -> {
+            Map<String, Object> data = new HashMap<>();
+            data.put("Settings", settings.toMap());
+            data.put("Options", optionsModel.toMap());
+
+            DumperOptions optionsYaml = new DumperOptions();
+            optionsYaml.setDefaultFlowStyle(DumperOptions.FlowStyle.BLOCK);
+            optionsYaml.setPrettyFlow(true);
+
+            Yaml yaml = new Yaml(optionsYaml);
+            try (FileWriter writer = new FileWriter(getConfigPath())) {
+                yaml.dump(data, writer);
+            } catch (IOException e) {
+                IJ.showMessage("Error", "Can't write configuration.");
+            }
+        };
     }
 
     public ActionListener btnDCRPressed() {

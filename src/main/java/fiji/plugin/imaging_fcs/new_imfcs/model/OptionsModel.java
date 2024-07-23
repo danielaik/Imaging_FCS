@@ -1,5 +1,8 @@
 package fiji.plugin.imaging_fcs.new_imfcs.model;
 
+import java.util.HashMap;
+import java.util.Map;
+
 /**
  * The OptionsModel class represents the configuration options for imaging FCS analysis.
  * It stores user preferences for plotting various curves and histograms, as well as
@@ -7,13 +10,13 @@ package fiji.plugin.imaging_fcs.new_imfcs.model;
  */
 public final class OptionsModel {
     private final boolean isCuda;
-    private boolean plotACFCurves;
-    private boolean plotSDCurves;
-    private boolean plotIntensityCurves;
-    private boolean plotResCurves;
-    private boolean plotParaHist;
-    private boolean plotBlockingCurve;
-    private boolean plotCovMats;
+    private boolean plotACFCurves = true;
+    private boolean plotSDCurves = true;
+    private boolean plotIntensityCurves = true;
+    private boolean plotResCurves = true;
+    private boolean plotParaHist = true;
+    private boolean plotBlockingCurve = false;
+    private boolean plotCovMats = false;
     private boolean useGpu;
 
     /**
@@ -27,15 +30,42 @@ public final class OptionsModel {
 
         // By default, we use Cuda if a GPU is detected
         this.useGpu = isCuda;
+    }
 
-        // set default values
-        this.plotACFCurves = true;
-        this.plotSDCurves = true;
-        this.plotIntensityCurves = true;
-        this.plotResCurves = true;
-        this.plotParaHist = true;
-        this.plotBlockingCurve = false;
-        this.plotCovMats = false;
+    /**
+     * Converts the current plot options to a map.
+     * The keys are strings representing the plot option names, and the values are the option values.
+     *
+     * @return a map containing the plot options.
+     */
+    public Map<String, Object> toMap() {
+        Map<String, Object> data = new HashMap<>();
+        data.put("Plot ACF Curves", plotACFCurves);
+        data.put("Plot SD Curves", plotSDCurves);
+        data.put("Plot Intensity Curves", plotIntensityCurves);
+        data.put("Plot Residual Curves", plotResCurves);
+        data.put("Plot Parameter Histogram", plotParaHist);
+        data.put("Plot Blocking Curves", plotBlockingCurve);
+        data.put("Plot Covariance Matrix", plotCovMats);
+
+        return data;
+    }
+
+    /**
+     * Loads plot options from a map.
+     * The map keys should correspond to the option names used in the toMap method,
+     * and the values should be the option values to set.
+     *
+     * @param data a map containing the plot options to be loaded.
+     */
+    public void fromMap(Map<String, Object> data) {
+        plotACFCurves = (boolean) data.get("Plot ACF Curves");
+        plotSDCurves = (boolean) data.get("Plot SD Curves");
+        plotIntensityCurves = (boolean) data.get("Plot Intensity Curves");
+        plotResCurves = (boolean) data.get("Plot Residual Curves");
+        plotParaHist = (boolean) data.get("Plot Parameter Histogram");
+        plotBlockingCurve = (boolean) data.get("Plot Blocking Curves");
+        plotCovMats = (boolean) data.get("Plot Covariance Matrix");
     }
 
     // Getters and setters follows, setUseGpu is the only one with a specific behavior
