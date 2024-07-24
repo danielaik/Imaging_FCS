@@ -186,7 +186,7 @@ public final class MainPanelView extends BaseView {
         btnOptions = createJButton("Options", "Select various options regarding the display of results.", null,
                 controller.btnOptionsPressed());
         btnAve = createJButton("Average", "Calculate the average ACF from all valid ACFs and fit if fit is switched " +
-                "on; this does not calculate residuals or sd.", null, controller.btnAvePressed());
+                "on; this does not calculate residuals or sd.", null, controller.btnAveragePressed());
         btnParaCor = createJButton("Scatter",
                 "Calculates a scatter plot for a pair of two parameters from the scroll down" + " menu.", null,
                 controller.btnParaCorPressed());

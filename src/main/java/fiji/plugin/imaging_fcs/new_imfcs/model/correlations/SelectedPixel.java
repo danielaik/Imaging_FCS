@@ -3,10 +3,13 @@ package fiji.plugin.imaging_fcs.new_imfcs.model.correlations;
 import fiji.plugin.imaging_fcs.new_imfcs.constants.Constants;
 import fiji.plugin.imaging_fcs.new_imfcs.model.ExpSettingsModel;
 import fiji.plugin.imaging_fcs.new_imfcs.model.ImageModel;
+import fiji.plugin.imaging_fcs.new_imfcs.model.PixelModel;
 import ij.gui.Overlay;
 import ij.gui.Roi;
 
 import java.awt.*;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * The SelectedPixel class handles the operations related to pixel selection and correlation for image processing.
@@ -28,6 +31,49 @@ public class SelectedPixel {
         this.correlator = correlator;
         this.settings = settings;
     }
+
+    /**
+     * Retrieves a list of PixelModel objects within the specified Region of Interest (ROI).
+     * If the ROI is null, it retrieves all valid PixelModel objects from the provided pixelModels array.
+     *
+     * @param roi             The Region of Interest within which to retrieve PixelModel objects. If null, all
+     *                        PixelModel objects are considered.
+     * @param pixelBinning    The binning factor applied to the pixel coordinates.
+     * @param minimumPosition The minimum position offset to apply to the pixel coordinates.
+     * @param pixelModels     The 2D array of PixelModel objects from which to retrieve the models.
+     * @return A list of PixelModel objects within the specified ROI.
+     */
+    public static List<PixelModel> getPixelModelsInRoi(Roi roi, Point pixelBinning, Point minimumPosition,
+                                                       PixelModel[][] pixelModels) {
+        List<PixelModel> pixelModelList = new ArrayList<>();
+
+        if (roi == null) {
+            for (PixelModel[] pixelModelRow : pixelModels) {
+                for (PixelModel currentPixelModel : pixelModelRow) {
+                    if (currentPixelModel != null && currentPixelModel.getAcf() != null) {
+                        pixelModelList.add(currentPixelModel);
+                    }
+                }
+            }
+
+        } else {
+            Rectangle rect = roi.getBounds();
+
+            for (int x = rect.x; x < rect.x + rect.width; x++) {
+                for (int y = rect.y; y < rect.y + rect.height; y++) {
+                    PixelModel currentPixelModel =
+                            pixelModels[(x + minimumPosition.x) * pixelBinning.x][(y + minimumPosition.y) *
+                                    pixelBinning.y];
+                    if (currentPixelModel != null && currentPixelModel.getAcf() != null) {
+                        pixelModelList.add(currentPixelModel);
+                    }
+                }
+            }
+        }
+
+        return pixelModelList;
+    }
+
 
     /**
      * Performs the correlation function evaluation (CFE) on the selected pixel.

@@ -60,11 +60,11 @@ public class Plots {
     private static final Point DCCF_HISTOGRAM_POSITION = new Point(DCCF_POSITION.x + 280, DCCF_POSITION.y);
     private static final Map<String, ImageWindow> dccfWindows = new HashMap<>();
     private static final Map<String, HistogramWindow> dccfHistogramWindows = new HashMap<>();
+    public static ImagePlus imgParam;
     private static PlotWindow blockingCurveWindow, acfWindow, standardDeviationWindow, intensityTraceWindow, msdWindow,
             residualsWindow, scatterWindow;
     private static ImageWindow imgCovarianceWindow;
     private static HistogramWindow paramHistogramWindow;
-    private static ImagePlus imgParam;
 
     // Prevent instantiation
     private Plots() {

@@ -206,10 +206,13 @@ public class FitModel {
     }
 
     /**
-     * Performs the fitting operation on the given pixel model and lag times.
+     * Performs the fitting operation on the given pixel model, lag times, and covariance matrix.
+     * Returns the model probabilities if Bayesian fitting is used, otherwise returns null.
      *
-     * @param pixelModel The pixel model to fit.
-     * @param lagTimes   The lag times for fitting.
+     * @param pixelModel       The pixel model to fit.
+     * @param lagTimes         The lag times for fitting.
+     * @param covarianceMatrix The covariance matrix used for fitting.
+     * @return A double array of model probabilities if Bayesian fitting is used, otherwise null.
      */
     public double[] fit(PixelModel pixelModel, double[] lagTimes, double[][] covarianceMatrix) {
         if (bayes) {
@@ -224,6 +227,17 @@ public class FitModel {
         }
 
         return null;
+    }
+
+    /**
+     * Performs the standard fitting operation on the given pixel model and lag times.
+     *
+     * @param pixelModel The pixel model to fit.
+     * @param lagTimes   The lag times for fitting.
+     */
+    public void standardFit(PixelModel pixelModel, double[] lagTimes) {
+        StandardFit fitter = new StandardFit(this, settings);
+        fitter.fitPixel(pixelModel, lagTimes);
     }
 
     public Parameter getD() {
@@ -401,8 +415,9 @@ public class FitModel {
     public void setFitStart(String fitStart) {
         int newValue = Integer.parseInt(fitStart);
         if (newValue < 1 || newValue >= settings.getChannelNumber()) {
-            throw new InvalidUserInputException(String.format(
-                    "Fit Start must be between 0 and the channel number " + "(%d)", settings.getChannelNumber()));
+            throw new InvalidUserInputException(
+                    String.format("Fit Start must be between 0 and the channel number " + "(%d)",
+                            settings.getChannelNumber()));
         }
 
         this.fitStart = newValue;
@@ -415,8 +430,9 @@ public class FitModel {
     public void setFitEnd(String fitEnd) {
         int newValue = Integer.parseInt(fitEnd);
         if (newValue < fitStart || newValue >= settings.getChannelNumber()) {
-            throw new InvalidUserInputException(String.format(
-                    "Fit End must be between Fit Start and the channel " + "number (%d)", settings.getChannelNumber()));
+            throw new InvalidUserInputException(
+                    String.format("Fit End must be between Fit Start and the channel " + "number (%d)",
+                            settings.getChannelNumber()));
         }
 
         this.fitEnd = newValue;

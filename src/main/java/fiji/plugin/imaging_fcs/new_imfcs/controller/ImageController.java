@@ -109,8 +109,10 @@ public final class ImageController {
     /**
      * Performs the correlation and fitting for a pixel at the given coordinates.
      *
-     * @param x The x-coordinate of the pixel.
-     * @param y The y-coordinate of the pixel.
+     * @param x                      The x-coordinate of the pixel.
+     * @param y                      The y-coordinate of the pixel.
+     * @param singlePixelCorrelation A boolean indicating if it is a single pixel correlation.
+     * @return An array of Points representing the cursor positions.
      */
     private Point[] correlatePixel(int x, int y, boolean singlePixelCorrelation) {
         SelectedPixel selectedPixel = new SelectedPixel(imageModel, correlator, settings);
@@ -155,6 +157,19 @@ public final class ImageController {
     }
 
     /**
+     * Plots multiple PixelModels.
+     *
+     * @param pixelModels A list of PixelModels to plot.
+     */
+    private void plotMultiplePixelsModels(List<PixelModel> pixelModels) {
+        Plots.plotCorrelationFunction(pixelModels, correlator.getLagTimes(), null, settings.getBinning(),
+                settings.getCCF(), fitController.getFitStart(), fitController.getFitEnd());
+        if (settings.isMSD()) {
+            Plots.plotMSD(pixelModels, correlator.getLagTimes(), null, settings.getBinning());
+        }
+    }
+
+    /**
      * Correlates a Region of Interest (ROI) in the image.
      *
      * @param imgRoi The ROI to be correlated.
@@ -194,9 +209,7 @@ public final class ImageController {
             IJ.showProgress(x - xRange.getStart(), xRange.length());
         }
 
-        Plots.plotCorrelationFunction(correlatedPixels, correlator.getLagTimes(), null, settings.getBinning(),
-                settings.getCCF(), fitController.getFitStart(), fitController.getFitEnd());
-        Plots.plotMSD(correlatedPixels, correlator.getLagTimes(), null, settings.getBinning());
+        plotMultiplePixelsModels(correlatedPixels);
     }
 
     /**
@@ -355,6 +368,9 @@ public final class ImageController {
                     ImageWindow window = (ImageWindow) canvas.getParent();
                     ImagePlus img = window.getImagePlus();
 
+                    // reset ROI
+                    img.deleteRoi();
+
                     int x = canvas.offScreenX(event.getX());
                     int y = canvas.offScreenY(event.getY());
 
@@ -371,7 +387,7 @@ public final class ImageController {
                     PixelModel pixelModel = correlator.getPixelModel(x, y);
 
                     // if the pixel model is not correlated we do not plot
-                    if (pixelModel == null) {
+                    if (pixelModel == null || pixelModel.getAcf() == null) {
                         return;
                     }
 
@@ -385,6 +401,32 @@ public final class ImageController {
                     Point[] points = new Point[]{new Point(x, y), new Point(x2, y2)};
 
                     plotResuts(points);
+                }
+            }
+
+            @Override
+            public void mouseReleased(MouseEvent event) {
+                Object source = event.getSource();
+
+                if (source instanceof ImageCanvas) {
+                    ImageCanvas canvas = (ImageCanvas) source;
+                    ImageWindow window = (ImageWindow) canvas.getParent();
+                    ImagePlus img = window.getImagePlus();
+
+                    Roi roi = img.getRoi();
+
+                    if (roi != null && roi.getFeretsDiameter() > 1) {
+                        roi.setStrokeColor(Color.BLUE);
+
+                        Point pixelBinning = settings.getPixelBinning();
+                        Point minimumPosition = settings.getMinCursorPosition();
+
+                        List<PixelModel> pixelModels =
+                                SelectedPixel.getPixelModelsInRoi(roi, pixelBinning, minimumPosition,
+                                        correlator.getPixelsModel());
+
+                        plotMultiplePixelsModels(pixelModels);
+                    }
                 }
             }
         };

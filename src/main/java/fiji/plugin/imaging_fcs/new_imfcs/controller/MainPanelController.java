@@ -1,9 +1,7 @@
 package fiji.plugin.imaging_fcs.new_imfcs.controller;
 
 import fiji.plugin.imaging_fcs.new_imfcs.model.*;
-import fiji.plugin.imaging_fcs.new_imfcs.model.correlations.Correlator;
-import fiji.plugin.imaging_fcs.new_imfcs.model.correlations.DeltaCCFWorker;
-import fiji.plugin.imaging_fcs.new_imfcs.model.correlations.ROIWorker;
+import fiji.plugin.imaging_fcs.new_imfcs.model.correlations.*;
 import fiji.plugin.imaging_fcs.new_imfcs.model.fit.BleachCorrectionModel;
 import fiji.plugin.imaging_fcs.new_imfcs.utils.Pair;
 import fiji.plugin.imaging_fcs.new_imfcs.view.BleachCorrectionView;
@@ -29,6 +27,7 @@ import java.io.FileInputStream;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.FileSystems;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Consumer;
@@ -358,9 +357,47 @@ public final class MainPanelController {
         return null;
     }
 
-    public ActionListener btnAvePressed() {
-        // TODO: FIXME
-        return null;
+    /**
+     * Creates an ActionListener for the "Average" button.
+     * This listener handles the calculation and plotting of the average correlation function
+     * for the selected region of interest (ROI) in the image.
+     *
+     * @return The ActionListener instance.
+     */
+    public ActionListener btnAveragePressed() {
+        return (ActionEvent ev) -> {
+            if (!imageController.isImageLoaded()) {
+                IJ.showMessage("No image open");
+            } else if (correlator.getPixelsModel() == null) {
+                IJ.showMessage("Nothing to plot, please run the correlation on at least one pixel before");
+            } else {
+                // if the ROI is null, we consider all correlated pixels.
+                Roi roi = null;
+                if (Plots.imgParam != null) {
+                    roi = Plots.imgParam.getRoi();
+                }
+
+                PixelModel averagePixelModel =
+                        AverageCorrelation.calculateAverageCorrelationFunction(correlator.getPixelsModel(), roi,
+                                settings.getPixelBinning(), settings.getMinCursorPosition());
+                fitController.fit(averagePixelModel, correlator.getLagTimes());
+
+                if (optionsModel.isPlotACFCurves()) {
+                    Plots.plotCorrelationFunction(Collections.singletonList(averagePixelModel),
+                            correlator.getLagTimes(), null, settings.getBinning(), settings.getCCF(),
+                            fitController.getFitStart(), fitController.getFitEnd());
+                }
+
+                if (settings.isMSD()) {
+                    averagePixelModel.setMSD(
+                            MeanSquareDisplacement.correlationToMSD(averagePixelModel.getAcf(), settings.getParamAx(),
+                                    settings.getParamAy(), settings.getParamW(), settings.getSigmaZ(),
+                                    settings.isMSD3d()));
+                    Plots.plotMSD(Collections.singletonList(averagePixelModel), correlator.getLagTimes(), null,
+                            settings.getBinning());
+                }
+            }
+        };
     }
 
     /**

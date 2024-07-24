@@ -33,13 +33,14 @@ public class FitController {
     }
 
     /**
-     * Initiates the fitting process using the given pixel model and lag times.
+     * Initiates the fitting process using the given pixel model, lag times, and correlation matrix.
      * Updates the view with the fit parameters if the fitting process can proceed.
      *
-     * @param pixelModel The pixel model to fit.
-     * @param lagTimes   The lag times for fitting.
-     * @param x          The x coordinate of the pixel.
-     * @param y          The y coordinate of the pixel.
+     * @param pixelModel        The pixel model to fit.
+     * @param lagTimes          The lag times for fitting.
+     * @param correlationMatrix The correlation matrix used for fitting.
+     * @param x                 The x coordinate of the pixel.
+     * @param y                 The y coordinate of the pixel.
      */
     public void fit(PixelModel pixelModel, double[] lagTimes, double[][] correlationMatrix, int x, int y) {
         if (isActivated() && model.canFit()) {
@@ -53,6 +54,25 @@ public class FitController {
                 }
             } catch (RuntimeException e) {
                 IJ.log(String.format("%s at pixel x=%d, y=%d", e.getClass().getName(), x, y));
+                pixelModel.setFitted(false);
+            }
+        }
+    }
+
+    /**
+     * Initiates the standard fitting process using the given pixel model and lag times.
+     * Updates the view with the fit parameters if the fitting process can proceed.
+     *
+     * @param pixelModel The pixel model to fit.
+     * @param lagTimes   The lag times for fitting.
+     */
+    public void fit(PixelModel pixelModel, double[] lagTimes) {
+        if (isActivated() && model.canFit()) {
+            try {
+                model.standardFit(pixelModel, lagTimes);
+                view.updateFitParams(pixelModel.getFitParams());
+            } catch (RuntimeException e) {
+                IJ.log(String.format("%s on average ACF", e.getClass().getName()));
                 pixelModel.setFitted(false);
             }
         }
