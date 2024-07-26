@@ -28,14 +28,18 @@ public final class AverageCorrelation {
      */
     public static PixelModel calculateAverageCorrelationFunction(PixelModel[][] pixelModels, Roi roi,
                                                                  Point pixelBinning, Point minimumPosition) {
-        int channelNumber = pixelModels[0][0].getAcf().length;
+        List<PixelModel> pixelModelList =
+                SelectedPixel.getPixelModelsInRoi(roi, pixelBinning, minimumPosition, pixelModels);
+
+        int numPixelModels = pixelModelList.size();
+        if (numPixelModels == 0) {
+            throw new RuntimeException("No pixel are correlated in the ROI selected.");
+        }
+
+        int channelNumber = pixelModelList.get(0).getAcf().length;
 
         double[] averageAcf = new double[channelNumber];
         double[] varianceAcf = new double[channelNumber];
-
-        List<PixelModel> pixelModelList =
-                SelectedPixel.getPixelModelsInRoi(roi, pixelBinning, minimumPosition, pixelModels);
-        int numPixelModels = pixelModelList.size();
 
         for (PixelModel currentPixelModel : pixelModelList) {
             double[] acf = currentPixelModel.getAcf();
