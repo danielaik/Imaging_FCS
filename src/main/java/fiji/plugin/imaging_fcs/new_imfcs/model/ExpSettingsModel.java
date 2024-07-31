@@ -99,6 +99,25 @@ public final class ExpSettingsModel {
         return data;
     }
 
+    public Map<String, Object> toMap() {
+        Map<String, Object> data = toMapConfig();
+
+        data.put("First frame", getFirstFrame());
+        data.put("Last frame", getLastFrame());
+        data.put("Correlator P", getCorrelatorP());
+        data.put("Correlator Q", getCorrelatorQ());
+        data.put("Fit model", getFitModel());
+        data.put("FCCS Display", isFCCSDisp());
+        data.put("Overlap", isOverlap());
+        data.put("Bleach correction", getBleachCorrection());
+        data.put("Sliding window length", getSlidingWindowLength());
+        data.put("Filter", getFilter());
+        data.put("Filter Lower Limit", getFilterLowerLimit());
+        data.put("Filter Upper Limit", getFilterUpperLimit());
+
+        return data;
+    }
+
     /**
      * Loads settings from a map.
      * The map keys should correspond to the parameter names used in the toMap method,
@@ -535,8 +554,6 @@ public final class ExpSettingsModel {
         this.filter = filter;
     }
 
-    public boolean isFCSSDisp() {
-        return FCSSDisp;
     public boolean isFCCSDisp() {
         return FCCSDisp;
     }

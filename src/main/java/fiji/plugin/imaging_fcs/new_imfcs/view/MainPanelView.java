@@ -194,7 +194,7 @@ public final class MainPanelView extends BaseView {
                 "correlation in a direction (see scroll down menu).", null, controller.btnDCCFPressed());
         btnPSF = createJButton("PSF", "Calculates the calibration for the PSF.", null, controller.btnPSFPressed());
         btnAll = createJButton("All", "Calculates all ACFs.", null, controller.btnAllPressed());
-        btnRT = createJButton("Res. Table", "Create a results table.", null, controller.btnRTPressed());
+        btnRT = createJButton("Res. Table", "Create a results table.", null, controller.btnResultTablePressed());
         btnROI = createJButton("ROI", "Calculates ACFs only in the currently chose ROI.", null,
                 controller.btnROIPressed());
         btnBtf = createJButton("To Front", "Bring all windows of this plugin instance to the front.", null,

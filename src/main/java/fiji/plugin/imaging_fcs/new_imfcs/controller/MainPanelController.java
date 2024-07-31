@@ -3,6 +3,7 @@ package fiji.plugin.imaging_fcs.new_imfcs.controller;
 import fiji.plugin.imaging_fcs.new_imfcs.model.*;
 import fiji.plugin.imaging_fcs.new_imfcs.model.correlations.*;
 import fiji.plugin.imaging_fcs.new_imfcs.model.fit.BleachCorrectionModel;
+import fiji.plugin.imaging_fcs.new_imfcs.utils.ExcelExporter;
 import fiji.plugin.imaging_fcs.new_imfcs.utils.Pair;
 import fiji.plugin.imaging_fcs.new_imfcs.view.BleachCorrectionView;
 import fiji.plugin.imaging_fcs.new_imfcs.view.ExpSettingsView;
@@ -17,6 +18,8 @@ import ij.ImagePlus;
 import ij.WindowManager;
 import ij.gui.Overlay;
 import ij.gui.Roi;
+import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.yaml.snakeyaml.DumperOptions;
 import org.yaml.snakeyaml.Yaml;
 
@@ -24,6 +27,7 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
 import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.FileSystems;
@@ -301,9 +305,32 @@ public final class MainPanelController {
         };
     }
 
+    /**
+     * Creates an ActionListener for the save button, allowing the user to select a file path and save parameters and
+     * results to an Excel file.
+     *
+     * @return an ActionListener that handles the save button press event
+     */
     public ActionListener btnSavePressed() {
-        // TODO: FIXME
-        return null;
+        return (ActionEvent ev) -> {
+            String filePath = ExcelExporter.selectExcelFileToSave("parameters.xlsx");
+            if (filePath == null) {
+                return;
+            }
+
+            try (Workbook workbook = new XSSFWorkbook()) {
+                // Add different sheets
+                ExcelExporter.createSheetFromMap(workbook, "Experimental settings", settings.toMap());
+
+                try (FileOutputStream fileOut = new FileOutputStream(filePath)) {
+                    workbook.write(fileOut);
+                } catch (IOException e) {
+                    IJ.showMessage("Error saving result table", e.getMessage());
+                }
+            } catch (IOException e) {
+                IJ.showMessage("Error writing result table", e.getMessage());
+            }
+        };
     }
 
     public ActionListener btnLoadPressed() {
@@ -464,7 +491,7 @@ public final class MainPanelController {
     public ActionListener btnWriteConfigPressed() {
         return (ActionEvent ev) -> {
             Map<String, Object> data = new HashMap<>();
-            data.put("Settings", settings.toMap());
+            data.put("Settings", settings.toMapConfig());
             data.put("Options", optionsModel.toMap());
 
             DumperOptions optionsYaml = new DumperOptions();
