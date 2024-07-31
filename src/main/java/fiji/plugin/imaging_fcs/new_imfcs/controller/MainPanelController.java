@@ -449,8 +449,8 @@ public final class MainPanelController {
         };
     }
 
-    public ActionListener btnRTPressed() {
-        // TODO: FIXME
+    public ActionListener btnResultTablePressed() {
+        // FIXME
         return null;
     }
 

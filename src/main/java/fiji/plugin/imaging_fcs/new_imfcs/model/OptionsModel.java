@@ -1,6 +1,6 @@
 package fiji.plugin.imaging_fcs.new_imfcs.model;
 
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
@@ -39,7 +39,7 @@ public final class OptionsModel {
      * @return a map containing the plot options.
      */
     public Map<String, Object> toMap() {
-        Map<String, Object> data = new HashMap<>();
+        Map<String, Object> data = new LinkedHashMap<>();
         data.put("Plot ACF Curves", plotACFCurves);
         data.put("Plot SD Curves", plotSDCurves);
         data.put("Plot Intensity Curves", plotIntensityCurves);

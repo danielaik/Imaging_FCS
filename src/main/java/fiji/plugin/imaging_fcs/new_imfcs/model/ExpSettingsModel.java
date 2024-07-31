@@ -5,7 +5,7 @@ import fiji.plugin.imaging_fcs.new_imfcs.controller.InvalidUserInputException;
 import ij.ImagePlus;
 
 import java.awt.*;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 import static fiji.plugin.imaging_fcs.new_imfcs.constants.Constants.NANO_CONVERSION_FACTOR;
@@ -49,7 +49,7 @@ public final class ExpSettingsModel {
     private String filter = "none";
     private int filterLowerLimit = 0;
     private int filterUpperLimit = 65536;
-    private boolean FCSSDisp = false;
+    private boolean FCCSDisp = false;
     private boolean overlap = false;
     private boolean MSD3d = false;
     private boolean MSD = false;
@@ -81,8 +81,8 @@ public final class ExpSettingsModel {
      *
      * @return a map containing the settings.
      */
-    public Map<String, Object> toMap() {
-        Map<String, Object> data = new HashMap<>();
+    public Map<String, Object> toMapConfig() {
+        Map<String, Object> data = new LinkedHashMap<>();
         data.put("Binning", getBinningString());
         data.put("CCF", getCCFString());
         data.put("Pixel size", getPixelSizeInterface());
@@ -537,10 +537,12 @@ public final class ExpSettingsModel {
 
     public boolean isFCSSDisp() {
         return FCSSDisp;
+    public boolean isFCCSDisp() {
+        return FCCSDisp;
     }
 
-    public void setFCSSDisp(String FCSSDisp) {
-        this.FCSSDisp = Boolean.parseBoolean(FCSSDisp);
+    public void setFCCSDisp(String FCCSDisp) {
+        this.FCCSDisp = Boolean.parseBoolean(FCCSDisp);
     }
 
     public int getFilterLowerLimit() {
