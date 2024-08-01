@@ -323,6 +323,7 @@ public final class MainPanelController {
                 ExcelExporter.createSheetFromMap(workbook, "Experimental settings", settings.toMap());
                 PixelModel[][] pixelModels = correlator.getPixelsModel();
                 if (pixelModels != null) {
+                    ExcelExporter.createSheetLagTime(workbook, correlator.getLagTimes(), correlator.getSampleTimes());
                     ExcelExporter.createSheetFromPixelModelArray(workbook, "ACF", pixelModels, PixelModel::getAcf);
                     ExcelExporter.createSheetFromPixelModelArray(workbook, "Standard Deviation", pixelModels,
                             PixelModel::getStandardDeviationAcf);
@@ -332,6 +333,7 @@ public final class MainPanelController {
                                 PixelModel::getFittedAcf);
                         ExcelExporter.createSheetFromPixelModelArray(workbook, "Residuals", pixelModels,
                                 PixelModel::getResiduals);
+                        ExcelExporter.createFitParametersSheet(workbook, pixelModels);
                     }
 
                     if (settings.isMSD()) {

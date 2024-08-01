@@ -861,6 +861,10 @@ public class Correlator {
         return lagTimes;
     }
 
+    public int[] getSampleTimes() {
+        return sampleTimes;
+    }
+
     public double[][] getVarianceBlocks() {
         return varianceBlocks;
     }

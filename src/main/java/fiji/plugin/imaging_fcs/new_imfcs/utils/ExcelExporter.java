@@ -101,6 +101,77 @@ public final class ExcelExporter {
     }
 
     /**
+     * Creates a sheet in the given workbook to display lag times and sample times.
+     * The sheet contains three columns: S/N, lag time, and bin width.
+     *
+     * @param workbook    the workbook to create the sheet in
+     * @param lagTimes    an array of lag times to be written to the sheet
+     * @param sampleTimes an array of sample times (bin widths) corresponding to each lag time
+     */
+    public static void createSheetLagTime(Workbook workbook, double[] lagTimes, int[] sampleTimes) {
+        Sheet sheet = workbook.createSheet("Lag Time");
+        Row headerRow = sheet.createRow(0);
+        headerRow.createCell(0).setCellValue("S/N");
+        headerRow.createCell(1).setCellValue("LagTime");
+        headerRow.createCell(2).setCellValue("Bin width");
+
+        for (int i = 0; i < lagTimes.length; i++) {
+            Row row = sheet.createRow(i + 1);
+            row.createCell(0).setCellValue(i);
+            row.createCell(1).setCellValue(lagTimes[i]);
+            row.createCell(2).setCellValue(sampleTimes[i]);
+        }
+    }
+
+    /**
+     * Creates a sheet in the given workbook to display fit parameters for each pixel model.
+     * The sheet includes columns for each pixel's position and rows for each fit parameter.
+     * Pixel positions are represented as "(x, y)" and fit parameters are listed by name.
+     *
+     * @param workbook    the workbook to create the sheet in
+     * @param pixelModels a 2D array of PixelModel objects containing fit parameters
+     */
+    public static void createFitParametersSheet(Workbook workbook, PixelModel[][] pixelModels) {
+        Sheet sheet = workbook.createSheet("Fit Parameters");
+        Row row = sheet.createRow(0);
+
+        row.createCell(0).setCellValue("Parameter");
+
+        int numParams = PixelModel.paramsName.length;
+
+        for (int i = 0; i < numParams; i++) {
+            row = sheet.createRow(i + 1);
+            row.createCell(0).setCellValue(PixelModel.paramsName[i]);
+        }
+
+        int numRow = pixelModels.length;
+        int numCol = pixelModels[0].length;
+
+        int columnIndex = 1;
+
+        // Here x and y are inverted to follow the behavior of previous ImagingFCS version
+        for (int y = 0; y < numCol; y++) {
+            for (int x = 0; x < numRow; x++) {
+                PixelModel pixelModel = pixelModels[x][y];
+                if (pixelModel == null || !pixelModel.isFitted()) {
+                    continue;
+                }
+
+                row = sheet.getRow(0);
+                row.createCell(columnIndex).setCellValue(String.format("(%d, %d)", x, y));
+
+                Pair<String, Double>[] fitParams = pixelModel.getParams();
+
+                for (int i = 0; i < numParams; i++) {
+                    row = sheet.getRow(i + 1);
+                    row.createCell(columnIndex).setCellValue(fitParams[i].getRight());
+                }
+                columnIndex++;
+            }
+        }
+    }
+
+    /**
      * Checks if a file at the given path already exists. If it does, prompts the user to confirm whether they want
      * to replace the file.
      * If the user chooses not to replace the file, null is returned. Otherwise, the original path is returned.
