@@ -109,6 +109,25 @@ public class PixelModel {
     }
 
     /**
+     * Checks if any PixelModel in the given 2D array has been fitted.
+     * Iterates through the array and returns true if at least one PixelModel is not null and is fitted.
+     *
+     * @param pixelModels a 2D array of PixelModel objects to be checked
+     * @return true if any PixelModel in the array is fitted, false otherwise
+     */
+    public static boolean anyPixelFit(PixelModel[][] pixelModels) {
+        for (PixelModel[] pixelModelsRow : pixelModels) {
+            for (PixelModel pixelModel : pixelModelsRow) {
+                if (pixelModel != null && pixelModel.isFitted()) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    /**
      * Adds the values of another PixelModel to this one using a sliding window approach.
      *
      * @param other The other PixelModel whose values are to be added.

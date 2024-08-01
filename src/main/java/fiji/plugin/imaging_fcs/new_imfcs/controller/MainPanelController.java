@@ -321,6 +321,23 @@ public final class MainPanelController {
             try (Workbook workbook = new XSSFWorkbook()) {
                 // Add different sheets
                 ExcelExporter.createSheetFromMap(workbook, "Experimental settings", settings.toMap());
+                PixelModel[][] pixelModels = correlator.getPixelsModel();
+                if (pixelModels != null) {
+                    ExcelExporter.createSheetFromPixelModelArray(workbook, "ACF", pixelModels, PixelModel::getAcf);
+                    ExcelExporter.createSheetFromPixelModelArray(workbook, "Standard Deviation", pixelModels,
+                            PixelModel::getStandardDeviationAcf);
+
+                    if (PixelModel.anyPixelFit(pixelModels)) {
+                        ExcelExporter.createSheetFromPixelModelArray(workbook, "Fit Functions", pixelModels,
+                                PixelModel::getFittedAcf);
+                        ExcelExporter.createSheetFromPixelModelArray(workbook, "Residuals", pixelModels,
+                                PixelModel::getResiduals);
+                    }
+
+                    if (settings.isMSD()) {
+                        ExcelExporter.createSheetFromPixelModelArray(workbook, "MSD", pixelModels, PixelModel::getMSD);
+                    }
+                }
 
                 try (FileOutputStream fileOut = new FileOutputStream(filePath)) {
                     workbook.write(fileOut);
