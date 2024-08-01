@@ -101,12 +101,35 @@ public final class ExcelExporter {
     }
 
     /**
+     * Checks if a file at the given path already exists. If it does, prompts the user to confirm whether they want
+     * to replace the file.
+     * If the user chooses not to replace the file, null is returned. Otherwise, the original path is returned.
+     *
+     * @param path the path of the file to check
+     * @return the original path if the file does not exist or the user chooses to replace it, null otherwise
+     */
+    private static String checkIfFileAlreadyExists(String path) {
+        File file = new File(path);
+        if (file.exists()) {
+            int confirm = JOptionPane.showConfirmDialog(null, "The file already exists. Do you want to replace it?",
+                    "File already exists", JOptionPane.YES_NO_OPTION);
+            if (confirm != JOptionPane.YES_OPTION) {
+                return null;
+            }
+        }
+
+        return path;
+    }
+
+    /**
      * Opens a file chooser dialog for the user to select a location and name for saving an Excel file.
      * The default file name is provided as a suggestion, and the selected file path is returned.
+     * If the file already exists, the user is prompted to confirm if they want to replace it.
      * If the user cancels the operation, null is returned.
      *
      * @param defaultName the suggested default file name
-     * @return the selected file path, or null if the user cancels the operation
+     * @return the selected file path, or null if the user cancels the operation or chooses not to replace an
+     * existing file
      */
     public static String selectExcelFileToSave(String defaultName) {
         JFileChooser fileChooser = new JFileChooser();
@@ -122,7 +145,7 @@ public final class ExcelExporter {
                 filePath += ".xlsx";
             }
 
-            return filePath;
+            return checkIfFileAlreadyExists(filePath);
         }
 
         return null;
