@@ -745,9 +745,13 @@ public class Plots {
                 residualsWindow,
                 scatterWindow,
                 imgCovarianceWindow,
-                paramHistogramWindow
-        }) {
+                paramHistogramWindow,
+                }) {
             closeWindow(window);
+        }
+
+        if (imgParam != null) {
+            closeWindow(imgParam.getWindow());
         }
     }
 }

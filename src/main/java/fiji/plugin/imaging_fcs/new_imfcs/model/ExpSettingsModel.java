@@ -78,6 +78,9 @@ public final class ExpSettingsModel {
     }
 
     public ExpSettingsModel(Runnable resetCallback) {
+        updateSettings();
+        updateChannelNumber();
+
         this.resetCallback = resetCallback;
     }
 
