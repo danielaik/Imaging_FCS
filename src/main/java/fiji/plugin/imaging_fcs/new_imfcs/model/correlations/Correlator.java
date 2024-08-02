@@ -23,13 +23,13 @@ public class Correlator {
     private final ExpSettingsModel settings;
     private final BleachCorrectionModel bleachCorrectionModel;
     private final FitModel fitModel;
+    private final Map<String, double[][]> dccf = new HashMap<>();
     private int correlatorQ, blockIndex;
     private double median;
     private int[] numSamples, lags, sampleTimes;
     private double[] lagTimes;
     private double[][] regularizedCovarianceMatrix, varianceBlocks;
     private PixelModel[][] pixelModels;
-    private Map<String, double[][]> dccf = new HashMap<>();
 
     /**
      * Constructs a Correlator with the specified settings, bleach correction model, and fit model.
@@ -835,6 +835,13 @@ public class Correlator {
             // hand over the correlation function CorrelationMean; they differ only slightly
             pixelModel.setAcf(correlationMean);
         }
+    }
+
+    /**
+     * Reset the saved results.
+     */
+    public void resetResults() {
+        pixelModels = null;
     }
 
     public double[][] getDccf(String directionName) {

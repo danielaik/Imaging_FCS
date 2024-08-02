@@ -91,6 +91,9 @@ public final class ImageController {
      * @param image The ImagePlus instance to load.
      */
     public void loadImage(ImagePlus image) {
+        // reset the results if we load a new image
+        correlator.resetResults();
+
         imageModel.loadImage(image);
 
         imageView = new ImageView();

@@ -1,5 +1,6 @@
 package fiji.plugin.imaging_fcs.new_imfcs.controller;
 
+import fiji.plugin.imaging_fcs.new_imfcs.constants.Constants;
 import fiji.plugin.imaging_fcs.new_imfcs.model.*;
 import fiji.plugin.imaging_fcs.new_imfcs.model.correlations.*;
 import fiji.plugin.imaging_fcs.new_imfcs.model.fit.BleachCorrectionModel;
@@ -34,10 +35,11 @@ import java.nio.file.FileSystems;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 import static fiji.plugin.imaging_fcs.new_imfcs.controller.ControllerUtils.getComboBoxSelectionFromEvent;
-import static fiji.plugin.imaging_fcs.new_imfcs.controller.FocusListenerFactory.createFocusListener;
+import static fiji.plugin.imaging_fcs.new_imfcs.controller.FieldListenerFactory.createFocusListener;
 
 /**
  * Controller class for the main panel of the FCS plugin. It handles user interactions and coordinates
@@ -69,11 +71,7 @@ public final class MainPanelController {
         this.hardwareModel = hardwareModel;
         this.optionsModel = new OptionsModel(hardwareModel.isCuda());
 
-        this.settings = new ExpSettingsModel();
-        loadConfig();
-
-        this.expSettingsView = new ExpSettingsView(this, settings);
-        updateSettingsField();
+        this.settings = new ExpSettingsModel(this::askResetResults);
 
         FitModel fitModel = new FitModel(settings);
         this.fitController = new FitController(fitModel);
@@ -85,13 +83,16 @@ public final class MainPanelController {
         this.imageController = new ImageController(this, imageModel, backgroundSubtractionController, fitController,
                 bleachCorrectionModel, correlator, settings, optionsModel);
 
-        this.bleachCorrectionView = new BleachCorrectionView(this, bleachCorrectionModel);
-
         this.simulationController = new SimulationController(imageController, settings);
 
         this.nbController = new NBController(imageModel, settings, optionsModel, bleachCorrectionModel);
 
+        // load previously saved configuration
+        loadConfig();
 
+        this.bleachCorrectionView = new BleachCorrectionView(this, bleachCorrectionModel);
+        this.expSettingsView = new ExpSettingsView(this, settings);
+        updateSettingsField();
         this.view = new MainPanelView(this, this.settings);
     }
 
@@ -122,6 +123,23 @@ public final class MainPanelController {
         }
     }
 
+    private void askResetResults() {
+        if (correlator.getPixelsModel() != null) {
+            int response = JOptionPane.showConfirmDialog(null,
+                    "Some of the parameter settings in the main panel have changed. \n" +
+                            "Continuing will result in deleting some Results", "Delete the Results and start new?",
+                    JOptionPane.YES_NO_OPTION);
+
+            if (response == JOptionPane.YES_OPTION) {
+                // TODO: Implement methods to resets results
+                correlator.resetResults();
+                // Plots.resetPlots();
+            } else {
+                throw new RejectResetException();
+            }
+        }
+    }
+
     /**
      * Sets the last frame for the analysis and updates related fields.
      *
@@ -140,24 +158,43 @@ public final class MainPanelController {
      *
      * @return ActionListener to handle bleach correction mode changes.
      */
-    public ActionListener cbBleachCorChanged() {
-        return (ActionEvent ev) -> {
-            String bleachCorrectionMode = getComboBoxSelectionFromEvent(ev);
-            settings.setBleachCorrection(bleachCorrectionMode);
-            fitController.updateFitEnd(settings);
+    public ActionListener cbBleachCorChanged(JComboBox<String> comboBox) {
+        Consumer<Integer> onBleachCorrectionSlidingWindowAccepted = this::onBleachCorrectionSlidingWindowAccepted;
+        Consumer<Integer> onBleachCorrectionOrderAccepted = this::onBleachCorrectionOrderAccepted;
+        return new ActionListener() {
+            private String previousSelection = (String) comboBox.getSelectedItem();
 
-            if ("Sliding Window".equals(bleachCorrectionMode) || "Lin Segment".equals(bleachCorrectionMode)) {
-                if (!imageController.isImageLoaded()) {
-                    IJ.showMessage("No image open. Please open an image first.");
-                    // reset the combo box to default in no image is loaded.
-                    ((JComboBox<?>) ev.getSource()).setSelectedIndex(0);
-                } else {
-                    new SlidingWindowSelectionView(this::onBleachCorrectionSlidingWindowAccepted,
-                            settings.getSlidingWindowLength());
+            @Override
+            public void actionPerformed(ActionEvent ev) {
+                String currentSelection = (String) comboBox.getSelectedItem();
+
+                try {
+                    if (!previousSelection.equals(currentSelection)) {
+                        settings.setBleachCorrection(currentSelection);
+                        // Update previous selection to current if successful
+                        previousSelection = currentSelection;
+                    }
+                } catch (RejectResetException e) {
+                    comboBox.setSelectedItem(previousSelection);
+                    return;
                 }
-            } else if ("Polynomial".equals(bleachCorrectionMode)) {
-                new PolynomialOrderSelectionView(this::onBleachCorrectionOrderAccepted,
-                        bleachCorrectionModel.getPolynomialOrder());
+
+                fitController.updateFitEnd(settings);
+
+                if (Constants.BLEACH_CORRECTION_SLIDING_WINDOW.equals(currentSelection) ||
+                        Constants.BLEACH_CORRECTION_LINEAR_SEGMENT.equals(currentSelection)) {
+                    if (!imageController.isImageLoaded()) {
+                        IJ.showMessage("No image open. Please open an image first.");
+                        // reset the combo box to default in no image is loaded.
+                        ((JComboBox<?>) ev.getSource()).setSelectedIndex(0);
+                    } else {
+                        new SlidingWindowSelectionView(onBleachCorrectionSlidingWindowAccepted,
+                                settings.getSlidingWindowLength());
+                    }
+                } else if (Constants.BLEACH_CORRECTION_POLYNOMIAL.equals(currentSelection)) {
+                    new PolynomialOrderSelectionView(onBleachCorrectionOrderAccepted,
+                            bleachCorrectionModel.getPolynomialOrder());
+                }
             }
         };
     }
@@ -206,15 +243,32 @@ public final class MainPanelController {
      *
      * @return an ActionListener that processes filter selection changes
      */
-    public ActionListener cbFilterChanged() {
-        return (ActionEvent ev) -> {
-            String filterMode = getComboBoxSelectionFromEvent(ev);
-            settings.setFilter(filterMode);
+    public ActionListener cbFilterChanged(JComboBox<String> comboBox) {
+        BiConsumer<Integer, Integer> listener = this::onFilterSelectionAccepted;
 
-            // If a filter mode other than "none" is selected, show the filter limits dialog.
-            if (!filterMode.equals("none")) {
-                new FilterLimitsSelectionView(this::onFilterSelectionAccepted, settings.getFilterLowerLimit(),
-                        settings.getFilterUpperLimit());
+        return new ActionListener() {
+            private String previousSelection = (String) comboBox.getSelectedItem();
+
+            @Override
+            public void actionPerformed(ActionEvent ev) {
+                String filterMode = getComboBoxSelectionFromEvent(ev);
+
+                try {
+                    if (!previousSelection.equals(filterMode)) {
+                        settings.setFilter(filterMode);
+                        // Update previous selection to current if successful
+                        previousSelection = filterMode;
+                    }
+                } catch (RejectResetException e) {
+                    comboBox.setSelectedItem(previousSelection);
+                    return;
+                }
+
+                // If a filter mode other than "none" is selected, show the filter limits dialog.
+                if (!filterMode.equals(Constants.NO_FILTER)) {
+                    new FilterLimitsSelectionView(listener, settings.getFilterLowerLimit(),
+                            settings.getFilterUpperLimit());
+                }
             }
         };
     }
@@ -225,11 +279,25 @@ public final class MainPanelController {
      *
      * @return an ActionListener that processes the action event
      */
-    public ActionListener cbFitModelChanged() {
-        return (ActionEvent ev) -> {
-            String fitModel = getComboBoxSelectionFromEvent(ev);
-            settings.setFitModel(fitModel);
-            updateSettingsField();
+    public ActionListener cbFitModelChanged(JComboBox<String> comboBox) {
+        return new ActionListener() {
+            private String previousSelection = (String) comboBox.getSelectedItem();
+
+            @Override
+            public void actionPerformed(ActionEvent ev) {
+                String fitModel = getComboBoxSelectionFromEvent(ev);
+                try {
+                    if (!previousSelection.equals(fitModel)) {
+                        settings.setFitModel(fitModel);
+                        // Update previous selection to current if successful
+                        previousSelection = fitModel;
+
+                        updateSettingsField();
+                    }
+                } catch (RejectResetException e) {
+                    comboBox.setSelectedItem(previousSelection);
+                }
+            }
         };
     }
 
@@ -261,7 +329,7 @@ public final class MainPanelController {
         return (ActionEvent ev) -> view.dispose();
     }
 
-    public ActionListener btnBtfPressed() {
+    public ActionListener btnBringToFrontPressed() {
         // TODO: FIXME
         return null;
     }

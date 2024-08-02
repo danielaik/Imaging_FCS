@@ -8,7 +8,7 @@ import ij.IJ;
 import javax.swing.*;
 import java.awt.*;
 
-import static fiji.plugin.imaging_fcs.new_imfcs.controller.FocusListenerFactory.createFocusListener;
+import static fiji.plugin.imaging_fcs.new_imfcs.controller.FieldListenerFactory.createFocusListener;
 import static fiji.plugin.imaging_fcs.new_imfcs.view.TextFieldFactory.createTextField;
 import static fiji.plugin.imaging_fcs.new_imfcs.view.UIUtils.createJLabel;
 
@@ -57,7 +57,10 @@ public final class BackgroundSubtractionView extends BaseView {
     @Override
     protected void initializeComboBoxes() {
         cbBackgroundSubtractionMethod = new JComboBox<>(new String[]{
-                "Constant Background", "Min frame by frame", "Min per image stack", "Min Pixel wise per image stack",
+                "Constant Background",
+                "Min frame by frame",
+                "Min per image stack",
+                "Min Pixel wise per image stack",
                 "Load BGR image"
         });
         cbBackgroundSubtractionMethod.addActionListener(controller.cbBackgroundSubtractionMethodChanged());

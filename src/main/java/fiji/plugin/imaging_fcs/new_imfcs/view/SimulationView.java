@@ -7,7 +7,7 @@ import fiji.plugin.imaging_fcs.new_imfcs.model.SimulationModel;
 import javax.swing.*;
 import java.awt.*;
 
-import static fiji.plugin.imaging_fcs.new_imfcs.controller.FocusListenerFactory.createFocusListener;
+import static fiji.plugin.imaging_fcs.new_imfcs.controller.FieldListenerFactory.createFocusListener;
 import static fiji.plugin.imaging_fcs.new_imfcs.view.ButtonFactory.createJButton;
 import static fiji.plugin.imaging_fcs.new_imfcs.view.ButtonFactory.createJToggleButton;
 import static fiji.plugin.imaging_fcs.new_imfcs.view.TextFieldFactory.createTextField;
@@ -21,8 +21,8 @@ import static fiji.plugin.imaging_fcs.new_imfcs.view.UIUtils.createJLabel;
 public final class SimulationView extends BaseView {
     // Constants
     private static final GridLayout SIMULATION_LAYOUT = new GridLayout(16, 4);
-    private static final Point SIMULATION_LOCATION = new Point(
-            Constants.MAIN_PANEL_POS.x + Constants.MAIN_PANEL_DIM.width + 10, 125);
+    private static final Point SIMULATION_LOCATION =
+            new Point(Constants.MAIN_PANEL_POS.x + Constants.MAIN_PANEL_DIM.width + 10, 125);
     private static final Dimension SIMULATION_DIM = new Dimension(370, 320);
 
     // References to the controller and the model
@@ -74,7 +74,8 @@ public final class SimulationView extends BaseView {
     @Override
     protected void initializeComboBoxes() {
         cbMode = new JComboBox<>(new String[]{
-                "2D (free)", "2D (domains)", "2D (mesh)", "3D (free)"});
+                "2D (free)", "2D (domains)", "2D (mesh)", "3D (free)"
+        });
         cbMode.addActionListener(controller.cbModeChanged());
     }
 
@@ -102,15 +103,20 @@ public final class SimulationView extends BaseView {
         tfKon = createTextField(model.getKon(), "", createFocusListener(model::setKon));
         tfKoff = createTextField(model.getKoff(), "", createFocusListener(model::setKoff));
         tfCameraOffset = createTextField(model.getCameraOffset(), "", createFocusListener(model::setCameraOffset));
-        tfCameraNoiseFactor = createTextField(model.getCameraNoiseFactor(), "", createFocusListener(model::setCameraNoiseFactor));
-        tfBleachRadius = createTextField(model.getBleachRadiusInterface(), "", createFocusListener(model::setBleachRadius));
+        tfCameraNoiseFactor =
+                createTextField(model.getCameraNoiseFactor(), "", createFocusListener(model::setCameraNoiseFactor));
+        tfBleachRadius =
+                createTextField(model.getBleachRadiusInterface(), "", createFocusListener(model::setBleachRadius));
         tfBleachFrame = createTextField(model.getBleachFrame(), "", createFocusListener(model::setBleachFrame));
-        tfDomainRadius = createTextField(model.getDomainRadiusInterface(), "", createFocusListener(model::setDomainRadius));
+        tfDomainRadius =
+                createTextField(model.getDomainRadiusInterface(), "", createFocusListener(model::setDomainRadius));
         tfDomainDensity = createTextField(model.getDomainDensity(), "", createFocusListener(model::setDomainDensity));
         tfPin = createTextField(model.getPin(), "", createFocusListener(model::setPin));
         tfPout = createTextField(model.getPout(), "", createFocusListener(model::setPout));
-        tfMeshworkSize = createTextField(model.getMeshWorkSizeInterface(), "", createFocusListener(model::setMeshWorkSize));
-        tfHopProbability = createTextField(model.getHopProbability(), "", createFocusListener(model::setHopProbability));
+        tfMeshworkSize =
+                createTextField(model.getMeshWorkSizeInterface(), "", createFocusListener(model::setMeshWorkSize));
+        tfHopProbability =
+                createTextField(model.getHopProbability(), "", createFocusListener(model::setHopProbability));
     }
 
     /**
@@ -120,8 +126,8 @@ public final class SimulationView extends BaseView {
     protected void initializeButtons() {
         btnSimulate = createJButton("Simulate", "", null, controller.btnSimulatePressed());
         btnBatchSim = createJButton("Batch", "Run multiple simulations", null, controller.btnBatchSimPressed());
-        btnStopSimulation = createJButton("Stop", "Stops running simulations", null,
-                controller.btnStopSimulationPressed());
+        btnStopSimulation =
+                createJButton("Stop", "Stops running simulations", null, controller.btnStopSimulationPressed());
         tbSimTrip = createJToggleButton("Triplet off", "", null, controller.tbSimTripPressed());
     }
 

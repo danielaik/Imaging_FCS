@@ -26,6 +26,8 @@ public final class ExpSettingsModel {
     //// Parameter that updates the non-user parameters
     private final Point binning = new Point(1, 1);
     private final Dimension CCF = new Dimension(0, 0);
+    // Callback to use when a setting is changed
+    private final Runnable resetCallback;
     private double pixelSize = 24 / PIXEL_SIZE_REAL_SPACE_CONVERSION_FACTOR;
     private double magnification = 100;
     private double NA = 1.49;
@@ -35,7 +37,6 @@ public final class ExpSettingsModel {
     private double emLambda2 = 600 / NANO_CONVERSION_FACTOR;
     private double sigmaZ = 1000000;
     private double sigmaZ2 = 1000000;
-
     //// Other user parameters
     private int firstFrame = 1;
     private int lastFrame = 0;
@@ -56,7 +57,6 @@ public final class ExpSettingsModel {
     private int slidingWindowLength = 0;
     private int channelNumber = 0;
     private int lagGroupNumber = 0;
-
     // Non-user parameters (compute using user parameters)
     private double paramAx;
     private double paramAy;
@@ -73,6 +73,12 @@ public final class ExpSettingsModel {
     public ExpSettingsModel() {
         updateSettings();
         updateChannelNumber();
+
+        this.resetCallback = () -> {};
+    }
+
+    public ExpSettingsModel(Runnable resetCallback) {
+        this.resetCallback = resetCallback;
     }
 
     /**
@@ -285,7 +291,9 @@ public final class ExpSettingsModel {
     }
 
     public void setPixelSize(String pixelSize) {
-        this.pixelSize = Double.parseDouble(pixelSize) / PIXEL_SIZE_REAL_SPACE_CONVERSION_FACTOR;
+        double tmp = Double.parseDouble(pixelSize);
+        resetCallback.run();
+        this.pixelSize = tmp / PIXEL_SIZE_REAL_SPACE_CONVERSION_FACTOR;
     }
 
     public double getPixelSizeInterface() {
@@ -297,7 +305,9 @@ public final class ExpSettingsModel {
     }
 
     public void setMagnification(String magnification) {
-        this.magnification = Double.parseDouble(magnification);
+        double tmp = Double.parseDouble(magnification);
+        resetCallback.run();
+        this.magnification = tmp;
     }
 
     public double getNA() {
@@ -305,7 +315,9 @@ public final class ExpSettingsModel {
     }
 
     public void setNA(String NA) {
-        this.NA = Double.parseDouble(NA);
+        double tmp = Double.parseDouble(NA);
+        resetCallback.run();
+        this.NA = tmp;
     }
 
     public double getSigma() {
@@ -313,7 +325,9 @@ public final class ExpSettingsModel {
     }
 
     public void setSigma(String sigma) {
-        this.sigma = Double.parseDouble(sigma);
+        double tmp = Double.parseDouble(sigma);
+        resetCallback.run();
+        this.sigma = tmp;
     }
 
     public double getEmLambda() {
@@ -321,7 +335,9 @@ public final class ExpSettingsModel {
     }
 
     public void setEmLambda(String emLambda) {
-        this.emLambda = Double.parseDouble(emLambda) / NANO_CONVERSION_FACTOR;
+        double tmp = Double.parseDouble(emLambda);
+        resetCallback.run();
+        this.emLambda = tmp / NANO_CONVERSION_FACTOR;
     }
 
     public double getEmLambdaInterface() {
@@ -333,7 +349,9 @@ public final class ExpSettingsModel {
     }
 
     public void setSigma2(String sigma2) {
-        this.sigma2 = Double.parseDouble(sigma2);
+        double tmp = Double.parseDouble(sigma2);
+        resetCallback.run();
+        this.sigma2 = tmp;
     }
 
     public double getEmLambda2() {
@@ -341,7 +359,9 @@ public final class ExpSettingsModel {
     }
 
     public void setEmLambda2(String emLambda2) {
-        this.emLambda2 = Double.parseDouble(emLambda2) / NANO_CONVERSION_FACTOR;
+        double tmp = Double.parseDouble(emLambda2);
+        resetCallback.run();
+        this.emLambda2 = tmp / NANO_CONVERSION_FACTOR;
     }
 
     public double getEmLambda2Interface() {
@@ -353,7 +373,9 @@ public final class ExpSettingsModel {
     }
 
     public void setSigmaZ(String sigmaZ) {
-        this.sigmaZ = Double.parseDouble(sigmaZ);
+        double tmp = Double.parseDouble(sigmaZ);
+        resetCallback.run();
+        this.sigmaZ = tmp;
     }
 
     public double getSigmaZ2() {
@@ -361,7 +383,9 @@ public final class ExpSettingsModel {
     }
 
     public void setSigmaZ2(String sigmaZ2) {
-        this.sigmaZ2 = Double.parseDouble(sigmaZ2);
+        double tmp = Double.parseDouble(sigmaZ2);
+        resetCallback.run();
+        this.sigmaZ2 = tmp;
     }
 
     public double getParamAx() {
@@ -441,6 +465,8 @@ public final class ExpSettingsModel {
             throw new InvalidUserInputException("Binning can't be smaller than 1.");
         }
 
+        resetCallback.run();
+
         this.binning.x = binningX;
         this.binning.y = binningY;
     }
@@ -455,8 +481,13 @@ public final class ExpSettingsModel {
 
     public void setCCF(String CCF) {
         String[] parts = CCF.replace(" ", "").split("x");
-        this.CCF.width = Integer.parseInt(parts[0]);
-        this.CCF.height = Integer.parseInt(parts[1]);
+        int width = Integer.parseInt(parts[0]);
+        int height = Integer.parseInt(parts[1]);
+
+        resetCallback.run();
+
+        this.CCF.width = width;
+        this.CCF.height = height;
     }
 
     public String getCCFString() {
@@ -474,6 +505,8 @@ public final class ExpSettingsModel {
                     "First frame set incorrectly, it needs to be between 1 and last frame" + ".");
         }
 
+        resetCallback.run();
+
         this.firstFrame = intFirstFrame;
     }
 
@@ -487,6 +520,8 @@ public final class ExpSettingsModel {
             throw new InvalidUserInputException("Last frame set incorrectly, it needs to be larger than first frame.");
         }
 
+        resetCallback.run();
+
         this.lastFrame = intLastFrame;
     }
 
@@ -495,7 +530,9 @@ public final class ExpSettingsModel {
     }
 
     public void setFrameTime(String frameTime) {
-        this.frameTime = Double.parseDouble(frameTime);
+        double tmp = Double.parseDouble(frameTime);
+        resetCallback.run();
+        this.frameTime = tmp;
     }
 
     public int getCorrelatorP() {
@@ -503,7 +540,9 @@ public final class ExpSettingsModel {
     }
 
     public void setCorrelatorP(String correlatorP) {
-        this.correlatorP = Integer.parseInt(correlatorP);
+        int tmp = Integer.parseInt(correlatorP);
+        resetCallback.run();
+        this.correlatorP = tmp;
     }
 
     public int getCorrelatorQ() {
@@ -511,7 +550,9 @@ public final class ExpSettingsModel {
     }
 
     public void setCorrelatorQ(String correlatorQ) {
-        this.correlatorQ = Integer.parseInt(correlatorQ);
+        int tmp = Integer.parseInt(correlatorQ);
+        resetCallback.run();
+        this.correlatorQ = tmp;
     }
 
     public String getFitModel() {
@@ -519,6 +560,7 @@ public final class ExpSettingsModel {
     }
 
     public void setFitModel(String fitModel) {
+        resetCallback.run();
         this.fitModel = fitModel;
     }
 
@@ -543,6 +585,7 @@ public final class ExpSettingsModel {
     }
 
     public void setBleachCorrection(String bleachCorrection) {
+        resetCallback.run();
         this.bleachCorrection = bleachCorrection;
     }
 
@@ -551,6 +594,7 @@ public final class ExpSettingsModel {
     }
 
     public void setFilter(String filter) {
+        resetCallback.run();
         this.filter = filter;
     }
 

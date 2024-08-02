@@ -8,7 +8,8 @@ import javax.swing.*;
 import java.awt.*;
 
 import static fiji.plugin.imaging_fcs.new_imfcs.controller.ControllerUtils.updateComboBoxValue;
-import static fiji.plugin.imaging_fcs.new_imfcs.controller.FocusListenerFactory.createFocusListener;
+import static fiji.plugin.imaging_fcs.new_imfcs.controller.FieldListenerFactory.createComboBoxListener;
+import static fiji.plugin.imaging_fcs.new_imfcs.controller.FieldListenerFactory.createFocusListener;
 import static fiji.plugin.imaging_fcs.new_imfcs.view.ButtonFactory.createJButton;
 import static fiji.plugin.imaging_fcs.new_imfcs.view.ButtonFactory.createJToggleButton;
 import static fiji.plugin.imaging_fcs.new_imfcs.view.TextFieldFactory.createTextField;
@@ -141,11 +142,12 @@ public final class MainPanelView extends BaseView {
         });
 
         // add listeners
-        cbFitModel.addActionListener(controller.cbFitModelChanged());
-        cbCorrelatorP.addActionListener(updateComboBoxValue(controller.updateFitEnd(expSettingsModel::setCorrelatorP)));
+        cbFitModel.addActionListener(controller.cbFitModelChanged(cbFitModel));
+        cbCorrelatorP.addActionListener(
+                createComboBoxListener(cbCorrelatorP, controller.updateFitEnd(expSettingsModel::setCorrelatorP)));
         cbParaCor.addActionListener(updateComboBoxValue(expSettingsModel::setParaCor));
-        cbBleachCor.addActionListener(controller.cbBleachCorChanged());
-        cbFilter.addActionListener(controller.cbFilterChanged());
+        cbBleachCor.addActionListener(controller.cbBleachCorChanged(cbBleachCor));
+        cbFilter.addActionListener(controller.cbFilterChanged(cbFilter));
         cbDCCF.addActionListener(updateComboBoxValue(expSettingsModel::setdCCF));
     }
 
@@ -198,7 +200,7 @@ public final class MainPanelView extends BaseView {
         btnROI = createJButton("ROI", "Calculates ACFs only in the currently chose ROI.", null,
                 controller.btnROIPressed());
         btnBtf = createJButton("To Front", "Bring all windows of this plugin instance to the front.", null,
-                controller.btnBtfPressed());
+                controller.btnBringToFrontPressed());
     }
 
     private void createJToggleButtons() {
