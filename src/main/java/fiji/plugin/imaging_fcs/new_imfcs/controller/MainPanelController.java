@@ -123,6 +123,19 @@ public final class MainPanelController {
         }
     }
 
+    /**
+     * Prompts the user to confirm whether to reset the current results due to changes
+     * in parameter settings. If the user confirms, it resets the correlator's results
+     * and closes any open plots. If the user declines, it throws a {@link RejectResetException}.
+     * <p>
+     * This method checks if there are existing results in the correlator's pixel model,
+     * and if so, it displays a confirmation dialog. This ensures that users are aware of
+     * the consequences of changing certain settings, which could lead to the deletion of
+     * current results.
+     * </p>
+     *
+     * @throws RejectResetException if the user chooses not to proceed with the reset.
+     */
     private void askResetResults() {
         if (correlator.getPixelsModel() != null) {
             int response = JOptionPane.showConfirmDialog(null,
@@ -131,9 +144,8 @@ public final class MainPanelController {
                     JOptionPane.YES_NO_OPTION);
 
             if (response == JOptionPane.YES_OPTION) {
-                // TODO: Implement methods to resets results
                 correlator.resetResults();
-                // Plots.resetPlots();
+                Plots.closePlots();
             } else {
                 throw new RejectResetException();
             }
@@ -321,12 +333,16 @@ public final class MainPanelController {
 
     /**
      * Returns an action listener to handle the exit button press event.
-     * This listener disposes of the main panel view.
+     * This listener disposes of views.
      *
      * @return an ActionListener that processes the exit button press event
      */
     public ActionListener btnExitPressed() {
-        return (ActionEvent ev) -> view.dispose();
+        return (ActionEvent ev) -> {
+            view.dispose();
+            expSettingsView.dispose();
+            Plots.closePlots();
+        };
     }
 
     public ActionListener btnBringToFrontPressed() {

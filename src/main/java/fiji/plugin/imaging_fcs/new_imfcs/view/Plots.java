@@ -706,4 +706,48 @@ public class Plots {
                 plotHistogramWindow(dcffImg, dccfHistogramWindows.get(directionName), "Histogram - " + directionName,
                         numBins, DCCF_HISTOGRAM_POSITION, DCCF_HISTOGRAM_DIMENSION));
     }
+
+    /**
+     * Closes the specified {@link ImageWindow} if it is not already closed.
+     * <p>
+     * This utility method checks if the provided window is non-null and open,
+     * and if so, it closes the window. This ensures that any windows passed to
+     * this method are properly disposed of, freeing up resources.
+     * </p>
+     *
+     * @param window the {@link ImageWindow} to be closed. If the window is
+     *               already closed or null, no action is taken.
+     */
+    private static void closeWindow(ImageWindow window) {
+        if (window != null && !window.isClosed()) {
+            window.close();
+        }
+    }
+
+    /**
+     * Closes all open windows managed by the application.
+     * <p>
+     * This method iterates through a list of {@link ImageWindow} instances,
+     * which include different types of plot windows and other relevant windows
+     * used in the application, such as covariance and histogram windows.
+     * Each window is checked and closed if it is not already closed, ensuring
+     * that all resources are properly released and the application's GUI state
+     * remains consistent.
+     * </p>
+     */
+    public static void closePlots() {
+        for (ImageWindow window : new ImageWindow[]{
+                blockingCurveWindow,
+                acfWindow,
+                standardDeviationWindow,
+                intensityTraceWindow,
+                msdWindow,
+                residualsWindow,
+                scatterWindow,
+                imgCovarianceWindow,
+                paramHistogramWindow
+        }) {
+            closeWindow(window);
+        }
+    }
 }

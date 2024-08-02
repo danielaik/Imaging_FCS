@@ -93,6 +93,7 @@ public final class ImageController {
     public void loadImage(ImagePlus image) {
         // reset the results if we load a new image
         correlator.resetResults();
+        Plots.closePlots();
 
         imageModel.loadImage(image);
 
