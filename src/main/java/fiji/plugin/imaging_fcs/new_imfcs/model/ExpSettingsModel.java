@@ -68,7 +68,8 @@ public final class ExpSettingsModel {
     private double paramRy;
 
     /**
-     * Constructs an ExpSettingsModel and initializes settings by calling updateSettings.
+     * Constructs an ExpSettingsModel with default settings and a no-op reset callback.
+     * Initializes settings by calling {@code updateSettings()} and {@code updateChannelNumber()}.
      */
     public ExpSettingsModel() {
         updateSettings();
@@ -77,6 +78,12 @@ public final class ExpSettingsModel {
         this.resetCallback = () -> {};
     }
 
+    /**
+     * Constructs an ExpSettingsModel with a specified reset callback.
+     * Initializes settings by calling {@code updateSettings()} and {@code updateChannelNumber()}.
+     *
+     * @param resetCallback a {@link Runnable} executed when a reset is needed.
+     */
     public ExpSettingsModel(Runnable resetCallback) {
         updateSettings();
         updateChannelNumber();
