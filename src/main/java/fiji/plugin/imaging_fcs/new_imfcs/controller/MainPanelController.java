@@ -341,6 +341,13 @@ public final class MainPanelController {
         return (ActionEvent ev) -> {
             view.dispose();
             expSettingsView.dispose();
+            bleachCorrectionView.dispose();
+            simulationController.dispose();
+            nbController.dispose();
+            fitController.dispose();
+            backgroundSubtractionController.dispose();
+            imageController.unloadImage();
+
             Plots.closePlots();
         };
     }

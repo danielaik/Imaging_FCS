@@ -114,6 +114,8 @@ public final class ExpSettingsModel {
         data.put("Lambda 2", getEmLambda2Interface());
         data.put("Frame time", getFrameTime());
 
+        data.put("Overlap", isOverlap());
+
         return data;
     }
 
@@ -124,7 +126,6 @@ public final class ExpSettingsModel {
         data.put("Last frame", getLastFrame());
         data.put("Fit model", getFitModel());
         data.put("FCCS Display", isFCCSDisp());
-        data.put("Overlap", isOverlap());
         data.put("Bleach correction", getBleachCorrection());
         data.put("Sliding window length", getSlidingWindowLength());
         data.put("Filter", getFilter());
@@ -156,6 +157,8 @@ public final class ExpSettingsModel {
         setEmLambda(data.get("Lambda").toString());
         setEmLambda2(data.get("Lambda 2").toString());
         setFrameTime(data.get("Frame time").toString());
+
+        setOverlap((boolean) data.get("Overlap"));
 
         // Update the settings accordingly.
         updateSettings();

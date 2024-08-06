@@ -159,6 +159,13 @@ public class FitController {
     }
 
     /**
+     * Dispose the view
+     */
+    public void dispose() {
+        this.view.dispose();
+    }
+
+    /**
      * Checks if the view is currently visible (activated).
      *
      * @return true if the view is visible, false otherwise.

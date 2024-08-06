@@ -100,4 +100,11 @@ public final class NBController {
         ApplyCustomLUT.applyCustomLUT(image, lutColor);
         IJ.run(image, "Enhance Contrast", "saturated=0.35");
     }
+
+    /**
+     * Dispose the view
+     */
+    public void dispose() {
+        this.view.dispose();
+    }
 }

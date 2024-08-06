@@ -141,16 +141,18 @@ public final class ImageModel {
     /**
      * Unloads the current image from the model.
      */
-    private void unloadImage() {
+    public void unloadImage() {
         if (image.getOverlay() != null) {
             image.deleteRoi();
             image.getOverlay().clear();
             image.setOverlay(null);
         }
 
-        ImageCanvas canvas = image.getCanvas();
-        removeListeners(canvas.getMouseListeners(), canvas::removeMouseListener);
-        removeListeners(canvas.getKeyListeners(), canvas::removeKeyListener);
+        if (image != null) {
+            ImageCanvas canvas = image.getCanvas();
+            removeListeners(canvas.getMouseListeners(), canvas::removeMouseListener);
+            removeListeners(canvas.getKeyListeners(), canvas::removeKeyListener);
+        }
 
         image = null;
     }

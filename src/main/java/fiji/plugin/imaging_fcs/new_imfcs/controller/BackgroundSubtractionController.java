@@ -86,6 +86,13 @@ public class BackgroundSubtractionController {
         };
     }
 
+    /**
+     * Dispose the view
+     */
+    public void dispose() {
+        this.view.dispose();
+    }
+
     public void setTfBackground(int background) {
         view.setTfBackground(String.valueOf(background));
     }

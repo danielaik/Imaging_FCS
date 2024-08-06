@@ -111,6 +111,13 @@ public final class ImageController {
     }
 
     /**
+     * Unloads the current image from the model.
+     */
+    public void unloadImage() {
+        imageModel.unloadImage();
+    }
+
+    /**
      * Performs the correlation and fitting for a pixel at the given coordinates.
      *
      * @param x                      The x-coordinate of the pixel.
