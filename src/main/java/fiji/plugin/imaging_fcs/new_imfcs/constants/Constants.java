@@ -12,6 +12,7 @@ public final class Constants {
     public static final String SPIM_FCS_3D = "SPIM-FCS (3D)";
 
     // bleach correction methods
+    public static final String NO_BLEACH_CORRECTION = "none";
     public static final String BLEACH_CORRECTION_SLIDING_WINDOW = "Sliding Window";
     public static final String BLEACH_CORRECTION_SINGLE_EXP = "Single Exp";
     public static final String BLEACH_CORRECTION_DOUBLE_EXP = "Double Exp";

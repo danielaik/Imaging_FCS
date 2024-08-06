@@ -104,6 +104,8 @@ public final class ExpSettingsModel {
         data.put("Pixel size", getPixelSizeInterface());
         data.put("Magnification", getMagnification());
         data.put("NA", getNA());
+        data.put("Correlator P", getCorrelatorP());
+        data.put("Correlator Q", getCorrelatorQ());
         data.put("Sigma", getSigma());
         data.put("Sigma 2", getSigma2());
         data.put("Sigma Z", getSigmaZ());
@@ -120,8 +122,6 @@ public final class ExpSettingsModel {
 
         data.put("First frame", getFirstFrame());
         data.put("Last frame", getLastFrame());
-        data.put("Correlator P", getCorrelatorP());
-        data.put("Correlator Q", getCorrelatorQ());
         data.put("Fit model", getFitModel());
         data.put("FCCS Display", isFCCSDisp());
         data.put("Overlap", isOverlap());
@@ -147,6 +147,8 @@ public final class ExpSettingsModel {
         setPixelSize(data.get("Pixel size").toString());
         setMagnification(data.get("Magnification").toString());
         setNA(data.get("NA").toString());
+        setCorrelatorP(data.get("Correlator P").toString());
+        setCorrelatorQ(data.get("Correlator Q").toString());
         setSigma(data.get("Sigma").toString());
         setSigma2(data.get("Sigma 2").toString());
         setSigmaZ(data.get("Sigma Z").toString());
