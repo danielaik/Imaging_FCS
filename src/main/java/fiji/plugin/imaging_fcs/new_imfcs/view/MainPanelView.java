@@ -212,10 +212,17 @@ public final class MainPanelView extends BaseView {
     private void createJToggleButtons() {
         tbExpSettings = createJToggleButton("Exp Set", "Opens a dialog with experimental settings.", null,
                 controller.tbExpSettingsPressed());
-        tbFCCSDisplay = createJToggleButton("FCCS Disp Off", "", new Font(Constants.PANEL_FONT, Font.BOLD, 9),
-                controller.tbFCCSDisplayPressed());
-        tbOverlap = createJToggleButton("Overlap Off", "", new Font(Constants.PANEL_FONT, Font.BOLD, 11),
-                controller.tbOverlapPressed());
+
+        // set the button FCCS Disp based on the settings value
+        tbFCCSDisplay = createJToggleButton("FCCS Disp " + (expSettingsModel.isFCCSDisp() ? "On" : "Off"), "",
+                new Font(Constants.PANEL_FONT, Font.BOLD, 9), controller.tbFCCSDisplayPressed());
+        tbFCCSDisplay.setSelected(expSettingsModel.isFCCSDisp());
+
+        // Set the button overlap based on the settings value
+        tbOverlap = createJToggleButton("Overlap " + (expSettingsModel.isOverlap() ? "On" : "Off"), "",
+                new Font(Constants.PANEL_FONT, Font.BOLD, 11), controller.tbOverlapPressed());
+        tbOverlap.setSelected(expSettingsModel.isOverlap());
+
         tbBackground =
                 createJToggleButton("Background", "Panel for different methods to perform background subtraction.",
                         new Font(Constants.PANEL_FONT, Font.BOLD, 10), controller.tbBackgroundPressed());

@@ -411,7 +411,10 @@ public final class MainPanelController {
 
             try (Workbook workbook = new XSSFWorkbook()) {
                 // Add different sheets
-                ExcelExporter.createSheetFromMap(workbook, "Experimental settings", settings.toMap());
+                Map<String, Object> settingsMap = settings.toMap();
+                settingsMap.put("Polynomial Order", bleachCorrectionModel.getPolynomialOrder());
+                ExcelExporter.createSheetFromMap(workbook, "Experimental settings", settingsMap);
+
                 PixelModel[][] pixelModels = correlator.getPixelsModel();
                 if (pixelModels != null) {
                     ExcelExporter.createSheetLagTime(workbook, correlator.getLagTimes(), correlator.getSampleTimes());
@@ -434,6 +437,7 @@ public final class MainPanelController {
 
                 try (FileOutputStream fileOut = new FileOutputStream(filePath)) {
                     workbook.write(fileOut);
+                    IJ.log(String.format("File saved at %s.", filePath));
                 } catch (IOException e) {
                     IJ.showMessage("Error saving result table", e.getMessage());
                 }
