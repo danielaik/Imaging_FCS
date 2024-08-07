@@ -22,6 +22,7 @@ import java.awt.event.*;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 /**
  * The ImageController class handles the interactions with the image data,
@@ -53,9 +54,9 @@ public final class ImageController {
      * @param options                         The options model.
      */
     public ImageController(MainPanelController mainPanelController, ImageModel imageModel,
-                           BackgroundSubtractionController backgroundSubtractionController,
-                           FitController fitController, BleachCorrectionModel bleachCorrectionModel,
-                           Correlator correlator, ExpSettingsModel settings, OptionsModel options) {
+                           BackgroundSubtractionController backgroundSubtractionController, FitController fitController,
+                           BleachCorrectionModel bleachCorrectionModel, Correlator correlator,
+                           ExpSettingsModel settings, OptionsModel options) {
         this.mainPanelController = mainPanelController;
         this.imageModel = imageModel;
         this.backgroundSubtractionController = backgroundSubtractionController;
@@ -86,16 +87,62 @@ public final class ImageController {
     }
 
     /**
+     * Retrieves the directory of the currently loaded image.
+     *
+     * @return The directory path as a String.
+     */
+    public String getDirectory() {
+        return imageModel.getDirectory();
+    }
+
+    /**
+     * Retrieves the full path of the currently loaded image.
+     *
+     * @return The image path as a String.
+     */
+    public String getImagePath() {
+        return imageModel.getImagePath();
+    }
+
+    /**
+     * Retrieves the file name of the currently loaded image.
+     *
+     * @return The file name as a String.
+     */
+    public String getFileName() {
+        return imageModel.getFileName();
+    }
+
+    /**
+     * Converts the model's state to a map representation.
+     *
+     * @return A map containing key-value pairs representing the model's state.
+     */
+    public Map<String, Object> toMap() {
+        return imageModel.toMap();
+    }
+
+    /**
+     * Populates the model's state from a map representation.
+     *
+     * @param data A map containing key-value pairs used to set the model's state.
+     */
+    public void fromMap(Map<String, Object> data) {
+        imageModel.fromMap(data);
+    }
+
+
+    /**
      * Loads the given image into the model and sets up the view and event listeners.
      *
      * @param image The ImagePlus instance to load.
      */
-    public void loadImage(ImagePlus image) {
+    public void loadImage(ImagePlus image, String simulationName) {
         // reset the results if we load a new image
         correlator.resetResults();
         Plots.closePlots();
 
-        imageModel.loadImage(image);
+        imageModel.loadImage(image, simulationName);
 
         imageView = new ImageView();
         imageView.showImage(imageModel);

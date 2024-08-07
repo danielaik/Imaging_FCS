@@ -183,7 +183,8 @@ public final class SimulationController {
      * @param image the image to display.
      */
     public void loadImage(ImagePlus image) {
-        imageController.loadImage(image);
+        String simulationName = String.format("Simulation %s", simulationModel.getIs2D() ? "2D" : "3D");
+        imageController.loadImage(image, simulationName);
     }
 
     /**

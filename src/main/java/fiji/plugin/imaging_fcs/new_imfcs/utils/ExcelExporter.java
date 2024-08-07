@@ -69,8 +69,8 @@ public final class ExcelExporter {
      * @param pixelModels a 2D array of PixelModel objects containing the data to be written to the sheet
      * @param arrayGetter a function that extracts an array of doubles from a PixelModel object
      */
-    public static void createSheetFromPixelModelArray(Workbook workbook, String sheetName, PixelModel[][] pixelModels
-            , Function<PixelModel, double[]> arrayGetter) {
+    public static void createSheetFromPixelModelArray(Workbook workbook, String sheetName, PixelModel[][] pixelModels,
+                                                      Function<PixelModel, double[]> arrayGetter) {
         Sheet sheet = workbook.createSheet(sheetName);
         int numRow = pixelModels.length;
         int numCol = pixelModels[0].length;
@@ -202,8 +202,8 @@ public final class ExcelExporter {
      * @return the selected file path, or null if the user cancels the operation or chooses not to replace an
      * existing file
      */
-    public static String selectExcelFileToSave(String defaultName) {
-        JFileChooser fileChooser = new JFileChooser();
+    public static String selectExcelFileToSave(String defaultName, String openPath) {
+        JFileChooser fileChooser = new JFileChooser(openPath);
         fileChooser.setDialogTitle("Specify a file to save");
         fileChooser.setSelectedFile(new File(defaultName));
 

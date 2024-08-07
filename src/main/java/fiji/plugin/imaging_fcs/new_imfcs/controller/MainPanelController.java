@@ -367,7 +367,7 @@ public final class MainPanelController {
         return (ActionEvent ev) -> {
             if (WindowManager.getImageCount() > 0) {
                 try {
-                    imageController.loadImage(IJ.getImage());
+                    imageController.loadImage(IJ.getImage(), null);
                 } catch (RuntimeException e) {
                     IJ.showMessage("Wrong image format", e.getMessage());
                 }
@@ -388,7 +388,7 @@ public final class MainPanelController {
             ImagePlus image = IJ.openImage();
             if (image != null) {
                 try {
-                    imageController.loadImage(image);
+                    imageController.loadImage(image, null);
                 } catch (RuntimeException e) {
                     IJ.showMessage("Wrong image format", e.getMessage());
                 }
@@ -404,7 +404,8 @@ public final class MainPanelController {
      */
     public ActionListener btnSavePressed() {
         return (ActionEvent ev) -> {
-            String filePath = ExcelExporter.selectExcelFileToSave("parameters.xlsx");
+            String filePath = ExcelExporter.selectExcelFileToSave(imageController.getFileName() + ".xlsx",
+                    imageController.getDirectory());
             if (filePath == null) {
                 return;
             }
@@ -413,6 +414,7 @@ public final class MainPanelController {
                 // Add different sheets
                 Map<String, Object> settingsMap = settings.toMap();
                 settingsMap.put("Polynomial Order", bleachCorrectionModel.getPolynomialOrder());
+                settingsMap.putAll(imageController.toMap());
                 ExcelExporter.createSheetFromMap(workbook, "Experimental settings", settingsMap);
 
                 PixelModel[][] pixelModels = correlator.getPixelsModel();

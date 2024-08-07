@@ -10,6 +10,8 @@ import ij.process.ImageProcessor;
 
 import java.awt.*;
 import java.util.EventListener;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.function.Consumer;
 
 /**
@@ -19,6 +21,7 @@ public final class ImageModel {
     private static final double ZOOM_FACTOR = 250;
     private ImagePlus image;
     private ImagePlus backgroundImage;
+    private String directory, imagePath, fileName;
     private double[][] backgroundMean, backgroundVariance, backgroundCovariance;
 
     private int background = 0;
@@ -58,6 +61,52 @@ public final class ImageModel {
         IJ.run(image, "Set... ", options);
         // This workaround addresses a potential bug in ImageJ versions 1.48v and later
         IJ.run(image, "In [+]", "");
+    }
+
+    /**
+     * Converts the object’s state into a map representation.
+     * The map includes key-value pairs for image properties such as the image path, dimensions,
+     * and background details.
+     *
+     * @return a map containing the state of the object, including image properties and background details.
+     */
+    public Map<String, Object> toMap() {
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("Image path", imagePath);
+        data.put("Image width", getWidth());
+        data.put("Image height", getHeight());
+        data.put("Background", background);
+        data.put("Background 2", background2);
+        if (backgroundImage != null) {
+            data.put("Background file", backgroundImage.getOriginalFileInfo().getFilePath());
+        } else {
+            data.put("Background file", "");
+        }
+
+        return data;
+    }
+
+    /**
+     * Populates the object’s state from a map representation.
+     * It reads values from the map to set properties such as background details and attempts
+     * to open the background image using the provided file path.
+     *
+     * @param data a map containing key-value pairs representing the object’s state, including image properties
+     *             and background details.
+     */
+    public void fromMap(Map<String, Object> data) {
+        String backgroundPath = data.get("Background file").toString();
+        if (!backgroundPath.isEmpty()) {
+            backgroundImage = IJ.openImage(backgroundPath);
+            if (backgroundImage == null) {
+                IJ.log("Failed to open background image at path: " + backgroundPath);
+            }
+        } else {
+            backgroundImage = null;
+        }
+
+        setBackground(data.get("Background").toString());
+        setBackground2(data.get("Background 2").toString());
     }
 
     /**
@@ -103,13 +152,36 @@ public final class ImageModel {
     }
 
     /**
+     * Removes the extension from a given file name.
+     *
+     * @param fileName the original file name
+     * @return the file name without the extension
+     */
+    private String removeExtension(String fileName) {
+        int lastDotIndex = fileName.lastIndexOf('.');
+        if (lastDotIndex > 0) {
+            return fileName.substring(0, lastDotIndex);
+        }
+        return fileName; // Return the original file name if no extension is found
+    }
+
+    /**
+     * Extracts and stores the path and file name from the ImagePlus object's FileInfo.
+     */
+    private void retrieveImagePath() {
+        this.directory = image.getOriginalFileInfo().directory;
+        this.imagePath = image.getOriginalFileInfo().getFilePath();
+        this.fileName = removeExtension(image.getOriginalFileInfo().fileName);
+    }
+
+    /**
      * Loads an image into the model, checking its type and extracting its path and file name.
      * Only images of type GRAY16 are supported.
      *
      * @param image The ImagePlus object to load into the model.
      * @throws RuntimeException if the image is not of type GRAY16 or if the size doesn't match with the background.
      */
-    public void loadImage(ImagePlus image) {
+    public void loadImage(ImagePlus image, String simulationName) {
         checkImage(image);
 
         minBackgroundValue = 0;
@@ -136,6 +208,14 @@ public final class ImageModel {
         }
 
         this.image = image;
+
+        if (simulationName == null) {
+            retrieveImagePath();
+        } else {
+            this.directory = "";
+            this.imagePath = "";
+            this.fileName = simulationName;
+        }
     }
 
     /**
@@ -379,6 +459,17 @@ public final class ImageModel {
 
     public void setBackground2(String background2) {
         this.background2 = Integer.parseInt(background2);
-        System.out.println(this.background2);
+    }
+
+    public String getDirectory() {
+        return directory;
+    }
+
+    public String getImagePath() {
+        return imagePath;
+    }
+
+    public String getFileName() {
+        return fileName;
     }
 }
