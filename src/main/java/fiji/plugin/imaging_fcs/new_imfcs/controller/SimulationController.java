@@ -185,4 +185,11 @@ public final class SimulationController {
     public void loadImage(ImagePlus image) {
         imageController.loadImage(image);
     }
+
+    /**
+     * Dispose the view
+     */
+    public void dispose() {
+        this.simulationView.dispose();
+    }
 }
