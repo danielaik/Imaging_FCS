@@ -1,5 +1,6 @@
 package fiji.plugin.imaging_fcs.new_imfcs.controller;
 
+import fiji.plugin.imaging_fcs.new_imfcs.constants.Constants;
 import fiji.plugin.imaging_fcs.new_imfcs.model.ImageModel;
 import fiji.plugin.imaging_fcs.new_imfcs.view.BackgroundSubtractionView;
 import ij.IJ;
@@ -14,6 +15,7 @@ import java.awt.event.ActionListener;
  */
 public class BackgroundSubtractionController {
     private final ImageModel imageModel;
+    private final Runnable resetCallback;
     private final BackgroundSubtractionView view;
 
     /**
@@ -22,9 +24,11 @@ public class BackgroundSubtractionController {
      *
      * @param imageModel The ImageModel to be controlled.
      */
-    public BackgroundSubtractionController(ImageModel imageModel) {
+    public BackgroundSubtractionController(ImageModel imageModel, Runnable resetCallback) {
         this.imageModel = imageModel;
         view = new BackgroundSubtractionView(this, imageModel);
+
+        this.resetCallback = resetCallback;
     }
 
     /**
@@ -42,46 +46,64 @@ public class BackgroundSubtractionController {
      *
      * @return An ActionListener for handling background subtraction method changes.
      */
-    public ActionListener cbBackgroundSubtractionMethodChanged() {
-        return (ActionEvent ev) -> {
-            String method = ControllerUtils.getComboBoxSelectionFromEvent(ev);
-            view.setEnableBackgroundTextField(false);
-            imageModel.resetBackgroundImage();
-            setTfBackground(imageModel.getBackground());
-            setTfBackground2(imageModel.getBackground2());
+    public ActionListener cbBackgroundSubtractionMethodChanged(JComboBox<String> comboBox) {
+        return new ActionListener() {
+            private String previousSelection = (String) comboBox.getSelectedItem();
 
-            switch (method) {
-                case "Constant Background":
-                    view.setEnableBackgroundTextField(true);
-                    break;
-                case "Min frame by frame":
-                    break;
-                case "Min per image stack":
-                    break;
-                case "Min Pixel wise per image stack":
-                    break;
-                case "Load BGR image":
-                    // Only allows background subtraction before performing bleach correction
-                    view.unselectSubtractionAfterBleachCorrection();
+            @Override
+            public void actionPerformed(ActionEvent ev) {
+                String method = ControllerUtils.getComboBoxSelectionFromEvent(ev);
 
-                    // Try to load image, revert to other background subtraction method if no background file is loaded
-                    boolean loaded = false;
-                    try {
-                        loaded = imageModel.loadBackgroundImage(IJ.openImage());
-                        setTfBackground(imageModel.getBackground());
-                        setTfBackground2(imageModel.getBackground2());
-                    } catch (RuntimeException e) {
-                        IJ.showMessage(e.getMessage());
+                try {
+                    if (!previousSelection.equals(method)) {
+                        resetCallback.run();
+                        // Update previous selection to current if successful
+                        previousSelection = method;
                     }
+                } catch (RejectResetException e) {
+                    comboBox.setSelectedItem(previousSelection);
+                    return;
+                }
 
-                    if (loaded) {
-                        view.updateStatusOnImageLoad(true);
-                    } else {
-                        ((JComboBox<?>) ev.getSource()).setSelectedIndex(0);
+                view.setEnableBackgroundTextField(false);
+                imageModel.resetBackgroundImage();
+                setTfBackground(imageModel.getBackground());
+                setTfBackground2(imageModel.getBackground2());
+
+                switch (method) {
+                    case Constants.CONSTANT_BACKGROUND:
                         view.setEnableBackgroundTextField(true);
-                        view.updateStatusOnImageLoad(false);
-                    }
-                    break;
+                        break;
+                    case Constants.MIN_FRAME_BY_FRAME:
+                        break;
+                    case Constants.MIN_PER_IMAGE_STACK:
+                        break;
+                    case Constants.MIN_PIXEL_WISE_PER_IMAGE_STACK:
+                        break;
+                    case Constants.LOAD_BGR_IMAGE:
+                        // Only allows background subtraction before performing bleach correction
+                        view.unselectSubtractionAfterBleachCorrection();
+
+                        // Try to load image, revert to other background subtraction method if no background file is
+                        // loaded
+                        boolean loaded = false;
+                        try {
+                            loaded = imageModel.loadBackgroundImage(IJ.openImage());
+                            setTfBackground(imageModel.getBackground());
+                            setTfBackground2(imageModel.getBackground2());
+                        } catch (RuntimeException e) {
+                            IJ.showMessage(e.getMessage());
+                        }
+
+                        if (loaded) {
+                            view.updateStatusOnImageLoad(true);
+                        } else {
+                            ((JComboBox<?>) ev.getSource()).setSelectedIndex(0);
+                            view.setEnableBackgroundTextField(true);
+                            view.updateStatusOnImageLoad(false);
+                        }
+                        break;
+                }
             }
         };
     }

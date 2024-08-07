@@ -77,7 +77,7 @@ public final class MainPanelController {
         this.fitController = new FitController(fitModel);
 
         ImageModel imageModel = new ImageModel();
-        this.backgroundSubtractionController = new BackgroundSubtractionController(imageModel);
+        this.backgroundSubtractionController = new BackgroundSubtractionController(imageModel, this::askResetResults);
         this.bleachCorrectionModel = new BleachCorrectionModel(settings, imageModel);
         this.correlator = new Correlator(settings, bleachCorrectionModel, fitModel);
         this.imageController = new ImageController(this, imageModel, backgroundSubtractionController, fitController,

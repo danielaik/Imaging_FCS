@@ -57,13 +57,14 @@ public final class BackgroundSubtractionView extends BaseView {
     @Override
     protected void initializeComboBoxes() {
         cbBackgroundSubtractionMethod = new JComboBox<>(new String[]{
-                "Constant Background",
-                "Min frame by frame",
-                "Min per image stack",
-                "Min Pixel wise per image stack",
-                "Load BGR image"
-        });
-        cbBackgroundSubtractionMethod.addActionListener(controller.cbBackgroundSubtractionMethodChanged());
+                Constants.CONSTANT_BACKGROUND,
+                Constants.MIN_FRAME_BY_FRAME,
+                Constants.MIN_PER_IMAGE_STACK,
+                Constants.MIN_PIXEL_WISE_PER_IMAGE_STACK,
+                Constants.LOAD_BGR_IMAGE,
+                });
+        cbBackgroundSubtractionMethod.addActionListener(
+                controller.cbBackgroundSubtractionMethodChanged(cbBackgroundSubtractionMethod));
     }
 
     @Override
@@ -72,7 +73,8 @@ public final class BackgroundSubtractionView extends BaseView {
         tfBackground2 = createTextField(model.getBackground2(), "", createFocusListener(model::setBackground2));
 
         tfBGRLoadStatus = createTextField("",
-                "Status on background file for correction. Has to be the same area recorded under the same conditions as the experimental file");
+                "Status on background file for correction. Has to be the same area recorded under the same conditions" +
+                        " as the experimental file");
         tfBGRLoadStatus.setEditable(false);
         tfBGRLoadStatus.setFont(new Font(Constants.PANEL_FONT, Font.BOLD, Constants.PANEL_FONT_SIZE));
     }

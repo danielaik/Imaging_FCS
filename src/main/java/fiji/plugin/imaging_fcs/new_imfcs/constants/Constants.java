@@ -24,6 +24,13 @@ public final class Constants {
     public static final String FILTER_INTENSITY = "Intensity";
     public static final String FILTER_MEAN = "Mean";
 
+    // background subtraction method
+    public static final String CONSTANT_BACKGROUND = "Constant Background";
+    public static final String MIN_FRAME_BY_FRAME = "Min frame by frame";
+    public static final String MIN_PER_IMAGE_STACK = "Min per image stack";
+    public static final String MIN_PIXEL_WISE_PER_IMAGE_STACK = "Min Pixel wise per image stack";
+    public static final String LOAD_BGR_IMAGE = "Load BGR image";
+
     // DCCF DIRECTION
     public static final String X_DIRECTION = "x direction";
     public static final String Y_DIRECTION = "y direction";
