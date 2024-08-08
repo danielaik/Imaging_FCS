@@ -5,8 +5,11 @@ import fiji.plugin.imaging_fcs.new_imfcs.model.ExpSettingsModel;
 import fiji.plugin.imaging_fcs.new_imfcs.model.FitModel;
 import fiji.plugin.imaging_fcs.new_imfcs.model.PixelModel;
 import fiji.plugin.imaging_fcs.new_imfcs.model.fit.BleachCorrectionModel;
+import fiji.plugin.imaging_fcs.new_imfcs.utils.ExcelReader;
 import ij.ImagePlus;
+import org.apache.poi.ss.usermodel.Workbook;
 
+import java.awt.*;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
@@ -45,6 +48,29 @@ public class Correlator {
     }
 
     /**
+     * Loads results from an Excel workbook and restores the parameters for the pixel models.
+     * This method reads various sheets from the workbook to initialize lag times, sample times,
+     * and multiple attributes of the pixel models such as ACF, standard deviation, fitted functions,
+     * residuals, and MSD. It also reads fit parameters for each pixel model.
+     *
+     * @param workbook  the Excel workbook containing the saved results
+     * @param dimension the dimension of the image (width and height)
+     */
+    public void loadResultsFromWorkbook(Workbook workbook, Dimension dimension) {
+        // read the Excel file to restore parameters
+        ExcelReader.readLagTimesAndSampleTimes(workbook, "Lag time", this::setLagTimes, this::setSampleTimes);
+        pixelModels = new PixelModel[dimension.width][dimension.height];
+
+        ExcelReader.readSheetToPixelModels(workbook, "ACF", pixelModels, PixelModel::setAcf);
+        ExcelReader.readSheetToPixelModels(workbook, "Standard Deviation", pixelModels,
+                PixelModel::setStandardDeviationAcf);
+        ExcelReader.readSheetToPixelModels(workbook, "Fit Functions", pixelModels, PixelModel::setFittedAcf);
+        ExcelReader.readSheetToPixelModels(workbook, "Residuals", pixelModels, PixelModel::setResiduals);
+        ExcelReader.readSheetToPixelModels(workbook, "MSD", pixelModels, PixelModel::setMSD);
+        ExcelReader.readFitParameters(workbook, "Fit Parameters", pixelModels);
+    }
+
+    /**
      * Retrieves a block of intensity data from the specified image and coordinates.
      *
      * @param img          The image.
@@ -57,8 +83,8 @@ public class Correlator {
      * @param mode         The mode of intensity retrieval.
      * @return A 2D array containing the intensity data.
      */
-    private double[][] getIntensityBlock(ImagePlus img, int x, int y, int x2, int y2, int initialFrame,
-                                         int finalFrame, int mode) {
+    private double[][] getIntensityBlock(ImagePlus img, int x, int y, int x2, int y2, int initialFrame, int finalFrame,
+                                         int mode) {
         double[] intensityData = bleachCorrectionModel.getIntensity(img, x, y, mode, initialFrame, finalFrame);
 
         double[][] intensityBlock = new double[2][intensityData.length];
@@ -860,16 +886,28 @@ public class Correlator {
         return pixelModels[x][y];
     }
 
-    public PixelModel[][] getPixelsModel() {
+    public PixelModel[][] getPixelModels() {
         return pixelModels;
+    }
+
+    public void setPixelModels(PixelModel[][] pixelModels) {
+        this.pixelModels = pixelModels;
     }
 
     public double[] getLagTimes() {
         return lagTimes;
     }
 
+    public void setLagTimes(double[] lagTimes) {
+        this.lagTimes = lagTimes;
+    }
+
     public int[] getSampleTimes() {
         return sampleTimes;
+    }
+
+    public void setSampleTimes(int[] sampleTimes) {
+        this.sampleTimes = sampleTimes;
     }
 
     public double[][] getVarianceBlocks() {

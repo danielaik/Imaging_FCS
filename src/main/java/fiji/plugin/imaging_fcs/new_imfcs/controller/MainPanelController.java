@@ -5,6 +5,7 @@ import fiji.plugin.imaging_fcs.new_imfcs.model.*;
 import fiji.plugin.imaging_fcs.new_imfcs.model.correlations.*;
 import fiji.plugin.imaging_fcs.new_imfcs.model.fit.BleachCorrectionModel;
 import fiji.plugin.imaging_fcs.new_imfcs.utils.ExcelExporter;
+import fiji.plugin.imaging_fcs.new_imfcs.utils.ExcelReader;
 import fiji.plugin.imaging_fcs.new_imfcs.utils.Pair;
 import fiji.plugin.imaging_fcs.new_imfcs.view.BleachCorrectionView;
 import fiji.plugin.imaging_fcs.new_imfcs.view.ExpSettingsView;
@@ -51,7 +52,6 @@ public final class MainPanelController {
     private final MainPanelView view;
     private final ExpSettingsView expSettingsView;
     private final BleachCorrectionView bleachCorrectionView;
-    private final HardwareModel hardwareModel;
     private final OptionsModel optionsModel;
     private final ImageController imageController;
     private final ExpSettingsModel settings;
@@ -64,19 +64,33 @@ public final class MainPanelController {
 
     /**
      * Constructor that initializes models, views, and other controllers needed for the main panel.
+     * This constructor initializes the MainPanelController with the given hardware settings model.
+     * It calls another constructor to initialize the options model based on whether CUDA is enabled.
      *
      * @param hardwareModel The model containing hardware settings for the imaging FCS analysis.
      */
     public MainPanelController(HardwareModel hardwareModel) {
-        this.hardwareModel = hardwareModel;
-        this.optionsModel = new OptionsModel(hardwareModel.isCuda());
+        this(new OptionsModel(hardwareModel.isCuda()), null);
+    }
+
+    /**
+     * Constructor that initializes models, views, and other controllers needed for the main panel.
+     * This constructor initializes the MainPanelController with the given options model and an Excel workbook.
+     * If a workbook is provided, it loads settings from the workbook; otherwise, it loads previously saved
+     * configurations.
+     *
+     * @param optionsModel The model containing options settings for the imaging FCS analysis.
+     * @param workbook     The Excel workbook containing previously saved configuration, or null to load saved config.
+     */
+    public MainPanelController(OptionsModel optionsModel, Workbook workbook) {
+        this.optionsModel = optionsModel;
 
         this.settings = new ExpSettingsModel(this::askResetResults);
 
         FitModel fitModel = new FitModel(settings);
         this.fitController = new FitController(fitModel);
 
-        ImageModel imageModel = new ImageModel();
+        ImageModel imageModel = new ImageModel(this::askResetResults);
         this.backgroundSubtractionController = new BackgroundSubtractionController(imageModel, this::askResetResults);
         this.bleachCorrectionModel = new BleachCorrectionModel(settings, imageModel);
         this.correlator = new Correlator(settings, bleachCorrectionModel, fitModel);
@@ -87,13 +101,38 @@ public final class MainPanelController {
 
         this.nbController = new NBController(imageModel, settings, optionsModel, bleachCorrectionModel);
 
-        // load previously saved configuration
-        loadConfig();
+        if (workbook == null) {
+            // load previously saved configuration
+            loadConfig();
+        } else {
+            // load parameters from the excel file
+            try {
+                loadExcelSettings(workbook, imageModel);
+            } catch (Exception e) {
+                // if we fail to read the excel file, we just setup the class the normal way
+                IJ.showMessage("Error", "Excel format is incorrect.");
+                loadConfig();
+                workbook = null;
+            }
+        }
 
+        // set the different views
         this.bleachCorrectionView = new BleachCorrectionView(this, bleachCorrectionModel);
         this.expSettingsView = new ExpSettingsView(this, settings);
         updateSettingsField();
         this.view = new MainPanelView(this, this.settings);
+
+        if (workbook != null) {
+            if (imageModel.getImage() != null) {
+                this.imageController.initializeAndDisplayImage();
+            }
+
+            // read the Excel file to restore parameters
+            correlator.loadResultsFromWorkbook(workbook, imageModel.getDimension());
+
+            // Plot the restored pixel models
+            imageController.plotAll();
+        }
     }
 
     /**
@@ -124,6 +163,32 @@ public final class MainPanelController {
     }
 
     /**
+     * Loads settings from the provided Excel workbook and applies them to the image model.
+     * This method reads the experimental settings from the workbook, attempts to reload the image
+     * from the specified path, and updates the settings and image model with the retrieved data.
+     *
+     * @param workbook   the Excel workbook containing the settings to be loaded
+     * @param imageModel the ImageModel instance to be updated with the loaded settings
+     */
+    private void loadExcelSettings(Workbook workbook, ImageModel imageModel) {
+        Map<String, Object> expSettingsMap = ExcelReader.readSheetToMap(workbook, "Experimental settings");
+
+        ImagePlus reloadImage = IJ.openImage(expSettingsMap.get("Image path").toString());
+        if (reloadImage == null) {
+            IJ.log(String.format("Fail to load '%s' from saved Excel file",
+                    expSettingsMap.get("Image path").toString()));
+            reloadImage = IJ.openImage();
+        }
+
+        if (reloadImage != null) {
+            imageModel.loadImage(reloadImage, null);
+        }
+
+        settings.fromMap(expSettingsMap);
+        imageModel.fromMap(expSettingsMap);
+    }
+
+    /**
      * Prompts the user to confirm whether to reset the current results due to changes
      * in parameter settings. If the user confirms, it resets the correlator's results
      * and closes any open plots. If the user declines, it throws a {@link RejectResetException}.
@@ -137,7 +202,7 @@ public final class MainPanelController {
      * @throws RejectResetException if the user chooses not to proceed with the reset.
      */
     private void askResetResults() {
-        if (correlator.getPixelsModel() != null) {
+        if (correlator.getPixelModels() != null) {
             int response = JOptionPane.showConfirmDialog(null,
                     "Some of the parameter settings in the main panel have changed. \n" +
                             "Continuing will result in deleting some Results", "Delete the Results and start new?",
@@ -404,6 +469,11 @@ public final class MainPanelController {
      */
     public ActionListener btnSavePressed() {
         return (ActionEvent ev) -> {
+            if (!imageController.isImageLoaded()) {
+                IJ.showMessage("No image open.");
+                return;
+            }
+
             String filePath = ExcelExporter.selectExcelFileToSave(imageController.getFileName() + ".xlsx",
                     imageController.getDirectory());
             if (filePath == null) {
@@ -417,7 +487,7 @@ public final class MainPanelController {
                 settingsMap.putAll(imageController.toMap());
                 ExcelExporter.createSheetFromMap(workbook, "Experimental settings", settingsMap);
 
-                PixelModel[][] pixelModels = correlator.getPixelsModel();
+                PixelModel[][] pixelModels = correlator.getPixelModels();
                 if (pixelModels != null) {
                     ExcelExporter.createSheetLagTime(workbook, correlator.getLagTimes(), correlator.getSampleTimes());
                     ExcelExporter.createSheetFromPixelModelArray(workbook, "ACF", pixelModels, PixelModel::getAcf);
@@ -449,9 +519,34 @@ public final class MainPanelController {
         };
     }
 
+    /**
+     * Creates an ActionListener for the "Load" button press event.
+     * This method handles the event when the "Load" button is pressed, allowing the user to select an Excel file
+     * to load. If a file is selected, the current view is disposed of, and a new MainPanelController is initialized
+     * with the selected workbook.
+     *
+     * @return an ActionListener that handles the "Load" button press event
+     */
     public ActionListener btnLoadPressed() {
-        // TODO: FIXME
-        return null;
+        return (ActionEvent ev) -> {
+            Workbook workbook = null;
+            try {
+                workbook = ExcelReader.selectExcelFileToLoad(
+                        imageController.isImageLoaded() ? imageController.getDirectory() : "");
+            } catch (Exception e) {
+                IJ.showMessage(e.getMessage());
+            }
+
+            // In this case, the user didn't select a file, we can just leave the method
+            if (workbook == null) {
+                return;
+            }
+
+            this.view.dispose();
+            btnExitPressed().actionPerformed(ev);
+
+            new MainPanelController(this.optionsModel, workbook);
+        };
     }
 
     public ActionListener btnBatchPressed() {
@@ -511,7 +606,7 @@ public final class MainPanelController {
         return (ActionEvent ev) -> {
             if (!imageController.isImageLoaded()) {
                 IJ.showMessage("No image open");
-            } else if (correlator.getPixelsModel() == null) {
+            } else if (correlator.getPixelModels() == null) {
                 IJ.showMessage("Nothing to plot, please run the correlation on at least one pixel before");
             } else {
                 // if the ROI is null, we consider all correlated pixels.
@@ -522,7 +617,7 @@ public final class MainPanelController {
 
                 try {
                     PixelModel averagePixelModel =
-                            AverageCorrelation.calculateAverageCorrelationFunction(correlator.getPixelsModel(), roi,
+                            AverageCorrelation.calculateAverageCorrelationFunction(correlator.getPixelModels(), roi,
                                     settings.getPixelBinning(), settings.getMinCursorPosition());
                     fitController.fit(averagePixelModel, correlator.getLagTimes());
 
@@ -556,11 +651,11 @@ public final class MainPanelController {
         return (ActionEvent ev) -> {
             if (!imageController.isImageLoaded()) {
                 IJ.showMessage("No image open.");
-            } else if (correlator.getPixelsModel() == null) {
+            } else if (correlator.getPixelModels() == null) {
                 IJ.showMessage("Nothing to plot, please run the fit on at least one pixel before.");
             } else {
                 Pair<double[][], String[]> scatterArrayAndLabels =
-                        PixelModel.getScatterPlotArray(correlator.getPixelsModel(), settings.getParaCor());
+                        PixelModel.getScatterPlotArray(correlator.getPixelModels(), settings.getParaCor());
                 double[][] scPlot = scatterArrayAndLabels.getLeft();
                 String[] labels = scatterArrayAndLabels.getRight();
 
@@ -698,7 +793,7 @@ public final class MainPanelController {
             }
 
             Point startLocation = settings.getMinCursorPosition();
-            Point endLocation = settings.getMaxCursorPosition(imageController.getImage());
+            Point endLocation = settings.getMaxCursorPosition(imageController.getImageDimension());
             Point pixelBinning = settings.getPixelBinning();
 
             int startX = startLocation.x * pixelBinning.x;
