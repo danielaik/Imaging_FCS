@@ -1,5 +1,11 @@
 package fiji.plugin.imaging_fcs.new_imfcs.utils;
 
+import java.util.Iterator;
+import java.util.Spliterator;
+import java.util.Spliterators;
+import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
+
 /**
  * Represents a range of integers with a specified step.
  * The range is defined by a start value, an end value, and a step.
@@ -58,6 +64,29 @@ public class Range {
         }
 
         return Math.abs((end - start) / step) + 1;
+    }
+
+    /**
+     * Generates a stream of integers from start to end with the specified step.
+     *
+     * @return A stream of integers representing the range.
+     */
+    public Stream<Integer> stream() {
+        return StreamSupport.stream(Spliterators.spliteratorUnknownSize(new Iterator<Integer>() {
+            private int current = start;
+
+            @Override
+            public boolean hasNext() {
+                return step > 0 ? current <= end : current >= end;
+            }
+
+            @Override
+            public Integer next() {
+                int value = current;
+                current += step;
+                return value;
+            }
+        }, Spliterator.ORDERED), false);
     }
 
     public int getStart() {
