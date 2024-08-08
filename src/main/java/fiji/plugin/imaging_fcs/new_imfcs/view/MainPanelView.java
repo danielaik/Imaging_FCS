@@ -43,7 +43,7 @@ public final class MainPanelView extends BaseView {
 
     // Buttons
     private JButton btnSave, btnRead, btnExit, btnLoad, btnBatch, btnDCCF, btnWriteConfig, btnUseExisting, btnDCR,
-            btnParamVideo, btnDebug, btnOptions, btnAve, btnParaCor, btnPSF, btnAll, btnRT, btnROI, btnBtf;
+            btnParamVideo, btnOptions, btnAve, btnParaCor, btnPSF, btnAll, btnRT, btnROI, btnBtf;
     private JToggleButton tbExpSettings, tbFCCSDisplay, tbFit, tbOverlap, tbBackground, tbNB, tbFiltering,
             tbBleachCorStride, tbDL, tbSim, tbMSD;
 
@@ -190,7 +190,6 @@ public final class MainPanelView extends BaseView {
                 controller.btnDirectCameraReadoutPressed());
         btnParamVideo =
                 createJButton("PVideo", "Creates videos of parameter maps", null, controller.btnParamVideoPressed());
-        btnDebug = createJButton("", "", null, controller.btnDebugPressed());
         btnOptions = createJButton("Options", "Select various options regarding the display of results.", null,
                 controller.btnOptionsPressed());
         btnAve = createJButton("Average", "Calculate the average ACF from all valid ACFs and fit if fit is switched " +
@@ -295,7 +294,7 @@ public final class MainPanelView extends BaseView {
         add(btnDCR);
         add(btnParamVideo);
         add(tbBackground);
-        add(btnDebug);
+        add(createJLabel("", ""));
 
         // row 9
         add(btnOptions);

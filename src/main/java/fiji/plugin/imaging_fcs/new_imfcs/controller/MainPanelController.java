@@ -742,11 +742,6 @@ public final class MainPanelController {
         return null;
     }
 
-    public ActionListener btnDebugPressed() {
-        // TODO: FIXME
-        return null;
-    }
-
     /**
      * Creates an ActionListener that handles the event when the ROI button is pressed.
      * It checks if an image is loaded and if an ROI is selected. If a CCF distance is set, it creates
