@@ -233,6 +233,13 @@ public final class ExcelReader {
         }
     }
 
+    /**
+     * Opens a file chooser to select an Excel file and returns a Workbook instance.
+     *
+     * @param openPath the initial directory path for the file chooser
+     * @return a Workbook if a file is selected and successfully loaded, or null if the selection is canceled
+     * @throws RuntimeException if an error occurs while reading the file
+     */
     public static Workbook selectExcelFileToLoad(String openPath) {
         JFileChooser fileChooser = new JFileChooser(openPath);
         fileChooser.setDialogTitle("Open Excel File");
