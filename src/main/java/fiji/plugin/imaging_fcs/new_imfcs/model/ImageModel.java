@@ -19,11 +19,13 @@ import java.util.function.Consumer;
  */
 public final class ImageModel {
     private static final double ZOOM_FACTOR = 250;
+    private final Runnable resetCallback;
     private ImagePlus image;
     private ImagePlus backgroundImage;
     private String directory, imagePath, fileName;
     private double[][] backgroundMean, backgroundVariance, backgroundCovariance;
-
+    private int width = -1;
+    private int height = -1;
     private int background = 0;
     private int background2 = 0;
     private int minBackgroundValue = 0;
@@ -31,9 +33,11 @@ public final class ImageModel {
     /**
      * Constructs an ImageModel instance with no image loaded.
      */
-    public ImageModel() {
+    public ImageModel(Runnable resetCallback) {
         this.image = null;
         this.backgroundImage = null;
+
+        this.resetCallback = resetCallback;
     }
 
     /**
@@ -105,6 +109,8 @@ public final class ImageModel {
             backgroundImage = null;
         }
 
+        width = Integer.parseInt(data.get("Image width").toString());
+        height = Integer.parseInt(data.get("Image height").toString());
         setBackground(data.get("Background").toString());
         setBackground2(data.get("Background 2").toString());
     }
@@ -208,6 +214,8 @@ public final class ImageModel {
         }
 
         this.image = image;
+        this.width = image.getWidth();
+        this.height = image.getHeight();
 
         if (simulationName == null) {
             retrieveImagePath();
@@ -222,13 +230,17 @@ public final class ImageModel {
      * Unloads the current image from the model.
      */
     public void unloadImage() {
+        if (image == null) {
+            return;
+        }
+
         if (image.getOverlay() != null) {
             image.deleteRoi();
             image.getOverlay().clear();
             image.setOverlay(null);
         }
 
-        if (image != null) {
+        if (isImageLoaded()) {
             ImageCanvas canvas = image.getCanvas();
             removeListeners(canvas.getMouseListeners(), canvas::removeMouseListener);
             removeListeners(canvas.getKeyListeners(), canvas::removeKeyListener);
@@ -394,15 +406,15 @@ public final class ImageModel {
     }
 
     public int getHeight() {
-        return image.getHeight();
+        return height;
     }
 
     public int getWidth() {
-        return image.getWidth();
+        return width;
     }
 
     public Dimension getDimension() {
-        return new Dimension(image.getWidth(), image.getHeight());
+        return new Dimension(width, height);
     }
 
     public int getStackSize() {
@@ -450,7 +462,9 @@ public final class ImageModel {
     }
 
     public void setBackground(String background) {
-        this.background = Integer.parseInt(background);
+        int tmp = Integer.parseInt(background);
+        resetCallback.run();
+        this.background = tmp;
     }
 
     public int getBackground2() {
@@ -458,7 +472,9 @@ public final class ImageModel {
     }
 
     public void setBackground2(String background2) {
-        this.background2 = Integer.parseInt(background2);
+        int tmp = Integer.parseInt(background2);
+        resetCallback.run();
+        this.background2 = tmp;
     }
 
     public String getDirectory() {

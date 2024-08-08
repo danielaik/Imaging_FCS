@@ -87,6 +87,15 @@ public final class ImageController {
     }
 
     /**
+     * Retrieves the dimension of the currently loaded image from the model.
+     *
+     * @return The Dimension object representing the dimension of the currently loaded image.
+     */
+    public Dimension getImageDimension() {
+        return imageModel.getDimension();
+    }
+
+    /**
      * Retrieves the directory of the currently loaded image.
      *
      * @return The directory path as a String.
@@ -144,9 +153,17 @@ public final class ImageController {
 
         imageModel.loadImage(image, simulationName);
 
+        initializeAndDisplayImage();
+    }
+
+    /**
+     * Initializes the image view, sets up the display, and attaches event listeners.
+     */
+    public void initializeAndDisplayImage() {
         imageView = new ImageView();
         imageView.showImage(imageModel);
 
+        ImagePlus image = imageModel.getImage();
         image.getCanvas().addMouseListener(imageMouseClicked());
         image.getCanvas().addKeyListener(imageKeyPressed());
 
@@ -219,7 +236,7 @@ public final class ImageController {
      *
      * @param pixelModels A list of PixelModels to plot.
      */
-    private void plotMultiplePixelsModels(List<PixelModel> pixelModels) {
+    public void plotMultiplePixelsModels(List<PixelModel> pixelModels) {
         Plots.plotCorrelationFunction(pixelModels, correlator.getLagTimes(), null, settings.getBinning(),
                 settings.getCCF(), fitController.getFitStart(), fitController.getFitEnd());
         if (settings.isMSD()) {
@@ -300,10 +317,14 @@ public final class ImageController {
             Plots.plotStandardDeviation(pixelModel.getStandardDeviationAcf(), correlator.getLagTimes(), p);
         }
 
-        if (options.isPlotIntensityCurves()) {
+        if (options.isPlotIntensityCurves() && isImageLoaded()) {
+            Point p2 = cursorPositions[1];
+            bleachCorrectionModel.calcIntensityTrace(imageModel.getImage(), p.x, p.y, p2.x, p2.y,
+                    settings.getFirstFrame(), settings.getLastFrame());
             Plots.plotIntensityTrace(bleachCorrectionModel.getIntensityTrace1(),
                     bleachCorrectionModel.getIntensityTrace2(), bleachCorrectionModel.getIntensityTime(),
                     cursorPositions);
+
         }
 
         if (options.isPlotBlockingCurve()) {
@@ -331,13 +352,13 @@ public final class ImageController {
      *
      * @param cursorPositions An array of Points representing the cursor positions.
      */
-    private void plotFittedParams(Point[] cursorPositions) {
+    public void plotFittedParams(Point[] cursorPositions) {
         Point p = cursorPositions[0];
         PixelModel pixelModel = correlator.getPixelModel(p.x, p.y);
 
         if (pixelModel.isFitted()) {
             Point minimumPosition = settings.getMinCursorPosition();
-            Point maximumPosition = settings.getMaxCursorPosition(imageModel.getImage());
+            Point maximumPosition = settings.getMaxCursorPosition(imageModel.getDimension());
 
             ImagePlus imgParams =
                     Plots.plotParameterMaps(pixelModel, p, minimumPosition, maximumPosition, settings.getPixelBinning(),
@@ -347,6 +368,30 @@ public final class ImageController {
                 Plots.plotParamHistogramWindow(imgParams);
             }
         }
+    }
+
+    /**
+     * Plots all the pixel models that have valid ACF (Autocorrelation Function) data.
+     * This method iterates through all the pixel models, identifies those with non-null ACF data,
+     * computes the intensity trace for each valid pixel model, and plots the fitted parameters.
+     * Finally, it plots multiple pixel models together (ACF and MSD).
+     */
+    public void plotAll() {
+        List<PixelModel> pixelModelList = new ArrayList<>();
+        PixelModel[][] pixelModels = correlator.getPixelModels();
+
+        for (int x = 0; x < pixelModels.length; x++) {
+            for (int y = 0; y < pixelModels[0].length; y++) {
+                PixelModel currentPixelModel = pixelModels[x][y];
+                if (currentPixelModel != null && currentPixelModel.getAcf() != null) {
+                    // compute the intensity trace for every points
+                    pixelModelList.add(currentPixelModel);
+                    plotFittedParams(new Point[]{new Point(x, y)});
+                }
+            }
+        }
+
+        plotMultiplePixelsModels(pixelModelList);
     }
 
     /**
@@ -481,7 +526,7 @@ public final class ImageController {
 
                         List<PixelModel> pixelModels =
                                 SelectedPixel.getPixelModelsInRoi(roi, pixelBinning, minimumPosition,
-                                        correlator.getPixelsModel());
+                                        correlator.getPixelModels());
 
                         plotMultiplePixelsModels(pixelModels);
                     }
