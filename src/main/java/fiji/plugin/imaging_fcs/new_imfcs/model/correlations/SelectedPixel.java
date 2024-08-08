@@ -125,7 +125,7 @@ public class SelectedPixel {
      */
     private boolean isPixelWithinImage(int x, int y) {
         Point minCursorPosition = settings.getMinCursorPosition();
-        Point maxCursorPosition = settings.getMaxCursorPosition(imageModel.getImage());
+        Point maxCursorPosition = settings.getMaxCursorPosition(imageModel.getDimension());
 
         return x >= minCursorPosition.x && x <= maxCursorPosition.x && y >= minCursorPosition.y &&
                 y <= maxCursorPosition.y;

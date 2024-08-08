@@ -2,7 +2,6 @@ package fiji.plugin.imaging_fcs.new_imfcs.model;
 
 import fiji.plugin.imaging_fcs.new_imfcs.constants.Constants;
 import fiji.plugin.imaging_fcs.new_imfcs.controller.InvalidUserInputException;
-import ij.ImagePlus;
 
 import java.awt.*;
 import java.util.LinkedHashMap;
@@ -158,7 +157,7 @@ public final class ExpSettingsModel {
         setEmLambda2(data.get("Lambda 2").toString());
         setFrameTime(data.get("Frame time").toString());
 
-        setOverlap((boolean) data.get("Overlap"));
+        setOverlap(Boolean.parseBoolean(data.get("Overlap").toString()));
 
         // Update the settings accordingly.
         updateSettings();
@@ -209,16 +208,18 @@ public final class ExpSettingsModel {
     }
 
     /**
-     * Determines the number of pixels that can be correlated, depending on whether overlap is allowed
+     * Determines the useful area of the image that can be used for correlation, depending on whether overlap is
+     * allowed.
+     * This method calculates the dimensions of the area based on the binning factors and the overlap setting.
      *
-     * @param img the img to get the shape from
-     * @return the dimension of the useful area
+     * @param dimension the dimension of the image (width and height)
+     * @return the dimension of the useful area as a Dimension object
      */
-    public Dimension getUsefulArea(ImagePlus img) {
+    public Dimension getUsefulArea(Dimension dimension) {
         if (overlap) {
-            return new Dimension(img.getWidth() - binning.x, img.getHeight() - binning.y);
+            return new Dimension(dimension.width - binning.x, dimension.height - binning.y);
         } else {
-            return new Dimension((img.getWidth() / binning.x) - 1, (img.getHeight() / binning.y) - 1);
+            return new Dimension((dimension.width / binning.x) - 1, (dimension.height / binning.y) - 1);
         }
     }
 
@@ -270,17 +271,20 @@ public final class ExpSettingsModel {
     }
 
     /**
-     * Calculates the maximum cursor position in the image.
+     * Calculates the maximum cursor position in the image based on the given dimensions and pixel binning factors.
+     * The method considers the useful area of the image and applies the pixel binning to determine the maximum
+     * cursor positions along both the x and y axes.
      *
-     * @return the calculated maximum cursor position
+     * @param dimension the dimension of the image (width and height)
+     * @return the calculated maximum cursor position as a Point object
      */
-    public Point getMaxCursorPosition(ImagePlus img) {
-        Dimension usefulArea = getUsefulArea(img);
+    public Point getMaxCursorPosition(Dimension dimension) {
+        Dimension usefulArea = getUsefulArea(dimension);
         Point pixelBinning = getPixelBinning();
 
         return new Point(
-                calculateMaxCursorPosition(usefulArea.width, CCF.width, img.getWidth(), pixelBinning.x, binning.x),
-                calculateMaxCursorPosition(usefulArea.height, CCF.height, img.getHeight(), pixelBinning.y, binning.y));
+                calculateMaxCursorPosition(usefulArea.width, CCF.width, dimension.width, pixelBinning.x, binning.x),
+                calculateMaxCursorPosition(usefulArea.height, CCF.height, dimension.height, pixelBinning.y, binning.y));
     }
 
     /**

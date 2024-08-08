@@ -37,7 +37,7 @@ public final class DeltaCCF {
         Direction direction = Direction.fromName(directionName);
 
         // Calculate the useful area and pixel binning based on the settings
-        Dimension usefulArea = settings.getUsefulArea(img);
+        Dimension usefulArea = settings.getUsefulArea(new Dimension(img.getWidth(), img.getHeight()));
         Point pixelBinning = settings.getPixelBinning();
 
         // Define the lengths of the X and Y dimensions
