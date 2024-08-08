@@ -187,7 +187,7 @@ public final class MainPanelView extends BaseView {
                 "Writes a configuration file int user.home that will be read at next " + "ImFCS start",
                 new Font(Constants.PANEL_FONT, Font.BOLD, 11), controller.btnWriteConfigPressed());
         btnDCR = createJButton("LiveReadout", "", new Font(Constants.PANEL_FONT, Font.BOLD, 10),
-                controller.btnDCRPressed());
+                controller.btnDirectCameraReadoutPressed());
         btnParamVideo =
                 createJButton("PVideo", "Creates videos of parameter maps", null, controller.btnParamVideoPressed());
         btnDebug = createJButton("", "", null, controller.btnDebugPressed());
