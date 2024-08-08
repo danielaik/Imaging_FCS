@@ -4,6 +4,7 @@ import fiji.plugin.imaging_fcs.new_imfcs.constants.Constants;
 import fiji.plugin.imaging_fcs.new_imfcs.model.*;
 import fiji.plugin.imaging_fcs.new_imfcs.model.correlations.*;
 import fiji.plugin.imaging_fcs.new_imfcs.model.fit.BleachCorrectionModel;
+import fiji.plugin.imaging_fcs.new_imfcs.utils.CheckOS;
 import fiji.plugin.imaging_fcs.new_imfcs.utils.ExcelExporter;
 import fiji.plugin.imaging_fcs.new_imfcs.utils.ExcelReader;
 import fiji.plugin.imaging_fcs.new_imfcs.utils.Pair;
@@ -718,9 +719,22 @@ public final class MainPanelController {
         };
     }
 
-    public ActionListener btnDCRPressed() {
-        // TODO: FIXME
-        return null;
+    /**
+     * Creates an ActionListener for the button to perform direct camera readout.
+     * This method returns an ActionListener that, when triggered, checks the operating system.
+     * If the OS is Windows, it proceeds with the camera readout operation (to be implemented).
+     * If the OS is not Windows, it shows a message indicating that direct capture is only supported on Windows.
+     *
+     * @return an ActionListener that performs OS-specific camera readout operations
+     */
+    public ActionListener btnDirectCameraReadoutPressed() {
+        return (ActionEvent ev) -> {
+            if (CheckOS.getCurrentOS() == CheckOS.OperatingSystem.WINDOWS) {
+                // TODO: call the Camera READOUT
+            } else {
+                IJ.showMessage("Direct capture is only supported on Windows.");
+            }
+        };
     }
 
     public ActionListener btnParamVideoPressed() {
