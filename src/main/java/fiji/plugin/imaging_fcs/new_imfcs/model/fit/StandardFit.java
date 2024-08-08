@@ -140,7 +140,6 @@ public class StandardFit extends BaseFit {
             chi2 += Math.pow(residuals[i], 2) / ((model.getFitEnd() - model.getFitStart()) - numFreeParameters - 1);
         }
         pixelModel.setChi2(chi2);
-        pixelModel.setFitted(true);
 
         pixelModel.setFittedAcf(fitAcf);
         pixelModel.setResiduals(residuals);
@@ -167,8 +166,8 @@ public class StandardFit extends BaseFit {
          * residuals, and sigma values.
          *
          * @param covariance the covariance matrix of the fitting parameters
-         * @param residuals the residuals of the fitting process
-         * @param sigma the sigma values of the fitting parameters
+         * @param residuals  the residuals of the fitting process
+         * @param sigma      the sigma values of the fitting parameters
          */
         public FitOutput(double[][] covariance, double[] residuals, double[] sigma) {
             this.covariance = covariance;

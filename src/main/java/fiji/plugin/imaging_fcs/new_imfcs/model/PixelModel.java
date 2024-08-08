@@ -213,6 +213,7 @@ public class PixelModel {
     }
 
     public void setFittedAcf(double[] fittedAcf) {
+        this.fitted = true;
         this.fittedAcf = fittedAcf;
     }
 
