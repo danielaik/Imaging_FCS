@@ -61,6 +61,7 @@ public final class MainPanelController {
     private final BackgroundSubtractionController backgroundSubtractionController;
     private final NBController nbController;
     private final FitController fitController;
+    private final DiffusionLawController diffusionLawController;
     private final Correlator correlator;
 
     /**
@@ -90,6 +91,8 @@ public final class MainPanelController {
 
         FitModel fitModel = new FitModel(settings);
         this.fitController = new FitController(fitModel);
+
+        this.diffusionLawController = new DiffusionLawController();
 
         ImageModel imageModel = new ImageModel(this::askResetResults);
         this.backgroundSubtractionController = new BackgroundSubtractionController(imageModel, this::askResetResults);
@@ -560,9 +563,23 @@ public final class MainPanelController {
         return null;
     }
 
-    public ItemListener tbDLPressed() {
-        // TODO: FIXME
-        return null;
+    /**
+     * Creates an {@link ItemListener} for the "Diffusion Law" toggle button.
+     * If an image stack is loaded, it toggles the visibility of the diffusion law view.
+     * If no image is loaded and the button is selected, it shows a warning and deselects the button.
+     *
+     * @return An {@link ItemListener} that manages the diffusion law view visibility and warns if no image is loaded.
+     */
+    public ItemListener tbDiffusionLawPressed() {
+        return (ItemEvent ev) -> {
+            if (imageController.isImageLoaded()) {
+                diffusionLawController.setVisible(ev.getStateChange() == ItemEvent.SELECTED);
+            } else if (ev.getStateChange() == ItemEvent.SELECTED) {
+                // Don't show the message if the button is unselected.
+                IJ.showMessage("No image stack loaded.");
+                ((JToggleButton) ev.getSource()).setSelected(false);
+            }
+        };
     }
 
     /**

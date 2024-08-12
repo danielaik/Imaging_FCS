@@ -232,7 +232,8 @@ public final class MainPanelView extends BaseView {
         tbBleachCorStride = createJToggleButton("Bleach Cor",
                 "Set number of intensity points to be averaged before bleach " + "correction is performed.", null,
                 controller.tbBleachCorStridePressed());
-        tbDL = createJToggleButton("Diff. Law", "Calculates the Diffusion Law.", null, controller.tbDLPressed());
+        tbDL = createJToggleButton("Diff. Law", "Calculates the Diffusion Law.", null,
+                controller.tbDiffusionLawPressed());
         tbFit = createJToggleButton("Fit Off", "Switches Fit on/off; opens/closes Fit panel.", null,
                 controller.tbFitPressed());
         tbSim = createJToggleButton("Sim Off", "Opens/closes Simulation panel.", null, controller.tbSimPressed());
