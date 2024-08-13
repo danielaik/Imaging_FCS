@@ -92,8 +92,6 @@ public final class MainPanelController {
         FitModel fitModel = new FitModel(settings);
         this.fitController = new FitController(fitModel);
 
-        this.diffusionLawController = new DiffusionLawController();
-
         ImageModel imageModel = new ImageModel(this::askResetResults);
         this.backgroundSubtractionController = new BackgroundSubtractionController(imageModel, this::askResetResults);
         this.bleachCorrectionModel = new BleachCorrectionModel(settings, imageModel);
@@ -104,6 +102,8 @@ public final class MainPanelController {
         this.simulationController = new SimulationController(imageController, settings);
 
         this.nbController = new NBController(imageModel, settings, optionsModel, bleachCorrectionModel);
+
+        this.diffusionLawController = new DiffusionLawController(settings, correlator);
 
         if (workbook == null) {
             // load previously saved configuration
@@ -421,9 +421,24 @@ public final class MainPanelController {
         };
     }
 
+    /**
+     * Returns an {@link ActionListener} that brings all key application windows to the front.
+     *
+     * @return an {@link ActionListener} to bring all windows to the front.
+     */
     public ActionListener btnBringToFrontPressed() {
-        // TODO: FIXME
-        return null;
+        return (ActionEvent ev) -> {
+            bleachCorrectionView.toFront();
+            simulationController.toFront();
+            nbController.toFront();
+            backgroundSubtractionController.toFront();
+            imageController.toFront();
+
+            Plots.toFront();
+
+            expSettingsView.toFront();
+            view.toFront();
+        };
     }
 
     /**

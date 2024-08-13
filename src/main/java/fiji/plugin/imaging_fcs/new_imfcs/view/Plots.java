@@ -13,10 +13,8 @@ import ij.process.ImageStatistics;
 
 import java.awt.*;
 import java.awt.event.*;
-import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.IntStream;
 
 /**
@@ -146,8 +144,8 @@ public class Plots {
      * @param dimension The dimensions of the histogram window.
      * @return The HistogramWindow object representing the histogram window.
      */
-    private static HistogramWindow plotHistogramWindow(ImagePlus img, HistogramWindow window, String title,
-                                                       int numBins, Point position, Dimension dimension) {
+    private static HistogramWindow plotHistogramWindow(ImagePlus img, HistogramWindow window, String title, int numBins,
+                                                       Point position, Dimension dimension) {
         ImageStatistics statistics = img.getStatistics();
 
         if (window == null || window.isClosed()) {
@@ -708,6 +706,38 @@ public class Plots {
     }
 
     /**
+     * Retrieves all relevant {@link ImageWindow} instances managed by the application.
+     * <p>
+     * This method dynamically collects various types of plot and analysis windows
+     * into a list, and includes additional windows if available. The list is then
+     * converted to an array and returned for further processing.
+     * </p>
+     *
+     * @return an array of {@link ImageWindow} instances.
+     */
+    private static ImageWindow[] getImageWindows() {
+        // Use an ArrayList to dynamically manage the ImageWindow elements
+        List<ImageWindow> windowsList = new ArrayList<>();
+
+        windowsList.add(blockingCurveWindow);
+        windowsList.add(acfWindow);
+        windowsList.add(standardDeviationWindow);
+        windowsList.add(intensityTraceWindow);
+        windowsList.add(msdWindow);
+        windowsList.add(residualsWindow);
+        windowsList.add(scatterWindow);
+        windowsList.add(imgCovarianceWindow);
+        windowsList.add(paramHistogramWindow);
+
+        if (imgParam != null) {
+            windowsList.add(imgParam.getWindow());
+        }
+
+        // Convert the list to an array and return
+        return windowsList.toArray(new ImageWindow[0]);
+    }
+
+    /**
      * Closes the specified {@link ImageWindow} if it is not already closed.
      * <p>
      * This utility method checks if the provided window is non-null and open,
@@ -727,31 +757,28 @@ public class Plots {
     /**
      * Closes all open windows managed by the application.
      * <p>
-     * This method iterates through a list of {@link ImageWindow} instances,
-     * which include different types of plot windows and other relevant windows
-     * used in the application, such as covariance and histogram windows.
-     * Each window is checked and closed if it is not already closed, ensuring
-     * that all resources are properly released and the application's GUI state
-     * remains consistent.
+     * Iterates through a list of {@link ImageWindow} instances,
+     * and closes each one if it is open, ensuring proper resource management.
      * </p>
      */
     public static void closePlots() {
-        for (ImageWindow window : new ImageWindow[]{
-                blockingCurveWindow,
-                acfWindow,
-                standardDeviationWindow,
-                intensityTraceWindow,
-                msdWindow,
-                residualsWindow,
-                scatterWindow,
-                imgCovarianceWindow,
-                paramHistogramWindow,
-                }) {
+        for (ImageWindow window : getImageWindows()) {
             closeWindow(window);
         }
+    }
 
-        if (imgParam != null) {
-            closeWindow(imgParam.getWindow());
+    /**
+     * Brings all managed {@link ImageWindow} instances to the front.
+     * <p>
+     * Iterates through all open windows and brings each one to the front
+     * if it is not null, ensuring they are visible to the user.
+     * </p>
+     */
+    public static void toFront() {
+        for (ImageWindow window : getImageWindows()) {
+            if (window != null) {
+                window.toFront();
+            }
         }
     }
 }

@@ -107,4 +107,11 @@ public final class NBController {
     public void dispose() {
         this.view.dispose();
     }
+
+    /**
+     * Bring the view to front
+     */
+    public void toFront() {
+        this.view.toFront();
+    }
 }

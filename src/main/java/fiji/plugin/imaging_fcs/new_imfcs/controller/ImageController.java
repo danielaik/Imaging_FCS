@@ -182,6 +182,15 @@ public final class ImageController {
     }
 
     /**
+     * Bring the loaded image to front
+     */
+    public void toFront() {
+        if (isImageLoaded()) {
+            imageModel.getWindow().toFront();
+        }
+    }
+
+    /**
      * Performs the correlation and fitting for a pixel at the given coordinates.
      *
      * @param x                      The x-coordinate of the pixel.
