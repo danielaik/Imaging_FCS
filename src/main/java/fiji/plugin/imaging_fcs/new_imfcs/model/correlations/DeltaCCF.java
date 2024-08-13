@@ -55,10 +55,12 @@ public final class DeltaCCF {
             final PixelModel pixelModel1 = new PixelModel();
             final PixelModel pixelModel2 = new PixelModel();
 
-            for (int y = startY; y < endY; y++) {
-                int x1 = x * pixelBinning.x;
-                int x2 = (x + direction.dx) * pixelBinning.x;
+            int x1 = x * pixelBinning.x;
+            int x2 = (x + direction.dx) * pixelBinning.x;
 
+            double[] currentDCCF = dccf[x];
+
+            for (int y = startY; y < endY; y++) {
                 int y1 = y * pixelBinning.y;
                 int y2 = (y + direction.dy) * pixelBinning.y;
 
@@ -70,7 +72,7 @@ public final class DeltaCCF {
                 double[] acf1 = pixelModel1.getAcf();
                 double[] acf2 = pixelModel2.getAcf();
                 for (int i = 1; i < acf1.length; i++) {
-                    dccf[x][y - startY] += acf1[i] - acf2[i];
+                    currentDCCF[y - startY] += acf1[i] - acf2[i];
                 }
             }
 
