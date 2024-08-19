@@ -4,18 +4,12 @@ import fiji.plugin.imaging_fcs.new_imfcs.constants.Constants;
 import fiji.plugin.imaging_fcs.new_imfcs.model.*;
 import fiji.plugin.imaging_fcs.new_imfcs.model.correlations.*;
 import fiji.plugin.imaging_fcs.new_imfcs.model.fit.BleachCorrectionModel;
-import fiji.plugin.imaging_fcs.new_imfcs.utils.CheckOS;
-import fiji.plugin.imaging_fcs.new_imfcs.utils.ExcelExporter;
-import fiji.plugin.imaging_fcs.new_imfcs.utils.ExcelReader;
-import fiji.plugin.imaging_fcs.new_imfcs.utils.Pair;
+import fiji.plugin.imaging_fcs.new_imfcs.utils.*;
 import fiji.plugin.imaging_fcs.new_imfcs.view.BleachCorrectionView;
 import fiji.plugin.imaging_fcs.new_imfcs.view.ExpSettingsView;
 import fiji.plugin.imaging_fcs.new_imfcs.view.MainPanelView;
 import fiji.plugin.imaging_fcs.new_imfcs.view.Plots;
-import fiji.plugin.imaging_fcs.new_imfcs.view.dialogs.FilterLimitsSelectionView;
-import fiji.plugin.imaging_fcs.new_imfcs.view.dialogs.MSDView;
-import fiji.plugin.imaging_fcs.new_imfcs.view.dialogs.PolynomialOrderSelectionView;
-import fiji.plugin.imaging_fcs.new_imfcs.view.dialogs.SlidingWindowSelectionView;
+import fiji.plugin.imaging_fcs.new_imfcs.view.dialogs.*;
 import ij.IJ;
 import ij.ImagePlus;
 import ij.WindowManager;
@@ -29,10 +23,7 @@ import org.yaml.snakeyaml.Yaml;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.FileWriter;
-import java.io.IOException;
+import java.io.*;
 import java.nio.file.FileSystems;
 import java.util.Collections;
 import java.util.HashMap;
@@ -1008,15 +999,8 @@ public final class MainPanelController {
     private void updateStrideParamFields() {
         Runnable doUpdateStrideParam = () -> {
             int numberOfFrames = settings.getLastFrame() - settings.getFirstFrame() + 1;
-
-            // Use variable points for the intensity, except when less than 1000 frames are present.
-            int numPointsIntensityTrace = numberOfFrames;
-            if (numberOfFrames >= 1000) {
-                numPointsIntensityTrace = numberOfFrames / bleachCorrectionModel.getAverageStride();
-            }
-
-            bleachCorrectionView.setTextNumPointsIntensityTrace(String.valueOf(numPointsIntensityTrace));
-            bleachCorrectionModel.setNumPointsIntensityTrace(numPointsIntensityTrace);
+            bleachCorrectionModel.computeNumPointsIntensityTrace(numberOfFrames);
+            bleachCorrectionView.updateNumPointsIntensityTrace();
         };
 
         SwingUtilities.invokeLater(doUpdateStrideParam);

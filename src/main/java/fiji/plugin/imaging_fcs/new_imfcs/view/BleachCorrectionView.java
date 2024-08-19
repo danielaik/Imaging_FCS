@@ -8,6 +8,7 @@ import javax.swing.*;
 import java.awt.*;
 
 import static fiji.plugin.imaging_fcs.new_imfcs.view.TextFieldFactory.createTextField;
+import static fiji.plugin.imaging_fcs.new_imfcs.view.TextFieldFactory.setText;
 import static fiji.plugin.imaging_fcs.new_imfcs.view.UIUtils.createJLabel;
 
 /**
@@ -63,8 +64,8 @@ public class BleachCorrectionView extends BaseView {
      */
     @Override
     protected void initializeTextFields() {
-        tfIntAveStride = createTextField(model.getAverageStride(), "",
-                controller.updateStrideParam(model::setAverageStride));
+        tfIntAveStride =
+                createTextField(model.getAverageStride(), "", controller.updateStrideParam(model::setAverageStride));
         tfNumPointsIntensityTrace = createTextField(model.getNumPointsIntensityTrace(), "");
         tfNumPointsIntensityTrace.setEditable(false);
     }
@@ -86,11 +87,9 @@ public class BleachCorrectionView extends BaseView {
     }
 
     /**
-     * Sets the text in the number of points intensity trace text field.
-     *
-     * @param text the new text to display in the number of points field
+     * Sets the text in the number of points intensity trace text field based on the current model value
      */
-    public void setTextNumPointsIntensityTrace(String text) {
-        tfNumPointsIntensityTrace.setText(text);
+    public void updateNumPointsIntensityTrace() {
+        setText(tfNumPointsIntensityTrace, model.getNumPointsIntensityTrace());
     }
 }

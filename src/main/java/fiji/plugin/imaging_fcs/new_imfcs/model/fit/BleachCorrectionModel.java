@@ -137,9 +137,8 @@ public class BleachCorrectionModel {
      * @param y             The y-coordinate of the top left corner of the binning area.
      */
     private void fillIntensityData(ImagePlus img, int mode, double[] intensityData, int x, int y, int initialFrame) {
-        int background = (mode == 2 &&
-                Constants.DC_FCCS_2D.equals(settings.getFitModel())) ? imageModel.getBackground2() :
-                imageModel.getBackground();
+        int background = (mode == 2 && Constants.DC_FCCS_2D.equals(
+                settings.getFitModel())) ? imageModel.getBackground2() : imageModel.getBackground();
 
         for (int i = 0; i < intensityData.length; i++) {
             final ImageProcessor ip = img.getStack().getProcessor(initialFrame + i);
@@ -325,6 +324,23 @@ public class BleachCorrectionModel {
      */
     private void applyCorrection(double[] intensityData, int index, double correctionFactor, double initialIntensity) {
         intensityData[index] = intensityData[index] / correctionFactor + initialIntensity * (1 - correctionFactor);
+    }
+
+    /**
+     * Computes the number of points to use in the intensity trace based on the total number of frames.
+     * If the number of frames is 1000 or more, the number of points is calculated by dividing
+     * the number of frames by the average stride. Otherwise, the number of points is set equal
+     * to the number of frames.
+     *
+     * @param numberOfFrames the total number of frames available for the intensity trace
+     */
+    public void computeNumPointsIntensityTrace(int numberOfFrames) {
+        // Use variable points for the intensity, except when less than 1000 frames are present.
+        if (numberOfFrames >= 1000) {
+            numPointsIntensityTrace = numberOfFrames / getAverageStride();
+        } else {
+            numPointsIntensityTrace = numberOfFrames;
+        }
     }
 
     public int getPolynomialOrder() {
