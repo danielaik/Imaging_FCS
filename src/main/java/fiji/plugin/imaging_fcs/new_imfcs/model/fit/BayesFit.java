@@ -156,7 +156,7 @@ public class BayesFit {
      */
     public double[] bayesFit(PixelModel pixelModel, double[] lagTimes, double[][] covarianceMatrix) {
         // One-component fit
-        FitModel currentFitModel = new FitModel(fitModel);
+        FitModel currentFitModel = new FitModel(settings, fitModel);
         setParameterField(currentFitModel.getD2(), 0.0, true);
         setParameterField(currentFitModel.getF2(), 0.0, true);
 

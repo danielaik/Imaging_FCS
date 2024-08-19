@@ -38,8 +38,8 @@ public class FitModel {
      *
      * @param other The FitModel instance to copy.
      */
-    public FitModel(FitModel other) {
-        this.settings = other.settings;
+    public FitModel(ExpSettingsModel settings, FitModel other) {
+        this.settings = settings;
 
         this.D = new Parameter(other.D);
         this.N = new Parameter(other.N);
