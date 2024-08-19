@@ -77,7 +77,7 @@ public class Range {
 
             @Override
             public boolean hasNext() {
-                return step > 0 ? current <= end : current >= end;
+                return step > 0 ? current < end : current > end;
             }
 
             @Override
