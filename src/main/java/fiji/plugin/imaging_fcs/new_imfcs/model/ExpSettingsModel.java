@@ -2,6 +2,7 @@ package fiji.plugin.imaging_fcs.new_imfcs.model;
 
 import fiji.plugin.imaging_fcs.new_imfcs.constants.Constants;
 import fiji.plugin.imaging_fcs.new_imfcs.controller.InvalidUserInputException;
+import fiji.plugin.imaging_fcs.new_imfcs.utils.Range;
 
 import java.awt.*;
 import java.util.LinkedHashMap;
@@ -88,6 +89,52 @@ public final class ExpSettingsModel {
         updateChannelNumber();
 
         this.resetCallback = resetCallback;
+    }
+
+    /**
+     * Copy constructor for ExpSettingsModel.
+     * Creates a new instance by copying the values from the provided instance.
+     * Do not copy the binning and the CCF to restart them
+     *
+     * @param other the ExpSettingsModel instance to copy from.
+     */
+    public ExpSettingsModel(ExpSettingsModel other) {
+        this.pixelSize = other.pixelSize;
+        this.magnification = other.magnification;
+        this.NA = other.NA;
+        this.sigma = other.sigma;
+        this.emLambda = other.emLambda;
+        this.sigma2 = other.sigma2;
+        this.emLambda2 = other.emLambda2;
+        this.sigmaZ = other.sigmaZ;
+        this.sigmaZ2 = other.sigmaZ2;
+        this.firstFrame = other.firstFrame;
+        this.lastFrame = other.lastFrame;
+        this.frameTime = other.frameTime;
+        this.correlatorP = other.correlatorP;
+        this.correlatorQ = other.correlatorQ;
+        this.fitModel = other.fitModel;
+        this.paraCor = other.paraCor;
+        this.dCCF = other.dCCF;
+        this.bleachCorrection = other.bleachCorrection;
+        this.filter = other.filter;
+        this.filterLowerLimit = other.filterLowerLimit;
+        this.filterUpperLimit = other.filterUpperLimit;
+        this.FCCSDisp = other.FCCSDisp;
+        this.overlap = other.overlap;
+        this.MSD3d = other.MSD3d;
+        this.MSD = other.MSD;
+        this.slidingWindowLength = other.slidingWindowLength;
+        this.channelNumber = other.channelNumber;
+        this.lagGroupNumber = other.lagGroupNumber;
+
+        // Reset callback should not be copied directly.
+        // It is assumed the new instance has a no-op reset callback, or you could pass it as a parameter.
+        this.resetCallback = () -> {};
+
+        // Update settings after copying to ensure consistency.
+        updateSettings();
+        updateChannelNumber();
     }
 
     /**
@@ -285,6 +332,21 @@ public final class ExpSettingsModel {
         return new Point(
                 calculateMaxCursorPosition(usefulArea.width, CCF.width, dimension.width, pixelBinning.x, binning.x),
                 calculateMaxCursorPosition(usefulArea.height, CCF.height, dimension.height, pixelBinning.y, binning.y));
+    }
+
+    public Range[] getAllArea(Dimension dimension) {
+        Point startLocation = getMinCursorPosition();
+        Point endLocation = getMaxCursorPosition(dimension);
+        Point pixelBinning = getPixelBinning();
+
+        int startX = startLocation.x * pixelBinning.x;
+        int width = (endLocation.x - startLocation.x + 1) * pixelBinning.x;
+        int startY = startLocation.y * pixelBinning.y;
+        int height = (endLocation.y - startLocation.y + 1) * pixelBinning.y;
+
+        return new Range[]{
+                new Range(startX, width, pixelBinning.x), new Range(startY, height, pixelBinning.y)
+        };
     }
 
     /**
@@ -488,6 +550,11 @@ public final class ExpSettingsModel {
 
         this.binning.x = binningX;
         this.binning.y = binningY;
+    }
+
+    public void setBinning(Point binning) {
+        this.binning.x = binning.x;
+        this.binning.y = binning.y;
     }
 
     public String getBinningString() {
