@@ -94,7 +94,7 @@ public final class MainPanelController {
 
         this.nbController = new NBController(imageModel, settings, optionsModel, bleachCorrectionModel);
 
-        this.diffusionLawController = new DiffusionLawController(settings, correlator);
+        this.diffusionLawController = new DiffusionLawController(settings, imageModel, fitModel);
 
         if (workbook == null) {
             // load previously saved configuration
@@ -824,16 +824,11 @@ public final class MainPanelController {
                 overlay.clear();
             }
 
-            Point startLocation = settings.getMinCursorPosition();
-            Point endLocation = settings.getMaxCursorPosition(imageController.getImageDimension());
-            Point pixelBinning = settings.getPixelBinning();
+            Range[] ranges = settings.getAllArea(imageController.getImageDimension());
+            Range xRange = ranges[0];
+            Range yRange = ranges[1];
 
-            int startX = startLocation.x * pixelBinning.x;
-            int width = (endLocation.x - startLocation.x + 1) * pixelBinning.x;
-            int startY = startLocation.y * pixelBinning.y;
-            int height = (endLocation.y - startLocation.y + 1) * pixelBinning.y;
-
-            Roi imgRoi = new Roi(startX, startY, width, height);
+            Roi imgRoi = new Roi(xRange.getStart(), yRange.getStart(), xRange.getEnd(), yRange.getEnd());
             imageController.getImage().setRoi(imgRoi);
 
             btnROIPressed().actionPerformed(ev);

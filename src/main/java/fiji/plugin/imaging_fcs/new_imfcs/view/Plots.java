@@ -56,11 +56,13 @@ public class Plots {
             new Point(ImageView.IMAGE_POSITION.x + 50, ImageView.IMAGE_POSITION.y + 50);
     private static final Dimension DCCF_HISTOGRAM_DIMENSION = new Dimension(350, 250);
     private static final Point DCCF_HISTOGRAM_POSITION = new Point(DCCF_POSITION.x + 280, DCCF_POSITION.y);
+    private static final Dimension DIFFUSION_LAW_DIMENSION = new Dimension(200, 200);
+    private static final Point DIFFUSION_LAW_POSITION = new Point(ACF_POSITION.x + 30, ACF_POSITION.y + 30);
     private static final Map<String, ImageWindow> dccfWindows = new HashMap<>();
     private static final Map<String, HistogramWindow> dccfHistogramWindows = new HashMap<>();
     public static ImagePlus imgParam;
     private static PlotWindow blockingCurveWindow, acfWindow, standardDeviationWindow, intensityTraceWindow, msdWindow,
-            residualsWindow, scatterWindow;
+            residualsWindow, scatterWindow, diffusionLawWindow;
     private static ImageWindow imgCovarianceWindow;
     private static HistogramWindow paramHistogramWindow;
 
@@ -706,6 +708,33 @@ public class Plots {
     }
 
     /**
+     * Plots the diffusion law using the provided data arrays and value limits.
+     * This method creates a plot to visualize the relationship between the effective area (Aeff)
+     * and the ratio of effective area to diffusion coefficient (Aeff/D). The plot is customized
+     * with specific dimensions, axis labels, and data point markers.
+     *
+     * @param diffusionLawArray a 2D array containing the diffusion law data:
+     *                          - diffusionLawArray[0]: The effective area (Aeff) values in um^2.
+     *                          - diffusionLawArray[1]: The Aeff/D values in seconds.
+     *                          - diffusionLawArray[2]: The standard deviations of the Aeff/D values.
+     * @param minValue          the minimum value of Aeff/D, used to set the lower limit of the plot's Y-axis.
+     * @param maxValue          the maximum value of Aeff/D, used to set the upper limit of the plot's Y-axis.
+     */
+    public static void plotDiffLaw(double[][] diffusionLawArray, double minValue, double maxValue) {
+        Plot plot = new Plot("Diffusion Law", "Aeff [um^2]", "Aeff/D [s]");
+        plot.setFrameSize(DIFFUSION_LAW_DIMENSION.width, DIFFUSION_LAW_DIMENSION.height);
+        plot.setLimits(0, diffusionLawArray[0][diffusionLawArray[0].length - 1] * 1.1, minValue * 0.9, maxValue * 0.9);
+        plot.setJustification(Plot.CENTER);
+        plot.setColor(Color.BLUE);
+        plot.addPoints(diffusionLawArray[0], diffusionLawArray[1], diffusionLawArray[2], Plot.CIRCLE);
+        plot.draw();
+
+        plot.setLimitsToFit(true);
+
+        diffusionLawWindow = plotWindow(plot, diffusionLawWindow, DIFFUSION_LAW_POSITION);
+    }
+
+    /**
      * Retrieves all relevant {@link ImageWindow} instances managed by the application.
      * <p>
      * This method dynamically collects various types of plot and analysis windows
@@ -728,6 +757,7 @@ public class Plots {
         windowsList.add(scatterWindow);
         windowsList.add(imgCovarianceWindow);
         windowsList.add(paramHistogramWindow);
+        windowsList.add(diffusionLawWindow);
 
         if (imgParam != null) {
             windowsList.add(imgParam.getWindow());
