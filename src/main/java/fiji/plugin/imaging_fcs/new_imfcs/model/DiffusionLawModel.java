@@ -23,9 +23,9 @@ public class DiffusionLawModel {
     private int binningEnd = 5;
     private int fitStart = 1;
     private int fitEnd = 5;
-    private double[] observationVolumes;
-    private double[] averageD;
-    private double[] varianceD;
+    private double[] effectiveArea;
+    private double[] time;
+    private double[] standardDeviation;
     private String mode = "All";
 
     /**
@@ -65,14 +65,16 @@ public class DiffusionLawModel {
      * @param settings   the experimental settings model used for fitting.
      * @param fitModel   the fitting model containing parameters for fitting the pixel data.
      * @param correlator the correlator used to compute correlation data for the pixel.
+     * @param averageD   Array for average diffusion coefficients.
+     * @param varianceD  Array for variances.
      * @param pixelModel the model representing the pixel's data and fit parameters.
      * @param x          the x-coordinate of the pixel to be fitted.
      * @param y          the y-coordinate of the pixel to be fitted.
      * @param index      the index corresponding to the current binning setting.
      * @return 1 if the pixel was successfully fitted, 0 otherwise.
      */
-    private int fitPixelAndAddD(ExpSettingsModel settings, FitModel fitModel, Correlator correlator,
-                                PixelModel pixelModel, int x, int y, int index) {
+    private int fitPixelAndAddD(ExpSettingsModel settings, FitModel fitModel, Correlator correlator, double[] averageD,
+                                double[] varianceD, PixelModel pixelModel, int x, int y, int index) {
         correlator.correlatePixelModel(pixelModel, imageModel.getImage(), x, y, x, y, settings.getFirstFrame(),
                 settings.getLastFrame());
         fitModel.standardFit(pixelModel, correlator.getLagTimes());
@@ -89,14 +91,12 @@ public class DiffusionLawModel {
     }
 
     /**
-     * Performs the fitting process across the specified binning range.
-     * Calculates the observation volumes, average diffusion coefficients, and their variances
-     * for each binning setting.
+     * Calculates the diffusion law by fitting across the specified binning range.
+     * Computes observation volumes, average diffusion coefficients, and their variances for each binning setting.
      *
-     * @return a pair containing a 2D array of diffusion law data and a pair of the minimum and maximum diffusion
-     * values.
+     * @return Pair containing the minimum and maximum diffusion values.
      */
-    public Pair<double[][], Pair<Double, Double>> fit() {
+    public Pair<Double, Double> calculateDiffusionLaw() {
         // create a new settings model to be able to update the binning size separately from the interface.
         ExpSettingsModel settings = new ExpSettingsModel(this.interfaceSettings);
 
@@ -107,9 +107,9 @@ public class DiffusionLawModel {
         Correlator correlator = initCorrelator(settings, fitModel, this.imageModel);
         PixelModel pixelModel = new PixelModel();
 
-        observationVolumes = new double[binningEnd - binningStart + 1];
-        averageD = new double[binningEnd - binningStart + 1];
-        varianceD = new double[binningEnd - binningStart + 1];
+        double[] observationVolumes = new double[binningEnd - binningStart + 1];
+        double[] averageD = new double[binningEnd - binningStart + 1];
+        double[] varianceD = new double[binningEnd - binningStart + 1];
 
         for (int currentBinning = binningStart; currentBinning <= binningEnd; currentBinning++) {
             settings.setBinning(new Point(currentBinning, currentBinning));
@@ -127,7 +127,8 @@ public class DiffusionLawModel {
 
             int numElements = xRange.stream()
                     .mapToInt(x -> yRange.stream()
-                            .mapToInt(y -> fitPixelAndAddD(settings, fitModel, correlator, pixelModel, x, y, index))
+                            .mapToInt(y -> fitPixelAndAddD(settings, fitModel, correlator, averageD, varianceD,
+                                    pixelModel, x, y, index))
                             .sum())
                     .sum();
 
@@ -138,37 +139,37 @@ public class DiffusionLawModel {
             varianceD[index] = varianceD[index] - Math.pow(averageD[index], 2);
         }
 
-        return getDiffusionLawArray(observationVolumes, averageD, varianceD);
+        return computeDiffusionLawParameters(observationVolumes, averageD, varianceD);
     }
 
     /**
-     * Constructs and returns the diffusion law array along with the minimum and maximum diffusion values.
+     * Computes diffusion law parameters.
      *
-     * @param observationVolumes the array of observation volumes for each binning setting.
-     * @param averageD           the array of average diffusion coefficients for each binning setting.
-     * @param varianceD          the array of diffusion coefficient variances for each binning setting.
-     * @return a pair containing a 2D array of diffusion law data and a pair of the minimum and maximum diffusion
-     * values.
+     * @param observationVolumes Array of observation volumes.
+     * @param averageD           Array of average diffusion coefficients.
+     * @param varianceD          Array of variances.
+     * @return Pair of minimum and maximum diffusion values.
      */
-    private Pair<double[][], Pair<Double, Double>> getDiffusionLawArray(double[] observationVolumes, double[] averageD,
-                                                                        double[] varianceD) {
-        double[][] diffusionLawArray = new double[3][observationVolumes.length];
+    private Pair<Double, Double> computeDiffusionLawParameters(double[] observationVolumes, double[] averageD,
+                                                               double[] varianceD) {
+        effectiveArea = observationVolumes;
+        time = new double[observationVolumes.length];
+        standardDeviation = new double[observationVolumes.length];
+
         double minValueDiffusionLaw = Double.MAX_VALUE;
         double maxValueDiffusionLaw = -Double.MAX_VALUE;
 
         for (int currentBinning = binningStart; currentBinning <= binningEnd; currentBinning++) {
             int index = currentBinning - binningStart;
-            diffusionLawArray[0][index] = observationVolumes[index];
-            diffusionLawArray[1][index] = observationVolumes[index] / averageD[index];
-            diffusionLawArray[2][index] =
+            time[index] = observationVolumes[index] / averageD[index];
+            standardDeviation[index] =
                     observationVolumes[index] / Math.pow(averageD[index], 2) * Math.sqrt(varianceD[index]);
 
             minValueDiffusionLaw = Math.min(minValueDiffusionLaw, averageD[index] - varianceD[index]);
             maxValueDiffusionLaw = Math.max(maxValueDiffusionLaw, averageD[index] + varianceD[index]);
         }
-        Pair<Double, Double> minMax = new Pair<>(minValueDiffusionLaw, maxValueDiffusionLaw);
 
-        return new Pair<>(diffusionLawArray, minMax);
+        return new Pair<>(minValueDiffusionLaw, maxValueDiffusionLaw);
     }
 
     /**
@@ -252,5 +253,17 @@ public class DiffusionLawModel {
 
     public String getMode() {
         return mode;
+    }
+
+    public double[] getEffectiveArea() {
+        return effectiveArea;
+    }
+
+    public double[] getTime() {
+        return time;
+    }
+
+    public double[] getStandardDeviation() {
+        return standardDeviation;
     }
 }

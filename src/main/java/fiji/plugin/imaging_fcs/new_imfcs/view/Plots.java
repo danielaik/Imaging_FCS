@@ -709,24 +709,22 @@ public class Plots {
 
     /**
      * Plots the diffusion law using the provided data arrays and value limits.
-     * This method creates a plot to visualize the relationship between the effective area (Aeff)
-     * and the ratio of effective area to diffusion coefficient (Aeff/D). The plot is customized
-     * with specific dimensions, axis labels, and data point markers.
+     * Visualizes the relationship between the effective area (Aeff) and the ratio Aeff/D with customized plot settings.
      *
-     * @param diffusionLawArray a 2D array containing the diffusion law data:
-     *                          - diffusionLawArray[0]: The effective area (Aeff) values in um^2.
-     *                          - diffusionLawArray[1]: The Aeff/D values in seconds.
-     *                          - diffusionLawArray[2]: The standard deviations of the Aeff/D values.
-     * @param minValue          the minimum value of Aeff/D, used to set the lower limit of the plot's Y-axis.
-     * @param maxValue          the maximum value of Aeff/D, used to set the upper limit of the plot's Y-axis.
+     * @param effectiveArea     Array of effective area (Aeff) values in um^2.
+     * @param time              Array of Aeff/D values in seconds.
+     * @param standardDeviation Array of standard deviations for Aeff/D values.
+     * @param minValue          Minimum value of Aeff/D for setting the Y-axis lower limit.
+     * @param maxValue          Maximum value of Aeff/D for setting the Y-axis upper limit.
      */
-    public static void plotDiffLaw(double[][] diffusionLawArray, double minValue, double maxValue) {
+    public static void plotDiffLaw(double[] effectiveArea, double[] time, double[] standardDeviation, double minValue,
+                                   double maxValue) {
         Plot plot = new Plot("Diffusion Law", "Aeff [um^2]", "Aeff/D [s]");
         plot.setFrameSize(DIFFUSION_LAW_DIMENSION.width, DIFFUSION_LAW_DIMENSION.height);
-        plot.setLimits(0, diffusionLawArray[0][diffusionLawArray[0].length - 1] * 1.1, minValue * 0.9, maxValue * 0.9);
+        plot.setLimits(0, effectiveArea[effectiveArea.length - 1] * 1.1, minValue * 0.9, maxValue * 0.9);
         plot.setJustification(Plot.CENTER);
         plot.setColor(Color.BLUE);
-        plot.addPoints(diffusionLawArray[0], diffusionLawArray[1], diffusionLawArray[2], Plot.CIRCLE);
+        plot.addPoints(effectiveArea, time, standardDeviation, Plot.CIRCLE);
         plot.draw();
 
         plot.setLimitsToFit(true);

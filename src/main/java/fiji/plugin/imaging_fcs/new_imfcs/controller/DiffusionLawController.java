@@ -67,9 +67,9 @@ public class DiffusionLawController {
      */
     public ActionListener btnCalculatePressed() {
         return (ActionEvent ev) -> {
-            Pair<double[][], Pair<Double, Double>> diffusionLawResult = model.fit();
-            Pair<Double, Double> minMax = diffusionLawResult.getRight();
-            Plots.plotDiffLaw(diffusionLawResult.getLeft(), minMax.getLeft(), minMax.getRight());
+            Pair<Double, Double> minMax = model.calculateDiffusionLaw();
+            Plots.plotDiffLaw(model.getEffectiveArea(), model.getTime(), model.getStandardDeviation(), minMax.getLeft(),
+                    minMax.getRight());
         };
     }
 
