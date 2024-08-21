@@ -6,7 +6,6 @@ import fiji.plugin.imaging_fcs.new_imfcs.model.DiffusionLawModel;
 
 import javax.swing.*;
 import java.awt.*;
-import java.awt.event.ItemListener;
 
 import static fiji.plugin.imaging_fcs.new_imfcs.controller.FieldListenerFactory.createFocusListener;
 import static fiji.plugin.imaging_fcs.new_imfcs.view.ButtonFactory.createJButton;
@@ -91,7 +90,7 @@ public class DiffusionLawView extends BaseView {
         btnDFCalculate = createJButton("Cal", "Calculate the diffusion law between the given 'Start-End' range.", null,
                 controller.btnCalculatePressed());
         btnDFFit = createJButton("Fit", "Fit the diffusion law between the given 'Start-End' range.", null,
-                (ItemListener) null);
+                controller.btnFitPressed());
         tbDLRoi = createJToggleButton(model.getMode(),
                 "Set whether Diffusion Law is to be calculated over the full image or " + "over smaller ROIs.", null,
                 controller.tbDLRoiPressed());

@@ -4,9 +4,9 @@ import fiji.plugin.imaging_fcs.new_imfcs.model.DiffusionLawModel;
 import fiji.plugin.imaging_fcs.new_imfcs.model.ExpSettingsModel;
 import fiji.plugin.imaging_fcs.new_imfcs.model.FitModel;
 import fiji.plugin.imaging_fcs.new_imfcs.model.ImageModel;
-import fiji.plugin.imaging_fcs.new_imfcs.utils.Pair;
 import fiji.plugin.imaging_fcs.new_imfcs.view.DiffusionLawView;
 import fiji.plugin.imaging_fcs.new_imfcs.view.Plots;
+import ij.IJ;
 
 import javax.swing.*;
 import java.awt.event.ActionEvent;
@@ -33,7 +33,7 @@ public class DiffusionLawController {
      * @param fitModel   the fitting model used to fit the correlation data.
      */
     public DiffusionLawController(ExpSettingsModel settings, ImageModel imageModel, FitModel fitModel) {
-        this.model = new DiffusionLawModel(settings, imageModel, fitModel);
+        this.model = new DiffusionLawModel(settings, imageModel, fitModel, this::askResetResults);
         this.view = new DiffusionLawView(this, model);
     }
 
@@ -59,18 +59,59 @@ public class DiffusionLawController {
     }
 
     /**
-     * Creates an {@link ActionListener} to handle the event when the "Calculate" button is pressed in the view.
-     * This listener triggers the fitting process, retrieves the diffusion law results from the model,
-     * and plots the results using the {@link Plots#plotDiffLaw(double[][], double, double)} method.
+     * Creates a listener for the "Calculate" button, triggering the diffusion law calculation and plotting the results.
      *
-     * @return An {@link ActionListener} that initiates the diffusion law fitting process and plots the results.
+     * @return Listener that initiates the calculation and updates the plot.
      */
     public ActionListener btnCalculatePressed() {
         return (ActionEvent ev) -> {
-            Pair<Double, Double> minMax = model.calculateDiffusionLaw();
-            Plots.plotDiffLaw(model.getEffectiveArea(), model.getTime(), model.getStandardDeviation(), minMax.getLeft(),
-                    minMax.getRight());
+            model.calculateDiffusionLaw();
+            Plots.plotDiffLaw(model.getEffectiveArea(), model.getTime(), model.getStandardDeviation(),
+                    model.getMinValueDiffusionLaw(), model.getMaxValueDiffusionLaw());
         };
+    }
+
+    /**
+     * Creates a listener for the "Fit" button, performing the fit and updating the plot.
+     *
+     * @return Listener that fits the data and updates the plot.
+     */
+    public ActionListener btnFitPressed() {
+        return (ActionEvent ev) -> {
+            if (!Plots.isPlotDiffLawOpen()) {
+                IJ.showMessage("No window open, please run the calculation before");
+            } else {
+                try {
+                    double[][] fitFunction = model.fit();
+                    Plots.plotDiffLaw(model.getEffectiveArea(), model.getTime(), model.getStandardDeviation(),
+                            model.getMinValueDiffusionLaw(), model.getMaxValueDiffusionLaw());
+                    Plots.plotFitDiffLaw(model.getIntercept(), model.getSlope(), fitFunction);
+                } catch (RuntimeException e) {
+                    IJ.showMessage(e.getMessage());
+                }
+            }
+        };
+    }
+
+    /**
+     * Prompts the user to confirm whether they want to reset the results due to a change in the binning range.
+     * If confirmed, the model's results are reset, and the diffusion law plot window is closed.
+     * If the user rejects the reset, an exception is thrown to cancel the operation.
+     */
+    private void askResetResults() {
+        if (Plots.isPlotDiffLawOpen()) {
+            int response = JOptionPane.showConfirmDialog(null,
+                    "The binning range has changed since your last calculations.\n" +
+                            "Continuing will result in deleting these results.", "Delete the Results and start new?",
+                    JOptionPane.YES_NO_OPTION);
+
+            if (response == JOptionPane.YES_OPTION) {
+                model.resetResults();
+                Plots.closeDiffLawWindow();
+            } else {
+                throw new RejectResetException();
+            }
+        }
     }
 
     /**

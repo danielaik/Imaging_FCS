@@ -4,14 +4,16 @@ import fiji.plugin.imaging_fcs.new_imfcs.constants.Constants;
 import fiji.plugin.imaging_fcs.new_imfcs.controller.InvalidUserInputException;
 import fiji.plugin.imaging_fcs.new_imfcs.model.correlations.Correlator;
 import fiji.plugin.imaging_fcs.new_imfcs.model.fit.BleachCorrectionModel;
+import fiji.plugin.imaging_fcs.new_imfcs.model.fit.LineFit;
 import fiji.plugin.imaging_fcs.new_imfcs.model.fit.parametric_univariate_functions.FCSFit;
-import fiji.plugin.imaging_fcs.new_imfcs.utils.Pair;
 import fiji.plugin.imaging_fcs.new_imfcs.utils.Range;
 
 import java.awt.*;
+import java.util.Arrays;
 
 /**
  * The {@code DiffusionLawModel} class represents the data model for diffusion law analysis.
+ * It handles data preparation, fitting, and calculation of diffusion law parameters.
  */
 public class DiffusionLawModel {
     private static final int MAX_POINTS = 30;
@@ -19,29 +21,36 @@ public class DiffusionLawModel {
     private final ExpSettingsModel interfaceSettings;
     private final FitModel interfaceFitModel;
     private final ImageModel imageModel;
+    private final Runnable resetCallback;
+    private String mode = "All";
     private int binningStart = 1;
     private int binningEnd = 5;
+    private int calculatedBinningStart = -1;
+    private int calculatedBinningEnd = -1;
     private int fitStart = 1;
     private int fitEnd = 5;
     private double[] effectiveArea;
     private double[] time;
     private double[] standardDeviation;
-    private String mode = "All";
+    private double minValueDiffusionLaw = Double.MAX_VALUE;
+    private double maxValueDiffusionLaw = -Double.MAX_VALUE;
+    private double intercept = -1;
+    private double slope = -1;
 
     /**
-     * Constructs a new {@code DiffusionLawModel} object.
-     * Initializes the model with provided experimental settings, image data, and fitting model.
+     * Initializes the model with the provided experimental settings, image data, and fitting model.
      *
-     * @param settings   the experimental settings model containing parameters for the analysis.
-     * @param imageModel the image model containing the data to be analyzed.
-     * @param fitModel   the fitting model used to fit the correlation data.
+     * @param settings      Experimental settings model.
+     * @param imageModel    Image model containing the data.
+     * @param fitModel      Fitting model used for the correlation data.
+     * @param resetCallback Callback to handle resetting results.
      */
-    public DiffusionLawModel(ExpSettingsModel settings, ImageModel imageModel, FitModel fitModel) {
-        // copy the settings to a new instance to be able to update the binning if needed without updating the whole
-        // interface.
+    public DiffusionLawModel(ExpSettingsModel settings, ImageModel imageModel, FitModel fitModel,
+                             Runnable resetCallback) {
         this.interfaceSettings = settings;
         this.interfaceFitModel = fitModel;
         this.imageModel = imageModel;
+        this.resetCallback = resetCallback;
     }
 
     /**
@@ -93,10 +102,12 @@ public class DiffusionLawModel {
     /**
      * Calculates the diffusion law by fitting across the specified binning range.
      * Computes observation volumes, average diffusion coefficients, and their variances for each binning setting.
-     *
-     * @return Pair containing the minimum and maximum diffusion values.
      */
-    public Pair<Double, Double> calculateDiffusionLaw() {
+    public void calculateDiffusionLaw() {
+        // update the binning calculated
+        calculatedBinningStart = binningStart;
+        calculatedBinningEnd = binningEnd;
+
         // create a new settings model to be able to update the binning size separately from the interface.
         ExpSettingsModel settings = new ExpSettingsModel(this.interfaceSettings);
 
@@ -139,7 +150,7 @@ public class DiffusionLawModel {
             varianceD[index] = varianceD[index] - Math.pow(averageD[index], 2);
         }
 
-        return computeDiffusionLawParameters(observationVolumes, averageD, varianceD);
+        computeDiffusionLawParameters(observationVolumes, averageD, varianceD);
     }
 
     /**
@@ -148,16 +159,14 @@ public class DiffusionLawModel {
      * @param observationVolumes Array of observation volumes.
      * @param averageD           Array of average diffusion coefficients.
      * @param varianceD          Array of variances.
-     * @return Pair of minimum and maximum diffusion values.
      */
-    private Pair<Double, Double> computeDiffusionLawParameters(double[] observationVolumes, double[] averageD,
-                                                               double[] varianceD) {
+    private void computeDiffusionLawParameters(double[] observationVolumes, double[] averageD, double[] varianceD) {
         effectiveArea = observationVolumes;
         time = new double[observationVolumes.length];
         standardDeviation = new double[observationVolumes.length];
 
-        double minValueDiffusionLaw = Double.MAX_VALUE;
-        double maxValueDiffusionLaw = -Double.MAX_VALUE;
+        minValueDiffusionLaw = Double.MAX_VALUE;
+        maxValueDiffusionLaw = -Double.MAX_VALUE;
 
         for (int currentBinning = binningStart; currentBinning <= binningEnd; currentBinning++) {
             int index = currentBinning - binningStart;
@@ -168,8 +177,49 @@ public class DiffusionLawModel {
             minValueDiffusionLaw = Math.min(minValueDiffusionLaw, averageD[index] - varianceD[index]);
             maxValueDiffusionLaw = Math.max(maxValueDiffusionLaw, averageD[index] + varianceD[index]);
         }
+    }
 
-        return new Pair<>(minValueDiffusionLaw, maxValueDiffusionLaw);
+    /**
+     * Returns a subarray corresponding to the current fitting range.
+     *
+     * @param array The source array.
+     * @return The subarray within the fitting range.
+     */
+    private double[] getFitSegment(double[] array) {
+        return Arrays.copyOfRange(array, fitStart - calculatedBinningStart, fitEnd - calculatedBinningStart + 1);
+    }
+
+    /**
+     * Performs a linear fit on the calculated diffusion law data.
+     *
+     * @return The fitted line data.
+     */
+    public double[][] fit() {
+        if (effectiveArea == null) {
+            throw new RuntimeException("Please run the diffusion law calculation before");
+        } else if (fitStart < calculatedBinningStart || fitEnd > calculatedBinningEnd) {
+            throw new RuntimeException("Fit start/end not are out of ranges");
+        }
+
+        double[] segmentEffectiveArea = getFitSegment(effectiveArea);
+        double[] segmentTime = getFitSegment(time);
+        double[] segmentStandardDeviation = getFitSegment(standardDeviation);
+
+        LineFit lineFit = new LineFit();
+        double[] result =
+                lineFit.doFit(segmentEffectiveArea, segmentTime, segmentStandardDeviation, fitEnd - fitStart + 1);
+
+        intercept = result[0];
+        slope = result[1];
+
+        double[][] fitFunction = new double[2][segmentEffectiveArea.length];
+        fitFunction[0] = segmentEffectiveArea;
+
+        for (int i = 0; i < segmentEffectiveArea.length; i++) {
+            fitFunction[1][i] = intercept + slope * segmentEffectiveArea[i];
+        }
+
+        return fitFunction;
     }
 
     /**
@@ -193,6 +243,24 @@ public class DiffusionLawModel {
         return this.mode;
     }
 
+    /**
+     * Resets the calculated results of the diffusion law analysis.
+     * <p>
+     * This method clears the stored data and resets the calculated binning ranges to their initial states.
+     * It is typically called when the user changes the analysis parameters or when a new calculation is initiated.
+     */
+    public void resetResults() {
+        this.calculatedBinningStart = -1;
+        this.calculatedBinningEnd = -1;
+
+        minValueDiffusionLaw = Double.MAX_VALUE;
+        maxValueDiffusionLaw = -Double.MAX_VALUE;
+
+        effectiveArea = null;
+        time = null;
+        standardDeviation = null;
+    }
+
     // Getter and setter methods with input validation for binning and fitting ranges.
 
     public int getBinningStart() {
@@ -201,10 +269,10 @@ public class DiffusionLawModel {
 
     public void setBinningStart(String binningStart) {
         int start = Integer.parseInt(binningStart);
-        if (start <= 0 || start > this.binningEnd) {
+        if (start <= 0 || start >= this.binningEnd) {
             throw new InvalidUserInputException("Binning start out of range.");
-        } else if (start > this.fitStart) {
-            throw new InvalidUserInputException("Fit 'Start-End' range can't be outside of binning range.");
+        } else if (calculatedBinningStart != -1 && calculatedBinningStart != start) {
+            resetCallback.run();
         }
         this.binningStart = start;
     }
@@ -215,10 +283,10 @@ public class DiffusionLawModel {
 
     public void setBinningEnd(String binningEnd) {
         int end = Integer.parseInt(binningEnd);
-        if (end >= MAX_POINTS || end < this.binningStart) {
+        if (end >= MAX_POINTS || end <= this.binningStart) {
             throw new InvalidUserInputException("Binning end out of range");
-        } else if (end < this.fitEnd) {
-            throw new InvalidUserInputException("Fit 'Start-End' range can't be outside of binning range.");
+        } else if (calculatedBinningEnd != -1 && calculatedBinningEnd != end) {
+            resetCallback.run();
         }
         this.binningEnd = end;
     }
@@ -229,7 +297,7 @@ public class DiffusionLawModel {
 
     public void setFitStart(String fitStart) {
         int start = Integer.parseInt(fitStart);
-        if (start <= 0 || start > this.fitEnd || start < this.binningStart || start > this.binningEnd) {
+        if (start <= 0 || start >= this.fitEnd || start < this.binningStart || start > this.binningEnd) {
             throw new InvalidUserInputException("Fit start out of range.");
         }
         this.fitStart = start;
@@ -241,7 +309,7 @@ public class DiffusionLawModel {
 
     public void setFitEnd(String fitEnd) {
         int end = Integer.parseInt(fitEnd);
-        if (end < this.fitStart || end > this.binningEnd) {
+        if (end <= this.fitStart || end > this.binningEnd) {
             throw new InvalidUserInputException("Fit end out of range.");
         }
         this.fitEnd = end;
@@ -265,5 +333,21 @@ public class DiffusionLawModel {
 
     public double[] getStandardDeviation() {
         return standardDeviation;
+    }
+
+    public double getIntercept() {
+        return intercept;
+    }
+
+    public double getSlope() {
+        return slope;
+    }
+
+    public double getMinValueDiffusionLaw() {
+        return minValueDiffusionLaw;
+    }
+
+    public double getMaxValueDiffusionLaw() {
+        return maxValueDiffusionLaw;
     }
 }

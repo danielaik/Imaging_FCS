@@ -732,6 +732,25 @@ public class Plots {
         diffusionLawWindow = plotWindow(plot, diffusionLawWindow, DIFFUSION_LAW_POSITION);
     }
 
+    public static void plotFitDiffLaw(double intercept, double slope, double[][] fitFunctions) {
+        Plot plot = diffusionLawWindow.getPlot();
+        plot.addLabel(0.3, 0, String.format("%f + %f * Aeff", Math.floor(intercept * 100 + 0.5) / 100,
+                Math.floor(slope * 100 + 0.5) / 100));
+        plot.setColor(Color.RED);
+        plot.addPoints(fitFunctions[0], fitFunctions[1], Plot.LINE);
+        plot.draw();
+
+        diffusionLawWindow = plotWindow(plot, diffusionLawWindow, DIFFUSION_LAW_POSITION);
+    }
+
+    public static boolean isPlotDiffLawOpen() {
+        return diffusionLawWindow != null && !diffusionLawWindow.isClosed();
+    }
+
+    public static void closeDiffLawWindow() {
+        closeWindow(diffusionLawWindow);
+    }
+
     /**
      * Retrieves all relevant {@link ImageWindow} instances managed by the application.
      * <p>
