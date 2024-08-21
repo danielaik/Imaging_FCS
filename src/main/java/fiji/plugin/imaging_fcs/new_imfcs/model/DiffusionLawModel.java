@@ -7,6 +7,7 @@ import fiji.plugin.imaging_fcs.new_imfcs.model.fit.BleachCorrectionModel;
 import fiji.plugin.imaging_fcs.new_imfcs.model.fit.LineFit;
 import fiji.plugin.imaging_fcs.new_imfcs.model.fit.parametric_univariate_functions.FCSFit;
 import fiji.plugin.imaging_fcs.new_imfcs.utils.Range;
+import ij.IJ;
 
 import java.awt.*;
 import java.util.Arrays;
@@ -148,6 +149,9 @@ public class DiffusionLawModel {
             // normalize the average of the square
             varianceD[index] *= Math.pow(Constants.DIFFUSION_COEFFICIENT_BASE, 2) / numElements;
             varianceD[index] = varianceD[index] - Math.pow(averageD[index], 2);
+
+            // show the progress
+            IJ.showProgress(index, binningEnd - binningStart + 1);
         }
 
         computeDiffusionLawParameters(observationVolumes, averageD, varianceD);

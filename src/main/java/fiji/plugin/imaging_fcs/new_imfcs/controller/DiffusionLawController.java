@@ -1,9 +1,6 @@
 package fiji.plugin.imaging_fcs.new_imfcs.controller;
 
-import fiji.plugin.imaging_fcs.new_imfcs.model.DiffusionLawModel;
-import fiji.plugin.imaging_fcs.new_imfcs.model.ExpSettingsModel;
-import fiji.plugin.imaging_fcs.new_imfcs.model.FitModel;
-import fiji.plugin.imaging_fcs.new_imfcs.model.ImageModel;
+import fiji.plugin.imaging_fcs.new_imfcs.model.*;
 import fiji.plugin.imaging_fcs.new_imfcs.view.DiffusionLawView;
 import fiji.plugin.imaging_fcs.new_imfcs.view.Plots;
 import ij.IJ;
@@ -65,9 +62,12 @@ public class DiffusionLawController {
      */
     public ActionListener btnCalculatePressed() {
         return (ActionEvent ev) -> {
-            model.calculateDiffusionLaw();
-            Plots.plotDiffLaw(model.getEffectiveArea(), model.getTime(), model.getStandardDeviation(),
-                    model.getMinValueDiffusionLaw(), model.getMaxValueDiffusionLaw());
+            new BackgroundTaskWorker(() -> {
+                IJ.showStatus("Calculating diffusion law");
+                model.calculateDiffusionLaw();
+                Plots.plotDiffLaw(model.getEffectiveArea(), model.getTime(), model.getStandardDeviation(),
+                        model.getMinValueDiffusionLaw(), model.getMaxValueDiffusionLaw());
+            }).execute();
         };
     }
 
@@ -121,5 +121,19 @@ public class DiffusionLawController {
      */
     public void setVisible(boolean b) {
         view.setVisible(b);
+    }
+
+    /**
+     * Dispose the view
+     */
+    public void dispose() {
+        this.view.dispose();
+    }
+
+    /**
+     * Bring the view to front
+     */
+    public void toFront() {
+        this.view.toFront();
     }
 }

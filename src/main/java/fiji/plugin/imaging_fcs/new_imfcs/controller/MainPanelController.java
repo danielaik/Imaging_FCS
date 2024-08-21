@@ -2,7 +2,10 @@ package fiji.plugin.imaging_fcs.new_imfcs.controller;
 
 import fiji.plugin.imaging_fcs.new_imfcs.constants.Constants;
 import fiji.plugin.imaging_fcs.new_imfcs.model.*;
-import fiji.plugin.imaging_fcs.new_imfcs.model.correlations.*;
+import fiji.plugin.imaging_fcs.new_imfcs.model.correlations.AverageCorrelation;
+import fiji.plugin.imaging_fcs.new_imfcs.model.correlations.Correlator;
+import fiji.plugin.imaging_fcs.new_imfcs.model.correlations.DeltaCCFWorker;
+import fiji.plugin.imaging_fcs.new_imfcs.model.correlations.MeanSquareDisplacement;
 import fiji.plugin.imaging_fcs.new_imfcs.model.fit.BleachCorrectionModel;
 import fiji.plugin.imaging_fcs.new_imfcs.utils.*;
 import fiji.plugin.imaging_fcs.new_imfcs.view.BleachCorrectionView;
@@ -406,6 +409,7 @@ public final class MainPanelController {
             nbController.dispose();
             fitController.dispose();
             backgroundSubtractionController.dispose();
+            diffusionLawController.dispose();
             imageController.unloadImage();
 
             Plots.closePlots();
@@ -424,6 +428,7 @@ public final class MainPanelController {
             nbController.toFront();
             backgroundSubtractionController.toFront();
             imageController.toFront();
+            diffusionLawController.toFront();
 
             Plots.toFront();
 
@@ -799,8 +804,7 @@ public final class MainPanelController {
 
                 // Perform ROI
                 IJ.showStatus("Correlating pixels");
-                ROIWorker worker = new ROIWorker(() -> imageController.correlateROI(imgRoi));
-                worker.execute();
+                new BackgroundTaskWorker(() -> imageController.correlateROI(imgRoi)).execute();
             }
         };
     }
