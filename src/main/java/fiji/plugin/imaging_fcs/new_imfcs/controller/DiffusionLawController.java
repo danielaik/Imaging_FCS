@@ -1,8 +1,10 @@
 package fiji.plugin.imaging_fcs.new_imfcs.controller;
 
 import fiji.plugin.imaging_fcs.new_imfcs.model.*;
+import fiji.plugin.imaging_fcs.new_imfcs.utils.Pair;
 import fiji.plugin.imaging_fcs.new_imfcs.view.DiffusionLawView;
 import fiji.plugin.imaging_fcs.new_imfcs.view.Plots;
+import fiji.plugin.imaging_fcs.new_imfcs.view.dialogs.PSFView;
 import ij.IJ;
 
 import javax.swing.*;
@@ -61,14 +63,12 @@ public class DiffusionLawController {
      * @return Listener that initiates the calculation and updates the plot.
      */
     public ActionListener btnCalculatePressed() {
-        return (ActionEvent ev) -> {
-            new BackgroundTaskWorker(() -> {
-                IJ.showStatus("Calculating diffusion law");
-                model.calculateDiffusionLaw();
-                Plots.plotDiffLaw(model.getEffectiveArea(), model.getTime(), model.getStandardDeviation(),
-                        model.getMinValueDiffusionLaw(), model.getMaxValueDiffusionLaw());
-            }).execute();
-        };
+        return (ActionEvent ev) -> new BackgroundTaskWorker(() -> {
+            IJ.showStatus("Calculating diffusion law");
+            model.calculateDiffusionLaw();
+            Plots.plotDiffLaw(model.getEffectiveArea(), model.getTime(), model.getStandardDeviation(),
+                    model.getMinValueDiffusionLaw(), model.getMaxValueDiffusionLaw());
+        }).execute();
     }
 
     /**
@@ -121,6 +121,38 @@ public class DiffusionLawController {
      */
     public void setVisible(boolean b) {
         view.setVisible(b);
+    }
+
+    /**
+     * Displays the Point Spread Function (PSF) calculation dialog to the user.
+     */
+    public void displayPSFDialog() {
+        new PSFView(this::runPSF);
+    }
+
+    /**
+     * Runs the PSF calculation using the parameters provided by the PSF dialog.
+     *
+     * @param view The PSF dialog view containing user inputs.
+     */
+    private void runPSF(PSFView view) {
+        double startValue = view.getNextNumber();
+        double endValue = view.getNextNumber();
+        double stepSize = view.getNextNumber();
+
+        int binningStart = (int) view.getNextNumber();
+        int binningEnd = (int) view.getNextNumber();
+
+        new BackgroundTaskWorker(() -> {
+            IJ.showStatus("Calculating PSF");
+            try {
+                Pair<Double, Double> minMax =
+                        model.determinePSF(startValue, endValue, stepSize, binningStart, binningEnd);
+                Plots.plotPSF(minMax.getLeft(), minMax.getRight(), model.getPsfResults(), binningStart, binningEnd);
+            } catch (Exception e) {
+                IJ.showMessage(e.getMessage());
+            }
+        }).execute();
     }
 
     /**

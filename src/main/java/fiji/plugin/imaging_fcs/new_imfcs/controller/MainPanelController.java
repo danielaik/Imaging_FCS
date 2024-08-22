@@ -569,9 +569,30 @@ public final class MainPanelController {
         return null;
     }
 
+    /**
+     * Creates an ActionListener for the "PSF" button that initiates the Point Spread Function (PSF) calculation
+     * process.
+     * This listener checks whether an image is loaded and validates its dimensions. If the image is loaded and
+     * its dimensions are sufficient (at least 20x20 pixels), the PSF dialog is displayed to configure and start
+     * the PSF calculation. If the image is not loaded or its dimensions are too small, an appropriate message is shown.
+     *
+     * @return An ActionListener that handles the PSF button press event.
+     */
     public ActionListener btnPSFPressed() {
-        // TODO: FIXME
-        return null;
+        return (ActionEvent ev) -> {
+            if (imageController.isImageLoaded()) {
+                Dimension imageDimension = imageController.getImageDimension();
+                if (imageDimension.width < 20 || imageDimension.height < 20) {
+                    IJ.showMessage("Image is too small to provide good PSF statistics. At least 20x20 pixels are " +
+                            "required");
+                } else {
+                    // Every condition is validated (image loaded and size >= 20), so we can run the PSF.
+                    diffusionLawController.displayPSFDialog();
+                }
+            } else {
+                IJ.showMessage("No image stack loaded.");
+            }
+        };
     }
 
     /**

@@ -58,11 +58,13 @@ public class Plots {
     private static final Point DCCF_HISTOGRAM_POSITION = new Point(DCCF_POSITION.x + 280, DCCF_POSITION.y);
     private static final Dimension DIFFUSION_LAW_DIMENSION = new Dimension(200, 200);
     private static final Point DIFFUSION_LAW_POSITION = new Point(ACF_POSITION.x + 30, ACF_POSITION.y + 30);
+    private static final Dimension PSF_DIMENSION = new Dimension(200, 200);
+    private static final Point PSF_POSITION = new Point(ACF_POSITION.x + 30, ACF_POSITION.y + 30);
     private static final Map<String, ImageWindow> dccfWindows = new HashMap<>();
     private static final Map<String, HistogramWindow> dccfHistogramWindows = new HashMap<>();
     public static ImagePlus imgParam;
     private static PlotWindow blockingCurveWindow, acfWindow, standardDeviationWindow, intensityTraceWindow, msdWindow,
-            residualsWindow, scatterWindow, diffusionLawWindow;
+            residualsWindow, scatterWindow, diffusionLawWindow, psfWindow;
     private static ImageWindow imgCovarianceWindow;
     private static HistogramWindow paramHistogramWindow;
 
@@ -752,6 +754,61 @@ public class Plots {
     }
 
     /**
+     * Plots the Point Spread Function (PSF) results on a graph. This method visualizes the diffusion coefficients
+     * across different binning values for various PSF values, along with error bars indicating the uncertainty
+     * in the measurements. The plot includes labels for each PSF value and color codes the curves for clarity.
+     *
+     * @param minValue     The minimum diffusion coefficient value across all PSF results, used to set plot limits.
+     * @param maxValue     The maximum diffusion coefficient value across all PSF results, used to set plot limits.
+     * @param psfResults   A map containing the PSF values as keys and their corresponding binning values,
+     *                     diffusion coefficients, and errors as the values in a 2D array.
+     * @param binningStart The starting value of the binning range.
+     * @param binningEnd   The ending value of the binning range.
+     */
+    public static void plotPSF(double minValue, double maxValue, Map<Double, double[][]> psfResults, int binningStart,
+                               int binningEnd) {
+        double[] labelPosX = {0.1, 0.25, 0.4, 0.55, 0.7, 0.1, 0.25, 0.4, 0.55, 0.7};
+        double[] labelPosY = {0.8, 0.8, 0.8, 0.8, 0.8, 0.95, 0.95, 0.95, 0.95, 0.95};
+        java.awt.Color[] colors = {
+                Color.BLUE,
+                Color.CYAN,
+                Color.GREEN,
+                Color.ORANGE,
+                Color.PINK,
+                Color.MAGENTA,
+                Color.RED,
+                Color.LIGHT_GRAY,
+                Color.GRAY,
+                Color.BLACK
+        };
+
+        Plot plot = new Plot("PSF", "binning", "D [um^2/s]");
+        plot.setFrameSize(PSF_DIMENSION.width, PSF_DIMENSION.height);
+
+        // make margin for plot label
+        minValue /= 2;
+
+        plot.setLimits(binningStart * 0.9, binningEnd * 1.1, minValue * 0.9, maxValue * 1.1);
+        plot.setJustification(Plot.CENTER);
+
+        int index = 0;
+        for (Map.Entry<Double, double[][]> entry : psfResults.entrySet()) {
+            double[] binning = entry.getValue()[0];
+            double[] diffusionCoefficients = entry.getValue()[1];
+            double[] errors = entry.getValue()[2];
+
+            plot.setColor(colors[index % colors.length]);
+            plot.addPoints(binning, diffusionCoefficients, errors, Plot.LINE);
+            plot.addLabel(labelPosX[index], labelPosY[index], IJ.d2s(entry.getKey(), 2));
+            index++;
+        }
+
+        plot.draw();
+
+        psfWindow = plotWindow(plot, psfWindow, PSF_POSITION);
+    }
+
+    /**
      * Retrieves all relevant {@link ImageWindow} instances managed by the application.
      * <p>
      * This method dynamically collects various types of plot and analysis windows
@@ -775,6 +832,7 @@ public class Plots {
         windowsList.add(imgCovarianceWindow);
         windowsList.add(paramHistogramWindow);
         windowsList.add(diffusionLawWindow);
+        windowsList.add(psfWindow);
 
         if (imgParam != null) {
             windowsList.add(imgParam.getWindow());

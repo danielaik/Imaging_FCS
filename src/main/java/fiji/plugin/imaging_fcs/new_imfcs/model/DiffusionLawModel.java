@@ -6,11 +6,14 @@ import fiji.plugin.imaging_fcs.new_imfcs.model.correlations.Correlator;
 import fiji.plugin.imaging_fcs.new_imfcs.model.fit.BleachCorrectionModel;
 import fiji.plugin.imaging_fcs.new_imfcs.model.fit.LineFit;
 import fiji.plugin.imaging_fcs.new_imfcs.model.fit.parametric_univariate_functions.FCSFit;
+import fiji.plugin.imaging_fcs.new_imfcs.utils.Pair;
 import fiji.plugin.imaging_fcs.new_imfcs.utils.Range;
 import ij.IJ;
 
 import java.awt.*;
 import java.util.Arrays;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 /**
  * The {@code DiffusionLawModel} class represents the data model for diffusion law analysis.
@@ -35,6 +38,7 @@ public class DiffusionLawModel {
     private double[] standardDeviation;
     private double minValueDiffusionLaw = Double.MAX_VALUE;
     private double maxValueDiffusionLaw = -Double.MAX_VALUE;
+    private Map<Double, double[][]> psfResults = null;
     private double intercept = -1;
     private double slope = -1;
 
@@ -101,17 +105,33 @@ public class DiffusionLawModel {
     }
 
     /**
-     * Calculates the diffusion law by fitting across the specified binning range.
-     * Computes observation volumes, average diffusion coefficients, and their variances for each binning setting.
+     * Calculates the diffusion law for the current binning range.
      */
     public void calculateDiffusionLaw() {
-        // update the binning calculated
+        // update the binning calculated, this is used to know if a calculation was run.
         calculatedBinningStart = binningStart;
         calculatedBinningEnd = binningEnd;
 
         // create a new settings model to be able to update the binning size separately from the interface.
         ExpSettingsModel settings = new ExpSettingsModel(this.interfaceSettings);
 
+        Pair<double[], double[]> results = calculateDiffusionLaw(binningStart, binningEnd, settings, true);
+        double[] averageD = results.getLeft();
+        double[] varianceD = results.getRight();
+        computeDiffusionLawParameters(averageD, varianceD);
+    }
+
+    /**
+     * Calculates diffusion law parameters across a binning range.
+     *
+     * @param binningStart Start of binning range.
+     * @param binningEnd   End of binning range.
+     * @param settings     Experimental settings model.
+     * @param progress     Whether to show progress in ImageJ.
+     * @return Pair containing average diffusion coefficients and their variances.
+     */
+    public Pair<double[], double[]> calculateDiffusionLaw(int binningStart, int binningEnd, ExpSettingsModel settings,
+                                                          boolean progress) {
         // init a new fit model based on the interface parameters and fix the parameters
         FitModel fitModel = new FitModel(settings, interfaceFitModel);
         fitModel.setFix(true);
@@ -119,7 +139,7 @@ public class DiffusionLawModel {
         Correlator correlator = initCorrelator(settings, fitModel, this.imageModel);
         PixelModel pixelModel = new PixelModel();
 
-        double[] observationVolumes = new double[binningEnd - binningStart + 1];
+        effectiveArea = new double[binningEnd - binningStart + 1];
         double[] averageD = new double[binningEnd - binningStart + 1];
         double[] varianceD = new double[binningEnd - binningStart + 1];
 
@@ -133,7 +153,7 @@ public class DiffusionLawModel {
 
             int index = currentBinning - binningStart;
 
-            observationVolumes[index] =
+            effectiveArea[index] =
                     FCSFit.getFitObservationVolume(settings.getParamAx(), settings.getParamAy(), settings.getParamW()) *
                             Constants.DIFFUSION_COEFFICIENT_BASE;
 
@@ -151,37 +171,93 @@ public class DiffusionLawModel {
             varianceD[index] = varianceD[index] - Math.pow(averageD[index], 2);
 
             // show the progress
-            IJ.showProgress(index, binningEnd - binningStart + 1);
+            if (progress) {
+                IJ.showProgress(index, binningEnd - binningStart + 1);
+            }
         }
 
-        computeDiffusionLawParameters(observationVolumes, averageD, varianceD);
+        return new Pair<>(averageD, varianceD);
     }
 
     /**
      * Computes diffusion law parameters.
      *
-     * @param observationVolumes Array of observation volumes.
-     * @param averageD           Array of average diffusion coefficients.
-     * @param varianceD          Array of variances.
+     * @param averageD  Array of average diffusion coefficients.
+     * @param varianceD Array of variances.
      */
-    private void computeDiffusionLawParameters(double[] observationVolumes, double[] averageD, double[] varianceD) {
-        effectiveArea = observationVolumes;
-        time = new double[observationVolumes.length];
-        standardDeviation = new double[observationVolumes.length];
+    private void computeDiffusionLawParameters(double[] averageD, double[] varianceD) {
+        time = new double[effectiveArea.length];
+        standardDeviation = new double[effectiveArea.length];
 
         minValueDiffusionLaw = Double.MAX_VALUE;
         maxValueDiffusionLaw = -Double.MAX_VALUE;
 
-        for (int currentBinning = binningStart; currentBinning <= binningEnd; currentBinning++) {
-            int index = currentBinning - binningStart;
-            time[index] = observationVolumes[index] / averageD[index];
-            standardDeviation[index] =
-                    observationVolumes[index] / Math.pow(averageD[index], 2) * Math.sqrt(varianceD[index]);
+        for (int i = 0; i < effectiveArea.length; i++) {
+            time[i] = effectiveArea[i] / averageD[i];
+            standardDeviation[i] = effectiveArea[i] / Math.pow(averageD[i], 2) * Math.sqrt(varianceD[i]);
 
-            minValueDiffusionLaw = Math.min(minValueDiffusionLaw, averageD[index] - varianceD[index]);
-            maxValueDiffusionLaw = Math.max(maxValueDiffusionLaw, averageD[index] + varianceD[index]);
+            minValueDiffusionLaw = Math.min(minValueDiffusionLaw, averageD[i] - varianceD[i]);
+            maxValueDiffusionLaw = Math.max(maxValueDiffusionLaw, averageD[i] + varianceD[i]);
         }
     }
+
+    /**
+     * Determines the Point Spread Function (PSF) by iterating over a range of values.
+     *
+     * @param start        Starting PSF value.
+     * @param end          Ending PSF value.
+     * @param step         Step size for PSF values.
+     * @param binningStart Start of binning range.
+     * @param binningEnd   End of binning range.
+     * @return A pair containing the minimum and maximum values of the diffusion law.
+     */
+    public Pair<Double, Double> determinePSF(double start, double end, double step, int binningStart, int binningEnd) {
+        // Validate input ranges
+        if (binningStart <= 0 || binningEnd <= binningStart || step <= 0 || start >= end) {
+            throw new IllegalArgumentException("Invalid PSF or binning range.");
+        }
+
+        ExpSettingsModel settings = new ExpSettingsModel(this.interfaceSettings);
+
+        psfResults = new LinkedHashMap<>();
+
+        double minValue = Double.MAX_VALUE;
+        double maxValue = -Double.MAX_VALUE;
+
+        int currentStep = 0;
+        int numSteps = (int) Math.ceil((end - start) / step) + 1;
+
+        for (double currentPSF = start; currentPSF <= end; currentPSF += step) {
+            settings.setSigma(String.valueOf(currentPSF));
+            settings.updateSettings();
+
+            Pair<double[], double[]> diffLawResults = calculateDiffusionLaw(binningStart, binningEnd, settings, false);
+            double[] averageD = diffLawResults.getLeft();
+            double[] varianceD = diffLawResults.getRight();
+
+            double[][] results = new double[3][binningEnd - binningStart + 1];
+            for (int currentBinning = binningStart; currentBinning <= binningEnd; currentBinning++) {
+                int index = currentBinning - binningStart;
+                results[0][index] = currentBinning;
+                results[1][index] = averageD[index];
+
+                // error bars: SEM of diffusion coefficient
+                results[2][index] = varianceD[index] / Math.sqrt(
+                        (double) imageModel.getWidth() / currentBinning * (double) imageModel.getHeight() /
+                                currentBinning);
+
+                minValue = Math.min(minValue, results[1][index] - results[2][index]);
+                maxValue = Math.max(maxValue, results[1][index] + results[2][index]);
+            }
+
+            psfResults.put(currentPSF, results);
+
+            IJ.showProgress(currentStep++, numSteps);
+        }
+
+        return new Pair<>(minValue, maxValue);
+    }
+
 
     /**
      * Returns a subarray corresponding to the current fitting range.
@@ -353,5 +429,9 @@ public class DiffusionLawModel {
 
     public double getMaxValueDiffusionLaw() {
         return maxValueDiffusionLaw;
+    }
+
+    public Map<Double, double[][]> getPsfResults() {
+        return psfResults;
     }
 }
