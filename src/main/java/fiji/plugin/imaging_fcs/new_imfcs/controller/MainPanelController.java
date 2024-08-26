@@ -8,10 +8,7 @@ import fiji.plugin.imaging_fcs.new_imfcs.model.correlations.DeltaCCFWorker;
 import fiji.plugin.imaging_fcs.new_imfcs.model.correlations.MeanSquareDisplacement;
 import fiji.plugin.imaging_fcs.new_imfcs.model.fit.BleachCorrectionModel;
 import fiji.plugin.imaging_fcs.new_imfcs.utils.*;
-import fiji.plugin.imaging_fcs.new_imfcs.view.BleachCorrectionView;
-import fiji.plugin.imaging_fcs.new_imfcs.view.ExpSettingsView;
-import fiji.plugin.imaging_fcs.new_imfcs.view.MainPanelView;
-import fiji.plugin.imaging_fcs.new_imfcs.view.Plots;
+import fiji.plugin.imaging_fcs.new_imfcs.view.*;
 import fiji.plugin.imaging_fcs.new_imfcs.view.dialogs.*;
 import ij.IJ;
 import ij.ImagePlus;
@@ -47,6 +44,7 @@ public final class MainPanelController {
     private final MainPanelView view;
     private final ExpSettingsView expSettingsView;
     private final BleachCorrectionView bleachCorrectionView;
+    private final FilteringView filteringView;
     private final OptionsModel optionsModel;
     private final ImageController imageController;
     private final ExpSettingsModel settings;
@@ -85,6 +83,8 @@ public final class MainPanelController {
 
         FitModel fitModel = new FitModel(settings);
         this.fitController = new FitController(fitModel);
+
+        this.filteringView = new FilteringView(fitModel);
 
         ImageModel imageModel = new ImageModel(this::askResetResults);
         this.backgroundSubtractionController = new BackgroundSubtractionController(imageModel, this::askResetResults);
@@ -640,9 +640,8 @@ public final class MainPanelController {
         };
     }
 
-    public ActionListener tbFilteringPressed() {
-        // TODO: FIXME
-        return null;
+    public ItemListener tbFilteringPressed() {
+        return (ItemEvent ev) -> filteringView.setVisible(ev.getStateChange() == ItemEvent.SELECTED);
     }
 
     /**

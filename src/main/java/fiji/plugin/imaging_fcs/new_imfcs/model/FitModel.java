@@ -475,9 +475,12 @@ public class FitModel {
     }
 
     /**
-     * The Parameter class encapsulates a parameter with a value and a hold state.
+     * The {@code Parameter} class encapsulates a parameter with a value, a hold state,
+     * and an associated {@code Threshold} object that defines the constraints (min, max)
+     * and active state for the parameter during fitting operations.
      */
     public static class Parameter {
+        private final Threshold threshold;
         private double value;
         private boolean hold;
 
@@ -490,52 +493,86 @@ public class FitModel {
         public Parameter(double value, boolean hold) {
             this.value = value;
             this.hold = hold;
-        }
-
-        public Parameter(Parameter other) {
-            this.value = other.value;
-            this.hold = other.hold;
+            this.threshold = new Threshold();
         }
 
         /**
-         * Gets the value of the parameter.
+         * Copy constructor for {@code Parameter}.
          *
-         * @return The value of the parameter.
+         * @param other The {@code Parameter} instance to copy.
          */
+        public Parameter(Parameter other) {
+            this.value = other.value;
+            this.hold = other.hold;
+            this.threshold = other.threshold;
+        }
+
         public double getValue() {
             return value;
         }
 
-        /**
-         * Sets the value of the parameter.
-         *
-         * @param value The new value of the parameter.
-         */
         public void setValue(double value) {
             this.value = value;
         }
 
-        /**
-         * Checks if the parameter is held.
-         *
-         * @return true if the parameter is held, false otherwise.
-         */
         public boolean isHeld() {
             return hold;
         }
 
-        /**
-         * Sets the hold state of the parameter.
-         *
-         * @param hold The new hold state of the parameter.
-         */
         public void setHold(boolean hold) {
             this.hold = hold;
+        }
+
+        public Threshold getThreshold() {
+            return threshold;
         }
 
         @Override
         public String toString() {
             return String.valueOf(value);
+        }
+    }
+
+    /**
+     * The {@code Threshold} class represents the threshold settings (min, max, and active state)
+     * for a parameter in the {@code FitModel}. It is used to constrain the parameter values during fitting.
+     */
+    public static class Threshold {
+        private double min;
+        private double max;
+        private boolean active;
+
+        /**
+         * Constructs a new {@code Threshold} with default settings.
+         */
+        public Threshold() {
+            min = -0.01;
+            max = 0.01;
+            active = false;
+        }
+
+        public double getMin() {
+            return min;
+        }
+
+        public void setMin(String min) {
+            this.min = Double.parseDouble(min);
+        }
+
+        public double getMax() {
+            return max;
+        }
+
+        public void setMax(String max) {
+            this.max = Double.parseDouble(max);
+        }
+
+        public boolean getActive() {
+            return active;
+        }
+
+        public void setActive(boolean active) {
+            this.active = active;
         }
     }
 }
