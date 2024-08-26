@@ -404,12 +404,14 @@ public final class MainPanelController {
         return (ActionEvent ev) -> {
             view.dispose();
             expSettingsView.dispose();
+            filteringView.dispose();
             bleachCorrectionView.dispose();
             simulationController.dispose();
             nbController.dispose();
             fitController.dispose();
             backgroundSubtractionController.dispose();
             diffusionLawController.dispose();
+
             imageController.unloadImage();
 
             Plots.closePlots();
@@ -424,6 +426,7 @@ public final class MainPanelController {
     public ActionListener btnBringToFrontPressed() {
         return (ActionEvent ev) -> {
             bleachCorrectionView.toFront();
+            filteringView.toFront();
             simulationController.toFront();
             nbController.toFront();
             backgroundSubtractionController.toFront();
