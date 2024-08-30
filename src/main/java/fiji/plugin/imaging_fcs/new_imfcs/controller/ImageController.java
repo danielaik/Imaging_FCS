@@ -365,7 +365,7 @@ public final class ImageController {
         Point p = cursorPositions[0];
         PixelModel pixelModel = correlator.getPixelModel(p.x, p.y);
 
-        if (pixelModel.isFitted()) {
+        if (pixelModel.isFitted() && !fitController.needToFilter(pixelModel)) {
             Point minimumPosition = settings.getMinCursorPosition();
             Point maximumPosition = settings.getMaxCursorPosition(imageModel.getDimension());
 
@@ -389,13 +389,15 @@ public final class ImageController {
         List<PixelModel> pixelModelList = new ArrayList<>();
         PixelModel[][] pixelModels = correlator.getPixelModels();
 
+        Plots.updateParameterMaps(pixelModels, settings.getMinCursorPosition(),
+                settings.getMaxCursorPosition(getImageDimension()), settings.getPixelBinning(), imageParamClicked(),
+                fitController, options.isPlotParaHist());
+
         for (int x = 0; x < pixelModels.length; x++) {
             for (int y = 0; y < pixelModels[0].length; y++) {
                 PixelModel currentPixelModel = pixelModels[x][y];
                 if (currentPixelModel != null && currentPixelModel.getAcf() != null) {
-                    // compute the intensity trace for every points
                     pixelModelList.add(currentPixelModel);
-                    plotFittedParams(new Point[]{new Point(x, y)});
                 }
             }
         }
@@ -535,7 +537,7 @@ public final class ImageController {
 
                         List<PixelModel> pixelModels =
                                 SelectedPixel.getPixelModelsInRoi(roi, pixelBinning, minimumPosition,
-                                        correlator.getPixelModels());
+                                        correlator.getPixelModels(), fitController);
 
                         plotMultiplePixelsModels(pixelModels);
                     }

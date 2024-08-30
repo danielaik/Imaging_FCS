@@ -192,6 +192,33 @@ public class PixelModel {
         return pairs;
     }
 
+    /**
+     * Determines if the current pixel model should be filtered based on the threshold settings
+     * in the provided {@code FitModel}.
+     * <p>
+     * This method checks if the fit parameters of the pixel model fall outside the defined thresholds
+     * for various parameters in the {@code FitModel}. If any parameter exceeds its threshold,
+     * the pixel model will be flagged for filtering.
+     * </p>
+     *
+     * @param model The {@code FitModel} containing the threshold settings for each parameter.
+     * @return {@code true} if the pixel model should be filtered, {@code false} otherwise.
+     */
+    public boolean toFilter(FitModel model) {
+        return fitParams == null || model.getN().getThreshold().toFilter(fitParams.getN()) ||
+                model.getD().getThreshold().toFilter(fitParams.getDInterface()) ||
+                model.getF2().getThreshold().toFilter(fitParams.getF2()) ||
+                model.getD2().getThreshold().toFilter(fitParams.getD2Interface()) ||
+                model.getF3().getThreshold().toFilter(fitParams.getF3()) ||
+                model.getD3().getThreshold().toFilter(fitParams.getD3Interface()) ||
+                model.getG().getThreshold().toFilter(fitParams.getG()) ||
+                model.getVx().getThreshold().toFilter(fitParams.getVxInterface()) ||
+                model.getVy().getThreshold().toFilter(fitParams.getVyInterface()) ||
+                model.getFTrip().getThreshold().toFilter(fitParams.getFTrip()) ||
+                model.getTTrip().getThreshold().toFilter(fitParams.getTTripInterface()) ||
+                model.getChi2Threshold().toFilter(chi2);
+    }
+
     public double[] getAcf() {
         return acf;
     }

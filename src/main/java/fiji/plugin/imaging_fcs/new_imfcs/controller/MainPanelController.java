@@ -8,7 +8,10 @@ import fiji.plugin.imaging_fcs.new_imfcs.model.correlations.DeltaCCFWorker;
 import fiji.plugin.imaging_fcs.new_imfcs.model.correlations.MeanSquareDisplacement;
 import fiji.plugin.imaging_fcs.new_imfcs.model.fit.BleachCorrectionModel;
 import fiji.plugin.imaging_fcs.new_imfcs.utils.*;
-import fiji.plugin.imaging_fcs.new_imfcs.view.*;
+import fiji.plugin.imaging_fcs.new_imfcs.view.BleachCorrectionView;
+import fiji.plugin.imaging_fcs.new_imfcs.view.ExpSettingsView;
+import fiji.plugin.imaging_fcs.new_imfcs.view.MainPanelView;
+import fiji.plugin.imaging_fcs.new_imfcs.view.Plots;
 import fiji.plugin.imaging_fcs.new_imfcs.view.dialogs.*;
 import ij.IJ;
 import ij.ImagePlus;
@@ -44,7 +47,6 @@ public final class MainPanelController {
     private final MainPanelView view;
     private final ExpSettingsView expSettingsView;
     private final BleachCorrectionView bleachCorrectionView;
-    private final FilteringView filteringView;
     private final OptionsModel optionsModel;
     private final ImageController imageController;
     private final ExpSettingsModel settings;
@@ -54,6 +56,7 @@ public final class MainPanelController {
     private final NBController nbController;
     private final FitController fitController;
     private final DiffusionLawController diffusionLawController;
+    private final FilteringController filteringController;
     private final Correlator correlator;
 
     /**
@@ -84,8 +87,6 @@ public final class MainPanelController {
         FitModel fitModel = new FitModel(settings);
         this.fitController = new FitController(fitModel);
 
-        this.filteringView = new FilteringView(fitModel);
-
         ImageModel imageModel = new ImageModel(this::askResetResults);
         this.backgroundSubtractionController = new BackgroundSubtractionController(imageModel, this::askResetResults);
         this.bleachCorrectionModel = new BleachCorrectionModel(settings, imageModel);
@@ -98,6 +99,9 @@ public final class MainPanelController {
         this.nbController = new NBController(imageModel, settings, optionsModel, bleachCorrectionModel);
 
         this.diffusionLawController = new DiffusionLawController(settings, imageModel, fitModel);
+
+        this.filteringController =
+                new FilteringController(settings, optionsModel, imageController, fitController, fitModel, correlator);
 
         if (workbook == null) {
             // load previously saved configuration
@@ -404,7 +408,7 @@ public final class MainPanelController {
         return (ActionEvent ev) -> {
             view.dispose();
             expSettingsView.dispose();
-            filteringView.dispose();
+            filteringController.dispose();
             bleachCorrectionView.dispose();
             simulationController.dispose();
             nbController.dispose();
@@ -426,7 +430,7 @@ public final class MainPanelController {
     public ActionListener btnBringToFrontPressed() {
         return (ActionEvent ev) -> {
             bleachCorrectionView.toFront();
-            filteringView.toFront();
+            filteringController.toFront();
             simulationController.toFront();
             nbController.toFront();
             backgroundSubtractionController.toFront();
@@ -644,7 +648,7 @@ public final class MainPanelController {
     }
 
     public ItemListener tbFilteringPressed() {
-        return (ItemEvent ev) -> filteringView.setVisible(ev.getStateChange() == ItemEvent.SELECTED);
+        return (ItemEvent ev) -> filteringController.setVisible(ev.getStateChange() == ItemEvent.SELECTED);
     }
 
     /**
@@ -670,7 +674,7 @@ public final class MainPanelController {
                 try {
                     PixelModel averagePixelModel =
                             AverageCorrelation.calculateAverageCorrelationFunction(correlator.getPixelModels(), roi,
-                                    settings.getPixelBinning(), settings.getMinCursorPosition());
+                                    settings.getPixelBinning(), settings.getMinCursorPosition(), fitController);
                     fitController.fit(averagePixelModel, correlator.getLagTimes());
 
                     if (optionsModel.isPlotACFCurves()) {

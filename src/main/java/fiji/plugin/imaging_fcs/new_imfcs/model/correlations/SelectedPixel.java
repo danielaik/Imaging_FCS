@@ -1,6 +1,7 @@
 package fiji.plugin.imaging_fcs.new_imfcs.model.correlations;
 
 import fiji.plugin.imaging_fcs.new_imfcs.constants.Constants;
+import fiji.plugin.imaging_fcs.new_imfcs.controller.FitController;
 import fiji.plugin.imaging_fcs.new_imfcs.model.ExpSettingsModel;
 import fiji.plugin.imaging_fcs.new_imfcs.model.ImageModel;
 import fiji.plugin.imaging_fcs.new_imfcs.model.PixelModel;
@@ -41,16 +42,18 @@ public class SelectedPixel {
      * @param pixelBinning    The binning factor applied to the pixel coordinates.
      * @param minimumPosition The minimum position offset to apply to the pixel coordinates.
      * @param pixelModels     The 2D array of PixelModel objects from which to retrieve the models.
+     * @param fitController   the controller responsible for filtering pixels based on fit criteria.
      * @return A list of PixelModel objects within the specified ROI.
      */
     public static List<PixelModel> getPixelModelsInRoi(Roi roi, Point pixelBinning, Point minimumPosition,
-                                                       PixelModel[][] pixelModels) {
+                                                       PixelModel[][] pixelModels, FitController fitController) {
         List<PixelModel> pixelModelList = new ArrayList<>();
 
         if (roi == null) {
             for (PixelModel[] pixelModelRow : pixelModels) {
                 for (PixelModel currentPixelModel : pixelModelRow) {
-                    if (currentPixelModel != null && currentPixelModel.getAcf() != null) {
+                    if (currentPixelModel != null && currentPixelModel.getAcf() != null &&
+                            !fitController.needToFilter(currentPixelModel)) {
                         pixelModelList.add(currentPixelModel);
                     }
                 }
@@ -64,7 +67,8 @@ public class SelectedPixel {
                     PixelModel currentPixelModel =
                             pixelModels[(x + minimumPosition.x) * pixelBinning.x][(y + minimumPosition.y) *
                                     pixelBinning.y];
-                    if (currentPixelModel != null && currentPixelModel.getAcf() != null) {
+                    if (currentPixelModel != null && currentPixelModel.getAcf() != null &&
+                            !fitController.needToFilter(currentPixelModel)) {
                         pixelModelList.add(currentPixelModel);
                     }
                 }

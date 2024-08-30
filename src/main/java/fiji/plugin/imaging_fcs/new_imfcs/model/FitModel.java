@@ -16,6 +16,7 @@ import static fiji.plugin.imaging_fcs.new_imfcs.constants.Constants.PIXEL_SIZE_R
  */
 public class FitModel {
     private final ExpSettingsModel settings;
+    private final Threshold chi2Threshold;
     private Parameter D, N, F2, F3, D2, D3, G, vx, vy, fTrip, tTrip;
     private double modProb1, modProb2, modProb3, Q2, Q3;
     private int fitStart, fitEnd;
@@ -30,6 +31,9 @@ public class FitModel {
      */
     public FitModel(ExpSettingsModel settings) {
         this.settings = settings;
+
+        this.chi2Threshold = new Threshold();
+
         initValues();
     }
 
@@ -40,6 +44,8 @@ public class FitModel {
      */
     public FitModel(ExpSettingsModel settings, FitModel other) {
         this.settings = settings;
+
+        this.chi2Threshold = new Threshold();
 
         this.D = new Parameter(other.D);
         this.N = new Parameter(other.N);
@@ -175,6 +181,20 @@ public class FitModel {
                 .filter(parameter -> !parameter.isHeld())
                 .mapToDouble(parameter -> fitParams[Arrays.asList(parameters).indexOf(parameter)])
                 .toArray();
+    }
+
+    /**
+     * Resets all parameter thresholds in the model to their default values.
+     * <p>
+     * This method iterates through a predefined set of parameters, resetting each one's
+     * threshold to its default state, and also resets the chi-squared threshold.
+     * </p>
+     */
+    public void resetFilters() {
+        Parameter[] parameters = {N, D, vx, vy, G, F2, D2, F3, D3, fTrip, tTrip};
+
+        Arrays.stream(parameters).forEach(parameter -> parameter.getThreshold().setDefault());
+        chi2Threshold.setDefault();
     }
 
     /**
@@ -474,6 +494,10 @@ public class FitModel {
         this.bayes = bayes;
     }
 
+    public Threshold getChi2Threshold() {
+        return chi2Threshold;
+    }
+
     /**
      * The {@code Parameter} class encapsulates a parameter with a value, a hold state,
      * and an associated {@code Threshold} object that defines the constraints (min, max)
@@ -546,6 +570,29 @@ public class FitModel {
          * Constructs a new {@code Threshold} with default settings.
          */
         public Threshold() {
+            setDefault();
+        }
+
+        /**
+         * Determines if a given value should be filtered based on the threshold settings.
+         *
+         * @param value The value to check against the threshold.
+         * @return {@code true} if the value is outside the threshold bounds and the threshold is active,
+         * {@code false} otherwise.
+         */
+        public boolean toFilter(double value) {
+            if (active) {
+                return min > value || max < value;
+            }
+
+            return false;
+        }
+
+        /**
+         * Resets the threshold to its default values.
+         * The default minimum is -0.01, the default maximum is 0.01, and the threshold is inactive.
+         */
+        public void setDefault() {
             min = -0.01;
             max = 0.01;
             active = false;

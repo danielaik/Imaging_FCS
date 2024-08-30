@@ -1,5 +1,6 @@
 package fiji.plugin.imaging_fcs.new_imfcs.model.correlations;
 
+import fiji.plugin.imaging_fcs.new_imfcs.controller.FitController;
 import fiji.plugin.imaging_fcs.new_imfcs.model.PixelModel;
 import ij.gui.Roi;
 
@@ -24,12 +25,14 @@ public final class AverageCorrelation {
      *                        null, all PixelModel objects are considered.
      * @param pixelBinning    The binning factor applied to the pixel coordinates.
      * @param minimumPosition The minimum position offset to apply to the pixel coordinates.
+     * @param fitController   The controller used to filter pixels based on fitting criteria.
      * @return A PixelModel object representing the average correlation function and its variance.
      */
     public static PixelModel calculateAverageCorrelationFunction(PixelModel[][] pixelModels, Roi roi,
-                                                                 Point pixelBinning, Point minimumPosition) {
+                                                                 Point pixelBinning, Point minimumPosition,
+                                                                 FitController fitController) {
         List<PixelModel> pixelModelList =
-                SelectedPixel.getPixelModelsInRoi(roi, pixelBinning, minimumPosition, pixelModels);
+                SelectedPixel.getPixelModelsInRoi(roi, pixelBinning, minimumPosition, pixelModels, fitController);
 
         int numPixelModels = pixelModelList.size();
         if (numPixelModels == 0) {

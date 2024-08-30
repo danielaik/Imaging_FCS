@@ -1,6 +1,7 @@
 package fiji.plugin.imaging_fcs.new_imfcs.view;
 
 import fiji.plugin.imaging_fcs.new_imfcs.constants.Constants;
+import fiji.plugin.imaging_fcs.new_imfcs.controller.FitController;
 import fiji.plugin.imaging_fcs.new_imfcs.model.ImageModel;
 import fiji.plugin.imaging_fcs.new_imfcs.model.PixelModel;
 import fiji.plugin.imaging_fcs.new_imfcs.utils.ApplyCustomLUT;
@@ -477,6 +478,66 @@ public class Plots {
     }
 
     /**
+     * Sets all pixel values in the given image to NaN within the specified dimensions.
+     *
+     * @param img       The ImagePlus object representing the image.
+     * @param dimension The dimensions of the image in which to set pixel values to NaN.
+     */
+    private static void setAllPixelToNaN(ImagePlus img, Dimension dimension) {
+        IntStream.range(1, img.getStackSize() + 1).forEach(slice -> {
+            ImageProcessor ip = img.getStack().getProcessor(slice);
+            for (int x = 0; x < dimension.width; x++) {
+                for (int y = 0; y < dimension.height; y++) {
+                    ip.putPixelValue(x, y, Double.NaN);
+                }
+            }
+        });
+    }
+
+    /**
+     * Initializes the parameter maps by creating an ImagePlus object with specified dimensions,
+     * setting all pixel values to NaN, adapting the image scale, and applying a custom LUT.
+     * Key and mouse listeners are added to the image window and canvas for interaction handling.
+     *
+     * @param convertedDimension The converted dimensions of the image based on binning.
+     * @param paramsLength       The number of parameters to map, corresponding to the number of slices.
+     * @param mouseListener      The mouse listener to handle events on the image.
+     * @return The initialized ImagePlus object containing the parameter maps.
+     */
+    private static ImagePlus initParameterMaps(Dimension convertedDimension, int paramsLength,
+                                               MouseListener mouseListener) {
+        imgParam = IJ.createImage("Maps", "GRAY32", convertedDimension.width, convertedDimension.height, paramsLength);
+
+        // Set all pixel values to NaN
+        setAllPixelToNaN(imgParam, convertedDimension);
+
+        // create the window and adapt the image scale
+        imgParam.show();
+        ImageWindow window = imgParam.getWindow();
+        window.setLocation(PARAMETER_POSITION);
+        ImageModel.adaptImageScale(imgParam);
+        ApplyCustomLUT.applyCustomLUT(imgParam, "Red Hot");
+
+        // add key listener on both the window on the canvas to support if the user uses its keyboard after clicking
+        // on the window only or after clicking on the image.
+        window.addKeyListener(keyAdjustmentListener());
+        imgParam.getCanvas().addKeyListener(keyAdjustmentListener());
+
+        // Add listener to switch the histogram if the slice is changed
+        for (Component component : window.getComponents()) {
+            if (component instanceof ScrollbarWithLabel) {
+                ScrollbarWithLabel scrollbar = (ScrollbarWithLabel) component;
+                scrollbar.addAdjustmentListener(imageAdjusted());
+            }
+        }
+
+        // Add a mouse listener to plot the correlations functions
+        imgParam.getCanvas().addMouseListener(mouseListener);
+
+        return imgParam;
+    }
+
+    /**
      * Plots parameter maps based on the pixel model and given image dimensions, creating an ImagePlus object.
      *
      * @param pixelModel      the model containing pixel parameters.
@@ -498,41 +559,7 @@ public class Plots {
         boolean initImg = false;
         if (imgParam == null || !imgParam.isVisible()) {
             initImg = true;
-            imgParam = IJ.createImage("Maps", "GRAY32", convertedDimension.width, convertedDimension.height,
-                    params.length);
-
-            // Set all pixel values to NaN
-            IntStream.range(1, imgParam.getStackSize() + 1).forEach(slice -> {
-                ImageProcessor ip = imgParam.getStack().getProcessor(slice);
-                for (int x = 0; x < convertedDimension.width; x++) {
-                    for (int y = 0; y < convertedDimension.height; y++) {
-                        ip.putPixelValue(x, y, Double.NaN);
-                    }
-                }
-            });
-
-            // create the window and adapt the image scale
-            imgParam.show();
-            ImageWindow window = imgParam.getWindow();
-            window.setLocation(PARAMETER_POSITION);
-            ImageModel.adaptImageScale(imgParam);
-            ApplyCustomLUT.applyCustomLUT(imgParam, "Red Hot");
-
-            // add key listener on both the window on the canvas to support if the user uses its keyboard after clicking
-            // on the window only or after clicking on the image.
-            window.addKeyListener(keyAdjustmentListener());
-            imgParam.getCanvas().addKeyListener(keyAdjustmentListener());
-
-            // Add listener to switch the histogram if the slice is changed
-            for (Component component : window.getComponents()) {
-                if (component instanceof ScrollbarWithLabel) {
-                    ScrollbarWithLabel scrollbar = (ScrollbarWithLabel) component;
-                    scrollbar.addAdjustmentListener(imageAdjusted());
-                }
-            }
-
-            // Add a mouse listener to plot the correlations functions
-            imgParam.getCanvas().addMouseListener(mouseListener);
+            initParameterMaps(convertedDimension, params.length, mouseListener);
         }
 
         // Enter value from the end to be on the first slice on output
@@ -548,6 +575,59 @@ public class Plots {
         IJ.run(imgParam, "Enhance Contrast", "saturated=0.35");
 
         return imgParam;
+    }
+
+    /**
+     * Updates the parameter maps based on the provided pixel models, updating the ImagePlus object.
+     * The method initializes the image if not already visible, and sets pixel values for each parameter slice.
+     *
+     * @param pixelModels     The 2D array of PixelModel objects.
+     * @param minimumPosition The minimum position in the image.
+     * @param maximumPosition The maximum position in the image.
+     * @param binning         The binning factors applied to the image dimensions.
+     * @param mouseListener   The mouse listener to handle mouse events on the plotted image.
+     * @param fitController   The FitController used to determine if a pixel should be filtered.
+     * @param plotParaHist    Whether to plot the parameter histogram.
+     */
+    public static void updateParameterMaps(PixelModel[][] pixelModels, Point minimumPosition, Point maximumPosition,
+                                           Point binning, MouseListener mouseListener, FitController fitController,
+                                           boolean plotParaHist) {
+        Dimension convertedDimension = getConvertedImageDimension(minimumPosition, maximumPosition);
+        int paramsLength = PixelModel.paramsName.length;
+
+        boolean initImg = false;
+        if (imgParam == null || !imgParam.isVisible()) {
+            initParameterMaps(convertedDimension, paramsLength, mouseListener);
+            initImg = true;
+        } else {
+            // Set all pixel values to NaN
+            setAllPixelToNaN(imgParam, convertedDimension);
+        }
+
+
+        for (int x = 0; x < pixelModels.length; x++) {
+            for (int y = 0; y < pixelModels[0].length; y++) {
+                PixelModel currentPixelModel = pixelModels[x][y];
+                if (currentPixelModel != null && currentPixelModel.isFitted() &&
+                        !fitController.needToFilter(currentPixelModel)) {
+                    Pair<String, Double>[] params = currentPixelModel.getParams();
+                    for (int i = paramsLength - 1; i >= 0; i--) {
+                        ImageProcessor ip = imgParam.getStack().getProcessor(i + 1);
+                        ip.putPixelValue(x / binning.x, y / binning.y, params[i].getRight());
+                        if (initImg) {
+                            imgParam.setSlice(i + 1);
+                            IJ.run("Set Label...", "label=" + params[i].getLeft());
+                        }
+                    }
+                }
+            }
+        }
+
+        IJ.run(imgParam, "Enhance Contrast", "satured=0.35");
+
+        if (plotParaHist) {
+            plotParamHistogramWindow(imgParam);
+        }
     }
 
     /**

@@ -1,6 +1,7 @@
 package fiji.plugin.imaging_fcs.new_imfcs.view;
 
 import fiji.plugin.imaging_fcs.new_imfcs.constants.Constants;
+import fiji.plugin.imaging_fcs.new_imfcs.controller.FilteringController;
 import fiji.plugin.imaging_fcs.new_imfcs.model.FitModel;
 
 import javax.swing.*;
@@ -10,6 +11,7 @@ import java.awt.event.ItemListener;
 import static fiji.plugin.imaging_fcs.new_imfcs.controller.FieldListenerFactory.createFocusListener;
 import static fiji.plugin.imaging_fcs.new_imfcs.view.ButtonFactory.createJButton;
 import static fiji.plugin.imaging_fcs.new_imfcs.view.TextFieldFactory.createTextField;
+import static fiji.plugin.imaging_fcs.new_imfcs.view.TextFieldFactory.setText;
 import static fiji.plugin.imaging_fcs.new_imfcs.view.UIUtils.createJLabel;
 
 /**
@@ -19,20 +21,21 @@ import static fiji.plugin.imaging_fcs.new_imfcs.view.UIUtils.createJLabel;
  */
 public class FilteringView extends BaseView {
     // TODO: add columns for DCCF and two row for rel G and chi2
-    private static final GridLayout FILTERING_LAYOUT = new GridLayout(15, 4); // should be 17 and 6
+    private static final GridLayout FILTERING_LAYOUT = new GridLayout(17, 4); // should be 17 and 6
     private static final Point FILTERING_POSITION =
             new Point(Constants.MAIN_PANEL_POS.x + Constants.MAIN_PANEL_DIM.width + 310,
                     Constants.MAIN_PANEL_POS.y + 335);
     private static final Dimension FILTERING_DIMENSION = new Dimension(420, 300);
+    private final FilteringController controller;
 
     // The model that holds the data and thresholds to be displayed and manipulated in this view
     private final FitModel model;
 
     // UI components for text fields and radio buttons associated with each parameter
     private FilterTextField filterN, filterD, filterVx, filterVy, filterG, filterF2, filterD2, filterF3, filterD3,
-            filterFTrip, filterTTrip;
+            filterFTrip, filterTTrip, filterChi2;
     private JRadioButton rbtnFilterN, rbtnFilterD, rbtnFilterVx, rbtnFilterVy, rbtnFilterG, rbtnFilterF2, rbtnFilterD2,
-            rbtnFilterF3, rbtnFilterD3, rbtnFilterFTrip, rbtnFilterTTrip;
+            rbtnFilterF3, rbtnFilterD3, rbtnFilterFTrip, rbtnFilterTTrip, rbtnFilterChi2;
     private JButton btnFilter, btnReset, btnLoadBinaryFilter;
 
     /**
@@ -40,8 +43,9 @@ public class FilteringView extends BaseView {
      *
      * @param model the model containing the thresholds and parameter data
      */
-    public FilteringView(FitModel model) {
+    public FilteringView(FilteringController controller, FitModel model) {
         super("Thresholds settings");
+        this.controller = controller;
         this.model = model;
 
         initializeUI();
@@ -71,17 +75,52 @@ public class FilteringView extends BaseView {
         filterD3 = new FilterTextField(model.getD3().getThreshold());
         filterFTrip = new FilterTextField(model.getFTrip().getThreshold());
         filterTTrip = new FilterTextField(model.getTTrip().getThreshold());
+        filterChi2 = new FilterTextField(model.getChi2Threshold());
+    }
+
+    /**
+     * Resets all filter text fields and corresponding radio buttons in the view.
+     * <p>
+     * This method clears the values in each filter field and unselects the
+     * associated radio buttons, returning the view to its default state.
+     */
+    public void resetTextFields() {
+        filterN.reset();
+        filterD.reset();
+        filterVx.reset();
+        filterVy.reset();
+        filterG.reset();
+        filterF2.reset();
+        filterD2.reset();
+        filterF3.reset();
+        filterD3.reset();
+        filterFTrip.reset();
+        filterTTrip.reset();
+        filterChi2.reset();
+
+        rbtnFilterN.setSelected(false);
+        rbtnFilterD.setSelected(false);
+        rbtnFilterVx.setSelected(false);
+        rbtnFilterVy.setSelected(false);
+        rbtnFilterG.setSelected(false);
+        rbtnFilterF2.setSelected(false);
+        rbtnFilterD2.setSelected(false);
+        rbtnFilterF3.setSelected(false);
+        rbtnFilterD3.setSelected(false);
+        rbtnFilterFTrip.setSelected(false);
+        rbtnFilterTTrip.setSelected(false);
+        rbtnFilterChi2.setSelected(false);
     }
 
     /**
      * Creates a JRadioButton linked to a specific threshold and associated text field.
      *
-     * @param threshold       the threshold associated with the radio button
      * @param filterTextField the text field that will be enabled or disabled based on the radio button state
      * @return the created JRadioButton
      */
-    private JRadioButton createRadioButton(FitModel.Threshold threshold, FilterTextField filterTextField) {
+    private JRadioButton createRadioButton(FilterTextField filterTextField) {
         JRadioButton radioButton = new JRadioButton();
+        FitModel.Threshold threshold = filterTextField.threshold;
         radioButton.setSelected(threshold.getActive());
 
         radioButton.addActionListener(ev -> {
@@ -96,17 +135,18 @@ public class FilteringView extends BaseView {
      * Initializes the radio buttons for each filter parameter.
      */
     private void initializeRadioButtons() {
-        rbtnFilterN = createRadioButton(model.getN().getThreshold(), filterN);
-        rbtnFilterD = createRadioButton(model.getD().getThreshold(), filterD);
-        rbtnFilterVx = createRadioButton(model.getVx().getThreshold(), filterVx);
-        rbtnFilterVy = createRadioButton(model.getVy().getThreshold(), filterVy);
-        rbtnFilterG = createRadioButton(model.getG().getThreshold(), filterG);
-        rbtnFilterF2 = createRadioButton(model.getF2().getThreshold(), filterF2);
-        rbtnFilterD2 = createRadioButton(model.getD2().getThreshold(), filterD2);
-        rbtnFilterF3 = createRadioButton(model.getF3().getThreshold(), filterF3);
-        rbtnFilterD3 = createRadioButton(model.getD3().getThreshold(), filterD3);
-        rbtnFilterFTrip = createRadioButton(model.getFTrip().getThreshold(), filterFTrip);
-        rbtnFilterTTrip = createRadioButton(model.getTTrip().getThreshold(), filterTTrip);
+        rbtnFilterN = createRadioButton(filterN);
+        rbtnFilterD = createRadioButton(filterD);
+        rbtnFilterVx = createRadioButton(filterVx);
+        rbtnFilterVy = createRadioButton(filterVy);
+        rbtnFilterG = createRadioButton(filterG);
+        rbtnFilterF2 = createRadioButton(filterF2);
+        rbtnFilterD2 = createRadioButton(filterD2);
+        rbtnFilterF3 = createRadioButton(filterF3);
+        rbtnFilterD3 = createRadioButton(filterD3);
+        rbtnFilterFTrip = createRadioButton(filterFTrip);
+        rbtnFilterTTrip = createRadioButton(filterTTrip);
+        rbtnFilterChi2 = createRadioButton(filterChi2);
     }
 
     @Override
@@ -115,10 +155,10 @@ public class FilteringView extends BaseView {
 
         btnFilter = createJButton("Filter",
                 "Creates filtering mask according to specified thresholds and applies it on the parameter maps", null,
-                (ItemListener) null);
+                controller.btnFilteringPressed());
         btnReset = createJButton("Reset",
                 "Resets the thresholds to their default values and the filtering mask to 1.0 for all fitted pixels",
-                null, (ItemListener) null);
+                null, controller.btnResetPressed());
         btnLoadBinaryFilter = createJButton("Binary", "", null, (ItemListener) null);
     }
 
@@ -204,12 +244,17 @@ public class FilteringView extends BaseView {
         add(filterTTrip);
 
         // row 14
+        add(createJLabel("Chi2", ""));
+        add(rbtnFilterChi2);
+        add(filterChi2);
+
+        // row 15
         add(btnFilter);
         add(createJLabel(" ", ""));
         add(createJLabel(" ", ""));
         add(createJLabel(" ", ""));
 
-        // row 15
+        // row 16
         add(btnReset);
         add(createJLabel(" ", ""));
         add(createJLabel(" ", ""));
@@ -220,6 +265,7 @@ public class FilteringView extends BaseView {
      * Inner class representing the filter text fields (min and max) for each parameter.
      */
     private static class FilterTextField {
+        private final FitModel.Threshold threshold;
         private JTextField min;
         private JTextField max;
 
@@ -229,9 +275,17 @@ public class FilteringView extends BaseView {
          * @param threshold the threshold associated with this text field
          */
         public FilterTextField(FitModel.Threshold threshold) {
+            this.threshold = threshold;
+
             min = createTextField(threshold.getMin(), "", createFocusListener(threshold::setMin));
             max = createTextField(threshold.getMax(), "", createFocusListener(threshold::setMax));
             this.setEnabled(false);
+        }
+
+        public void reset() {
+            setText(min, threshold.getMin());
+            setText(max, threshold.getMax());
+            setEnabled(false);
         }
 
         /**

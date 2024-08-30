@@ -79,6 +79,23 @@ public class FitController {
     }
 
     /**
+     * Determines if the pixel model needs to be filtered based on the current model settings.
+     *
+     * @param pixelModel The pixel model to check.
+     * @return true if the pixel model should be filtered, false otherwise.
+     */
+    public boolean needToFilter(PixelModel pixelModel) {
+        return pixelModel.toFilter(model);
+    }
+
+    /**
+     * Resets the filters in the FitModel.
+     */
+    public void resetFilters() {
+        model.resetFilters();
+    }
+
+    /**
      * Sets the visibility of the view.
      *
      * @param b The visibility status.
