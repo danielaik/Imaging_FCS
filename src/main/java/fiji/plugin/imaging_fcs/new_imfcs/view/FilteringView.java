@@ -6,7 +6,6 @@ import fiji.plugin.imaging_fcs.new_imfcs.model.FitModel;
 
 import javax.swing.*;
 import java.awt.*;
-import java.awt.event.ItemListener;
 
 import static fiji.plugin.imaging_fcs.new_imfcs.controller.FieldListenerFactory.createFocusListener;
 import static fiji.plugin.imaging_fcs.new_imfcs.view.ButtonFactory.createJButton;
@@ -79,12 +78,12 @@ public class FilteringView extends BaseView {
     }
 
     /**
-     * Resets all filter text fields and corresponding radio buttons in the view.
+     * Resets all filter fields and corresponding radio buttons in the view.
      * <p>
      * This method clears the values in each filter field and unselects the
      * associated radio buttons, returning the view to its default state.
      */
-    public void resetTextFields() {
+    public void resetFields() {
         filterN.reset();
         filterD.reset();
         filterVx.reset();
@@ -110,6 +109,8 @@ public class FilteringView extends BaseView {
         rbtnFilterFTrip.setSelected(false);
         rbtnFilterTTrip.setSelected(false);
         rbtnFilterChi2.setSelected(false);
+
+        btnLoadBinaryFilter.setText("Binary");
     }
 
     /**
@@ -159,7 +160,7 @@ public class FilteringView extends BaseView {
         btnReset = createJButton("Reset",
                 "Resets the thresholds to their default values and the filtering mask to 1.0 for all fitted pixels",
                 null, controller.btnResetPressed());
-        btnLoadBinaryFilter = createJButton("Binary", "", null, (ItemListener) null);
+        btnLoadBinaryFilter = createJButton("Binary", "", null, controller.btnLoadBinaryFilterPressed());
     }
 
     /**

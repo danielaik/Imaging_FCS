@@ -16,6 +16,7 @@ import java.awt.*;
 import java.awt.event.*;
 import java.util.List;
 import java.util.*;
+import java.util.function.Function;
 import java.util.stream.IntStream;
 
 /**
@@ -455,29 +456,6 @@ public class Plots {
     }
 
     /**
-     * Converts a point to a different scale based on binning factors and adjusts based on the minimum position.
-     *
-     * @param p               the original point.
-     * @param minimumPosition the minimum position to adjust the point.
-     * @param binning         the binning factors to be applied.
-     * @return the converted point with binning factors applied.
-     */
-    private static Point convertPointToBinning(Point p, Point minimumPosition, Point binning) {
-        return new Point(p.x / binning.x - minimumPosition.x, p.y / binning.y - minimumPosition.y);
-    }
-
-    /**
-     * Calculates the dimensions of an image based on the minimum and maximum positions.
-     *
-     * @param minimumPosition the minimum position in the image.
-     * @param maximumPosition the maximum position in the image.
-     * @return the dimension of the image calculated from the positions.
-     */
-    private static Dimension getConvertedImageDimension(Point minimumPosition, Point maximumPosition) {
-        return new Dimension(maximumPosition.x - minimumPosition.x + 1, maximumPosition.y - minimumPosition.y + 1);
-    }
-
-    /**
      * Sets all pixel values in the given image to NaN within the specified dimensions.
      *
      * @param img       The ImagePlus object representing the image.
@@ -538,34 +516,29 @@ public class Plots {
     }
 
     /**
-     * Plots parameter maps based on the pixel model and given image dimensions, creating an ImagePlus object.
+     * Plots parameter maps for a given pixel model at a specific point within the image dimensions,
+     * creating or updating an ImagePlus object.
      *
-     * @param pixelModel      the model containing pixel parameters.
-     * @param p               the point to be plotted.
-     * @param minimumPosition the minimum position in the image.
-     * @param maximumPosition the maximum position in the image.
-     * @param binning         the binning factors to be applied.
-     * @param mouseListener   the mouse listener to handle mouse events on the plotted image.
-     * @return the ImagePlus object containing the plotted parameter maps.
+     * @param pixelModel    The PixelModel containing the parameters to be plotted.
+     * @param p             The point in the image where the parameters will be plotted.
+     * @param dimension     The dimensions of the image.
+     * @param mouseListener The MouseListener to handle mouse events on the plotted image.
+     * @return The ImagePlus object containing the plotted parameter maps.
      */
-    public static ImagePlus plotParameterMaps(PixelModel pixelModel, Point p, Point minimumPosition,
-                                              Point maximumPosition, Point binning, MouseListener mouseListener) {
+    public static ImagePlus plotParameterMaps(PixelModel pixelModel, Point p, Dimension dimension,
+                                              MouseListener mouseListener) {
         Pair<String, Double>[] params = pixelModel.getParams();
-
-        // convert dimension using binning
-        Point binningPoint = convertPointToBinning(p, minimumPosition, binning);
-        Dimension convertedDimension = getConvertedImageDimension(minimumPosition, maximumPosition);
 
         boolean initImg = false;
         if (imgParam == null || !imgParam.isVisible()) {
             initImg = true;
-            initParameterMaps(convertedDimension, params.length, mouseListener);
+            initParameterMaps(dimension, params.length, mouseListener);
         }
 
         // Enter value from the end to be on the first slice on output
         for (int i = params.length - 1; i >= 0; i--) {
             ImageProcessor ip = imgParam.getStack().getProcessor(i + 1);
-            ip.putPixelValue(binningPoint.x, binningPoint.y, params[i].getRight());
+            ip.putPixelValue(p.x, p.y, params[i].getRight());
             if (initImg) {
                 imgParam.setSlice(i + 1);
                 IJ.run("Set Label...", "label=" + params[i].getLeft());
@@ -578,42 +551,43 @@ public class Plots {
     }
 
     /**
-     * Updates the parameter maps based on the provided pixel models, updating the ImagePlus object.
-     * The method initializes the image if not already visible, and sets pixel values for each parameter slice.
+     * Updates the parameter maps for a set of pixel models across the image dimensions,
+     * creating or updating an ImagePlus object. Initializes the image if not already visible,
+     * and sets pixel values for each parameter slice.
      *
-     * @param pixelModels     The 2D array of PixelModel objects.
-     * @param minimumPosition The minimum position in the image.
-     * @param maximumPosition The maximum position in the image.
-     * @param binning         The binning factors applied to the image dimensions.
-     * @param mouseListener   The mouse listener to handle mouse events on the plotted image.
-     * @param fitController   The FitController used to determine if a pixel should be filtered.
-     * @param plotParaHist    Whether to plot the parameter histogram.
+     * @param pixelModels           The 2D array of PixelModel objects to be plotted.
+     * @param dimension             The dimensions of the image.
+     * @param convertPointToBinning Function to convert pixel coordinates to their corresponding binning points.
+     * @param mouseListener         The MouseListener to handle mouse events on the plotted image.
+     * @param fitController         The FitController used to determine if a pixel should be filtered.
+     * @param plotParaHist          Flag indicating whether to plot the parameter histogram.
      */
-    public static void updateParameterMaps(PixelModel[][] pixelModels, Point minimumPosition, Point maximumPosition,
-                                           Point binning, MouseListener mouseListener, FitController fitController,
-                                           boolean plotParaHist) {
-        Dimension convertedDimension = getConvertedImageDimension(minimumPosition, maximumPosition);
+    public static void updateParameterMaps(PixelModel[][] pixelModels, Dimension dimension,
+                                           Function<Point, Point> convertPointToBinning, MouseListener mouseListener,
+                                           FitController fitController, boolean plotParaHist) {
         int paramsLength = PixelModel.paramsName.length;
 
         boolean initImg = false;
         if (imgParam == null || !imgParam.isVisible()) {
-            initParameterMaps(convertedDimension, paramsLength, mouseListener);
+            initParameterMaps(dimension, paramsLength, mouseListener);
             initImg = true;
         } else {
             // Set all pixel values to NaN
-            setAllPixelToNaN(imgParam, convertedDimension);
+            setAllPixelToNaN(imgParam, dimension);
         }
-
 
         for (int x = 0; x < pixelModels.length; x++) {
             for (int y = 0; y < pixelModels[0].length; y++) {
                 PixelModel currentPixelModel = pixelModels[x][y];
+                Point binningPoint = convertPointToBinning.apply(new Point(x, y));
+
                 if (currentPixelModel != null && currentPixelModel.isFitted() &&
-                        !fitController.needToFilter(currentPixelModel)) {
+                        !fitController.needToFilter(currentPixelModel, binningPoint.x, binningPoint.y)) {
                     Pair<String, Double>[] params = currentPixelModel.getParams();
                     for (int i = paramsLength - 1; i >= 0; i--) {
                         ImageProcessor ip = imgParam.getStack().getProcessor(i + 1);
-                        ip.putPixelValue(x / binning.x, y / binning.y, params[i].getRight());
+
+                        ip.putPixelValue(binningPoint.x, binningPoint.y, params[i].getRight());
                         if (initImg) {
                             imgParam.setSlice(i + 1);
                             IJ.run("Set Label...", "label=" + params[i].getLeft());

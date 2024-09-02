@@ -5,6 +5,7 @@ import fiji.plugin.imaging_fcs.new_imfcs.model.FitModel;
 import fiji.plugin.imaging_fcs.new_imfcs.model.PixelModel;
 import fiji.plugin.imaging_fcs.new_imfcs.view.FitView;
 import ij.IJ;
+import ij.ImagePlus;
 
 import javax.swing.*;
 import java.awt.*;
@@ -82,10 +83,23 @@ public class FitController {
      * Determines if the pixel model needs to be filtered based on the current model settings.
      *
      * @param pixelModel The pixel model to check.
+     * @param x          The x-coordinate of the pixel.
+     * @param y          The y-coordinate of the pixel.
      * @return true if the pixel model should be filtered, false otherwise.
      */
-    public boolean needToFilter(PixelModel pixelModel) {
-        return pixelModel.toFilter(model);
+    public boolean needToFilter(PixelModel pixelModel, int x, int y) {
+        return pixelModel.toFilter(model, x, y);
+    }
+
+    /**
+     * Loads a binary image used for filtering and sets it in the current model.
+     *
+     * @return The loaded ImagePlus object representing the binary filtering image.
+     */
+    public ImagePlus loadBinaryFilteringImage() {
+        ImagePlus filteringImg = IJ.openImage();
+        model.setFilteringBinaryImage(filteringImg);
+        return filteringImg;
     }
 
     /**

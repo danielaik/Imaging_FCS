@@ -11,6 +11,7 @@ import ij.gui.Roi;
 import java.awt.*;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Function;
 
 /**
  * The SelectedPixel class handles the operations related to pixel selection and correlation for image processing.
@@ -37,24 +38,29 @@ public class SelectedPixel {
      * Retrieves a list of PixelModel objects within the specified Region of Interest (ROI).
      * If the ROI is null, it retrieves all valid PixelModel objects from the provided pixelModels array.
      *
-     * @param roi             The Region of Interest within which to retrieve PixelModel objects. If null, all
-     *                        PixelModel objects are considered.
-     * @param pixelBinning    The binning factor applied to the pixel coordinates.
-     * @param minimumPosition The minimum position offset to apply to the pixel coordinates.
-     * @param pixelModels     The 2D array of PixelModel objects from which to retrieve the models.
-     * @param fitController   the controller responsible for filtering pixels based on fit criteria.
+     * @param roi                   The Region of Interest within which to retrieve PixelModel objects. If null, all
+     *                              PixelModel objects are considered.
+     * @param pixelBinning          The binning factor applied to the pixel coordinates.
+     * @param minimumPosition       The minimum position offset to apply to the pixel coordinates.
+     * @param convertPointToBinning Function to convert pixel coordinates to their corresponding binning points.
+     * @param pixelModels           The 2D array of PixelModel objects from which to retrieve the models.
+     * @param fitController         the controller responsible for filtering pixels based on fit criteria.
      * @return A list of PixelModel objects within the specified ROI.
      */
     public static List<PixelModel> getPixelModelsInRoi(Roi roi, Point pixelBinning, Point minimumPosition,
+                                                       Function<Point, Point> convertPointToBinning,
                                                        PixelModel[][] pixelModels, FitController fitController) {
         List<PixelModel> pixelModelList = new ArrayList<>();
 
         if (roi == null) {
-            for (PixelModel[] pixelModelRow : pixelModels) {
-                for (PixelModel currentPixelModel : pixelModelRow) {
-                    if (currentPixelModel != null && currentPixelModel.getAcf() != null &&
-                            !fitController.needToFilter(currentPixelModel)) {
-                        pixelModelList.add(currentPixelModel);
+            for (int x = 0; x < pixelModels.length; x++) {
+                for (int y = 0; y < pixelModels[0].length; y++) {
+                    PixelModel currentPixelModel = pixelModels[x][y];
+                    if (currentPixelModel != null && currentPixelModel.getAcf() != null) {
+                        Point binningPoint = convertPointToBinning.apply(new Point(x, y));
+                        if (!fitController.needToFilter(currentPixelModel, binningPoint.x, binningPoint.y)) {
+                            pixelModelList.add(currentPixelModel);
+                        }
                     }
                 }
             }
@@ -64,12 +70,16 @@ public class SelectedPixel {
 
             for (int x = rect.x; x < rect.x + rect.width; x++) {
                 for (int y = rect.y; y < rect.y + rect.height; y++) {
-                    PixelModel currentPixelModel =
-                            pixelModels[(x + minimumPosition.x) * pixelBinning.x][(y + minimumPosition.y) *
-                                    pixelBinning.y];
-                    if (currentPixelModel != null && currentPixelModel.getAcf() != null &&
-                            !fitController.needToFilter(currentPixelModel)) {
-                        pixelModelList.add(currentPixelModel);
+                    Point convertedCoordinates = new Point((x + minimumPosition.x) * pixelBinning.x,
+                            (y + minimumPosition.y) * pixelBinning.y);
+
+                    PixelModel currentPixelModel = pixelModels[convertedCoordinates.x][convertedCoordinates.y];
+
+                    if (currentPixelModel != null && currentPixelModel.getAcf() != null) {
+                        Point binningPoint = convertPointToBinning.apply(convertedCoordinates);
+                        if (!fitController.needToFilter(currentPixelModel, binningPoint.x, binningPoint.y)) {
+                            pixelModelList.add(currentPixelModel);
+                        }
                     }
                 }
             }

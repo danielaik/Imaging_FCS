@@ -363,6 +363,31 @@ public final class ExpSettingsModel {
         }
     }
 
+    /**
+     * Converts a point to its corresponding binning scale, adjusted by the minimum position offset.
+     *
+     * @param p The point to be converted.
+     * @return A new Point object representing the converted coordinates.
+     */
+    public Point convertPointToBinning(Point p) {
+        Point pixelBinning = getPixelBinning();
+        Point minimumPosition = getMinCursorPosition();
+
+        return new Point(p.x / pixelBinning.x - minimumPosition.x, p.y / pixelBinning.y - minimumPosition.y);
+    }
+
+    /**
+     * Calculates the dimensions of an image based on the minimum and maximum positions within the image.
+     *
+     * @param imageDimension The original dimensions of the image.
+     * @return A Dimension object representing the adjusted image dimensions.
+     */
+    public Dimension getConvertedImageDimension(Dimension imageDimension) {
+        Point minimumPosition = getMinCursorPosition();
+        Point maximumPosition = getMaxCursorPosition(imageDimension);
+        return new Dimension(maximumPosition.x - minimumPosition.x + 1, maximumPosition.y - minimumPosition.y + 1);
+    }
+
     // Getters and setters for various parameters follow, allowing external modification and access to the settings.
     // These include straightforward implementations to set and get values for pixel size, magnification, NA, etc.
     // Some setters parse strings to double values, enabling easy handling of text input.

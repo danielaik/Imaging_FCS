@@ -1,6 +1,8 @@
 package fiji.plugin.imaging_fcs.new_imfcs.model;
 
 import fiji.plugin.imaging_fcs.new_imfcs.utils.Pair;
+import ij.ImagePlus;
+import ij.process.ImageProcessor;
 
 import java.util.function.Function;
 import java.util.stream.IntStream;
@@ -193,18 +195,39 @@ public class PixelModel {
     }
 
     /**
-     * Determines if the current pixel model should be filtered based on the threshold settings
-     * in the provided {@code FitModel}.
+     * Determines whether the current pixel model should be filtered based on the provided {@code FitModel} settings.
      * <p>
-     * This method checks if the fit parameters of the pixel model fall outside the defined thresholds
-     * for various parameters in the {@code FitModel}. If any parameter exceeds its threshold,
-     * the pixel model will be flagged for filtering.
+     * This method evaluates the pixel model against several criteria to decide if it should be excluded from analysis:
+     * <ul>
+     *     <li>If a binary filtering image is present in the {@code FitModel}, the pixel is filtered based on the value
+     *     at its coordinates in the binary image.</li>
+     *     <li>If no binary image is used, the method checks if any fit parameters exceed their respective thresholds
+     *     defined in the {@code FitModel}. If any threshold is exceeded, the pixel model is flagged for filtering.</li>
+     * </ul>
      * </p>
      *
-     * @param model The {@code FitModel} containing the threshold settings for each parameter.
+     * @param model The {@code FitModel} containing threshold settings and optional binary filtering image.
+     * @param x     The x-coordinate of the pixel.
+     * @param y     The y-coordinate of the pixel.
      * @return {@code true} if the pixel model should be filtered, {@code false} otherwise.
      */
-    public boolean toFilter(FitModel model) {
+    public boolean toFilter(FitModel model, int x, int y) {
+        if (model.getFilteringBinaryImage() != null) {
+            // filter only based on the binary image
+            ImagePlus filteringImage = model.getFilteringBinaryImage();
+            ImageProcessor ip = filteringImage.getImageStack().getProcessor(1);
+            int pixelValue = 0;
+
+            if (filteringImage.getBitDepth() == 16) {
+                pixelValue = ip.getPixel(x, y);
+            } else {
+                pixelValue = (int) ip.getf(x, y);
+            }
+
+            // if the pixel value is 0 then we need to filter it
+            return pixelValue == 0;
+        }
+
         return fitParams == null || model.getN().getThreshold().toFilter(fitParams.getN()) ||
                 model.getD().getThreshold().toFilter(fitParams.getDInterface()) ||
                 model.getF2().getThreshold().toFilter(fitParams.getF2()) ||

@@ -365,13 +365,12 @@ public final class ImageController {
         Point p = cursorPositions[0];
         PixelModel pixelModel = correlator.getPixelModel(p.x, p.y);
 
-        if (pixelModel.isFitted() && !fitController.needToFilter(pixelModel)) {
-            Point minimumPosition = settings.getMinCursorPosition();
-            Point maximumPosition = settings.getMaxCursorPosition(imageModel.getDimension());
+        Point binningPoint = settings.convertPointToBinning(p);
 
-            ImagePlus imgParams =
-                    Plots.plotParameterMaps(pixelModel, p, minimumPosition, maximumPosition, settings.getPixelBinning(),
-                            imageParamClicked());
+        if (pixelModel.isFitted() && !fitController.needToFilter(pixelModel, binningPoint.x, binningPoint.y)) {
+
+            ImagePlus imgParams = Plots.plotParameterMaps(pixelModel, binningPoint,
+                    settings.getConvertedImageDimension(getImageDimension()), imageParamClicked());
 
             if (options.isPlotParaHist()) {
                 Plots.plotParamHistogramWindow(imgParams);
@@ -389,13 +388,11 @@ public final class ImageController {
         List<PixelModel> pixelModelList = new ArrayList<>();
         PixelModel[][] pixelModels = correlator.getPixelModels();
 
-        Plots.updateParameterMaps(pixelModels, settings.getMinCursorPosition(),
-                settings.getMaxCursorPosition(getImageDimension()), settings.getPixelBinning(), imageParamClicked(),
-                fitController, options.isPlotParaHist());
+        Plots.updateParameterMaps(pixelModels, settings.getConvertedImageDimension(getImageDimension()),
+                settings::convertPointToBinning, imageParamClicked(), fitController, options.isPlotParaHist());
 
-        for (int x = 0; x < pixelModels.length; x++) {
-            for (int y = 0; y < pixelModels[0].length; y++) {
-                PixelModel currentPixelModel = pixelModels[x][y];
+        for (PixelModel[] pixelModelsRow : pixelModels) {
+            for (PixelModel currentPixelModel : pixelModelsRow) {
                 if (currentPixelModel != null && currentPixelModel.getAcf() != null) {
                     pixelModelList.add(currentPixelModel);
                 }
@@ -537,7 +534,7 @@ public final class ImageController {
 
                         List<PixelModel> pixelModels =
                                 SelectedPixel.getPixelModelsInRoi(roi, pixelBinning, minimumPosition,
-                                        correlator.getPixelModels(), fitController);
+                                        settings::convertPointToBinning, correlator.getPixelModels(), fitController);
 
                         plotMultiplePixelsModels(pixelModels);
                     }

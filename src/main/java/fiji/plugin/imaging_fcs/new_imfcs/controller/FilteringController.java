@@ -3,12 +3,18 @@ package fiji.plugin.imaging_fcs.new_imfcs.controller;
 import fiji.plugin.imaging_fcs.new_imfcs.model.ExpSettingsModel;
 import fiji.plugin.imaging_fcs.new_imfcs.model.FitModel;
 import fiji.plugin.imaging_fcs.new_imfcs.model.OptionsModel;
+import fiji.plugin.imaging_fcs.new_imfcs.model.PixelModel;
 import fiji.plugin.imaging_fcs.new_imfcs.model.correlations.Correlator;
+import fiji.plugin.imaging_fcs.new_imfcs.model.correlations.SelectedPixel;
 import fiji.plugin.imaging_fcs.new_imfcs.view.FilteringView;
 import fiji.plugin.imaging_fcs.new_imfcs.view.Plots;
 import ij.IJ;
+import ij.ImagePlus;
 
+import javax.swing.*;
+import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.util.List;
 
 /**
  * Controls filtering operations, connecting the view, models, and other controllers
@@ -44,6 +50,22 @@ public class FilteringController {
     }
 
     /**
+     * Filters pixel data and updates the plots based on the current settings and fit criteria.
+     */
+    private void filterAndPlot() {
+        Plots.updateParameterMaps(correlator.getPixelModels(),
+                settings.getConvertedImageDimension(imageController.getImageDimension()),
+                settings::convertPointToBinning, imageController.imageParamClicked(), fitController,
+                optionsModel.isPlotParaHist());
+
+        List<PixelModel> pixelModelList =
+                SelectedPixel.getPixelModelsInRoi(null, settings.getPixelBinning(), settings.getMinCursorPosition(),
+                        settings::convertPointToBinning, correlator.getPixelModels(), fitController);
+
+        imageController.plotMultiplePixelsModels(pixelModelList);
+    }
+
+    /**
      * Creates an ActionListener for the filtering button, updating parameter maps
      * or showing an error if unavailable.
      *
@@ -52,9 +74,7 @@ public class FilteringController {
     public ActionListener btnFilteringPressed() {
         return (ActionEvent) -> {
             if (Plots.imgParam != null && Plots.imgParam.isVisible()) {
-                Plots.updateParameterMaps(correlator.getPixelModels(), settings.getMinCursorPosition(),
-                        settings.getMaxCursorPosition(imageController.getImageDimension()), settings.getPixelBinning(),
-                        imageController.imageParamClicked(), fitController, optionsModel.isPlotParaHist());
+                filterAndPlot();
             } else {
                 IJ.showMessage("No parameter map available. Perform a correlation or load an experiment.");
             }
@@ -69,7 +89,34 @@ public class FilteringController {
     public ActionListener btnResetPressed() {
         return (ActionEvent) -> {
             fitController.resetFilters();
-            view.resetTextFields();
+            view.resetFields();
+
+            if (Plots.imgParam != null && Plots.imgParam.isVisible()) {
+                filterAndPlot();
+            }
+        };
+    }
+
+    /**
+     * Creates an ActionListener for loading a binary filter image, updating the button label upon success.
+     *
+     * @return An ActionListener for the load binary filter button.
+     */
+    public ActionListener btnLoadBinaryFilterPressed() {
+        return (ActionEvent ev) -> {
+            if (Plots.imgParam != null && Plots.imgParam.isVisible()) {
+                JButton button = (JButton) ev.getSource();
+                ImagePlus filterImage = fitController.loadBinaryFilteringImage();
+                if (filterImage != null) {
+                    button.setText("Loaded");
+
+                    filterAndPlot();
+                } else {
+                    button.setText("Binary");
+                }
+            } else {
+                IJ.showMessage("No parameter map available. Perform a correlation or load an experiment.");
+            }
         };
     }
 

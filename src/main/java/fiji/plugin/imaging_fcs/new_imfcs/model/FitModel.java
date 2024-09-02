@@ -4,6 +4,7 @@ import fiji.plugin.imaging_fcs.new_imfcs.controller.InvalidUserInputException;
 import fiji.plugin.imaging_fcs.new_imfcs.model.fit.BayesFit;
 import fiji.plugin.imaging_fcs.new_imfcs.model.fit.GLSFit;
 import fiji.plugin.imaging_fcs.new_imfcs.model.fit.StandardFit;
+import ij.ImagePlus;
 
 import java.util.Arrays;
 
@@ -23,6 +24,7 @@ public class FitModel {
     private boolean fix = false;
     private boolean GLS = false;
     private boolean bayes = false;
+    private ImagePlus filteringBinaryImage = null;
 
     /**
      * Constructs a new FitModel with the given experimental settings.
@@ -195,6 +197,7 @@ public class FitModel {
 
         Arrays.stream(parameters).forEach(parameter -> parameter.getThreshold().setDefault());
         chi2Threshold.setDefault();
+        filteringBinaryImage = null;
     }
 
     /**
@@ -496,6 +499,14 @@ public class FitModel {
 
     public Threshold getChi2Threshold() {
         return chi2Threshold;
+    }
+
+    public ImagePlus getFilteringBinaryImage() {
+        return filteringBinaryImage;
+    }
+
+    public void setFilteringBinaryImage(ImagePlus filteringBinaryImage) {
+        this.filteringBinaryImage = filteringBinaryImage;
     }
 
     /**

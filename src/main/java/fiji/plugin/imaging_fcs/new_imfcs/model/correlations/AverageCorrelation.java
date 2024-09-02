@@ -6,6 +6,7 @@ import ij.gui.Roi;
 
 import java.awt.*;
 import java.util.List;
+import java.util.function.Function;
 
 /**
  * The AverageCorrelation class provides methods to calculate the average correlation function
@@ -20,19 +21,23 @@ public final class AverageCorrelation {
      * Calculates the average autocorrelation function (ACF) and its variance for the specified ROI.
      * If the ROI is null, the calculation is performed on all valid PixelModel objects in the provided array.
      *
-     * @param pixelModels     The 2D array of PixelModel objects.
-     * @param roi             The Region of Interest within which to calculate the average correlation function. If
-     *                        null, all PixelModel objects are considered.
-     * @param pixelBinning    The binning factor applied to the pixel coordinates.
-     * @param minimumPosition The minimum position offset to apply to the pixel coordinates.
-     * @param fitController   The controller used to filter pixels based on fitting criteria.
+     * @param pixelModels           The 2D array of PixelModel objects.
+     * @param roi                   The Region of Interest within which to calculate the average correlation function
+     *                              . If null, all PixelModel objects are considered.
+     * @param convertPointToBinning A function to convert pixel coordinates to their corresponding binning points.
+     * @param pixelBinning          The binning factor applied to the pixel coordinates.
+     * @param minimumPosition       The minimum position offset to apply to the pixel coordinates.
+     * @param fitController         The controller used to filter pixels based on fitting criteria.
      * @return A PixelModel object representing the average correlation function and its variance.
+     * @throws RuntimeException if no pixels are correlated within the selected ROI.
      */
     public static PixelModel calculateAverageCorrelationFunction(PixelModel[][] pixelModels, Roi roi,
+                                                                 Function<Point, Point> convertPointToBinning,
                                                                  Point pixelBinning, Point minimumPosition,
                                                                  FitController fitController) {
         List<PixelModel> pixelModelList =
-                SelectedPixel.getPixelModelsInRoi(roi, pixelBinning, minimumPosition, pixelModels, fitController);
+                SelectedPixel.getPixelModelsInRoi(roi, pixelBinning, minimumPosition, convertPointToBinning,
+                        pixelModels, fitController);
 
         int numPixelModels = pixelModelList.size();
         if (numPixelModels == 0) {
