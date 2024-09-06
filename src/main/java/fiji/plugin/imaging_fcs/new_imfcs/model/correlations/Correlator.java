@@ -3,6 +3,7 @@ package fiji.plugin.imaging_fcs.new_imfcs.model.correlations;
 import fiji.plugin.imaging_fcs.new_imfcs.constants.Constants;
 import fiji.plugin.imaging_fcs.new_imfcs.model.ExpSettingsModel;
 import fiji.plugin.imaging_fcs.new_imfcs.model.FitModel;
+import fiji.plugin.imaging_fcs.new_imfcs.model.ImageModel;
 import fiji.plugin.imaging_fcs.new_imfcs.model.PixelModel;
 import fiji.plugin.imaging_fcs.new_imfcs.model.fit.BleachCorrectionModel;
 import fiji.plugin.imaging_fcs.new_imfcs.utils.ExcelReader;
@@ -45,6 +46,23 @@ public class Correlator {
         this.settings = settings;
         this.bleachCorrectionModel = bleachCorrectionModel;
         this.fitModel = fitModel;
+    }
+
+    /**
+     * Constructs a Correlator with the specified settings, fit model, and image model.
+     *
+     * @param settings   The experimental settings model.
+     * @param fitModel   The fit model.
+     * @param imageModel The image model containing the image data to be analyzed.
+     */
+    public Correlator(ExpSettingsModel settings, FitModel fitModel, ImageModel imageModel) {
+        this.settings = settings;
+        this.fitModel = fitModel;
+
+        // Initialize BleachCorrectionModel
+        this.bleachCorrectionModel = new BleachCorrectionModel(settings, imageModel);
+        this.bleachCorrectionModel.computeNumPointsIntensityTrace(
+                settings.getLastFrame() - settings.getFirstFrame() + 1);
     }
 
     /**

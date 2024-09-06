@@ -128,6 +128,9 @@ public final class ExpSettingsModel {
         this.channelNumber = other.channelNumber;
         this.lagGroupNumber = other.lagGroupNumber;
 
+        setBinning(other.binning);
+        setCCF(other.CCF);
+
         // Reset callback should not be copied directly.
         // It is assumed the new instance has a no-op reset callback, or you could pass it as a parameter.
         this.resetCallback = () -> {};
@@ -599,6 +602,11 @@ public final class ExpSettingsModel {
 
         this.CCF.width = width;
         this.CCF.height = height;
+    }
+
+    public void setCCF(Dimension CCF) {
+        this.CCF.width = CCF.width;
+        this.CCF.height = CCF.height;
     }
 
     public String getCCFString() {

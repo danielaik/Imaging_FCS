@@ -57,6 +57,7 @@ public final class MainPanelController {
     private final FitController fitController;
     private final DiffusionLawController diffusionLawController;
     private final FilteringController filteringController;
+    private final ParameterVideoController parameterVideoController;
     private final Correlator correlator;
 
     /**
@@ -102,6 +103,8 @@ public final class MainPanelController {
 
         this.filteringController =
                 new FilteringController(settings, optionsModel, imageController, fitController, fitModel, correlator);
+
+        this.parameterVideoController = new ParameterVideoController(settings, imageModel, fitModel);
 
         if (workbook == null) {
             // load previously saved configuration
@@ -674,7 +677,8 @@ public final class MainPanelController {
                 try {
                     PixelModel averagePixelModel =
                             AverageCorrelation.calculateAverageCorrelationFunction(correlator.getPixelModels(), roi,
-                                    settings.getPixelBinning(), settings.getMinCursorPosition(), fitController);
+                                    settings::convertPointToBinning, settings.getPixelBinning(),
+                                    settings.getMinCursorPosition(), fitController);
                     fitController.fit(averagePixelModel, correlator.getLagTimes());
 
                     if (optionsModel.isPlotACFCurves()) {
@@ -792,9 +796,21 @@ public final class MainPanelController {
         };
     }
 
+    /**
+     * Creates an ActionListener for handling the "Parameter Video" button press.
+     * When triggered, it checks if an image is loaded. If not, it displays an error message.
+     * If an image is loaded, it opens the parameter video configuration dialog.
+     *
+     * @return an ActionListener that handles the button press event
+     */
     public ActionListener btnParamVideoPressed() {
-        // TODO: FIXME
-        return null;
+        return (ActionEvent ev) -> {
+            if (!imageController.isImageLoaded()) {
+                IJ.showMessage("No image open.");
+            } else {
+                parameterVideoController.showParameterVideoView(settings.getFirstFrame(), settings.getLastFrame());
+            }
+        };
     }
 
     /**

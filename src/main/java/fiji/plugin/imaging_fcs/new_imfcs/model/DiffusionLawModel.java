@@ -3,7 +3,6 @@ package fiji.plugin.imaging_fcs.new_imfcs.model;
 import fiji.plugin.imaging_fcs.new_imfcs.constants.Constants;
 import fiji.plugin.imaging_fcs.new_imfcs.controller.InvalidUserInputException;
 import fiji.plugin.imaging_fcs.new_imfcs.model.correlations.Correlator;
-import fiji.plugin.imaging_fcs.new_imfcs.model.fit.BleachCorrectionModel;
 import fiji.plugin.imaging_fcs.new_imfcs.model.fit.LineFit;
 import fiji.plugin.imaging_fcs.new_imfcs.model.fit.parametric_univariate_functions.FCSFit;
 import fiji.plugin.imaging_fcs.new_imfcs.utils.Pair;
@@ -59,20 +58,6 @@ public class DiffusionLawModel {
     }
 
     /**
-     * Initializes a {@code Correlator} object for computing correlations in the provided image data.
-     *
-     * @param settings   the experimental settings model used for the correlation computation.
-     * @param fitModel   the fitting model containing parameters for fitting the correlation data.
-     * @param imageModel the image model containing the image data to be analyzed.
-     * @return a {@code Correlator} initialized with the provided settings and image data.
-     */
-    private Correlator initCorrelator(ExpSettingsModel settings, FitModel fitModel, ImageModel imageModel) {
-        BleachCorrectionModel bleachCorrectionModel = new BleachCorrectionModel(settings, imageModel);
-        bleachCorrectionModel.computeNumPointsIntensityTrace(settings.getLastFrame() - settings.getFirstFrame() + 1);
-        return new Correlator(settings, bleachCorrectionModel, fitModel);
-    }
-
-    /**
      * Fits a pixel at the specified coordinates and updates the diffusion coefficient statistics
      * for the current binning setting.
      *
@@ -114,6 +99,8 @@ public class DiffusionLawModel {
 
         // create a new settings model to be able to update the binning size separately from the interface.
         ExpSettingsModel settings = new ExpSettingsModel(this.interfaceSettings);
+        // set the CCF to 0 for the diffusion law analysis
+        settings.setCCF(new Dimension(0, 0));
 
         Pair<double[], double[]> results = calculateDiffusionLaw(binningStart, binningEnd, settings, true);
         double[] averageD = results.getLeft();
@@ -136,7 +123,7 @@ public class DiffusionLawModel {
         FitModel fitModel = new FitModel(settings, interfaceFitModel);
         fitModel.setFix(true);
 
-        Correlator correlator = initCorrelator(settings, fitModel, this.imageModel);
+        Correlator correlator = new Correlator(settings, fitModel, this.imageModel);
         PixelModel pixelModel = new PixelModel();
 
         effectiveArea = new double[binningEnd - binningStart + 1];
