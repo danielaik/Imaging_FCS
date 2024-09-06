@@ -4,6 +4,7 @@ import fiji.plugin.imaging_fcs.new_imfcs.model.ExpSettingsModel;
 import fiji.plugin.imaging_fcs.new_imfcs.model.FitModel;
 import fiji.plugin.imaging_fcs.new_imfcs.model.ImageModel;
 import fiji.plugin.imaging_fcs.new_imfcs.model.ParameterVideoModel;
+import fiji.plugin.imaging_fcs.new_imfcs.utils.ExcelExporter;
 import fiji.plugin.imaging_fcs.new_imfcs.view.dialogs.ParameterVideoView;
 import ij.IJ;
 
@@ -12,6 +13,7 @@ import ij.IJ;
  */
 public class ParameterVideoController {
     private final ParameterVideoModel model;
+    private final ImageModel imageModel;
 
     /**
      * Initializes the controller with the settings, image, and fit models.
@@ -21,6 +23,7 @@ public class ParameterVideoController {
      * @param fitModel      the fit model
      */
     public ParameterVideoController(ExpSettingsModel settingsModel, ImageModel imageModel, FitModel fitModel) {
+        this.imageModel = imageModel;
         model = new ParameterVideoModel(settingsModel, imageModel, fitModel);
     }
 
@@ -46,6 +49,18 @@ public class ParameterVideoController {
         model.setStep((int) view.getNextNumber());
         model.setSaveCFAndFitPVideo(view.getNextBoolean());
         model.setVideoName(view.getNextString());
+
+        if (model.isSaveCFAndFitPVideo()) {
+            String excelPath =
+                    ExcelExporter.selectExcelFileToSave(String.format("%s_CFAndFit.xlsx", model.getVideoName()),
+                            imageModel.getImagePath());
+            if (excelPath == null) {
+                IJ.showMessage("Error", "No file selected.");
+                return;
+            }
+
+            model.setExcelPath(excelPath);
+        }
 
         try {
             model.createParameterVideo();

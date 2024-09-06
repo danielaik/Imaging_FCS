@@ -1,12 +1,18 @@
 package fiji.plugin.imaging_fcs.new_imfcs.utils;
 
+import fiji.plugin.imaging_fcs.new_imfcs.model.ExpSettingsModel;
 import fiji.plugin.imaging_fcs.new_imfcs.model.PixelModel;
+import fiji.plugin.imaging_fcs.new_imfcs.model.correlations.Correlator;
+import ij.IJ;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 
 import javax.swing.*;
 import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.util.Map;
 import java.util.function.Function;
 
@@ -199,6 +205,7 @@ public final class ExcelExporter {
      * If the user cancels the operation, null is returned.
      *
      * @param defaultName the suggested default file name
+     * @param openPath    the initial directory path where the file chooser opens
      * @return the selected file path, or null if the user cancels the operation or chooses not to replace an
      * existing file
      */
@@ -220,5 +227,51 @@ public final class ExcelExporter {
         }
 
         return null;
+    }
+
+    /**
+     * Saves PixelModel data, experimental settings, and correlator information into an Excel file at the given path.
+     * Creates various sheets for ACF, standard deviation, fit functions, and MSD based on data.
+     *
+     * @param filePath    the path where the Excel file will be saved
+     * @param pixelModels the 2D array of PixelModel objects containing ACF and fit data
+     * @param settings    the experimental settings model used for determining whether MSD data should be included
+     * @param correlator  the correlator providing lag times and sample times for the data
+     * @param settingsMap a map of experimental settings to be exported in a dedicated sheet
+     */
+    public static void saveExcelFile(String filePath, PixelModel[][] pixelModels, ExpSettingsModel settings,
+                                     Correlator correlator, Map<String, Object> settingsMap) {
+        try (Workbook workbook = new XSSFWorkbook()) {
+            // Add different sheets
+            if (pixelModels != null) {
+                ExcelExporter.createSheetFromMap(workbook, "Experimental settings", settingsMap);
+
+                ExcelExporter.createSheetLagTime(workbook, correlator.getLagTimes(), correlator.getSampleTimes());
+                ExcelExporter.createSheetFromPixelModelArray(workbook, "ACF", pixelModels, PixelModel::getAcf);
+                ExcelExporter.createSheetFromPixelModelArray(workbook, "Standard Deviation", pixelModels,
+                        PixelModel::getStandardDeviationAcf);
+
+                if (PixelModel.anyPixelFit(pixelModels)) {
+                    ExcelExporter.createSheetFromPixelModelArray(workbook, "Fit Functions", pixelModels,
+                            PixelModel::getFittedAcf);
+                    ExcelExporter.createSheetFromPixelModelArray(workbook, "Residuals", pixelModels,
+                            PixelModel::getResiduals);
+                    ExcelExporter.createFitParametersSheet(workbook, pixelModels);
+                }
+
+                if (settings.isMSD()) {
+                    ExcelExporter.createSheetFromPixelModelArray(workbook, "MSD", pixelModels, PixelModel::getMSD);
+                }
+            }
+
+            try (FileOutputStream fileOut = new FileOutputStream(filePath)) {
+                workbook.write(fileOut);
+                IJ.log(String.format("File saved at %s.", filePath));
+            } catch (IOException e) {
+                IJ.showMessage("Error saving result table", e.getMessage());
+            }
+        } catch (IOException e) {
+            IJ.showMessage("Error writing result table", e.getMessage());
+        }
     }
 }

@@ -19,14 +19,16 @@ import ij.WindowManager;
 import ij.gui.Overlay;
 import ij.gui.Roi;
 import org.apache.poi.ss.usermodel.Workbook;
-import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.yaml.snakeyaml.DumperOptions;
 import org.yaml.snakeyaml.Yaml;
 
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
-import java.io.*;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.nio.file.FileSystems;
 import java.util.Collections;
 import java.util.HashMap;
@@ -505,42 +507,11 @@ public final class MainPanelController {
                 return;
             }
 
-            try (Workbook workbook = new XSSFWorkbook()) {
-                // Add different sheets
-                Map<String, Object> settingsMap = settings.toMap();
-                settingsMap.put("Polynomial Order", bleachCorrectionModel.getPolynomialOrder());
-                settingsMap.putAll(imageController.toMap());
-                ExcelExporter.createSheetFromMap(workbook, "Experimental settings", settingsMap);
+            Map<String, Object> settingsMap = settings.toMap();
+            settingsMap.put("Polynomial Order", bleachCorrectionModel.getPolynomialOrder());
+            settingsMap.putAll(imageController.toMap());
 
-                PixelModel[][] pixelModels = correlator.getPixelModels();
-                if (pixelModels != null) {
-                    ExcelExporter.createSheetLagTime(workbook, correlator.getLagTimes(), correlator.getSampleTimes());
-                    ExcelExporter.createSheetFromPixelModelArray(workbook, "ACF", pixelModels, PixelModel::getAcf);
-                    ExcelExporter.createSheetFromPixelModelArray(workbook, "Standard Deviation", pixelModels,
-                            PixelModel::getStandardDeviationAcf);
-
-                    if (PixelModel.anyPixelFit(pixelModels)) {
-                        ExcelExporter.createSheetFromPixelModelArray(workbook, "Fit Functions", pixelModels,
-                                PixelModel::getFittedAcf);
-                        ExcelExporter.createSheetFromPixelModelArray(workbook, "Residuals", pixelModels,
-                                PixelModel::getResiduals);
-                        ExcelExporter.createFitParametersSheet(workbook, pixelModels);
-                    }
-
-                    if (settings.isMSD()) {
-                        ExcelExporter.createSheetFromPixelModelArray(workbook, "MSD", pixelModels, PixelModel::getMSD);
-                    }
-                }
-
-                try (FileOutputStream fileOut = new FileOutputStream(filePath)) {
-                    workbook.write(fileOut);
-                    IJ.log(String.format("File saved at %s.", filePath));
-                } catch (IOException e) {
-                    IJ.showMessage("Error saving result table", e.getMessage());
-                }
-            } catch (IOException e) {
-                IJ.showMessage("Error writing result table", e.getMessage());
-            }
+            ExcelExporter.saveExcelFile(filePath, correlator.getPixelModels(), settings, correlator, settingsMap);
         };
     }
 

@@ -1,7 +1,9 @@
 package fiji.plugin.imaging_fcs.new_imfcs.model;
 
 import fiji.plugin.imaging_fcs.new_imfcs.model.correlations.Correlator;
+import fiji.plugin.imaging_fcs.new_imfcs.model.fit.BleachCorrectionModel;
 import fiji.plugin.imaging_fcs.new_imfcs.utils.ApplyCustomLUT;
+import fiji.plugin.imaging_fcs.new_imfcs.utils.ExcelExporter;
 import fiji.plugin.imaging_fcs.new_imfcs.utils.Range;
 import fiji.plugin.imaging_fcs.new_imfcs.view.Plots;
 import ij.IJ;
@@ -9,6 +11,7 @@ import ij.ImagePlus;
 import ij.ImageStack;
 
 import java.awt.*;
+import java.util.Map;
 
 /**
  * Model for handling video parameters and generating parameter videos from image and fit data.
@@ -20,6 +23,7 @@ public class ParameterVideoModel {
     private int start, end, length, step;
     private boolean saveCFAndFitPVideo = false;
     private String videoName;
+    private String excelPath;
 
     /**
      * Initializes the model with the necessary experiment settings, image data, and fit model.
@@ -32,6 +36,21 @@ public class ParameterVideoModel {
         this.settings = settings;
         this.imageModel = imageModel;
         this.interfaceFitModel = fitModel;
+    }
+
+    /**
+     * Removes the file extension from a given file path.
+     *
+     * @param filePath the file path
+     * @return the file path without extension
+     */
+    private static String removeExtension(String filePath) {
+        int dotIndex = filePath.lastIndexOf('.');
+        if (dotIndex != -1) {
+            return filePath.substring(0, dotIndex);
+        }
+        // Return the original string if no extension is found
+        return filePath;
     }
 
     /**
@@ -48,15 +67,6 @@ public class ParameterVideoModel {
         if (videoName.isEmpty()) {
             throw new RuntimeException("Video name is empty or only contains non-word characters.");
         }
-    }
-
-    /**
-     * Calculates the total number of frames based on the frame range, length, and step size.
-     *
-     * @return the total number of frames
-     */
-    private int calculateNumberOfFrames() {
-        return (end - start + 1 - length) / step + 1;
     }
 
     /**
@@ -85,7 +95,8 @@ public class ParameterVideoModel {
         FitModel fitModel = new FitModel(settings, interfaceFitModel);
         fitModel.setFix(true);
 
-        Correlator correlator = new Correlator(settings, fitModel, imageModel);
+        BleachCorrectionModel bleachCorrectionModel = new BleachCorrectionModel(settings, imageModel);
+        Correlator correlator = new Correlator(settings, bleachCorrectionModel, fitModel);
 
         Range[] rangesArea = settings.getAllArea(imageModel.getDimension());
         Range xRange = rangesArea[0];
@@ -96,6 +107,8 @@ public class ParameterVideoModel {
 
         for (int startFrame = start; startFrame < end; startFrame += step) {
             int endFrame = startFrame + length - 1;
+
+            PixelModel[][] pixelModels = new PixelModel[imageModel.getWidth()][imageModel.getHeight()];
 
             for (int x = xRange.getStart(); x < xRange.getEnd(); x += xRange.getStep()) {
                 for (int y = yRange.getStart(); y < yRange.getEnd(); y += yRange.getStep()) {
@@ -111,7 +124,13 @@ public class ParameterVideoModel {
                             !currentPixelModel.toFilter(fitModel, binningPoint.x, binningPoint.y)) {
                         Plots.plotParameterMaps(currentPixelModel, binningPoint, imageModel.getDimension(), null);
                     }
+
+                    pixelModels[x][y] = currentPixelModel;
                 }
+            }
+
+            if (isSaveCFAndFitPVideo()) {
+                saveExcelFile(pixelModels, correlator, bleachCorrectionModel, startFrame, endFrame);
             }
 
             stackN.addSlice(Plots.imgParam.getStack().getProcessor(1));
@@ -121,6 +140,28 @@ public class ParameterVideoModel {
 
         displayImageStack(videoName + " - N", stackN);
         displayImageStack(videoName + " - D", stackD);
+    }
+
+    /**
+     * Saves pixel model data and related settings to an Excel file.
+     *
+     * @param pixelModels           pixel model data
+     * @param correlator            the correlator object
+     * @param bleachCorrectionModel bleach correction model
+     * @param start                 starting frame
+     * @param end                   ending frame
+     */
+    private void saveExcelFile(PixelModel[][] pixelModels, Correlator correlator,
+                               BleachCorrectionModel bleachCorrectionModel, int start, int end) {
+        String path = String.format("%s-%d_%d.xlsx", excelPath, start, end);
+
+        Map<String, Object> settingsMap = settings.toMap();
+        settingsMap.put("First frame", start);
+        settingsMap.put("Last frame", end);
+        settingsMap.putAll(imageModel.toMap());
+        settingsMap.put("Polynomial Order", bleachCorrectionModel.getPolynomialOrder());
+
+        ExcelExporter.saveExcelFile(path, pixelModels, settings, correlator, settingsMap);
     }
 
     // Getter and setter methods for parameters
@@ -149,7 +190,15 @@ public class ParameterVideoModel {
         this.saveCFAndFitPVideo = saveCFAndFitPVideo;
     }
 
+    public String getVideoName() {
+        return videoName;
+    }
+
     public void setVideoName(String videoName) {
         this.videoName = videoName;
+    }
+
+    public void setExcelPath(String excelPath) {
+        this.excelPath = removeExtension(excelPath);
     }
 }
