@@ -376,6 +376,12 @@ public final class MainPanelController {
                         // Update previous selection to current if successful
                         previousSelection = fitModel;
 
+                        // If the model is not DC_FCCS_2D, deactivate FCCSDisp
+                        if (!fitModel.equals(Constants.DC_FCCS_2D)) {
+                            view.resetFCCSDisplay();
+                            settings.setFCCSDisp(false);
+                        }
+
                         updateSettingsField();
                     }
                 } catch (RejectResetException e) {
@@ -853,9 +859,23 @@ public final class MainPanelController {
         };
     }
 
+    /**
+     * Creates an ItemListener that handles the FCCS display toggle button press.
+     * If the fit model is DC_FCCS_2D and the button is selected, the FCCS display is enabled;
+     * otherwise, it is disabled and the button is set to off.
+     *
+     * @return an ItemListener to manage FCCS display state changes
+     */
     public ItemListener tbFCCSDisplayPressed() {
-        // TODO: FIXME
-        return null;
+        return (ItemEvent ev) -> {
+            if (settings.getFitModel().equals(Constants.DC_FCCS_2D) && ev.getStateChange() == ItemEvent.SELECTED) {
+                settings.setFCCSDisp(true);
+                ((JToggleButton) ev.getSource()).setText("FCCS Disp On");
+            } else {
+                settings.setFCCSDisp(false);
+                view.resetFCCSDisplay();
+            }
+        };
     }
 
     /**

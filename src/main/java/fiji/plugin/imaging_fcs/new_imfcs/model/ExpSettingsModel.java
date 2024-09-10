@@ -721,8 +721,8 @@ public final class ExpSettingsModel {
         return FCCSDisp;
     }
 
-    public void setFCCSDisp(String FCCSDisp) {
-        this.FCCSDisp = Boolean.parseBoolean(FCCSDisp);
+    public void setFCCSDisp(boolean FCCSDisp) {
+        this.FCCSDisp = FCCSDisp;
     }
 
     public int getFilterLowerLimit() {

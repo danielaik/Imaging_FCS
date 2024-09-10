@@ -342,4 +342,13 @@ public final class MainPanelView extends BaseView {
     public void setTfLastFrame(String text) {
         tfLastFrame.setText(text);
     }
+
+    /**
+     * Resets the FCCS display toggle button to its default state.
+     * Sets the button text to "FCCS Disp Off" and ensures it is unselected.
+     */
+    public void resetFCCSDisplay() {
+        tbFCCSDisplay.setText("FCCS Disp Off");
+        tbFCCSDisplay.setSelected(false);
+    }
 }
