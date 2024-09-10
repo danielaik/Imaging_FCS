@@ -11,6 +11,8 @@ import ij.ImagePlus;
 import ij.ImageStack;
 
 import java.awt.*;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Map;
 
 /**
@@ -23,7 +25,7 @@ public class ParameterVideoModel {
     private int start, end, length, step;
     private boolean saveCFAndFitPVideo = false;
     private String videoName;
-    private String excelPath;
+    private String excelDirectory;
 
     /**
      * Initializes the model with the necessary experiment settings, image data, and fit model.
@@ -153,7 +155,7 @@ public class ParameterVideoModel {
      */
     private void saveExcelFile(PixelModel[][] pixelModels, Correlator correlator,
                                BleachCorrectionModel bleachCorrectionModel, int start, int end) {
-        String path = String.format("%s-%d_%d.xlsx", excelPath, start, end);
+        Path filePath = Paths.get(excelDirectory, String.format("%d_%d.xlsx", start, end));
 
         Map<String, Object> settingsMap = settings.toMap();
         settingsMap.put("First frame", start);
@@ -161,7 +163,8 @@ public class ParameterVideoModel {
         settingsMap.putAll(imageModel.toMap());
         settingsMap.put("Polynomial Order", bleachCorrectionModel.getPolynomialOrder());
 
-        ExcelExporter.saveExcelFile(path, pixelModels, settings, correlator, settingsMap);
+        ExcelExporter.saveExcelFile(filePath.toAbsolutePath().toString(), pixelModels, settings, correlator,
+                settingsMap);
     }
 
     // Getter and setter methods for parameters
@@ -198,7 +201,7 @@ public class ParameterVideoModel {
         this.videoName = videoName;
     }
 
-    public void setExcelPath(String excelPath) {
-        this.excelPath = removeExtension(excelPath);
+    public void setExcelDirectory(String excelDirectory) {
+        this.excelDirectory = removeExtension(excelDirectory);
     }
 }
