@@ -369,11 +369,11 @@ public final class ImageController {
 
         if (pixelModel.isFitted() && !fitController.needToFilter(pixelModel, binningPoint.x, binningPoint.y)) {
 
-            ImagePlus imgParams = Plots.plotParameterMaps(pixelModel, binningPoint,
-                    settings.getConvertedImageDimension(getImageDimension()), imageParamClicked());
+            Plots.plotParameterMaps(pixelModel, binningPoint, settings.getConvertedImageDimension(getImageDimension()),
+                    imageParamClicked());
 
             if (options.isPlotParaHist()) {
-                Plots.plotParamHistogramWindow(imgParams);
+                Plots.plotParamHistogramWindow();
             }
         }
     }

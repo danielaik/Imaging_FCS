@@ -461,7 +461,7 @@ public class Plots {
      * @param img       The ImagePlus object representing the image.
      * @param dimension The dimensions of the image in which to set pixel values to NaN.
      */
-    private static void setAllPixelToNaN(ImagePlus img, Dimension dimension) {
+    public static void setAllPixelToNaN(ImagePlus img, Dimension dimension) {
         IntStream.range(1, img.getStackSize() + 1).forEach(slice -> {
             ImageProcessor ip = img.getStack().getProcessor(slice);
             for (int x = 0; x < dimension.width; x++) {
@@ -473,33 +473,24 @@ public class Plots {
     }
 
     /**
-     * Initializes the parameter maps by creating an ImagePlus object with specified dimensions,
-     * setting all pixel values to NaN, adapting the image scale, and applying a custom LUT.
-     * Key and mouse listeners are added to the image window and canvas for interaction handling.
+     * Displays the parameter maps in a window, adapts the image scale, applies a custom LUT,
+     * and adds key and mouse listeners for user interaction.
      *
-     * @param convertedDimension The converted dimensions of the image based on binning.
-     * @param paramsLength       The number of parameters to map, corresponding to the number of slices.
-     * @param mouseListener      The mouse listener to handle events on the image.
-     * @return The initialized ImagePlus object containing the parameter maps.
+     * @param img           ImagePlus object representing the parameter maps to display.
+     * @param mouseListener MouseListener to handle mouse events on the image canvas.
      */
-    private static ImagePlus initParameterMaps(Dimension convertedDimension, int paramsLength,
-                                               MouseListener mouseListener) {
-        imgParam = IJ.createImage("Maps", "GRAY32", convertedDimension.width, convertedDimension.height, paramsLength);
-
-        // Set all pixel values to NaN
-        setAllPixelToNaN(imgParam, convertedDimension);
-
+    private static void showParameterMaps(ImagePlus img, MouseListener mouseListener) {
         // create the window and adapt the image scale
-        imgParam.show();
-        ImageWindow window = imgParam.getWindow();
+        img.show();
+        ImageWindow window = img.getWindow();
         window.setLocation(PARAMETER_POSITION);
-        ImageModel.adaptImageScale(imgParam);
-        ApplyCustomLUT.applyCustomLUT(imgParam, "Red Hot");
+        ImageModel.adaptImageScale(img);
+        ApplyCustomLUT.applyCustomLUT(img, "Red Hot");
 
         // add key listener on both the window on the canvas to support if the user uses its keyboard after clicking
         // on the window only or after clicking on the image.
         window.addKeyListener(keyAdjustmentListener());
-        imgParam.getCanvas().addKeyListener(keyAdjustmentListener());
+        img.getCanvas().addKeyListener(keyAdjustmentListener());
 
         // Add listener to switch the histogram if the slice is changed
         for (Component component : window.getComponents()) {
@@ -510,44 +501,92 @@ public class Plots {
         }
 
         // Add a mouse listener to plot the correlations functions
-        imgParam.getCanvas().addMouseListener(mouseListener);
-
-        return imgParam;
+        img.getCanvas().addMouseListener(mouseListener);
     }
 
     /**
-     * Plots parameter maps for a given pixel model at a specific point within the image dimensions,
-     * creating or updating an ImagePlus object.
+     * Initializes an ImagePlus object for parameter maps, setting pixels to NaN and adding listeners.
      *
-     * @param pixelModel    The PixelModel containing the parameters to be plotted.
-     * @param p             The point in the image where the parameters will be plotted.
-     * @param dimension     The dimensions of the image.
-     * @param mouseListener The MouseListener to handle mouse events on the plotted image.
-     * @return The ImagePlus object containing the plotted parameter maps.
+     * @param dimension     Dimensions of the image.
+     * @param paramsLength  Number of slices (parameters to map).
+     * @param mouseListener Listener for mouse events on the image.
+     * @return Initialized ImagePlus object with parameter maps.
      */
-    public static ImagePlus plotParameterMaps(PixelModel pixelModel, Point p, Dimension dimension,
-                                              MouseListener mouseListener) {
+    private static ImagePlus initParameterMaps(Dimension dimension, int paramsLength, MouseListener mouseListener) {
+        ImagePlus img = IJ.createImage("Maps", "GRAY32", dimension.width, dimension.height, paramsLength);
+
+        // Set all pixel values to NaN
+        setAllPixelToNaN(img, dimension);
+
+        if (mouseListener != null) {
+            showParameterMaps(img, mouseListener);
+        }
+
+        return img;
+    }
+
+    /**
+     * Updates parameter map values at a given point in the image.
+     *
+     * @param img     ImagePlus object representing the parameter maps.
+     * @param p       Point in the image to update.
+     * @param params  Array of parameter names and values.
+     * @param initImg If true, initializes the image display.
+     */
+    private static void updateParameterMapsValue(ImagePlus img, Point p, Pair<String, Double>[] params,
+                                                 boolean initImg) {
+        // Enter value from the end to be on the first slice on output
+        for (int i = params.length - 1; i >= 0; i--) {
+            ImageProcessor ip = img.getStack().getProcessor(i + 1);
+            ip.putPixelValue(p.x, p.y, params[i].getRight());
+            if (initImg) {
+                img.setSlice(i + 1);
+                IJ.run("Set Label...", "label=" + params[i].getLeft());
+            }
+        }
+    }
+
+    /**
+     * Plots parameter maps for a given pixel model at a specific point within the image dimensions.
+     *
+     * @param pixelModel    Model containing the parameters to plot.
+     * @param p             Point in the image to plot parameters.
+     * @param dimension     Image dimensions.
+     * @param mouseListener Listener for mouse events on the image.
+     */
+    public static void plotParameterMaps(PixelModel pixelModel, Point p, Dimension dimension,
+                                         MouseListener mouseListener) {
         Pair<String, Double>[] params = pixelModel.getParams();
 
         boolean initImg = false;
         if (imgParam == null || !imgParam.isVisible()) {
             initImg = true;
-            initParameterMaps(dimension, params.length, mouseListener);
+            imgParam = initParameterMaps(dimension, params.length, mouseListener);
         }
 
-        // Enter value from the end to be on the first slice on output
-        for (int i = params.length - 1; i >= 0; i--) {
-            ImageProcessor ip = imgParam.getStack().getProcessor(i + 1);
-            ip.putPixelValue(p.x, p.y, params[i].getRight());
-            if (initImg) {
-                imgParam.setSlice(i + 1);
-                IJ.run("Set Label...", "label=" + params[i].getLeft());
-            }
-        }
-
+        updateParameterMapsValue(imgParam, p, params, initImg);
         IJ.run(imgParam, "Enhance Contrast", "saturated=0.35");
+    }
 
-        return imgParam;
+    /**
+     * Set parameter maps for a given pixel model at a specific point.
+     *
+     * @param img        ImagePlus object to update, or null to create a new one.
+     * @param pixelModel Model containing parameters to map.
+     * @param p          Point in the image to update.
+     * @param dimension  Image dimensions.
+     * @return ImagePlus object with updated parameter maps.
+     */
+    public static ImagePlus setParameterMaps(ImagePlus img, PixelModel pixelModel, Point p, Dimension dimension) {
+        Pair<String, Double>[] params = pixelModel.getParams();
+
+        if (img == null) {
+            img = initParameterMaps(dimension, params.length, null);
+        }
+
+        updateParameterMapsValue(img, p, params, false);
+
+        return img;
     }
 
     /**
@@ -569,7 +608,7 @@ public class Plots {
 
         boolean initImg = false;
         if (imgParam == null || !imgParam.isVisible()) {
-            initParameterMaps(dimension, paramsLength, mouseListener);
+            imgParam = initParameterMaps(dimension, paramsLength, mouseListener);
             initImg = true;
         } else {
             // Set all pixel values to NaN
@@ -600,16 +639,14 @@ public class Plots {
         IJ.run(imgParam, "Enhance Contrast", "satured=0.35");
 
         if (plotParaHist) {
-            plotParamHistogramWindow(imgParam);
+            plotParamHistogramWindow();
         }
     }
 
     /**
-     * Plots a histogram window for the given parameter image.
-     *
-     * @param imgParam the ImagePlus object for which the histogram is to be plotted.
+     * Plots a histogram window for the parameter image.
      */
-    public static void plotParamHistogramWindow(ImagePlus imgParam) {
+    public static void plotParamHistogramWindow() {
         String title = PixelModel.paramsName[imgParam.getSlice() - 1];
 
         int numBins = getNumBins(imgParam.getStatistics());
@@ -653,7 +690,7 @@ public class Plots {
     private static AdjustmentListener imageAdjusted() {
         return (AdjustmentEvent ev) -> {
             IJ.run(imgParam, "Enhance Contrast", "saturated=0.35");
-            plotParamHistogramWindow(imgParam);
+            plotParamHistogramWindow();
         };
     }
 
@@ -684,7 +721,7 @@ public class Plots {
             private void updateHistogram() {
                 if (currentSlice != imgParam.getSlice()) {
                     IJ.run(imgParam, "Enhance Contrast", "saturated=0.35");
-                    plotParamHistogramWindow(imgParam);
+                    plotParamHistogramWindow();
                     currentSlice = imgParam.getSlice();
                 }
             }

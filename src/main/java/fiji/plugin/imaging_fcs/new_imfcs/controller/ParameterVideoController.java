@@ -1,9 +1,6 @@
 package fiji.plugin.imaging_fcs.new_imfcs.controller;
 
-import fiji.plugin.imaging_fcs.new_imfcs.model.ExpSettingsModel;
-import fiji.plugin.imaging_fcs.new_imfcs.model.FitModel;
-import fiji.plugin.imaging_fcs.new_imfcs.model.ImageModel;
-import fiji.plugin.imaging_fcs.new_imfcs.model.ParameterVideoModel;
+import fiji.plugin.imaging_fcs.new_imfcs.model.*;
 import fiji.plugin.imaging_fcs.new_imfcs.view.dialogs.ParameterVideoView;
 import ij.IJ;
 
@@ -111,10 +108,12 @@ public class ParameterVideoController {
             model.setExcelDirectory(excelDirectory);
         }
 
-        try {
-            model.createParameterVideo();
-        } catch (RuntimeException e) {
-            IJ.showMessage(e.getMessage());
-        }
+        new BackgroundTaskWorker(() -> {
+            try {
+                model.createParameterVideo();
+            } catch (Exception e) {
+                IJ.showMessage(e.getMessage());
+            }
+        }).execute();
     }
 }

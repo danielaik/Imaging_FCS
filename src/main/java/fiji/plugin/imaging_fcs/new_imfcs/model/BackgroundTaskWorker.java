@@ -18,6 +18,7 @@ public class BackgroundTaskWorker extends SwingWorker<Void, Void> {
      * @param task the Runnable that defines the task logic
      */
     public BackgroundTaskWorker(Runnable task) {
+        IJ.showProgress(0);
         this.task = task;
     }
 
@@ -39,6 +40,7 @@ public class BackgroundTaskWorker extends SwingWorker<Void, Void> {
      */
     @Override
     protected void done() {
+        IJ.showProgress(1);
         IJ.showStatus("Done");
     }
 }

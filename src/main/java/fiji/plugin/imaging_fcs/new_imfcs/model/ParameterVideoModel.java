@@ -58,16 +58,16 @@ public class ParameterVideoModel {
     /**
      * Validates the parameters for video creation.
      */
-    private void checkParameters() {
+    private void validateParameters() {
         if (start <= 0 || end <= 0 || end <= start || length <= 0 || step <= 0 || step > (end - start + 1) ||
                 length > (end - start + 1)) {
-            throw new RuntimeException(
+            throw new IllegalArgumentException(
                     "Number error; either negative numbers or length or step size larger than length of frame.");
         }
 
         videoName = videoName.replaceAll("\\W", "");
         if (videoName.isEmpty()) {
-            throw new RuntimeException("Video name is empty or only contains non-word characters.");
+            throw new IllegalArgumentException("Video name is empty or only contains non-word characters.");
         }
     }
 
@@ -92,13 +92,15 @@ public class ParameterVideoModel {
      */
     public void createParameterVideo() {
         // check the parameters and throw exception in case of incorrect parameter
-        checkParameters();
+        validateParameters();
 
         FitModel fitModel = new FitModel(settings, interfaceFitModel);
         fitModel.setFix(true);
 
         BleachCorrectionModel bleachCorrectionModel = new BleachCorrectionModel(settings, imageModel);
         Correlator correlator = new Correlator(settings, bleachCorrectionModel, fitModel);
+
+        Dimension convertedDimension = settings.getConvertedImageDimension(imageModel.getDimension());
 
         Range[] rangesArea = settings.getAllArea(imageModel.getDimension());
         Range xRange = rangesArea[0];
@@ -107,10 +109,14 @@ public class ParameterVideoModel {
         ImageStack stackN = new ImageStack(xRange.length() - 1, yRange.length() - 1);
         ImageStack stackD = new ImageStack(xRange.length() - 1, yRange.length() - 1);
 
+        int numSteps = (end - start + 1 - length) / step + 1;
+        int currentStep = 0;
+
         for (int startFrame = start; startFrame < end; startFrame += step) {
             int endFrame = startFrame + length - 1;
 
             PixelModel[][] pixelModels = new PixelModel[imageModel.getWidth()][imageModel.getHeight()];
+            ImagePlus img = null;
 
             for (int x = xRange.getStart(); x < xRange.getEnd(); x += xRange.getStep()) {
                 for (int y = yRange.getStart(); y < yRange.getEnd(); y += yRange.getStep()) {
@@ -120,11 +126,10 @@ public class ParameterVideoModel {
                     fitModel.fit(currentPixelModel, correlator.getLagTimes(),
                             correlator.getRegularizedCovarianceMatrix());
 
-
                     Point binningPoint = settings.convertPointToBinning(new Point(x, y));
                     if (currentPixelModel.isFitted() &&
                             !currentPixelModel.toFilter(fitModel, binningPoint.x, binningPoint.y)) {
-                        Plots.plotParameterMaps(currentPixelModel, binningPoint, imageModel.getDimension(), null);
+                        img = Plots.setParameterMaps(img, currentPixelModel, binningPoint, convertedDimension);
                     }
 
                     pixelModels[x][y] = currentPixelModel;
@@ -135,9 +140,13 @@ public class ParameterVideoModel {
                 saveExcelFile(pixelModels, correlator, bleachCorrectionModel, startFrame, endFrame);
             }
 
-            stackN.addSlice(Plots.imgParam.getStack().getProcessor(1));
-            stackD.addSlice(Plots.imgParam.getStack().getProcessor(2));
-            Plots.imgParam.close();
+            if (img != null) {
+                stackN.addSlice(img.getStack().getProcessor(1));
+                stackD.addSlice(img.getStack().getProcessor(2));
+                IJ.showProgress(currentStep++, numSteps);
+            } else {
+                throw new RuntimeException("All pixels in the image were filtered.");
+            }
         }
 
         displayImageStack(videoName + " - N", stackN);
