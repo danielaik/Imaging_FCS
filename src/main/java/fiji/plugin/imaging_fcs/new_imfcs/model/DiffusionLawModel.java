@@ -76,7 +76,7 @@ public class DiffusionLawModel {
                                 double[] varianceD, PixelModel pixelModel, int x, int y, int index) {
         correlator.correlatePixelModel(pixelModel, imageModel.getImage(), x, y, x, y, settings.getFirstFrame(),
                 settings.getLastFrame());
-        fitModel.standardFit(pixelModel, correlator.getLagTimes());
+        fitModel.standardFit(pixelModel, settings.getFitModel(), correlator.getLagTimes());
 
         if (pixelModel.isFitted()) {
             averageD[index] += pixelModel.getFitParams().getD();

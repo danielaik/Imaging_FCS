@@ -90,11 +90,17 @@ public class SelectedPixel {
 
 
     /**
-     * Performs the correlation function evaluation (CFE) on the selected pixel.
+     * Evaluates the correlation function for the selected pixel at the given coordinates.
+     * Converts the pixel positions to image space and checks if the pixel is within bounds,
+     * if cross-correlation areas overlap, or if binning exceeds the image size.
+     * Throws exceptions if any conditions are violated.
      *
-     * @param x the x-coordinate of the pixel
-     * @param y the y-coordinate of the pixel
-     * @return the position of the pixels after conversion to image space
+     * @param x                      The x-coordinate of the pixel.
+     * @param y                      The y-coordinate of the pixel.
+     * @param singlePixelCorrelation Indicates if the evaluation is for a single pixel.
+     * @return The positions of the pixels after conversion to image space.
+     * @throws IllegalArgumentException If the pixel is out of bounds, cross-correlation areas overlap, or binning is
+     *                                  too large.
      */
     public Point[] performCorrelationFunctionEvaluation(int x, int y, boolean singlePixelCorrelation) {
         Point[] cursorPositions = convertToImageSpace(x, y);
@@ -102,11 +108,15 @@ public class SelectedPixel {
         Point cursorPosition2 = cursorPositions[1];
 
         if (!isPixelWithinImage(x, y)) {
-            throw new RuntimeException(String.format("x=%d, y=%d are out of the image.", x, y));
+            throw new IllegalArgumentException(String.format("x=%d, y=%d are out of the image.", x, y));
         }
 
         if (isOverlapInDCFCCS()) {
-            throw new RuntimeException("Cross-correlation areas overlap.");
+            throw new IllegalArgumentException("Cross-correlation areas overlap.");
+        }
+
+        if (isBinningLargerThanImageSize()) {
+            throw new IllegalArgumentException("Parameter binning is larger than image size.");
         }
 
         processPixels(cursorPosition1, cursorPosition2, singlePixelCorrelation);
@@ -157,22 +167,29 @@ public class SelectedPixel {
     }
 
     /**
-     * Processes the pixels at the given cursor positions.
+     * Checks if the binning size exceeds the image dimensions.
      *
-     * @param cursorPosition1 the first cursor position
-     * @param cursorPosition2 the second cursor position
+     * @return True if the binning size is larger than the image width or height.
+     */
+    private boolean isBinningLargerThanImageSize() {
+        return settings.getBinning().x > imageModel.getWidth() || settings.getBinning().y > imageModel.getHeight();
+    }
+
+    /**
+     * Processes the pixels at the given cursor positions by setting up ROIs if required
+     * and performing the appropriate correlation based on the selected fit model.
+     *
+     * @param cursorPosition1        The first cursor position.
+     * @param cursorPosition2        The second cursor position.
+     * @param singlePixelCorrelation Indicates if the operation is for a single pixel.
      */
     private void processPixels(Point cursorPosition1, Point cursorPosition2, boolean singlePixelCorrelation) {
         if (singlePixelCorrelation) {
             setupROIs(cursorPosition1, cursorPosition2);
         }
 
-        if (settings.getFitModel().equals(Constants.ITIR_FCS_2D) ||
-                settings.getFitModel().equals(Constants.SPIM_FCS_3D)) {
-            // TODO: in correlate we need to divide by pixelBinning to set the auto-correlation function
-            correlator.correlate(imageModel.getImage(), cursorPosition1.x, cursorPosition1.y, cursorPosition2.x,
-                    cursorPosition2.y, settings.getFirstFrame(), settings.getLastFrame());
-        }
+        correlator.correlate(imageModel.getImage(), cursorPosition1.x, cursorPosition1.y, cursorPosition2.x,
+                cursorPosition2.y, settings.getFirstFrame(), settings.getLastFrame());
     }
 
     /**

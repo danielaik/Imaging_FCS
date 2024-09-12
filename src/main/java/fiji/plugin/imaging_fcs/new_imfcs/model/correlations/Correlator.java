@@ -34,6 +34,7 @@ public class Correlator {
     private double[] lagTimes;
     private double[][] regularizedCovarianceMatrix, varianceBlocks;
     private PixelModel[][] pixelModels;
+    private PixelModel[][][] pixelModelsFCCS;
 
     /**
      * Constructs a Correlator with the specified settings, bleach correction model, and fit model.
@@ -133,26 +134,60 @@ public class Correlator {
     }
 
     /**
-     * Performs correlation between two pixels within the given image and frame range.
+     * Performs correlation between two pixels in the given image within the specified frame range.
+     * If FCCS (Fluorescence Cross-Correlation Spectroscopy) is enabled, it calls the FCCS correlation method.
+     * Otherwise, it creates or retrieves the PixelModel for the first pixel and performs correlation.
      *
-     * @param img          The image.
+     * @param img          The image in which the pixels are located.
      * @param x            The x-coordinate of the first pixel.
      * @param y            The y-coordinate of the first pixel.
      * @param x2           The x-coordinate of the second pixel.
      * @param y2           The y-coordinate of the second pixel.
-     * @param initialFrame The initial frame number.
-     * @param finalFrame   The final frame number.
+     * @param initialFrame The initial frame to start the correlation.
+     * @param finalFrame   The final frame to end the correlation.
      */
     public void correlate(ImagePlus img, int x, int y, int x2, int y2, int initialFrame, int finalFrame) {
-        // if the pixelModels array was never instantiated then we create it
+        if (settings.isFCCSDisp()) {
+            correlateFCCS(img, x, y, x2, y2, initialFrame, finalFrame);
+        }
+
+        // Instantiate the pixelModels array if it hasn't been created yet
         if (pixelModels == null) {
             pixelModels = new PixelModel[img.getWidth()][img.getHeight()];
         }
 
+        // Create or update the PixelModel for the first pixel and perform correlation
         pixelModels[x][y] = new PixelModel();
         PixelModel pixelModel = pixelModels[x][y];
 
         correlatePixelModel(pixelModel, img, x, y, x2, y2, initialFrame, finalFrame);
+    }
+
+    /**
+     * Performs FCCS correlation between two pixels in the given image within the specified frame range. It creates
+     * or retrieves the two PixelModel instances for the two pixel positions and performs correlation on both.
+     *
+     * @param img          The image in which the pixels are located.
+     * @param x            The x-coordinate of the first pixel.
+     * @param y            The y-coordinate of the first pixel.
+     * @param x2           The x-coordinate of the second pixel.
+     * @param y2           The y-coordinate of the second pixel.
+     * @param initialFrame The initial frame to start the correlation.
+     * @param finalFrame   The final frame to end the correlation.
+     */
+    private void correlateFCCS(ImagePlus img, int x, int y, int x2, int y2, int initialFrame, int finalFrame) {
+        // Instantiate the pixelModelsFCCS array if it hasn't been created yet
+        if (pixelModelsFCCS == null) {
+            pixelModelsFCCS = new PixelModel[img.getWidth()][img.getHeight()][2];
+        }
+
+        // Create PixelModels for both pixels and perform correlation
+        pixelModelsFCCS[x][y][0] = new PixelModel();
+        pixelModelsFCCS[x][y][1] = new PixelModel();
+
+        // Perform correlation for both FCCS pixel models
+        correlatePixelModel(pixelModelsFCCS[x][y][0], img, x, y, x, y, initialFrame, finalFrame);
+        correlatePixelModel(pixelModelsFCCS[x][y][1], img, x2, y2, x2, y2, initialFrame, finalFrame);
     }
 
     /**
@@ -886,6 +921,7 @@ public class Correlator {
      */
     public void resetResults() {
         pixelModels = null;
+        pixelModelsFCCS = null;
     }
 
     public double[][] getDccf(String directionName) {
@@ -902,6 +938,14 @@ public class Correlator {
 
     public PixelModel getPixelModel(int x, int y) {
         return pixelModels[x][y];
+    }
+
+    public PixelModel[] getFCCSPixelModels(int x, int y) {
+        if (pixelModelsFCCS == null) {
+            return null;
+        }
+
+        return pixelModelsFCCS[x][y];
     }
 
     public PixelModel[][] getPixelModels() {

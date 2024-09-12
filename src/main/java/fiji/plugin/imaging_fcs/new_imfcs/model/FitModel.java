@@ -233,33 +233,36 @@ public class FitModel {
      * Returns the model probabilities if Bayesian fitting is used, otherwise returns null.
      *
      * @param pixelModel       The pixel model to fit.
+     * @param modelName        The name of the model to use for fitting.
      * @param lagTimes         The lag times for fitting.
      * @param covarianceMatrix The covariance matrix used for fitting.
      * @return A double array of model probabilities if Bayesian fitting is used, otherwise null.
      */
-    public double[] fit(PixelModel pixelModel, double[] lagTimes, double[][] covarianceMatrix) {
+    public double[] fit(PixelModel pixelModel, String modelName, double[] lagTimes, double[][] covarianceMatrix) {
         if (bayes) {
             BayesFit fitter = new BayesFit(this, settings);
-            return fitter.bayesFit(pixelModel, lagTimes, covarianceMatrix);
+            return fitter.bayesFit(pixelModel, modelName, lagTimes, covarianceMatrix);
         } else if (GLS) {
-            GLSFit fitter = new GLSFit(this, settings, lagTimes, pixelModel.getAcf(), covarianceMatrix);
+            GLSFit fitter = new GLSFit(this, settings, modelName, lagTimes, pixelModel.getAcf(), covarianceMatrix);
             fitter.fitPixel(pixelModel, lagTimes);
         } else {
-            StandardFit fitter = new StandardFit(this, settings);
+            StandardFit fitter = new StandardFit(this, settings, modelName);
             fitter.fitPixel(pixelModel, lagTimes);
         }
 
         return null;
     }
 
+
     /**
      * Performs the standard fitting operation on the given pixel model and lag times.
      *
      * @param pixelModel The pixel model to fit.
+     * @param modelName  The name of the model to use for fitting.
      * @param lagTimes   The lag times for fitting.
      */
-    public void standardFit(PixelModel pixelModel, double[] lagTimes) {
-        StandardFit fitter = new StandardFit(this, settings);
+    public void standardFit(PixelModel pixelModel, String modelName, double[] lagTimes) {
+        StandardFit fitter = new StandardFit(this, settings, modelName);
         fitter.fitPixel(pixelModel, lagTimes);
     }
 

@@ -46,16 +46,18 @@ public class BayesFit {
      *
      * @param fitModel         the model to be fitted.
      * @param pixelModel       the pixel data.
+     * @param modelName        The name of the model to use for fitting.
      * @param lagTimes         the lag times.
      * @param covarianceMatrix the covariance matrix.
      * @return the computed model probability.
      */
-    private double fit(FitModel fitModel, PixelModel pixelModel, double[] lagTimes, double[][] covarianceMatrix) {
+    private double fit(FitModel fitModel, PixelModel pixelModel, String modelName, double[] lagTimes,
+                       double[][] covarianceMatrix) {
         double logResiduals;
         StandardFit.FitOutput output;
 
         if (fitModel.isGLS()) {
-            GLSFit glsFit = new GLSFit(fitModel, settings, lagTimes, pixelModel.getAcf(), covarianceMatrix);
+            GLSFit glsFit = new GLSFit(fitModel, settings, modelName, lagTimes, pixelModel.getAcf(), covarianceMatrix);
             output = glsFit.fitPixel(pixelModel, lagTimes);
 
             RealMatrix matT = MatrixUtils.createRealMatrix(covarianceMatrix).transpose();
@@ -65,7 +67,7 @@ public class BayesFit {
 
             logResiduals = -0.5 * solution.dotProduct(residualsVector);
         } else {
-            StandardFit standardFit = new StandardFit(fitModel, settings);
+            StandardFit standardFit = new StandardFit(fitModel, settings, modelName);
             output = standardFit.fitPixel(pixelModel, lagTimes);
             double[] residuals = output.getResiduals();
 
@@ -150,23 +152,24 @@ public class BayesFit {
      * Performs Bayesian fitting on a pixel model.
      *
      * @param pixelModel       the pixel model.
+     * @param modelName        The name of the model to use for fitting.
      * @param lagTimes         the lag times.
      * @param covarianceMatrix the covariance matrix.
      * @return an array containing the model probabilities for one-component and two-component fits.
      */
-    public double[] bayesFit(PixelModel pixelModel, double[] lagTimes, double[][] covarianceMatrix) {
+    public double[] bayesFit(PixelModel pixelModel, String modelName, double[] lagTimes, double[][] covarianceMatrix) {
         // One-component fit
         FitModel currentFitModel = new FitModel(settings, fitModel);
         setParameterField(currentFitModel.getD2(), 0.0, true);
         setParameterField(currentFitModel.getF2(), 0.0, true);
 
-        double modProb1 = fit(currentFitModel, pixelModel, lagTimes, covarianceMatrix);
+        double modProb1 = fit(currentFitModel, pixelModel, modelName, lagTimes, covarianceMatrix);
 
         // Two-component fit
         setParameterField(fitModel.getD2(), fitModel.getD().getValue() / 10, false);
         setParameterField(fitModel.getF2(), 0.5, false);
 
-        double modProb2 = fit(fitModel, pixelModel, lagTimes, covarianceMatrix);
+        double modProb2 = fit(fitModel, pixelModel, modelName, lagTimes, covarianceMatrix);
 
         // calculate the normalization for the model probabilities
         double normProb = modProb1 + modProb2;

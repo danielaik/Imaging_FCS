@@ -31,12 +31,13 @@ public class StandardFit extends BaseFit {
     /**
      * Constructs a new StandardFit instance with the given model and settings.
      *
-     * @param model    The FitModel instance containing the fitting parameters.
-     * @param settings The experimental settings model.
+     * @param model     The FitModel instance containing the fitting parameters.
+     * @param settings  The experimental settings model.
+     * @param modelName The name of the model to use for fitting.
      */
-    public StandardFit(FitModel model, ExpSettingsModel settings) {
+    public StandardFit(FitModel model, ExpSettingsModel settings, String modelName) {
         this.model = model;
-        function = selectFitFunction(settings);
+        function = selectFitFunction(settings, modelName);
         numFreeParameters = model.getNonHeldParameterValues().length;
 
         setMaxEvaluations(MAX_EVALUATIONS);
@@ -44,21 +45,24 @@ public class StandardFit extends BaseFit {
     }
 
     /**
-     * Selects the appropriate parametric univariate function based on the experimental settings.
+     * Selects the appropriate parametric univariate function based on the model name.
      *
-     * @param settings The experimental settings model.
+     * @param settings  The experimental settings model.
+     * @param modelName The name of the model to use for fitting.
      * @return The selected parametric univariate function.
      */
-    private ParametricUnivariateFunction selectFitFunction(ExpSettingsModel settings) {
-        switch (settings.getFitModel()) {
+    private ParametricUnivariateFunction selectFitFunction(ExpSettingsModel settings, String modelName) {
+        switch (modelName) {
             case Constants.ITIR_FCS_2D:
-                return new FCS3p(settings, model, 0); // TODO: Set mode
+                return new FCS3p(settings, model, 0);
+            case Constants.ITIR_FCS_2D_2:
+                return new FCS3p(settings, model, 1);
             case Constants.SPIM_FCS_3D:
                 return new FCS3pSPIM(settings, model);
             case Constants.DC_FCCS_2D:
                 return new FCCS2p(settings, model);
             default:
-                throw new IllegalArgumentException("Unknown fit model: " + settings.getFitModel());
+                throw new IllegalArgumentException("Unknown fit model: " + modelName);
         }
     }
 

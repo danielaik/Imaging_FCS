@@ -1,11 +1,11 @@
 package fiji.plugin.imaging_fcs.new_imfcs.controller;
 
+import fiji.plugin.imaging_fcs.new_imfcs.constants.Constants;
 import fiji.plugin.imaging_fcs.new_imfcs.model.ExpSettingsModel;
 import fiji.plugin.imaging_fcs.new_imfcs.model.ImageModel;
 import fiji.plugin.imaging_fcs.new_imfcs.model.OptionsModel;
 import fiji.plugin.imaging_fcs.new_imfcs.model.PixelModel;
 import fiji.plugin.imaging_fcs.new_imfcs.model.correlations.Correlator;
-import fiji.plugin.imaging_fcs.new_imfcs.model.correlations.MeanSquareDisplacement;
 import fiji.plugin.imaging_fcs.new_imfcs.model.correlations.SelectedPixel;
 import fiji.plugin.imaging_fcs.new_imfcs.model.fit.BleachCorrectionModel;
 import fiji.plugin.imaging_fcs.new_imfcs.utils.Range;
@@ -23,6 +23,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+
+import static fiji.plugin.imaging_fcs.new_imfcs.model.correlations.MeanSquareDisplacement.correlationToMSD;
 
 /**
  * The ImageController class handles the interactions with the image data,
@@ -192,6 +194,8 @@ public final class ImageController {
 
     /**
      * Performs the correlation and fitting for a pixel at the given coordinates.
+     * If FCCS display is enabled, it additionally fits the FCCS model. It also optionally computes
+     * the Mean Squared Displacement (MSD) if enabled in the settings.
      *
      * @param x                      The x-coordinate of the pixel.
      * @param y                      The y-coordinate of the pixel.
@@ -203,21 +207,53 @@ public final class ImageController {
         try {
             Point[] cursorPositions = selectedPixel.performCorrelationFunctionEvaluation(x, y, singlePixelCorrelation);
             Point pixel = cursorPositions[0];
+
+            if (settings.isFCCSDisp()) {
+                fitFCCS(x, y, pixel);
+            }
+
             PixelModel pixelModel = correlator.getPixelModel(pixel.x, pixel.y);
 
-            fitController.fit(pixelModel, correlator.getLagTimes(), correlator.getRegularizedCovarianceMatrix(), x, y);
+            fitController.fit(pixelModel, settings.getFitModel(), correlator.getLagTimes(),
+                    correlator.getRegularizedCovarianceMatrix(), x, y);
 
             if (settings.isMSD()) {
-                pixelModel.setMSD(MeanSquareDisplacement.correlationToMSD(pixelModel.getAcf(), settings.getParamAx(),
-                        settings.getParamAy(), settings.getParamW(), settings.getSigmaZ(), settings.isMSD3d()));
+                pixelModel.setMSD(correlationToMSD(pixelModel.getAcf(), settings.getParamAx(), settings.getParamAy(),
+                        settings.getParamW(), settings.getSigmaZ(), settings.isMSD3d()));
             }
 
             return cursorPositions;
-        } catch (RuntimeException e) {
+        } catch (Exception e) {
             IJ.showMessage("Error", e.getMessage());
         }
 
         return null;
+    }
+
+    /**
+     * Performs FCCS fitting for the pixel at the given coordinates.
+     * This method fits two pixel models and then optionally calculates MS for each model if enabled in the settings.
+     *
+     * @param x     The x-coordinate of the pixel.
+     * @param y     The y-coordinate of the pixel.
+     * @param pixel The cursor position of the pixel.
+     */
+    private void fitFCCS(int x, int y, Point pixel) {
+        PixelModel[] FCCSpixelModels = correlator.getFCCSPixelModels(pixel.x, pixel.y);
+
+        fitController.fit(FCCSpixelModels[0], Constants.ITIR_FCS_2D, correlator.getLagTimes(),
+                correlator.getRegularizedCovarianceMatrix(), x, y);
+        fitController.fit(FCCSpixelModels[1], Constants.ITIR_FCS_2D_2, correlator.getLagTimes(),
+                correlator.getRegularizedCovarianceMatrix(), x, y);
+
+        if (settings.isMSD()) {
+            FCCSpixelModels[0].setMSD(
+                    correlationToMSD(FCCSpixelModels[0].getAcf(), settings.getParamAx(), settings.getParamAy(),
+                            settings.getParamW(), settings.getSigmaZ(), settings.isMSD3d()));
+            FCCSpixelModels[1].setMSD(
+                    correlationToMSD(FCCSpixelModels[1].getAcf(), settings.getParamAx(), settings.getParamAy(),
+                            settings.getParamW(), settings.getSigmaZ(), settings.isMSD3d()));
+        }
     }
 
     /**
@@ -246,7 +282,7 @@ public final class ImageController {
      * @param pixelModels A list of PixelModels to plot.
      */
     public void plotMultiplePixelsModels(List<PixelModel> pixelModels) {
-        Plots.plotCorrelationFunction(pixelModels, correlator.getLagTimes(), null, settings.getBinning(),
+        Plots.plotCorrelationFunction(pixelModels, null, correlator.getLagTimes(), null, settings.getBinning(),
                 settings.getCCF(), fitController.getFitStart(), fitController.getFitEnd());
         if (settings.isMSD()) {
             Plots.plotMSD(pixelModels, correlator.getLagTimes(), null, settings.getBinning());
@@ -307,6 +343,18 @@ public final class ImageController {
     }
 
     /**
+     * Checks if the given ROI overlaps when using the DC-FCCS model.
+     *
+     * @param roi The Region of Interest to check.
+     * @return True if the ROI is larger than the DCFCCS region, false otherwise.
+     */
+    public boolean isROIOverlapInDCFCCS(Roi roi) {
+        Rectangle rect = roi.getBounds();
+
+        return Math.abs(settings.getCCF().width) < rect.width && Math.abs(settings.getCCF().height) < rect.height;
+    }
+
+    /**
      * Plots the results for a pixel at the given coordinates.
      *
      * @param cursorPositions The array of cursor positions where the two first elements represent the pixel
@@ -316,14 +364,20 @@ public final class ImageController {
         Point p = cursorPositions[0];
         PixelModel pixelModel = correlator.getPixelModel(p.x, p.y);
 
+        PixelModel[] FCCSPixelModels = settings.isFCCSDisp() ? correlator.getFCCSPixelModels(p.x, p.y) : null;
+
+        List<PixelModel[]> FCCSPixelModelsList =
+                FCCSPixelModels == null ? null : Collections.singletonList(FCCSPixelModels);
+
         if (options.isPlotACFCurves()) {
-            Plots.plotCorrelationFunction(Collections.singletonList(pixelModel), correlator.getLagTimes(),
-                    cursorPositions, settings.getBinning(), settings.getCCF(), fitController.getFitStart(),
-                    fitController.getFitEnd());
+            Plots.plotCorrelationFunction(Collections.singletonList(pixelModel), FCCSPixelModelsList,
+                    correlator.getLagTimes(), cursorPositions, settings.getBinning(), settings.getCCF(),
+                    fitController.getFitStart(), fitController.getFitEnd());
         }
 
         if (options.isPlotSDCurves()) {
-            Plots.plotStandardDeviation(pixelModel.getStandardDeviationAcf(), correlator.getLagTimes(), p);
+            Plots.plotStandardDeviation(pixelModel.getStandardDeviationAcf(), FCCSPixelModels, correlator.getLagTimes(),
+                    p);
         }
 
         if (options.isPlotIntensityCurves() && isImageLoaded()) {

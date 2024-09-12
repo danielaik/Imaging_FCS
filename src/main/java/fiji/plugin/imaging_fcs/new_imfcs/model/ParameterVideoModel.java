@@ -123,7 +123,7 @@ public class ParameterVideoModel {
                     PixelModel currentPixelModel = new PixelModel();
                     correlator.correlatePixelModel(currentPixelModel, imageModel.getImage(), x, y,
                             x + settings.getCCF().width, y + settings.getCCF().height, startFrame, endFrame);
-                    fitModel.fit(currentPixelModel, correlator.getLagTimes(),
+                    fitModel.fit(currentPixelModel, settings.getFitModel(), correlator.getLagTimes(),
                             correlator.getRegularizedCovarianceMatrix());
 
                     Point binningPoint = settings.convertPointToBinning(new Point(x, y));

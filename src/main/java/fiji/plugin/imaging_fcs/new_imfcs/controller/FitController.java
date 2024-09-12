@@ -38,15 +38,17 @@ public class FitController {
      * Updates the view with the fit parameters if the fitting process can proceed.
      *
      * @param pixelModel        The pixel model to fit.
+     * @param modelName         The name of the model to use for fitting.
      * @param lagTimes          The lag times for fitting.
      * @param correlationMatrix The correlation matrix used for fitting.
      * @param x                 The x coordinate of the pixel.
      * @param y                 The y coordinate of the pixel.
      */
-    public void fit(PixelModel pixelModel, double[] lagTimes, double[][] correlationMatrix, int x, int y) {
+    public void fit(PixelModel pixelModel, String modelName, double[] lagTimes, double[][] correlationMatrix, int x,
+                    int y) {
         if (isActivated() && model.canFit()) {
             try {
-                double[] modProbs = model.fit(pixelModel, lagTimes, correlationMatrix);
+                double[] modProbs = model.fit(pixelModel, modelName, lagTimes, correlationMatrix);
                 // update view
                 view.updateFitParams(pixelModel.getFitParams());
                 if (model.isBayes()) {
@@ -65,12 +67,13 @@ public class FitController {
      * Updates the view with the fit parameters if the fitting process can proceed.
      *
      * @param pixelModel The pixel model to fit.
+     * @param modelName  The name of the model to use for fitting.
      * @param lagTimes   The lag times for fitting.
      */
-    public void fit(PixelModel pixelModel, double[] lagTimes) {
+    public void fit(PixelModel pixelModel, String modelName, double[] lagTimes) {
         if (isActivated() && model.canFit()) {
             try {
-                model.standardFit(pixelModel, lagTimes);
+                model.standardFit(pixelModel, modelName, lagTimes);
                 view.updateFitParams(pixelModel.getFitParams());
             } catch (RuntimeException e) {
                 IJ.log(String.format("%s on average ACF", e.getClass().getName()));

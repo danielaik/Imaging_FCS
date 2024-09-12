@@ -9,6 +9,11 @@ public final class Constants {
     // models name
     public static final String DC_FCCS_2D = "DC-FCCS (2D)";
     public static final String ITIR_FCS_2D = "ITIR-FCS (2D)";
+
+    // This model only exists for FCCS, it's not defined by the user but it is used to define that we need to use the
+    // psfsize2 in FCSFit.java file
+    public static final String ITIR_FCS_2D_2 = "ITIR-FCS (2D) 2";
+
     public static final String SPIM_FCS_3D = "SPIM-FCS (3D)";
 
     // bleach correction methods

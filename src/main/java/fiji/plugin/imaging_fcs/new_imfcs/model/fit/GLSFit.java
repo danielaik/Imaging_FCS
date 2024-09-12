@@ -28,13 +28,14 @@ public class GLSFit extends StandardFit {
      *
      * @param model               The FitModel instance containing the fitting parameters.
      * @param settings            The experimental settings model.
+     * @param modelName           The name of the model to use for fitting.
      * @param lagTimes            The lag times for fitting.
      * @param correlationFunction The correlation function data.
      * @param covarianceMatrix    The covariance matrix for the data.
      */
-    public GLSFit(FitModel model, ExpSettingsModel settings, double[] lagTimes, double[] correlationFunction,
-                  double[][] covarianceMatrix) {
-        super(model, settings);
+    public GLSFit(FitModel model, ExpSettingsModel settings, String modelName, double[] lagTimes,
+                  double[] correlationFunction, double[][] covarianceMatrix) {
+        super(model, settings, modelName);
 
         dataTransform(correlationFunction, covarianceMatrix);
         glsFitFunction = new GLSFitFunction(function, lagTimes, lowerTriangularMatrix, numFreeParameters);
