@@ -41,6 +41,7 @@ public class PixelModel {
     private double[] MSD;
     private double chi2 = 0;
     private boolean fitted = false;
+    // blocked is 1 if blocking is successful and 0 if maximum blocking is used
     private int blocked;
     private FitParameters fitParams;
     private PixelModel acf1PixelModel = null;
@@ -218,7 +219,7 @@ public class PixelModel {
             // filter only based on the binary image
             ImagePlus filteringImage = model.getFilteringBinaryImage();
             ImageProcessor ip = filteringImage.getImageStack().getProcessor(1);
-            int pixelValue = 0;
+            int pixelValue;
 
             if (filteringImage.getBitDepth() == 16) {
                 pixelValue = ip.getPixel(x, y);
@@ -307,6 +308,14 @@ public class PixelModel {
 
     public void setChi2(double chi2) {
         this.chi2 = chi2;
+    }
+
+    public int getBlocked() {
+        return blocked;
+    }
+
+    public void setBlocked(int blocked) {
+        this.blocked = blocked;
     }
 
     public boolean isFitted() {

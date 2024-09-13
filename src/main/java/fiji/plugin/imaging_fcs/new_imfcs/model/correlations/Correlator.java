@@ -241,7 +241,7 @@ public class Correlator {
             double[][] intensityBlock =
                     getIntensityBlock(img, x, y, x2, y2, slidingWindowInitialFrame, slidingWindowFinalFrame, 1);
 
-            blockTransform(deepCopy(intensityBlock), settings.getSlidingWindowLength());
+            blockTransform(pixelModel, deepCopy(intensityBlock), settings.getSlidingWindowLength());
             calculateCorrelationFunction(tmpSlidingWindowModel, deepCopy(intensityBlock),
                     settings.getSlidingWindowLength());
             pixelModel.addPixelModelSlidingWindow(tmpSlidingWindowModel);
@@ -265,21 +265,21 @@ public class Correlator {
                                             int initialFrame, int finalFrame) {
         int numFrames = finalFrame - initialFrame + 1;
 
-        // TODO: check kcf (select 1, 2 or 3)
         int mode = settings.getFitModel().equals(Constants.DC_FCCS_2D) ? 2 : 1;
         double[][] intensityBlock = getIntensityBlock(img, x, y, x2, y2, initialFrame, finalFrame, mode);
 
-        blockTransform(deepCopy(intensityBlock), numFrames);
+        blockTransform(pixelModel, deepCopy(intensityBlock), numFrames);
         calculateCorrelationFunction(pixelModel, deepCopy(intensityBlock), numFrames);
     }
 
     /**
      * Transforms the intensity correlation data using block transformation.
      *
+     * @param pixelModel           The pixel model.
      * @param intensityCorrelation The intensity correlation data.
      * @param numFrames            The number of frames.
      */
-    private void blockTransform(double[][] intensityCorrelation, int numFrames) {
+    private void blockTransform(PixelModel pixelModel, double[][] intensityCorrelation, int numFrames) {
         int blockCount = calculateBlockCount(numFrames);
 
         varianceBlocks = new double[3][blockCount];
@@ -287,7 +287,8 @@ public class Correlator {
         double[] upperQuartile = new double[blockCount];
 
         processBlocks(intensityCorrelation, blockCount, numFrames, varianceBlocks, lowerQuartile, upperQuartile);
-        blockIndex = determineLastIndexMeetingCriteria(blockCount, varianceBlocks, lowerQuartile, upperQuartile);
+        blockIndex =
+                determineLastIndexMeetingCriteria(pixelModel, blockCount, varianceBlocks, lowerQuartile, upperQuartile);
     }
 
     /**
@@ -545,14 +546,15 @@ public class Correlator {
     /**
      * Determines the last index meeting the criteria for blocking.
      *
+     * @param pixelModel     The pixel model.
      * @param blockCount     The number of blocks.
      * @param varianceBlocks The variance blocks.
      * @param lowerQuartile  The lower quartile values.
      * @param upperQuartile  The upper quartile values.
      * @return The last index meeting the criteria.
      */
-    private int determineLastIndexMeetingCriteria(int blockCount, double[][] varianceBlocks, double[] lowerQuartile,
-                                                  double[] upperQuartile) {
+    private int determineLastIndexMeetingCriteria(PixelModel pixelModel, int blockCount, double[][] varianceBlocks,
+                                                  double[] lowerQuartile, double[] upperQuartile) {
         int lastIndexMeetingCriteria = -1;
         int index = 0;
 
@@ -583,7 +585,10 @@ public class Correlator {
 
         if (index == 0) {
             // optimal blocking is not possible, use maximal blocking
+            pixelModel.setBlocked(0);
             index = (blockCount > 3) ? blockCount - 3 : blockCount - 1;
+        } else {
+            pixelModel.setBlocked(1);
         }
 
         return Math.max(index, correlatorQ - 1);
