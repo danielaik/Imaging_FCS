@@ -349,9 +349,13 @@ public final class ImageController {
      * @return True if the ROI is larger than the DCFCCS region, false otherwise.
      */
     public boolean isROIOverlapInDCFCCS(Roi roi) {
-        Rectangle rect = roi.getBounds();
+        if (settings.getFitModel().equals(Constants.DC_FCCS_2D)) {
+            Rectangle rect = roi.getBounds();
 
-        return Math.abs(settings.getCCF().width) < rect.width && Math.abs(settings.getCCF().height) < rect.height;
+            return Math.abs(settings.getCCF().width) < rect.width && Math.abs(settings.getCCF().height) < rect.height;
+        }
+
+        return false;
     }
 
     /**
