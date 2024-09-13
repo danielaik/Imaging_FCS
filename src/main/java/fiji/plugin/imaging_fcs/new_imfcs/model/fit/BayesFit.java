@@ -57,7 +57,8 @@ public class BayesFit {
         StandardFit.FitOutput output;
 
         if (fitModel.isGLS()) {
-            GLSFit glsFit = new GLSFit(fitModel, settings, modelName, lagTimes, pixelModel.getAcf(), covarianceMatrix);
+            GLSFit glsFit = new GLSFit(fitModel, settings, modelName, lagTimes, pixelModel.getCorrelationFunction(),
+                    covarianceMatrix);
             output = glsFit.fitPixel(pixelModel, lagTimes);
 
             RealMatrix matT = MatrixUtils.createRealMatrix(covarianceMatrix).transpose();

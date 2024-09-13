@@ -208,18 +208,18 @@ public final class ImageController {
             Point[] cursorPositions = selectedPixel.performCorrelationFunctionEvaluation(x, y, singlePixelCorrelation);
             Point pixel = cursorPositions[0];
 
-            if (settings.isFCCSDisp()) {
-                fitFCCS(x, y, pixel);
-            }
-
             PixelModel pixelModel = correlator.getPixelModel(pixel.x, pixel.y);
+
+            if (settings.isFCCSDisp()) {
+                fitFCCS(pixelModel.getAcf1PixelModel(), pixelModel.getAcf2PixelModel(), x, y);
+            }
 
             fitController.fit(pixelModel, settings.getFitModel(), correlator.getLagTimes(),
                     correlator.getRegularizedCovarianceMatrix(), x, y);
 
             if (settings.isMSD()) {
-                pixelModel.setMSD(correlationToMSD(pixelModel.getAcf(), settings.getParamAx(), settings.getParamAy(),
-                        settings.getParamW(), settings.getSigmaZ(), settings.isMSD3d()));
+                pixelModel.setMSD(correlationToMSD(pixelModel.getCorrelationFunction(), settings.getParamAx(),
+                        settings.getParamAy(), settings.getParamW(), settings.getSigmaZ(), settings.isMSD3d()));
             }
 
             return cursorPositions;
@@ -231,27 +231,27 @@ public final class ImageController {
     }
 
     /**
-     * Performs FCCS fitting for the pixel at the given coordinates.
-     * This method fits two pixel models and then optionally calculates MS for each model if enabled in the settings.
+     * Performs fitting for the given pixel models at the specified coordinates.
+     * This method fits two pixel models (acf1Model and acf2Model) using different fit settings and lag times.
+     * If MSD (Mean Squared Displacement) is enabled in the settings, it calculates and sets the MSD for both models.
      *
-     * @param x     The x-coordinate of the pixel.
-     * @param y     The y-coordinate of the pixel.
-     * @param pixel The cursor position of the pixel.
+     * @param acf1Model The first pixel model to be fitted (ACF1).
+     * @param acf2Model The second pixel model to be fitted (ACF2).
+     * @param x         The x-coordinate of the pixel.
+     * @param y         The y-coordinate of the pixel.
      */
-    private void fitFCCS(int x, int y, Point pixel) {
-        PixelModel[] FCCSpixelModels = correlator.getFCCSPixelModels(pixel.x, pixel.y);
-
-        fitController.fit(FCCSpixelModels[0], Constants.ITIR_FCS_2D, correlator.getLagTimes(),
+    private void fitFCCS(PixelModel acf1Model, PixelModel acf2Model, int x, int y) {
+        fitController.fit(acf1Model, Constants.ITIR_FCS_2D, correlator.getLagTimes(),
                 correlator.getRegularizedCovarianceMatrix(), x, y);
-        fitController.fit(FCCSpixelModels[1], Constants.ITIR_FCS_2D_2, correlator.getLagTimes(),
+        fitController.fit(acf2Model, Constants.ITIR_FCS_2D_2, correlator.getLagTimes(),
                 correlator.getRegularizedCovarianceMatrix(), x, y);
 
         if (settings.isMSD()) {
-            FCCSpixelModels[0].setMSD(
-                    correlationToMSD(FCCSpixelModels[0].getAcf(), settings.getParamAx(), settings.getParamAy(),
+            acf1Model.setMSD(
+                    correlationToMSD(acf1Model.getCorrelationFunction(), settings.getParamAx(), settings.getParamAy(),
                             settings.getParamW(), settings.getSigmaZ(), settings.isMSD3d()));
-            FCCSpixelModels[1].setMSD(
-                    correlationToMSD(FCCSpixelModels[1].getAcf(), settings.getParamAx(), settings.getParamAy(),
+            acf2Model.setMSD(
+                    correlationToMSD(acf2Model.getCorrelationFunction(), settings.getParamAx(), settings.getParamAy(),
                             settings.getParamW(), settings.getSigmaZ(), settings.isMSD3d()));
         }
     }
@@ -282,10 +282,10 @@ public final class ImageController {
      * @param pixelModels A list of PixelModels to plot.
      */
     public void plotMultiplePixelsModels(List<PixelModel> pixelModels) {
-        Plots.plotCorrelationFunction(pixelModels, null, correlator.getLagTimes(), null, settings.getBinning(),
-                settings.getCCF(), fitController.getFitStart(), fitController.getFitEnd());
+        Plots.plotCorrelationFunction(pixelModels, settings.isFCCSDisp(), correlator.getLagTimes(), null,
+                settings.getBinning(), settings.getCCF(), fitController.getFitStart(), fitController.getFitEnd());
         if (settings.isMSD()) {
-            Plots.plotMSD(pixelModels, correlator.getLagTimes(), null, settings.getBinning());
+            Plots.plotMSD(pixelModels, correlator.getLagTimes(), null, settings.getBinning(), settings.isFCCSDisp());
         }
     }
 
@@ -364,20 +364,14 @@ public final class ImageController {
         Point p = cursorPositions[0];
         PixelModel pixelModel = correlator.getPixelModel(p.x, p.y);
 
-        PixelModel[] FCCSPixelModels = settings.isFCCSDisp() ? correlator.getFCCSPixelModels(p.x, p.y) : null;
-
-        List<PixelModel[]> FCCSPixelModelsList =
-                FCCSPixelModels == null ? null : Collections.singletonList(FCCSPixelModels);
-
         if (options.isPlotACFCurves()) {
-            Plots.plotCorrelationFunction(Collections.singletonList(pixelModel), FCCSPixelModelsList,
+            Plots.plotCorrelationFunction(Collections.singletonList(pixelModel), settings.isFCCSDisp(),
                     correlator.getLagTimes(), cursorPositions, settings.getBinning(), settings.getCCF(),
                     fitController.getFitStart(), fitController.getFitEnd());
         }
 
         if (options.isPlotSDCurves()) {
-            Plots.plotStandardDeviation(pixelModel.getStandardDeviationAcf(), FCCSPixelModels, correlator.getLagTimes(),
-                    p);
+            Plots.plotStandardDeviation(pixelModel, correlator.getLagTimes(), p, settings.isFCCSDisp());
         }
 
         if (options.isPlotIntensityCurves() && isImageLoaded()) {
@@ -399,7 +393,8 @@ public final class ImageController {
         }
 
         if (settings.isMSD()) {
-            Plots.plotMSD(Collections.singletonList(pixelModel), correlator.getLagTimes(), p, settings.getBinning());
+            Plots.plotMSD(Collections.singletonList(pixelModel), correlator.getLagTimes(), p, settings.getBinning(),
+                    settings.isFCCSDisp());
         }
 
         if (options.isPlotResCurves() && pixelModel.isFitted()) {
@@ -447,7 +442,7 @@ public final class ImageController {
 
         for (PixelModel[] pixelModelsRow : pixelModels) {
             for (PixelModel currentPixelModel : pixelModelsRow) {
-                if (currentPixelModel != null && currentPixelModel.getAcf() != null) {
+                if (currentPixelModel != null && currentPixelModel.getCorrelationFunction() != null) {
                     pixelModelList.add(currentPixelModel);
                 }
             }
@@ -552,7 +547,7 @@ public final class ImageController {
                     PixelModel pixelModel = correlator.getPixelModel(x, y);
 
                     // if the pixel model is not correlated we do not plot
-                    if (pixelModel == null || pixelModel.getAcf() == null) {
+                    if (pixelModel == null || pixelModel.getCorrelationFunction() == null) {
                         return;
                     }
 

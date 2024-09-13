@@ -247,13 +247,14 @@ public final class ExcelExporter {
                 ExcelExporter.createSheetFromMap(workbook, "Experimental settings", settingsMap);
 
                 ExcelExporter.createSheetLagTime(workbook, correlator.getLagTimes(), correlator.getSampleTimes());
-                ExcelExporter.createSheetFromPixelModelArray(workbook, "ACF", pixelModels, PixelModel::getAcf);
+                ExcelExporter.createSheetFromPixelModelArray(workbook, "ACF", pixelModels,
+                        PixelModel::getCorrelationFunction);
                 ExcelExporter.createSheetFromPixelModelArray(workbook, "Standard Deviation", pixelModels,
-                        PixelModel::getStandardDeviationAcf);
+                        PixelModel::getStandardDeviationCF);
 
                 if (PixelModel.anyPixelFit(pixelModels)) {
                     ExcelExporter.createSheetFromPixelModelArray(workbook, "Fit Functions", pixelModels,
-                            PixelModel::getFittedAcf);
+                            PixelModel::getFittedCF);
                     ExcelExporter.createSheetFromPixelModelArray(workbook, "Residuals", pixelModels,
                             PixelModel::getResiduals);
                     ExcelExporter.createFitParametersSheet(workbook, pixelModels);

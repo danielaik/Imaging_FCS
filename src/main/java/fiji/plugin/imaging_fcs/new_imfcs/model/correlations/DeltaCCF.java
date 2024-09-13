@@ -69,8 +69,8 @@ public final class DeltaCCF {
                 correlator.correlatePixelModel(pixelModel2, img, x2, y2, x1, y1, settings.getFirstFrame(),
                         settings.getLastFrame());
 
-                double[] acf1 = pixelModel1.getAcf();
-                double[] acf2 = pixelModel2.getAcf();
+                double[] acf1 = pixelModel1.getCorrelationFunction();
+                double[] acf2 = pixelModel2.getCorrelationFunction();
                 for (int i = 1; i < acf1.length; i++) {
                     currentDCCF[y - startY] += acf1[i] - acf2[i];
                 }

@@ -56,7 +56,7 @@ public class SelectedPixel {
             for (int x = 0; x < pixelModels.length; x++) {
                 for (int y = 0; y < pixelModels[0].length; y++) {
                     PixelModel currentPixelModel = pixelModels[x][y];
-                    if (currentPixelModel != null && currentPixelModel.getAcf() != null) {
+                    if (currentPixelModel != null && currentPixelModel.getCorrelationFunction() != null) {
                         Point binningPoint = convertPointToBinning.apply(new Point(x, y));
                         if (!fitController.needToFilter(currentPixelModel, binningPoint.x, binningPoint.y)) {
                             pixelModelList.add(currentPixelModel);
@@ -64,7 +64,6 @@ public class SelectedPixel {
                     }
                 }
             }
-
         } else {
             Rectangle rect = roi.getBounds();
 
@@ -75,7 +74,7 @@ public class SelectedPixel {
 
                     PixelModel currentPixelModel = pixelModels[convertedCoordinates.x][convertedCoordinates.y];
 
-                    if (currentPixelModel != null && currentPixelModel.getAcf() != null) {
+                    if (currentPixelModel != null && currentPixelModel.getCorrelationFunction() != null) {
                         Point binningPoint = convertPointToBinning.apply(convertedCoordinates);
                         if (!fitController.needToFilter(currentPixelModel, binningPoint.x, binningPoint.y)) {
                             pixelModelList.add(currentPixelModel);

@@ -33,16 +33,18 @@ public class PixelModel {
             "blocked",
             "valid pixels"
     };
-    private double[] acf;
-    private double[] varianceAcf;
-    private double[] standardDeviationAcf;
-    private double[] fittedAcf;
+    private double[] CorrelationFunction;
+    private double[] varianceCF;
+    private double[] standardDeviationCF;
+    private double[] fittedCF;
     private double[] residuals;
     private double[] MSD;
     private double chi2 = 0;
     private boolean fitted = false;
     private int blocked;
     private FitParameters fitParams;
+    private PixelModel acf1PixelModel = null;
+    private PixelModel acf2PixelModel = null;
 
 
     /**
@@ -135,15 +137,15 @@ public class PixelModel {
      * @param other The other PixelModel whose values are to be added.
      */
     public void addPixelModelSlidingWindow(PixelModel other) {
-        if (acf == null || standardDeviationAcf == null || varianceAcf == null) {
-            acf = other.acf;
-            varianceAcf = other.varianceAcf;
-            standardDeviationAcf = other.standardDeviationAcf;
+        if (CorrelationFunction == null || standardDeviationCF == null || varianceCF == null) {
+            CorrelationFunction = other.CorrelationFunction;
+            varianceCF = other.varianceCF;
+            standardDeviationCF = other.standardDeviationCF;
         } else {
-            for (int i = 0; i < acf.length; i++) {
-                acf[i] += other.acf[i];
-                varianceAcf[i] += other.varianceAcf[i];
-                standardDeviationAcf[i] += other.standardDeviationAcf[i];
+            for (int i = 0; i < CorrelationFunction.length; i++) {
+                CorrelationFunction[i] += other.CorrelationFunction[i];
+                varianceCF[i] += other.varianceCF[i];
+                standardDeviationCF[i] += other.standardDeviationCF[i];
             }
         }
     }
@@ -154,10 +156,10 @@ public class PixelModel {
      * @param numSlidingWindow The number of sliding windows to average over.
      */
     public void averageSlidingWindow(int numSlidingWindow) {
-        for (int i = 0; i < acf.length; i++) {
-            acf[i] /= numSlidingWindow;
-            varianceAcf[i] /= numSlidingWindow;
-            standardDeviationAcf[i] /= numSlidingWindow;
+        for (int i = 0; i < CorrelationFunction.length; i++) {
+            CorrelationFunction[i] /= numSlidingWindow;
+            varianceCF[i] /= numSlidingWindow;
+            standardDeviationCF[i] /= numSlidingWindow;
         }
     }
 
@@ -242,29 +244,29 @@ public class PixelModel {
                 model.getChi2Threshold().toFilter(chi2);
     }
 
-    public double[] getAcf() {
-        return acf;
+    public double[] getCorrelationFunction() {
+        return CorrelationFunction;
     }
 
-    public void setAcf(double[] acf) {
-        this.acf = acf;
+    public void setCorrelationFunction(double[] correlationFunction) {
+        this.CorrelationFunction = correlationFunction;
     }
 
-    public double[] getStandardDeviationAcf() {
-        return standardDeviationAcf;
+    public double[] getStandardDeviationCF() {
+        return standardDeviationCF;
     }
 
-    public void setStandardDeviationAcf(double[] standardDeviationAcf) {
-        this.standardDeviationAcf = standardDeviationAcf;
+    public void setStandardDeviationCF(double[] standardDeviationCF) {
+        this.standardDeviationCF = standardDeviationCF;
     }
 
-    public double[] getFittedAcf() {
-        return fittedAcf;
+    public double[] getFittedCF() {
+        return fittedCF;
     }
 
-    public void setFittedAcf(double[] fittedAcf) {
+    public void setFittedCF(double[] fittedCF) {
         this.fitted = true;
-        this.fittedAcf = fittedAcf;
+        this.fittedCF = fittedCF;
     }
 
     public double[] getResiduals() {
@@ -291,12 +293,12 @@ public class PixelModel {
         this.fitParams = fitParams;
     }
 
-    public double[] getVarianceAcf() {
-        return varianceAcf;
+    public double[] getVarianceCF() {
+        return varianceCF;
     }
 
-    public void setVarianceAcf(double[] varianceAcf) {
-        this.varianceAcf = varianceAcf;
+    public void setVarianceCF(double[] varianceCF) {
+        this.varianceCF = varianceCF;
     }
 
     public double getChi2() {
@@ -313,6 +315,22 @@ public class PixelModel {
 
     public void setFitted(boolean fitted) {
         this.fitted = fitted;
+    }
+
+    public PixelModel getAcf1PixelModel() {
+        return acf1PixelModel;
+    }
+
+    public void setAcf1PixelModel(PixelModel acf1PixelModel) {
+        this.acf1PixelModel = acf1PixelModel;
+    }
+
+    public PixelModel getAcf2PixelModel() {
+        return acf2PixelModel;
+    }
+
+    public void setAcf2PixelModel(PixelModel acf2PixelModel) {
+        this.acf2PixelModel = acf2PixelModel;
     }
 
     /**

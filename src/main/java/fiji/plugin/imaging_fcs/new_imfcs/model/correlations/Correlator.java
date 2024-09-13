@@ -34,7 +34,6 @@ public class Correlator {
     private double[] lagTimes;
     private double[][] regularizedCovarianceMatrix, varianceBlocks;
     private PixelModel[][] pixelModels;
-    private PixelModel[][][] pixelModelsFCCS;
 
     /**
      * Constructs a Correlator with the specified settings, bleach correction model, and fit model.
@@ -80,10 +79,10 @@ public class Correlator {
         ExcelReader.readLagTimesAndSampleTimes(workbook, "Lag time", this::setLagTimes, this::setSampleTimes);
         pixelModels = new PixelModel[dimension.width][dimension.height];
 
-        ExcelReader.readSheetToPixelModels(workbook, "ACF", pixelModels, PixelModel::setAcf);
+        ExcelReader.readSheetToPixelModels(workbook, "ACF", pixelModels, PixelModel::setCorrelationFunction);
         ExcelReader.readSheetToPixelModels(workbook, "Standard Deviation", pixelModels,
-                PixelModel::setStandardDeviationAcf);
-        ExcelReader.readSheetToPixelModels(workbook, "Fit Functions", pixelModels, PixelModel::setFittedAcf);
+                PixelModel::setStandardDeviationCF);
+        ExcelReader.readSheetToPixelModels(workbook, "Fit Functions", pixelModels, PixelModel::setFittedCF);
         ExcelReader.readSheetToPixelModels(workbook, "Residuals", pixelModels, PixelModel::setResiduals);
         ExcelReader.readSheetToPixelModels(workbook, "MSD", pixelModels, PixelModel::setMSD);
         ExcelReader.readFitParameters(workbook, "Fit Parameters", pixelModels);
@@ -147,10 +146,6 @@ public class Correlator {
      * @param finalFrame   The final frame to end the correlation.
      */
     public void correlate(ImagePlus img, int x, int y, int x2, int y2, int initialFrame, int finalFrame) {
-        if (settings.isFCCSDisp()) {
-            correlateFCCS(img, x, y, x2, y2, initialFrame, finalFrame);
-        }
-
         // Instantiate the pixelModels array if it hasn't been created yet
         if (pixelModels == null) {
             pixelModels = new PixelModel[img.getWidth()][img.getHeight()];
@@ -159,6 +154,10 @@ public class Correlator {
         // Create or update the PixelModel for the first pixel and perform correlation
         pixelModels[x][y] = new PixelModel();
         PixelModel pixelModel = pixelModels[x][y];
+
+        if (settings.isFCCSDisp()) {
+            correlateFCCS(img, pixelModel, x, y, x2, y2, initialFrame, finalFrame);
+        }
 
         correlatePixelModel(pixelModel, img, x, y, x2, y2, initialFrame, finalFrame);
     }
@@ -175,19 +174,15 @@ public class Correlator {
      * @param initialFrame The initial frame to start the correlation.
      * @param finalFrame   The final frame to end the correlation.
      */
-    private void correlateFCCS(ImagePlus img, int x, int y, int x2, int y2, int initialFrame, int finalFrame) {
-        // Instantiate the pixelModelsFCCS array if it hasn't been created yet
-        if (pixelModelsFCCS == null) {
-            pixelModelsFCCS = new PixelModel[img.getWidth()][img.getHeight()][2];
-        }
-
-        // Create PixelModels for both pixels and perform correlation
-        pixelModelsFCCS[x][y][0] = new PixelModel();
-        pixelModelsFCCS[x][y][1] = new PixelModel();
+    private void correlateFCCS(ImagePlus img, PixelModel pixelModel, int x, int y, int x2, int y2, int initialFrame,
+                               int finalFrame) {
+        // Create PixelModels for both ACF and perform correlation
+        pixelModel.setAcf1PixelModel(new PixelModel());
+        pixelModel.setAcf2PixelModel(new PixelModel());
 
         // Perform correlation for both FCCS pixel models
-        correlatePixelModel(pixelModelsFCCS[x][y][0], img, x, y, x, y, initialFrame, finalFrame);
-        correlatePixelModel(pixelModelsFCCS[x][y][1], img, x2, y2, x2, y2, initialFrame, finalFrame);
+        correlatePixelModel(pixelModel.getAcf1PixelModel(), img, x, y, x, y, initialFrame, finalFrame);
+        correlatePixelModel(pixelModel.getAcf2PixelModel(), img, x2, y2, x2, y2, initialFrame, finalFrame);
     }
 
     /**
@@ -829,8 +824,8 @@ public class Correlator {
      */
     private void calculateCorrelationFunction(PixelModel pixelModel, double[][] intensityBlocks, int numFrames) {
         // intensityBlocks is the array of intensity values for the two traces witch are correlated
-        pixelModel.setStandardDeviationAcf(new double[settings.getChannelNumber()]);
-        pixelModel.setVarianceAcf(new double[settings.getChannelNumber()]);
+        pixelModel.setStandardDeviationCF(new double[settings.getChannelNumber()]);
+        pixelModel.setVarianceCF(new double[settings.getChannelNumber()]);
 
         double[][] covarianceMatrix = new double[settings.getChannelNumber()][settings.getChannelNumber()];
         // the final results does not contain information about the zero lagtime kcf
@@ -889,30 +884,31 @@ public class Correlator {
             // use only the minimal number of products to achieve a symmetric variance matrix
             numProducts[i] = minProducts;
 
-            pixelModel.getVarianceAcf()[i] =
+            pixelModel.getVarianceCF()[i] =
                     calculateBlockVariance(products[i], directMonitors[i], delayedMonitors[i], numProducts[i]);
-            pixelModel.getStandardDeviationAcf()[i] = Math.sqrt(pixelModel.getVarianceAcf()[i]);
+            pixelModel.getStandardDeviationCF()[i] = Math.sqrt(pixelModel.getVarianceCF()[i]);
         }
 
         // if GLS is selected, then calculate the regularized covariance matrix
         if (fitModel.isGLS()) {
-            pixelModel.setAcf(calculateMeanCovariance(products, directMonitors, delayedMonitors, minProducts));
-            calculateCovarianceMatrix(covarianceMatrix, products, pixelModel.getAcf(), directMonitors, delayedMonitors,
-                    minProducts);
+            pixelModel.setCorrelationFunction(
+                    calculateMeanCovariance(products, directMonitors, delayedMonitors, minProducts));
+            calculateCovarianceMatrix(covarianceMatrix, products, pixelModel.getCorrelationFunction(), directMonitors,
+                    delayedMonitors, minProducts);
             double varianceShrinkageWeight =
-                    calculateVarianceShrinkageWeight(covarianceMatrix, products, pixelModel.getAcf(), directMonitors,
-                            delayedMonitors, minProducts);
+                    calculateVarianceShrinkageWeight(covarianceMatrix, products, pixelModel.getCorrelationFunction(),
+                            directMonitors, delayedMonitors, minProducts);
 
             double[][] correlationMatrix = new double[settings.getChannelNumber()][settings.getChannelNumber()];
             double covarianceShrinkageWeight =
-                    calculateCovarianceShrinkageWeight(products, pixelModel.getAcf(), directMonitors, delayedMonitors,
-                            covarianceMatrix, correlationMatrix, minProducts);
+                    calculateCovarianceShrinkageWeight(products, pixelModel.getCorrelationFunction(), directMonitors,
+                            delayedMonitors, covarianceMatrix, correlationMatrix, minProducts);
 
             regularizeCovarianceMatrix(covarianceMatrix, correlationMatrix, varianceShrinkageWeight,
                     covarianceShrinkageWeight, minProducts);
         } else {
             // hand over the correlation function CorrelationMean; they differ only slightly
-            pixelModel.setAcf(correlationMean);
+            pixelModel.setCorrelationFunction(correlationMean);
         }
     }
 
@@ -921,7 +917,6 @@ public class Correlator {
      */
     public void resetResults() {
         pixelModels = null;
-        pixelModelsFCCS = null;
     }
 
     public double[][] getDccf(String directionName) {
@@ -938,14 +933,6 @@ public class Correlator {
 
     public PixelModel getPixelModel(int x, int y) {
         return pixelModels[x][y];
-    }
-
-    public PixelModel[] getFCCSPixelModels(int x, int y) {
-        if (pixelModelsFCCS == null) {
-            return null;
-        }
-
-        return pixelModelsFCCS[x][y];
     }
 
     public PixelModel[][] getPixelModels() {

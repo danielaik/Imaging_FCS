@@ -656,20 +656,21 @@ public final class MainPanelController {
                             AverageCorrelation.calculateAverageCorrelationFunction(correlator.getPixelModels(), roi,
                                     settings::convertPointToBinning, settings.getPixelBinning(),
                                     settings.getMinCursorPosition(), fitController);
-                    fitController.fit(averagePixelModel, correlator.getLagTimes());
+                    fitController.fit(averagePixelModel, settings.getFitModel(), correlator.getLagTimes());
 
                     if (optionsModel.isPlotACFCurves()) {
                         Plots.plotCorrelationFunction(Collections.singletonList(averagePixelModel),
-                                correlator.getLagTimes(), null, settings.getBinning(), settings.getCCF(),
-                                fitController.getFitStart(), fitController.getFitEnd());
+                                settings.isFCCSDisp(), correlator.getLagTimes(), null, settings.getBinning(),
+                                settings.getCCF(), fitController.getFitStart(), fitController.getFitEnd());
                     }
 
                     if (settings.isMSD()) {
-                        averagePixelModel.setMSD(MeanSquareDisplacement.correlationToMSD(averagePixelModel.getAcf(),
-                                settings.getParamAx(), settings.getParamAy(), settings.getParamW(),
-                                settings.getSigmaZ(), settings.isMSD3d()));
+                        averagePixelModel.setMSD(
+                                MeanSquareDisplacement.correlationToMSD(averagePixelModel.getCorrelationFunction(),
+                                        settings.getParamAx(), settings.getParamAy(), settings.getParamW(),
+                                        settings.getSigmaZ(), settings.isMSD3d()));
                         Plots.plotMSD(Collections.singletonList(averagePixelModel), correlator.getLagTimes(), null,
-                                settings.getBinning());
+                                settings.getBinning(), settings.isFCCSDisp());
                     }
                 } catch (RuntimeException e) {
                     // This happen if the ROI selected doesn't contain any correlated pixel
@@ -817,6 +818,10 @@ public final class MainPanelController {
                     CCFRoi.setStrokeColor(Color.RED);
                     if (!imageController.isROIValid(CCFRoi)) {
                         IJ.showMessage("Correlation points are not within image.");
+                        return;
+                    }
+                    if (imageController.isROIOverlapInDCFCCS(CCFRoi)) {
+                        IJ.showMessage("Cross-correlation areas overlap.");
                         return;
                     }
                     imageController.getImage().setOverlay(new Overlay(CCFRoi));

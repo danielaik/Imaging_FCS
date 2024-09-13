@@ -243,7 +243,8 @@ public class FitModel {
             BayesFit fitter = new BayesFit(this, settings);
             return fitter.bayesFit(pixelModel, modelName, lagTimes, covarianceMatrix);
         } else if (GLS) {
-            GLSFit fitter = new GLSFit(this, settings, modelName, lagTimes, pixelModel.getAcf(), covarianceMatrix);
+            GLSFit fitter = new GLSFit(this, settings, modelName, lagTimes, pixelModel.getCorrelationFunction(),
+                    covarianceMatrix);
             fitter.fitPixel(pixelModel, lagTimes);
         } else {
             StandardFit fitter = new StandardFit(this, settings, modelName);

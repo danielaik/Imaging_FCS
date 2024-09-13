@@ -100,6 +100,19 @@ public class Plots {
     }
 
     /**
+     * Selects the minimum and maximum values between two pairs of min and max values.
+     *
+     * @param minMax1 The first pair containing min and max values.
+     * @param minMax2 The second pair containing min and max values.
+     * @return A new pair where the left value is the minimum of the two mins, and the right value is the maximum of
+     * the two maxes.
+     */
+    private static Pair<Double, Double> selectMinMax(Pair<Double, Double> minMax1, Pair<Double, Double> minMax2) {
+        return new Pair<>(Math.min(minMax1.getLeft(), minMax2.getLeft()),
+                Math.max(minMax1.getRight(), minMax2.getRight()));
+    }
+
+    /**
      * Displays the plot in a new window or updates the existing window.
      *
      * @param plot     The Plot to display.
@@ -247,48 +260,43 @@ public class Plots {
      * Plots the Correlation Function (CF) for the given pixel models, and optionally FCCS models. It sets up the
      * plot with the corresponding lag times, fitted CF values, and descriptions, and adjusts the scale dynamically.
      *
-     * @param pixelModels     The list of PixelModel objects containing CF and fitted CF values.
-     * @param FCCSPixelModels Optional list of FCCS pixel models for cross-correlation.
-     * @param lagTimes        Array of lag times corresponding to the CF values.
-     * @param pixels          Array of Point objects representing the pixels (or null if using an ROI).
-     * @param binning         Point object representing the binning factor.
-     * @param distance        Dimension object representing the separation distance for cross-correlation.
-     * @param fitStart        The starting index for the fitted CF range.
-     * @param fitEnd          The ending index for the fitted CF range.
+     * @param pixelModels The list of PixelModel objects containing CF and fitted CF values.
+     * @param lagTimes    Array of lag times corresponding to the CF values.
+     * @param pixels      Array of Point objects representing the pixels (or null if using an ROI).
+     * @param binning     Point object representing the binning factor.
+     * @param distance    Dimension object representing the separation distance for cross-correlation.
+     * @param fitStart    The starting index for the fitted CF range.
+     * @param fitEnd      The ending index for the fitted CF range.
      */
-    public static void plotCorrelationFunction(List<PixelModel> pixelModels, List<PixelModel[]> FCCSPixelModels,
-                                               double[] lagTimes, Point[] pixels, Point binning, Dimension distance,
-                                               int fitStart, int fitEnd) {
-        double minScale = Double.MAX_VALUE;
-        double maxScale = -Double.MAX_VALUE;
-
+    public static void plotCorrelationFunction(List<PixelModel> pixelModels, boolean FCCSDisp, double[] lagTimes,
+                                               Point[] pixels, Point binning, Dimension distance, int fitStart,
+                                               int fitEnd) {
         Plot plot = new Plot("CF plot", "tau [s]", "G (tau)");
         plot.setFrameSize(ACF_DIMENSION.width, ACF_DIMENSION.height);
         plot.setLogScaleX();
         plot.setJustification(Plot.CENTER);
-        String description = getDescription(pixels, binning, distance, FCCSPixelModels != null);
+
+        boolean fccsPixelsFound = false;
+
+        double minScale = Double.MAX_VALUE;
+        double maxScale = -Double.MAX_VALUE;
+        for (PixelModel pixelModel : pixelModels) {
+            // check if at least one pixel has an auto-correlation computed
+            if (!fccsPixelsFound && pixelModel.getAcf1PixelModel() != null) {
+                fccsPixelsFound = true;
+            }
+
+            Pair<Double, Double> minMax =
+                    plotPixelModelCF(plot, pixelModel, lagTimes, fitStart, fitEnd, FCCSDisp, Color.BLUE,
+                            FCCSDisp ? Color.BLACK : Color.RED);
+            minScale = Math.min(minScale, minMax.getLeft());
+            maxScale = Math.max(maxScale, minMax.getRight());
+        }
+
+        String description = getDescription(pixels, binning, distance, fccsPixelsFound && FCCSDisp);
 
         plot.setColor(Color.BLUE);
         plot.addLabel(0.5, 0, description);
-
-        for (PixelModel pixelModel : pixelModels) {
-            Pair<Double, Double> minMax = findAdjustedMinMax(pixelModel.getAcf());
-            minScale = Math.min(minScale, minMax.getLeft());
-            maxScale = Math.max(maxScale, minMax.getRight());
-
-            plot.setColor(Color.BLUE);
-            plot.addPoints(lagTimes, pixelModel.getAcf(), Plot.LINE);
-
-            // Plot the fitted ACF
-            plotFittedACF(plot, pixelModel, lagTimes, fitStart, fitEnd,
-                    FCCSPixelModels == null ? Color.RED : Color.BLACK);
-        }
-
-        if (FCCSPixelModels != null) {
-            Pair<Double, Double> minMax = plotFCCSPixelModels(plot, FCCSPixelModels, lagTimes, fitStart, fitEnd);
-            minScale = Math.min(minScale, minMax.getLeft());
-            maxScale = Math.max(maxScale, minMax.getRight());
-        }
 
         plot.setLimits(lagTimes[1], 2 * lagTimes[lagTimes.length - 1], minScale, maxScale);
         plot.draw();
@@ -329,7 +337,44 @@ public class Plots {
     }
 
     /**
-     * Plots the fitted ACF (Auto-Correlation Function) for the given pixel model.
+     * Plots the Correlation Function for the given PixelModel and optionally its FCCS (ACF1 and ACF2) components.
+     *
+     * @param plot       The Plot object for displaying the CF.
+     * @param pixelModel The PixelModel with CF values.
+     * @param lagTimes   Array of lag times for the CF values.
+     * @param fitStart   Start index for fitted CF.
+     * @param fitEnd     End index for fitted CF.
+     * @param FCCSDisp   Boolean indicating if FCCS models are displayed.
+     * @param color      Color for the CF plot.
+     * @param fitColor   Color for the fitted CF plot.
+     * @return Pair of min and max values for the CF scale.
+     */
+    private static Pair<Double, Double> plotPixelModelCF(Plot plot, PixelModel pixelModel, double[] lagTimes,
+                                                         int fitStart, int fitEnd, boolean FCCSDisp, Color color,
+                                                         Color fitColor) {
+
+        Pair<Double, Double> minMax = findAdjustedMinMax(pixelModel.getCorrelationFunction());
+
+        plot.setColor(color);
+        plot.addPoints(lagTimes, pixelModel.getCorrelationFunction(), Plot.LINE);
+
+        // Plot the fitted ACF
+        plotFittedCF(plot, pixelModel, lagTimes, fitStart, fitEnd, fitColor);
+
+        if (FCCSDisp && pixelModel.getAcf1PixelModel() != null) {
+            minMax = selectMinMax(minMax,
+                    plotPixelModelCF(plot, pixelModel.getAcf1PixelModel(), lagTimes, fitStart, fitEnd, false,
+                            Color.GREEN, Color.BLACK));
+            minMax = selectMinMax(minMax,
+                    plotPixelModelCF(plot, pixelModel.getAcf2PixelModel(), lagTimes, fitStart, fitEnd, false, Color.RED,
+                            Color.BLACK));
+        }
+
+        return minMax;
+    }
+
+    /**
+     * Plots the fitted CF (Correlation Function) for the given pixel model.
      *
      * @param plot       The Plot object to add points to.
      * @param pixelModel The PixelModel containing the fitted ACF.
@@ -338,78 +383,44 @@ public class Plots {
      * @param fitEnd     The ending index for fitting.
      * @param color      The color to use for plotting.
      */
-    private static void plotFittedACF(Plot plot, PixelModel pixelModel, double[] lagTimes, int fitStart, int fitEnd,
-                                      Color color) {
+    private static void plotFittedCF(Plot plot, PixelModel pixelModel, double[] lagTimes, int fitStart, int fitEnd,
+                                     Color color) {
         if (pixelModel.isFitted()) {
             plot.setColor(color);
             plot.addPoints(Arrays.copyOfRange(lagTimes, fitStart, fitEnd + 1),
-                    Arrays.copyOfRange(pixelModel.getFittedAcf(), fitStart, fitEnd + 1), Plot.LINE);
+                    Arrays.copyOfRange(pixelModel.getFittedCF(), fitStart, fitEnd + 1), Plot.LINE);
         }
     }
 
     /**
-     * Plots the ACFs for FCCS pixel models and returns the min and max values of the scale.
+     * Plots the standard deviation for a given pixel model, optionally including FCCS models.
      *
-     * @param plot            The Plot object to add points to.
-     * @param FCCSPixelModels A list of PixelModel arrays containing the FCCS models.
-     * @param lagTimes        Array of lag times for the plot.
-     * @param fitStart        The starting index for fitting.
-     * @param fitEnd          The ending index for fitting.
-     * @return A Pair containing the minimum and maximum values of the plotted scales.
+     * @param pixelModel The PixelModel containing standard deviation values.
+     * @param lagTimes   Array of lag times for the standard deviation values.
+     * @param p          The Point representing the pixel.
+     * @param FCCSDisp   Boolean indicating if FCCS models are displayed.
      */
-    private static Pair<Double, Double> plotFCCSPixelModels(Plot plot, List<PixelModel[]> FCCSPixelModels,
-                                                            double[] lagTimes, int fitStart, int fitEnd) {
-        double minScale = Double.MAX_VALUE;
-        double maxScale = -Double.MAX_VALUE;
-
-        for (PixelModel[] CCFModels : FCCSPixelModels) {
-            Pair<Double, Double> minMax = findAdjustedMinMax(CCFModels[0].getAcf());
-            minScale = Math.min(minScale, minMax.getLeft());
-            maxScale = Math.max(maxScale, minMax.getRight());
-
-            minMax = findAdjustedMinMax(CCFModels[1].getAcf());
-            minScale = Math.min(minScale, minMax.getLeft());
-            maxScale = Math.max(maxScale, minMax.getRight());
-
-            plot.setColor(Color.GREEN);
-            plot.addPoints(lagTimes, CCFModels[0].getAcf(), Plot.LINE);
-
-            plot.setColor(Color.RED);
-            plot.addPoints(lagTimes, CCFModels[1].getAcf(), Plot.LINE);
-
-            plotFittedACF(plot, CCFModels[0], lagTimes, fitStart, fitEnd, Color.BLACK);
-            plotFittedACF(plot, CCFModels[1], lagTimes, fitStart, fitEnd, Color.BLACK);
-        }
-
-        return new Pair<>(minScale, maxScale);
-    }
-
-    /**
-     * Plots the standard deviation for a given pixel, including FCCS models if provided.
-     *
-     * @param blockStandardDeviation Array of standard deviation values.
-     * @param FCCSPixelModels        Array of PixelModel objects for FCCS models (optional).
-     * @param lagTimes               Array of lag times corresponding to the standard deviation values.
-     * @param p                      The Point representing the pixel.
-     */
-    public static void plotStandardDeviation(double[] blockStandardDeviation, PixelModel[] FCCSPixelModels,
-                                             double[] lagTimes, Point p) {
-        Pair<Double, Double> minMax = findAdjustedMinMax(blockStandardDeviation);
-        double min = minMax.getLeft();
-        double max = minMax.getRight();
-
+    public static void plotStandardDeviation(PixelModel pixelModel, double[] lagTimes, Point p, boolean FCCSDisp) {
         Plot plot = new Plot("StdDev", "time [s]", "SD");
         plot.setColor(Color.BLUE);
         plot.setJustification(Plot.CENTER);
         plot.addLabel(0.5, 0, String.format(" StdDev (%d, %d)", p.x, p.y));
 
-        plot.addPoints(lagTimes, blockStandardDeviation, Plot.LINE);
+        Pair<Double, Double> minMax =
+                plotLineStandardDeviation(plot, pixelModel.getStandardDeviationCF(), lagTimes, Color.BLUE);
 
-        if (FCCSPixelModels != null) {
-            minMax = plotFCCSPixelModelsStandardDeviation(plot, FCCSPixelModels, lagTimes);
-            min = Math.min(min, minMax.getLeft());
-            max = Math.max(max, minMax.getRight());
+        // plot the acf1 and acf2 pixel models if they are defined
+        if (FCCSDisp && pixelModel.getAcf1PixelModel() != null) {
+            minMax = selectMinMax(minMax,
+                    plotLineStandardDeviation(plot, pixelModel.getAcf1PixelModel().getStandardDeviationCF(), lagTimes,
+                            Color.GREEN));
+            minMax = selectMinMax(minMax,
+                    plotLineStandardDeviation(plot, pixelModel.getAcf2PixelModel().getStandardDeviationCF(), lagTimes,
+                            Color.RED));
         }
+
+        double min = minMax.getLeft();
+        double max = minMax.getRight();
 
         plot.setFrameSize(STANDARD_DEVIATION_DIMENSION.width, STANDARD_DEVIATION_DIMENSION.height);
         plot.setLogScaleX();
@@ -420,30 +431,20 @@ public class Plots {
     }
 
     /**
-     * Plots the standard deviation ACF for FCCS pixel models and returns the min and max values.
+     * Plots a line representing standard deviation for a pixel model.
      *
-     * @param plot            The Plot object to add points to.
-     * @param FCCSPixelModels Array of PixelModel objects for FCCS models.
-     * @param lagTimes        Array of lag times for the plot.
-     * @return A Pair containing the minimum and maximum values of the plotted standard deviations.
+     * @param plot                   The Plot object for displaying the standard deviation.
+     * @param blockStandardDeviation Array of standard deviation values.
+     * @param lagTimes               Array of lag times corresponding to the values.
+     * @param color                  Color for plotting the line.
+     * @return Pair of min and max values for the standard deviation scale.
      */
-    private static Pair<Double, Double> plotFCCSPixelModelsStandardDeviation(Plot plot, PixelModel[] FCCSPixelModels,
-                                                                             double[] lagTimes) {
-        double min = Double.MAX_VALUE;
-        double max = -Double.MAX_VALUE;
+    private static Pair<Double, Double> plotLineStandardDeviation(Plot plot, double[] blockStandardDeviation,
+                                                                  double[] lagTimes, Color color) {
+        plot.setColor(color);
+        plot.addPoints(lagTimes, blockStandardDeviation, Plot.LINE);
 
-        Color[] colors = {Color.GREEN, Color.RED};
-
-        for (int i = 0; i < FCCSPixelModels.length; i++) {
-            Pair<Double, Double> minMax = findAdjustedMinMax(FCCSPixelModels[i].getStandardDeviationAcf());
-            min = Math.min(min, minMax.getLeft());
-            max = Math.max(max, minMax.getRight());
-
-            plot.setColor(colors[i]);
-            plot.addPoints(lagTimes, FCCSPixelModels[i].getStandardDeviationAcf(), Plot.LINE);
-        }
-
-        return new Pair<>(min, max);
+        return findAdjustedMinMax(blockStandardDeviation);
     }
 
     /**
@@ -485,37 +486,57 @@ public class Plots {
     }
 
     /**
-     * Plots the mean square displacement (MSD) for a list of pixel models.
+     * Plots the mean square displacement (MSD) for the given pixel models.
      *
-     * @param pixelModels The list of PixelModel objects containing MSD values.
-     * @param lagTimes    The lag times corresponding to the MSD values.
-     * @param p           The point representing the pixel (can be null for the entire ROI).
-     * @param binning     The binning point representing the binning factor in x and y directions.
+     * @param pixelModels List of PixelModel objects with MSD values.
+     * @param lagTimes    Array of lag times for the MSD values.
+     * @param p           The Point representing the pixel, or null for ROI.
+     * @param binning     Binning factor as a Point.
+     * @param FCCSDisp    Boolean indicating if FCCS models are displayed.
      */
-    public static void plotMSD(List<PixelModel> pixelModels, double[] lagTimes, Point p, Point binning) {
+    public static void plotMSD(List<PixelModel> pixelModels, double[] lagTimes, Point p, Point binning,
+                               boolean FCCSDisp) {
         Plot plot = new Plot("MSD", "time [s]", "MSD (um^2)");
         plot.setFrameSize(MSD_DIMENSION.width, MSD_DIMENSION.height);
-        plot.setColor(Color.BLUE);
         plot.setJustification(Plot.CENTER);
 
         double minScale = Double.MAX_VALUE;
         double maxScale = -Double.MAX_VALUE;
-
         int msdMinLen = Integer.MAX_VALUE;
+        boolean msdFound = false;
+
+        // if FCCSDisp is activated then we consider the CCF, the ACF1 and the ACF2.
+        // Otherwise, we just consider the CCF.
+        int lenToConsider = FCCSDisp ? 3 : 1;
+
+        Color[] colors = {Color.BLUE, Color.GREEN, Color.RED};
 
         for (PixelModel pixelModel : pixelModels) {
-            double[] msd = pixelModel.getMSD();
-            Pair<Double, Double> minMax = findAdjustedMinMax(msd);
-            minScale = Math.min(minScale, minMax.getLeft());
-            maxScale = Math.max(maxScale, minMax.getRight());
+            PixelModel[] currentPixelModels = {
+                    pixelModel, pixelModel.getAcf1PixelModel(), pixelModel.getAcf2PixelModel()
+            };
 
-            double[] msdTime = Arrays.copyOfRange(lagTimes, 0, msd.length);
-            msdMinLen = Math.min(msdMinLen, msdTime.length);
+            for (int i = 0; i < lenToConsider; i++) {
+                if (currentPixelModels[i] != null && currentPixelModels[i].getMSD() != null) {
+                    double[] msd = currentPixelModels[i].getMSD();
+                    msdFound = true;
 
-            plot.addPoints(msdTime, msd, Plot.LINE);
+                    Pair<Double, Double> minMax = plotMSDLine(plot, msd, lagTimes, colors[i]);
+                    minScale = Math.min(minScale, minMax.getLeft());
+                    maxScale = Math.max(maxScale, minMax.getRight());
+                    msdMinLen = Math.min(msdMinLen, msd.length);
+                }
+            }
+        }
+
+        // if no msd calculation was found then there is nothing to plot.
+        if (!msdFound) {
+            return;
         }
 
         plot.setLimits(lagTimes[1], lagTimes[msdMinLen - 1], minScale, maxScale);
+
+        plot.setColor(Color.BLUE);
         String label = String.format("the ROI at %dx%d binning.", binning.x, binning.y);
         if (p != null) {
             label = String.format("(%d, %d).", p.x, p.y);
@@ -525,6 +546,24 @@ public class Plots {
         plot.draw();
 
         msdWindow = plotWindow(plot, msdWindow, MSD_POSITION);
+    }
+
+    /**
+     * Plots the MSD line for a given pixel model.
+     *
+     * @param plot     The Plot object for displaying the MSD.
+     * @param msd      Array of MSD values.
+     * @param lagTimes Array of lag times corresponding to the MSD values.
+     * @param color    Color for the MSD line.
+     * @return Pair of min and max values for the MSD scale.
+     */
+    private static Pair<Double, Double> plotMSDLine(Plot plot, double[] msd, double[] lagTimes, Color color) {
+        double[] msdTime = Arrays.copyOfRange(lagTimes, 0, msd.length);
+
+        plot.setColor(color);
+        plot.addPoints(msdTime, msd, Plot.LINE);
+
+        return findAdjustedMinMax(msd);
     }
 
     /**

@@ -103,7 +103,8 @@ public class StandardFit extends BaseFit {
      * @return The created weighted observed point.
      */
     protected WeightedObservedPoint createPoint(PixelModel pixelModel, double[] lagTimes, int i) {
-        return new WeightedObservedPoint(1 / pixelModel.getVarianceAcf()[i], lagTimes[i], pixelModel.getAcf()[i]);
+        return new WeightedObservedPoint(1 / pixelModel.getVarianceCF()[i], lagTimes[i],
+                pixelModel.getCorrelationFunction()[i]);
     }
 
     /**
@@ -114,7 +115,7 @@ public class StandardFit extends BaseFit {
      * @return A FitOutput object storing the covariance, residuals and sigma.
      */
     public FitOutput fitPixel(PixelModel pixelModel, double[] lagTimes) {
-        int channelNumber = pixelModel.getAcf().length;
+        int channelNumber = pixelModel.getCorrelationFunction().length;
 
         List<WeightedObservedPoint> points = fillPoints(pixelModel, lagTimes);
         LeastSquaresOptimizer.Optimum optimum = getOptimizer().optimize(getProblem(points));
@@ -130,7 +131,7 @@ public class StandardFit extends BaseFit {
             if (model.getFitStart() <= i && i <= model.getFitEnd()) {
                 fitAcf[i] = function.value(lagTimes[i], result);
                 residuals[i] = tmpResiduals[i - model.getFitStart()];
-                tres[i - 1] = pixelModel.getAcf()[i] - fitAcf[i];
+                tres[i - 1] = pixelModel.getCorrelationFunction()[i] - fitAcf[i];
             } else {
                 fitAcf[i] = 0;
                 residuals[i] = 0;
@@ -145,7 +146,7 @@ public class StandardFit extends BaseFit {
         }
         pixelModel.setChi2(chi2);
 
-        pixelModel.setFittedAcf(fitAcf);
+        pixelModel.setFittedCF(fitAcf);
         pixelModel.setResiduals(residuals);
 
         pixelModel.setFitParams(new PixelModel.FitParameters(model.fillParamsArray(result)));

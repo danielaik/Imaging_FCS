@@ -44,13 +44,13 @@ public final class AverageCorrelation {
             throw new RuntimeException("No pixel are correlated in the ROI selected.");
         }
 
-        int channelNumber = pixelModelList.get(0).getAcf().length;
+        int channelNumber = pixelModelList.get(0).getCorrelationFunction().length;
 
         double[] averageAcf = new double[channelNumber];
         double[] varianceAcf = new double[channelNumber];
 
         for (PixelModel currentPixelModel : pixelModelList) {
-            double[] acf = currentPixelModel.getAcf();
+            double[] acf = currentPixelModel.getCorrelationFunction();
             for (int i = 0; i < channelNumber; i++) {
                 averageAcf[i] += acf[i];
                 varianceAcf[i] += acf[i] * acf[i];
@@ -74,8 +74,8 @@ public final class AverageCorrelation {
      */
     private static PixelModel createPixelModel(double[] averageAcf, double[] varianceAcf) {
         PixelModel averagePixelModel = new PixelModel();
-        averagePixelModel.setAcf(averageAcf);
-        averagePixelModel.setVarianceAcf(varianceAcf);
+        averagePixelModel.setCorrelationFunction(averageAcf);
+        averagePixelModel.setVarianceCF(varianceAcf);
 
         return averagePixelModel;
     }
