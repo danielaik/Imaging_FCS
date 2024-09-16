@@ -640,9 +640,7 @@ public final class MainPanelController {
      */
     public ActionListener btnAveragePressed() {
         return (ActionEvent ev) -> {
-            if (!imageController.isImageLoaded()) {
-                IJ.showMessage("No image open");
-            } else if (correlator.getPixelModels() == null) {
+            if (correlator.getPixelModels() == null) {
                 IJ.showMessage("Nothing to plot, please run the correlation on at least one pixel before");
             } else {
                 // if the ROI is null, we consider all correlated pixels.
