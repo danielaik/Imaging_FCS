@@ -214,6 +214,29 @@ public final class ExpSettingsModel {
         updateChannelNumber();
     }
 
+    /**
+     * Loads additional settings from a map, specifically for Excel loading.
+     * Extends the `fromMap` method to include settings related to frame range, fit model,
+     * bleach correction, filtering, and sliding window parameters.
+     *
+     * @param data a map containing the settings to be loaded, with keys corresponding to parameter names.
+     */
+    public void fromMapExcelLoading(Map<String, Object> data) {
+        fromMap(data);
+
+        setLastFrame(data.get("Last frame").toString());
+        setFirstFrame(data.get("First frame").toString());
+        setFitModel(data.get("Fit model").toString());
+        setBleachCorrection(data.get("Bleach correction").toString());
+        setFilter(data.get("Filter").toString());
+
+        setFCCSDisp(Boolean.parseBoolean(data.get("FCCS Display").toString()));
+
+        setSlidingWindowLength(Integer.parseInt(data.get("Sliding window length").toString()));
+        setFilterLowerLimit(Integer.parseInt(data.get("Filter Lower Limit").toString()));
+        setFilterUpperLimit(Integer.parseInt(data.get("Filter Upper Limit").toString()));
+    }
+
 
     /**
      * Updates the derived parameters based on the current settings.

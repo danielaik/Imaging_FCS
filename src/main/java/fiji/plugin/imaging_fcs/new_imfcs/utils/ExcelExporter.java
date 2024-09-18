@@ -1,5 +1,6 @@
 package fiji.plugin.imaging_fcs.new_imfcs.utils;
 
+import fiji.plugin.imaging_fcs.new_imfcs.constants.Constants;
 import fiji.plugin.imaging_fcs.new_imfcs.model.ExpSettingsModel;
 import fiji.plugin.imaging_fcs.new_imfcs.model.PixelModel;
 import fiji.plugin.imaging_fcs.new_imfcs.model.correlations.Correlator;
@@ -13,7 +14,9 @@ import javax.swing.*;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.Map;
+import java.util.Objects;
 import java.util.function.Function;
 
 /**
@@ -140,10 +143,11 @@ public final class ExcelExporter {
      * Pixel positions are represented as "(x, y)" and fit parameters are listed by name.
      *
      * @param workbook    the workbook to create the sheet in
+     * @param name        the name of the sheet
      * @param pixelModels a 2D array of PixelModel objects containing fit parameters
      */
-    public static void createFitParametersSheet(Workbook workbook, PixelModel[][] pixelModels) {
-        Sheet sheet = workbook.createSheet("Fit Parameters");
+    public static void createFitParametersSheet(Workbook workbook, String name, PixelModel[][] pixelModels) {
+        Sheet sheet = workbook.createSheet(name + " - Fit Parameters");
         Row row = sheet.createRow(0);
 
         row.createCell(0).setCellValue("Parameter");
@@ -235,8 +239,41 @@ public final class ExcelExporter {
     }
 
     /**
+     * Saves multiple pixel model sheets into the workbook if all models are not null.
+     *
+     * @param workbook    the workbook to add the sheets to
+     * @param name        the base name for the sheets
+     * @param pixelModels the 2D array of PixelModel objects
+     * @param isMSD       boolean flag indicating if MSD data should be included
+     */
+    private static void saveSheetsPixelModels(Workbook workbook, String name, PixelModel[][] pixelModels,
+                                              boolean isMSD) {
+        boolean allNull = Arrays.stream(pixelModels).flatMap(Arrays::stream).allMatch(Objects::isNull);
+        if (allNull) {
+            IJ.log("All pixel models are null for " + name);
+            return;
+        }
+
+        ExcelExporter.createSheetFromPixelModelArray(workbook, name, pixelModels, PixelModel::getCorrelationFunction);
+        ExcelExporter.createSheetFromPixelModelArray(workbook, name + " - Standard Deviation", pixelModels,
+                PixelModel::getStandardDeviationCF);
+
+        if (PixelModel.anyPixelFit(pixelModels)) {
+            ExcelExporter.createSheetFromPixelModelArray(workbook, name + " - Fit Functions", pixelModels,
+                    PixelModel::getFittedCF);
+            ExcelExporter.createSheetFromPixelModelArray(workbook, name + " - Residuals", pixelModels,
+                    PixelModel::getResiduals);
+            ExcelExporter.createFitParametersSheet(workbook, name, pixelModels);
+        }
+
+        if (isMSD) {
+            ExcelExporter.createSheetFromPixelModelArray(workbook, name + " - MSD", pixelModels, PixelModel::getMSD);
+        }
+    }
+
+    /**
      * Saves PixelModel data, experimental settings, and correlator information into an Excel file at the given path.
-     * Creates various sheets for ACF, standard deviation, fit functions, and MSD based on data.
+     * Creates various sheets for CF, standard deviation, fit functions, and MSD based on data.
      *
      * @param filePath    the path where the Excel file will be saved
      * @param pixelModels the 2D array of PixelModel objects containing ACF and fit data
@@ -252,21 +289,16 @@ public final class ExcelExporter {
                 ExcelExporter.createSheetFromMap(workbook, "Experimental settings", settingsMap);
 
                 ExcelExporter.createSheetLagTime(workbook, correlator.getLagTimes(), correlator.getSampleTimes());
-                ExcelExporter.createSheetFromPixelModelArray(workbook, "ACF", pixelModels,
-                        PixelModel::getCorrelationFunction);
-                ExcelExporter.createSheetFromPixelModelArray(workbook, "Standard Deviation", pixelModels,
-                        PixelModel::getStandardDeviationCF);
 
-                if (PixelModel.anyPixelFit(pixelModels)) {
-                    ExcelExporter.createSheetFromPixelModelArray(workbook, "Fit Functions", pixelModels,
-                            PixelModel::getFittedCF);
-                    ExcelExporter.createSheetFromPixelModelArray(workbook, "Residuals", pixelModels,
-                            PixelModel::getResiduals);
-                    ExcelExporter.createFitParametersSheet(workbook, pixelModels);
-                }
+                saveSheetsPixelModels(workbook, "CF", pixelModels, settings.isMSD());
+                if (settings.getFitModel().equals(Constants.DC_FCCS_2D)) {
+                    saveSheetsPixelModels(workbook, "ACF1",
+                            PixelModel.extractAcfPixelModels(pixelModels, PixelModel::getAcf1PixelModel),
+                            settings.isMSD());
 
-                if (settings.isMSD()) {
-                    ExcelExporter.createSheetFromPixelModelArray(workbook, "MSD", pixelModels, PixelModel::getMSD);
+                    saveSheetsPixelModels(workbook, "ACF2",
+                            PixelModel.extractAcfPixelModels(pixelModels, PixelModel::getAcf2PixelModel),
+                            settings.isMSD());
                 }
             }
 

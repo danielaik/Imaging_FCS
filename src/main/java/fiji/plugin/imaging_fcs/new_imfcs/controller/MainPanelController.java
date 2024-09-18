@@ -191,7 +191,7 @@ public final class MainPanelController {
             imageModel.loadImage(reloadImage, null);
         }
 
-        settings.fromMap(expSettingsMap);
+        settings.fromMapExcelLoading(expSettingsMap);
         imageModel.fromMap(expSettingsMap);
     }
 

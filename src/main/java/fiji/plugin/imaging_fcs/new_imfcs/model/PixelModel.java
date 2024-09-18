@@ -4,6 +4,7 @@ import fiji.plugin.imaging_fcs.new_imfcs.utils.Pair;
 import ij.ImagePlus;
 import ij.process.ImageProcessor;
 
+import java.util.Arrays;
 import java.util.function.Function;
 import java.util.stream.IntStream;
 
@@ -111,6 +112,22 @@ public class PixelModel {
         }
 
         return new Pair<>(scPlot, params);
+    }
+
+    /**
+     * Extracts a 2D array of `PixelModel` objects by applying a getter function to each element.
+     *
+     * @param pixelModels the original 2D array of `PixelModel` instances
+     * @param getter      a function that retrieves a `PixelModel` from a given `PixelModel`
+     * @return a new 2D array containing the result of applying the getter to each non-null element
+     */
+    public static PixelModel[][] extractAcfPixelModels(PixelModel[][] pixelModels,
+                                                       Function<PixelModel, PixelModel> getter) {
+        return Arrays.stream(pixelModels)
+                .map(row -> Arrays.stream(row)
+                        .map(pixel -> pixel != null ? getter.apply(pixel) : null)
+                        .toArray(PixelModel[]::new))
+                .toArray(PixelModel[][]::new);
     }
 
     /**

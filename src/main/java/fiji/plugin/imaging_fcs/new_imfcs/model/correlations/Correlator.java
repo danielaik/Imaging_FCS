@@ -14,6 +14,7 @@ import java.awt.*;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.function.BiConsumer;
 
 import static fiji.plugin.imaging_fcs.new_imfcs.utils.MatrixDeepCopy.deepCopy;
 
@@ -66,10 +67,9 @@ public class Correlator {
     }
 
     /**
-     * Loads results from an Excel workbook and restores the parameters for the pixel models.
-     * This method reads various sheets from the workbook to initialize lag times, sample times,
-     * and multiple attributes of the pixel models such as ACF, standard deviation, fitted functions,
-     * residuals, and MSD. It also reads fit parameters for each pixel model.
+     * Loads results from an Excel workbook and restores parameters for the pixel models.
+     * This method reads lag times, sample times, and attributes such as ACF, standard deviation,
+     * fitted functions, residuals, and MSD. It also restores the ACF1 and ACF2 models if applicable.
      *
      * @param workbook  the Excel workbook containing the saved results
      * @param dimension the dimension of the image (width and height)
@@ -79,13 +79,51 @@ public class Correlator {
         ExcelReader.readLagTimesAndSampleTimes(workbook, "Lag time", this::setLagTimes, this::setSampleTimes);
         pixelModels = new PixelModel[dimension.width][dimension.height];
 
-        ExcelReader.readSheetToPixelModels(workbook, "ACF", pixelModels, PixelModel::setCorrelationFunction);
-        ExcelReader.readSheetToPixelModels(workbook, "Standard Deviation", pixelModels,
+        loadPixelModelsSheets(workbook, "CF", pixelModels);
+
+        if (settings.getFitModel().equals(Constants.DC_FCCS_2D)) {
+            PixelModel[][] acf1PixelModels = new PixelModel[dimension.width][dimension.height];
+            loadPixelModelsSheets(workbook, "ACF1", acf1PixelModels);
+            loadAcfPixelModels(acf1PixelModels, PixelModel::setAcf1PixelModel);
+
+            PixelModel[][] acf2PixelModels = new PixelModel[dimension.width][dimension.height];
+            loadPixelModelsSheets(workbook, "ACF2", acf2PixelModels);
+            loadAcfPixelModels(acf2PixelModels, PixelModel::setAcf2PixelModel);
+        }
+    }
+
+    /**
+     * Loads data from various sheets in the workbook and updates the corresponding pixel model attributes.
+     * This includes correlation functions, standard deviation, fitted functions, residuals, and MSD data.
+     *
+     * @param workbook    the Excel workbook containing the sheets
+     * @param name        the base name of the sheet (e.g., "CF")
+     * @param pixelModels a 2D array of PixelModel objects to update
+     */
+    private void loadPixelModelsSheets(Workbook workbook, String name, PixelModel[][] pixelModels) {
+        ExcelReader.readSheetToPixelModels(workbook, name, pixelModels, PixelModel::setCorrelationFunction);
+        ExcelReader.readSheetToPixelModels(workbook, name + " - Standard Deviation", pixelModels,
                 PixelModel::setStandardDeviationCF);
-        ExcelReader.readSheetToPixelModels(workbook, "Fit Functions", pixelModels, PixelModel::setFittedCF);
-        ExcelReader.readSheetToPixelModels(workbook, "Residuals", pixelModels, PixelModel::setResiduals);
-        ExcelReader.readSheetToPixelModels(workbook, "MSD", pixelModels, PixelModel::setMSD);
-        ExcelReader.readFitParameters(workbook, "Fit Parameters", pixelModels);
+        ExcelReader.readSheetToPixelModels(workbook, name + " - Fit Functions", pixelModels, PixelModel::setFittedCF);
+        ExcelReader.readSheetToPixelModels(workbook, name + " - Residuals", pixelModels, PixelModel::setResiduals);
+        ExcelReader.readSheetToPixelModels(workbook, name + " - MSD", pixelModels, PixelModel::setMSD);
+        ExcelReader.readFitParameters(workbook, name + " - Fit Parameters", pixelModels);
+    }
+
+    /**
+     * Loads ACF pixel models (ACF1 or ACF2) and sets them in the corresponding positions in the main pixel models.
+     *
+     * @param acfPixelModels a 2D array of ACF PixelModel objects to set
+     * @param acfSetter      a BiConsumer to set the ACF1 or ACF2 models in the main PixelModel
+     */
+    private void loadAcfPixelModels(PixelModel[][] acfPixelModels, BiConsumer<PixelModel, PixelModel> acfSetter) {
+        for (int i = 0; i < pixelModels.length; i++) {
+            for (int j = 0; j < pixelModels[0].length; j++) {
+                if (acfPixelModels[i][j] != null && pixelModels[i][j] != null) {
+                    acfSetter.accept(pixelModels[i][j], acfPixelModels[i][j]);
+                }
+            }
+        }
     }
 
     /**
