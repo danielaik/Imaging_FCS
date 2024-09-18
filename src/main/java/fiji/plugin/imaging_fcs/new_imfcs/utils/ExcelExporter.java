@@ -104,6 +104,11 @@ public final class ExcelExporter {
                 }
             }
         }
+
+        if (columnIndex == 0) {
+            // delete sheet if no data was added
+            workbook.removeSheetAt(workbook.getSheetIndex(sheet));
+        }
     }
 
     /**
