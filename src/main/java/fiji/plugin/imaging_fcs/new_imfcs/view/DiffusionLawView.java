@@ -92,7 +92,7 @@ public class DiffusionLawView extends BaseView {
         btnDFFit = createJButton("Fit", "Fit the diffusion law between the given 'Start-End' range.", null,
                 controller.btnFitPressed());
         tbDLRoi = createJToggleButton(model.getMode(),
-                "Set whether Diffusion Law is to be calculated over the full image or " + "over smaller ROIs.", null,
+                "Set whether Diffusion Law is to be calculated over the full image or over smaller ROIs.", null,
                 controller.tbDLRoiPressed());
     }
 

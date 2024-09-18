@@ -442,9 +442,8 @@ public class FitModel {
     public void setFitStart(String fitStart) {
         int newValue = Integer.parseInt(fitStart);
         if (newValue < 1 || newValue >= settings.getChannelNumber()) {
-            throw new InvalidUserInputException(
-                    String.format("Fit Start must be between 0 and the channel number " + "(%d)",
-                            settings.getChannelNumber()));
+            throw new InvalidUserInputException(String.format("Fit Start must be between 0 and the channel number (%d)",
+                    settings.getChannelNumber()));
         }
 
         this.fitStart = newValue;
@@ -458,7 +457,7 @@ public class FitModel {
         int newValue = Integer.parseInt(fitEnd);
         if (newValue < fitStart || newValue >= settings.getChannelNumber()) {
             throw new InvalidUserInputException(
-                    String.format("Fit End must be between Fit Start and the channel " + "number (%d)",
+                    String.format("Fit End must be between Fit Start and the channel number (%d)",
                             settings.getChannelNumber()));
         }
 
