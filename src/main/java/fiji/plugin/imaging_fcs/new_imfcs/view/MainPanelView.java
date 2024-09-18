@@ -6,6 +6,7 @@ import fiji.plugin.imaging_fcs.new_imfcs.model.ExpSettingsModel;
 
 import javax.swing.*;
 import java.awt.*;
+import java.awt.event.ItemListener;
 
 import static fiji.plugin.imaging_fcs.new_imfcs.controller.ControllerUtils.updateComboBoxValue;
 import static fiji.plugin.imaging_fcs.new_imfcs.controller.FieldListenerFactory.createComboBoxListener;
@@ -33,7 +34,7 @@ public final class MainPanelView extends BaseView {
     private final MainPanelController controller;
 
     // Settings model for default values
-    private final ExpSettingsModel expSettingsModel;
+    private final ExpSettingsModel settings;
 
     // Text Fields for user input
     private JTextField tfFirstFrame, tfLastFrame, tfFrameTime, tfBinning, tfCCFDistance, tfCorrelatorQ;
@@ -52,11 +53,30 @@ public final class MainPanelView extends BaseView {
      *
      * @param controller The controller to handle actions performed on this panel.
      */
-    public MainPanelView(MainPanelController controller, ExpSettingsModel expSettingsModel) {
+    public MainPanelView(MainPanelController controller, ExpSettingsModel settings) {
         super("ImagingFCS " + IMFCS_VERSION); // items for ImFCS control panel;
         this.controller = controller;
-        this.expSettingsModel = expSettingsModel;
+        this.settings = settings;
         initializeUI();
+    }
+
+    /**
+     * Creates a toggle button with an "On" or "Off" label based on the given state.
+     *
+     * @param label        The base label for the button, with " On" or " Off" appended.
+     * @param isOn         The initial state; true for "On" (selected), false for "Off" (deselected).
+     * @param toolTipText  Tooltip text for the button.
+     * @param font         Font for the button text, or null for default.
+     * @param itemListener Listener for state changes when toggled.
+     * @return A {@link JToggleButton} initialized with the specified settings.
+     */
+    private static JToggleButton createOnOffToggleButton(String label, boolean isOn, String toolTipText, Font font,
+                                                         ItemListener itemListener) {
+        JToggleButton button = createJToggleButton(label + (isOn ? " On" : " Off"), toolTipText, font);
+        button.setSelected(isOn);
+        button.addItemListener(itemListener);
+
+        return button;
     }
 
     /**
@@ -81,26 +101,26 @@ public final class MainPanelView extends BaseView {
      */
     @Override
     protected void initializeTextFields() {
-        tfFirstFrame = createTextField(expSettingsModel.getFirstFrame(), "",
-                controller.updateStrideParam(expSettingsModel::setFirstFrame));
+        tfFirstFrame =
+                createTextField(settings.getFirstFrame(), "", controller.updateStrideParam(settings::setFirstFrame));
 
-        tfFrameTime = createTextField(expSettingsModel.getFrameTime(),
-                "Time per this. NOTE: Changing this value will " + "reinitialize all arrays.",
-                createFocusListener(expSettingsModel::setFrameTime));
+        tfFrameTime = createTextField(settings.getFrameTime(),
+                "Time per this. NOTE: Changing this value will reinitialize all arrays.",
+                createFocusListener(settings::setFrameTime));
 
-        tfLastFrame = createTextField(expSettingsModel.getLastFrame(), "",
-                controller.updateStrideParam(expSettingsModel::setLastFrame));
+        tfLastFrame =
+                createTextField(settings.getLastFrame(), "", controller.updateStrideParam(settings::setLastFrame));
 
-        tfBinning = createTextField(expSettingsModel.getBinningString(),
-                "Pixel binning used in the evaluations. NOTE: " + "Changing this value will reinitialize all arrays.",
-                controller.updateSettings(expSettingsModel::setBinning));
+        tfBinning = createTextField(settings.getBinningString(),
+                "Pixel binning used in the evaluations. NOTE: Changing this value will reinitialize all arrays.",
+                controller.updateSettings(settings::setBinning));
 
-        tfCCFDistance = createTextField(expSettingsModel.getCCFString(), "Distance in x- and y-direction for spatial " +
+        tfCCFDistance = createTextField(settings.getCCFString(), "Distance in x- and y-direction for spatial " +
                         "cross-correlation. NOTE: Changing this value will reinitialize all arrays.",
-                controller.updateSettings(expSettingsModel::setCCF));
+                controller.updateSettings(settings::setCCF));
 
-        tfCorrelatorQ = createTextField(expSettingsModel.getCorrelatorQ(), "",
-                createFocusListener(controller.updateFitEnd(expSettingsModel::setCorrelatorQ)));
+        tfCorrelatorQ = createTextField(settings.getCorrelatorQ(), "",
+                createFocusListener(controller.updateFitEnd(settings::setCorrelatorQ)));
     }
 
     /**
@@ -111,14 +131,14 @@ public final class MainPanelView extends BaseView {
     @Override
     protected void initializeComboBoxes() {
         cbFitModel = new JComboBox<>(new String[]{Constants.ITIR_FCS_2D, Constants.SPIM_FCS_3D, Constants.DC_FCCS_2D});
-        cbFitModel.setSelectedItem(expSettingsModel.getFitModel());
+        cbFitModel.setSelectedItem(settings.getFitModel());
 
         cbCorrelatorP = new JComboBox<>(new String[]{"16", "32"});
-        cbCorrelatorP.setSelectedItem(String.valueOf(expSettingsModel.getCorrelatorP()));
+        cbCorrelatorP.setSelectedItem(String.valueOf(settings.getCorrelatorP()));
 
         cbFilter =
                 new JComboBox<>(new String[]{Constants.NO_FILTER, Constants.FILTER_INTENSITY, Constants.FILTER_MEAN});
-        cbFilter.setSelectedItem(expSettingsModel.getFilter());
+        cbFilter.setSelectedItem(settings.getFilter());
 
         cbBleachCor = new JComboBox<>(new String[]{
                 Constants.NO_BLEACH_CORRECTION,
@@ -128,7 +148,7 @@ public final class MainPanelView extends BaseView {
                 Constants.BLEACH_CORRECTION_POLYNOMIAL,
                 Constants.BLEACH_CORRECTION_LINEAR_SEGMENT
         });
-        cbBleachCor.setSelectedItem(expSettingsModel.getBleachCorrection());
+        cbBleachCor.setSelectedItem(settings.getBleachCorrection());
 
         cbParaCor = new JComboBox<>(new String[]{
                 "N vs D",
@@ -150,11 +170,11 @@ public final class MainPanelView extends BaseView {
         // add listeners
         cbFitModel.addActionListener(controller.cbFitModelChanged(cbFitModel));
         cbCorrelatorP.addActionListener(
-                createComboBoxListener(cbCorrelatorP, controller.updateFitEnd(expSettingsModel::setCorrelatorP)));
-        cbParaCor.addActionListener(updateComboBoxValue(expSettingsModel::setParaCor));
+                createComboBoxListener(cbCorrelatorP, controller.updateFitEnd(settings::setCorrelatorP)));
+        cbParaCor.addActionListener(updateComboBoxValue(settings::setParaCor));
         cbBleachCor.addActionListener(controller.cbBleachCorChanged(cbBleachCor));
         cbFilter.addActionListener(controller.cbFilterChanged(cbFilter));
-        cbDCCF.addActionListener(updateComboBoxValue(expSettingsModel::setdCCF));
+        cbDCCF.addActionListener(updateComboBoxValue(settings::setdCCF));
     }
 
     @Override
@@ -166,7 +186,7 @@ public final class MainPanelView extends BaseView {
     private void createJButtons() {
         // create the IO colored buttons
         btnSave = createJButton("Save",
-                "Save the evaluation of the data as binary files. Which data to save can be " + "selected in a dialog.",
+                "Save the evaluation of the data as binary files. Which data to save can be selected in a dialog.",
                 null, controller.btnSavePressed());
         btnSave.setForeground(SAVE_BUTTON_COLOR);
 
@@ -184,7 +204,7 @@ public final class MainPanelView extends BaseView {
         btnBatch = createJButton("Batch", "Allow to select a list of evaluations to be performed on a range of images.",
                 null, controller.btnBatchPressed());
         btnWriteConfig = createJButton("Write Conf",
-                "Writes a configuration file int user.home that will be read at next " + "ImFCS start",
+                "Writes a configuration file int user.home that will be read at next ImFCS start",
                 new Font(Constants.PANEL_FONT, Font.BOLD, 11), controller.btnWriteConfigPressed());
         btnDCR = createJButton("LiveReadout", "", new Font(Constants.PANEL_FONT, Font.BOLD, 10),
                 controller.btnDirectCameraReadoutPressed());
@@ -195,7 +215,7 @@ public final class MainPanelView extends BaseView {
         btnAve = createJButton("Average", "Calculate the average ACF from all valid ACFs and fit if fit is switched " +
                 "on; this does not calculate residuals or sd.", null, controller.btnAveragePressed());
         btnParaCor = createJButton("Scatter",
-                "Calculates a scatter plot for a pair of two parameters from the scroll down" + " menu.", null,
+                "Calculates a scatter plot for a pair of two parameters from the scroll down menu.", null,
                 controller.btnParaCorPressed());
         btnDCCF = createJButton("dCCF", "Create a dCCF image to see differences between forward and backward " +
                 "correlation in a direction (see scroll down menu).", null, controller.btnDCCFPressed());
@@ -213,32 +233,32 @@ public final class MainPanelView extends BaseView {
                 controller.tbExpSettingsPressed());
 
         // set the button FCCS Disp based on the settings value
-        tbFCCSDisplay = createJToggleButton("FCCS Disp " + (expSettingsModel.isFCCSDisp() ? "On" : "Off"), "",
+        tbFCCSDisplay = createOnOffToggleButton("FCCS Disp", settings.isFCCSDisp(), "",
                 new Font(Constants.PANEL_FONT, Font.BOLD, 9), controller.tbFCCSDisplayPressed());
-        tbFCCSDisplay.setSelected(expSettingsModel.isFCCSDisp());
 
         // Set the button overlap based on the settings value
-        tbOverlap = createJToggleButton("Overlap " + (expSettingsModel.isOverlap() ? "On" : "Off"), "",
+        tbOverlap = createOnOffToggleButton("Overlap", settings.isOverlap(), "",
                 new Font(Constants.PANEL_FONT, Font.BOLD, 11), controller.tbOverlapPressed());
-        tbOverlap.setSelected(expSettingsModel.isOverlap());
 
         tbBackground =
                 createJToggleButton("Background", "Panel for different methods to perform background subtraction.",
                         new Font(Constants.PANEL_FONT, Font.BOLD, 10), controller.tbBackgroundPressed());
         tbNB = createJToggleButton("N&B Off", "", null, controller.tbNBPressed());
-        tbFiltering = createJToggleButton("Threshold",
-                "Filters the values in parameters maps using user-defined " + "thresholds", null,
-                controller.tbFilteringPressed());
+        tbFiltering =
+                createJToggleButton("Threshold", "Filters the values in parameters maps using user-defined thresholds",
+                        null, controller.tbFilteringPressed());
         tbBleachCorStride = createJToggleButton("Bleach Cor",
-                "Set number of intensity points to be averaged before bleach " + "correction is performed.", null,
+                "Set number of intensity points to be averaged before bleach correction is performed.", null,
                 controller.tbBleachCorStridePressed());
         tbDL = createJToggleButton("Diff. Law", "Calculates the Diffusion Law.", null,
                 controller.tbDiffusionLawPressed());
         tbFit = createJToggleButton("Fit Off", "Switches Fit on/off; opens/closes Fit panel.", null,
                 controller.tbFitPressed());
         tbSim = createJToggleButton("Sim Off", "Opens/closes Simulation panel.", null, controller.tbSimPressed());
-        tbMSD = createJToggleButton("MSD Off", "Switches Mean Square Displacement calculation and plot on/off.", null,
-                controller.tbMSDPressed());
+
+        // set the button MSD based on the settings value
+        tbMSD = createOnOffToggleButton("MSD", settings.isMSD(),
+                "Switches Mean Square Displacement calculation and " + "plot on/off.", null, controller.tbMSDPressed());
     }
 
     /**

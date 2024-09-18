@@ -180,6 +180,8 @@ public final class ExpSettingsModel {
         data.put("Filter", getFilter());
         data.put("Filter Lower Limit", getFilterLowerLimit());
         data.put("Filter Upper Limit", getFilterUpperLimit());
+        data.put("MSD", isMSD());
+        data.put("MSD 3D", isMSD3d());
 
         return data;
     }
@@ -231,6 +233,8 @@ public final class ExpSettingsModel {
         setFilter(data.get("Filter").toString());
 
         setFCCSDisp(Boolean.parseBoolean(data.get("FCCS Display").toString()));
+        setMSD(Boolean.parseBoolean(data.get("MSD").toString()));
+        setMSD3d(Boolean.parseBoolean(data.get("MSD 3D").toString()));
 
         setSlidingWindowLength(Integer.parseInt(data.get("Sliding window length").toString()));
         setFilterLowerLimit(Integer.parseInt(data.get("Filter Lower Limit").toString()));
@@ -644,7 +648,7 @@ public final class ExpSettingsModel {
         int intFirstFrame = Integer.parseInt(firstFrame);
         if (intFirstFrame >= lastFrame || intFirstFrame < 1) {
             throw new InvalidUserInputException(
-                    "First frame set incorrectly, it needs to be between 1 and last frame" + ".");
+                    "First frame set incorrectly, it needs to be between 1 and last frame.");
         }
 
         resetCallback.run();
