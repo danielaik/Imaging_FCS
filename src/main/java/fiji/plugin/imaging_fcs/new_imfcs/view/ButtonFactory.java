@@ -64,6 +64,18 @@ public final class ButtonFactory {
     }
 
     /**
+     * Creates a {@link JToggleButton} with specified label, tooltip text, and font.
+     *
+     * @param label       the text of the toggle button
+     * @param toolTipText the tooltip text for the toggle button
+     * @param font        the font to be used for the toggle button's label
+     * @return a configured {@link JToggleButton} instance
+     */
+    public static JToggleButton createJToggleButton(String label, String toolTipText, Font font) {
+        return (JToggleButton) decorateButton(new JToggleButton(label), toolTipText, font);
+    }
+
+    /**
      * Creates a {@link JToggleButton} with specified label, tooltip text, font, and
      * an item listener.
      *
