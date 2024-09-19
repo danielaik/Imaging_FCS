@@ -520,6 +520,7 @@ public final class MainPanelController {
             ExcelExporter.saveExcelFile(filePath, settingsMap, (workbook) -> {
                 ExcelExporter.saveExcelPixelModels(workbook, correlator.getPixelModels(), settings, correlator);
                 diffusionLawController.saveExcelSheets(workbook);
+                ExcelExporter.savedCCFSheets(workbook, correlator.getDccf());
             });
         };
     }

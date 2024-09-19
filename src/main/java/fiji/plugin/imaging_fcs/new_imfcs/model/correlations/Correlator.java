@@ -962,6 +962,10 @@ public class Correlator {
         pixelModels = null;
     }
 
+    public Map<String, double[][]> getDccf() {
+        return dccf;
+    }
+
     public double[][] getDccf(String directionName) {
         return dccf.get(directionName);
     }

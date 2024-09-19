@@ -359,6 +359,65 @@ public final class ExcelExporter {
     }
 
     /**
+     * Converts a direction name to a safe format for use as an Excel sheet name.
+     * Excel does not allow certain characters like "/" or "\", so known constants are replaced
+     * with "diagonal up" or "diagonal down".
+     *
+     * @param directionName the original direction name
+     * @return a safe, Excel-compatible direction name
+     */
+    private static String createSafeDirectionName(String directionName) {
+        if (directionName.equals(Constants.DIAGONAL_UP_DIRECTION)) {
+            directionName = "diagonal up";
+        } else if (directionName.equals(Constants.DIAGONAL_DOWN_DIRECTION)) {
+            directionName = "diagonal down";
+        }
+
+        return directionName;
+    }
+
+    /**
+     * Creates and saves dCCF sheet for each direction in the provided map.
+     * The sheet names are made Excel-compatible by replacing unsupported characters in the direction name.
+     * Each sheet contains correlation values for the corresponding direction, with rows and columns labeled.
+     *
+     * @param workbook the workbook to add the sheets to
+     * @param dccf     a map where the key is the direction name and the value is a 2D array of correlation data
+     */
+    public static void savedCCFSheets(Workbook workbook, Map<String, double[][]> dccf) {
+        if (dccf.isEmpty()) {
+            return;
+        }
+
+        for (Map.Entry<String, double[][]> entry : dccf.entrySet()) {
+            String directionName = createSafeDirectionName(entry.getKey());
+            Sheet sheet = workbook.createSheet("dCCF - " + directionName);
+            Row headerRow = sheet.createRow(0);
+            headerRow.createCell(0).setCellValue("y / x");
+
+
+            double[][] values = entry.getValue();
+            int numRow = values.length;
+            int numCol = values[0].length;
+
+            boolean init = false;
+
+            for (int y = 0; y < numCol; y++) {
+                Row row = sheet.createRow(y + 1);
+                row.createCell(0).setCellValue(y);
+                for (int x = 0; x < numRow; x++) {
+                    if (!init) {
+                        headerRow.createCell(x + 1).setCellValue(x);
+                    }
+
+                    row.createCell(x + 1).setCellValue(values[x][y]);
+                }
+                init = true;
+            }
+        }
+    }
+
+    /**
      * Creates sheets in the workbook for the correlation function (CF), standard deviation, fit functions,
      * and MSD data based on the pixel models. Also adds sheets for ACF1 and ACF2 if applicable.
      *
