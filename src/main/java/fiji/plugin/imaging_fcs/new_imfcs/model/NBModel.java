@@ -98,9 +98,7 @@ public final class NBModel {
             performCpuAnalysis(img, evaluation);
         }
 
-        if (evaluation) {
-            createNBImages(img, showImage);
-        }
+        createNBImages(img, showImage);
     }
 
     private void performGpuAnalysis(ImagePlus img) {
@@ -278,5 +276,21 @@ public final class NBModel {
 
     public void setsValue(String sValue) {
         this.sValue = Double.parseDouble(sValue);
+    }
+
+    public double[][] getNBB() {
+        return NBB;
+    }
+
+    public double[][] getNBN() {
+        return NBN;
+    }
+
+    public double[][] getNBNum() {
+        return NBNum;
+    }
+
+    public double[][] getNBEpsilon() {
+        return NBEpsilon;
     }
 }

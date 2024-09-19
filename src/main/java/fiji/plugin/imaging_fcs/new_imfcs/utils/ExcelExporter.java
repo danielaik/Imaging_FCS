@@ -418,6 +418,73 @@ public final class ExcelExporter {
     }
 
     /**
+     * Adds a set of values into a given row in the Excel sheet, starting from the second column.
+     * The first cell in the row contains the provided name, and subsequent cells contain the values from
+     * the 2D array in a row-wise manner.
+     *
+     * @param row    the row where the values will be added
+     * @param name   the name to set in the first column of the row
+     * @param values a 2D array of values to add in the subsequent columns
+     * @return 1 if values were added, 0 if the values array is null
+     */
+    private static int addValueInRow(Row row, String name, double[][] values) {
+        if (values == null) {
+            return 0;
+        }
+
+        row.createCell(0).setCellValue(name);
+        int columnIndex = 1;
+
+        int numRow = values.length;
+        int numCol = values[0].length;
+
+        for (int y = 0; y < numCol; y++) {
+            for (int x = 0; x < numRow; x++) {
+                row.createCell(columnIndex++).setCellValue(values[x][y]);
+            }
+        }
+
+        return 1;
+    }
+
+    /**
+     * Creates and saves an Excel sheet with Number and Brightness (N&B) data.
+     * The sheet includes multiple sections such as "Number", "Brightness", "Num (corrected)",
+     * and "Epsilon (corrected)", with each section containing the values from the corresponding 2D array.
+     *
+     * @param workbook   the workbook to add the sheet to
+     * @param NBB        a 2D array representing brightness values
+     * @param NBN        a 2D array representing number values
+     * @param NBNum      a 2D array representing corrected number values
+     * @param NBEpsilon  a 2D array representing corrected epsilon values
+     */
+    public static void saveNumberAndBrightnessSheet(Workbook workbook, double[][] NBB, double[][] NBN, double[][] NBNum,
+                                                    double[][] NBEpsilon) {
+        if (NBB == null) {
+            return;
+        }
+
+        Sheet sheet = workbook.createSheet("N&B");
+        Row headerRow = sheet.createRow(0);
+        int numRow = NBB.length;
+        int numCol = NBB[0].length;
+
+        int columnIndex = 1;
+        for (int y = 0; y < numCol; y++) {
+            for (int x = 0; x < numRow; x++) {
+                headerRow.createCell(columnIndex++).setCellValue(String.format("(%d, %d)", x, y));
+            }
+        }
+
+        // if one of the arrays is null, it will not be added.
+        int rowIndex = 1;
+        rowIndex += addValueInRow(getOrCreateRow(sheet, rowIndex), "Number", NBN);
+        rowIndex += addValueInRow(getOrCreateRow(sheet, rowIndex), "Brightness", NBB);
+        rowIndex += addValueInRow(getOrCreateRow(sheet, rowIndex), "Num (corrected)", NBNum);
+        addValueInRow(getOrCreateRow(sheet, rowIndex), "Epsilon (corrected)", NBEpsilon);
+    }
+
+    /**
      * Creates sheets in the workbook for the correlation function (CF), standard deviation, fit functions,
      * and MSD data based on the pixel models. Also adds sheets for ACF1 and ACF2 if applicable.
      *

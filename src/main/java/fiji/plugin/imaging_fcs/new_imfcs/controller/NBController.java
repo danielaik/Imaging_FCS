@@ -6,9 +6,11 @@ import fiji.plugin.imaging_fcs.new_imfcs.model.NBModel;
 import fiji.plugin.imaging_fcs.new_imfcs.model.OptionsModel;
 import fiji.plugin.imaging_fcs.new_imfcs.model.fit.BleachCorrectionModel;
 import fiji.plugin.imaging_fcs.new_imfcs.utils.ApplyCustomLUT;
+import fiji.plugin.imaging_fcs.new_imfcs.utils.ExcelExporter;
 import fiji.plugin.imaging_fcs.new_imfcs.view.NBView;
 import ij.IJ;
 import ij.ImagePlus;
+import org.apache.poi.ss.usermodel.Workbook;
 
 import javax.swing.*;
 import java.awt.event.ActionEvent;
@@ -81,7 +83,7 @@ public final class NBController {
     public ActionListener btnNBPressed() {
         return (ActionEvent ev) -> {
             if (imageModel.isImageLoaded() && imageModel.isBackgroundLoaded()) {
-                model.performNB(imageModel.getImage(), true, this::showImage);
+                model.performNB(imageModel.getImage(), "Calibrated".equals(model.getMode()), this::showImage);
             } else {
                 IJ.showMessage("No image and/or background loaded or assigned.");
             }
@@ -99,6 +101,18 @@ public final class NBController {
         ImageModel.adaptImageScale(image);
         ApplyCustomLUT.applyCustomLUT(image, lutColor);
         IJ.run(image, "Enhance Contrast", "saturated=0.35");
+    }
+
+    /**
+     * Saves the "Number and Brightness" (N&B) data into the provided Excel workbook.
+     * This method adds a sheet containing N&B values such as brightness, number, corrected number,
+     * and corrected epsilon, using data from the model.
+     *
+     * @param workbook the Excel workbook to which the N&B sheet will be added
+     */
+    public void saveExcelSheet(Workbook workbook) {
+        ExcelExporter.saveNumberAndBrightnessSheet(workbook, model.getNBB(), model.getNBN(), model.getNBNum(),
+                model.getNBEpsilon());
     }
 
     /**
