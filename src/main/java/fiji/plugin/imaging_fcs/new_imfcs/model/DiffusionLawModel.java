@@ -76,7 +76,7 @@ public class DiffusionLawModel {
                                 double[] varianceD, PixelModel pixelModel, int x, int y, int index) {
         correlator.correlatePixelModel(pixelModel, imageModel.getImage(), x, y, x, y, settings.getFirstFrame(),
                 settings.getLastFrame());
-        fitModel.standardFit(pixelModel, settings.getFitModel(), correlator.getLagTimes());
+        fitModel.standardFit(pixelModel, Constants.ITIR_FCS_2D, correlator.getLagTimes());
 
         if (pixelModel.isFitted()) {
             averageD[index] += pixelModel.getFitParams().getD();
@@ -93,6 +93,8 @@ public class DiffusionLawModel {
      * Calculates the diffusion law for the current binning range.
      */
     public void calculateDiffusionLaw() {
+        resetResults();
+
         // update the binning calculated, this is used to know if a calculation was run.
         calculatedBinningStart = binningStart;
         calculatedBinningEnd = binningEnd;
@@ -242,6 +244,8 @@ public class DiffusionLawModel {
             IJ.showProgress(currentStep++, numSteps);
         }
 
+        // reset the results to delete diffusion law parameters
+        resetResults();
         return new Pair<>(minValue, maxValue);
     }
 
@@ -326,6 +330,9 @@ public class DiffusionLawModel {
         effectiveArea = null;
         time = null;
         standardDeviation = null;
+
+        intercept = -1;
+        slope = -1;
     }
 
     // Getter and setter methods with input validation for binning and fitting ranges.

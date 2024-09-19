@@ -1,6 +1,7 @@
 package fiji.plugin.imaging_fcs.new_imfcs.utils;
 
 import fiji.plugin.imaging_fcs.new_imfcs.constants.Constants;
+import fiji.plugin.imaging_fcs.new_imfcs.model.DiffusionLawModel;
 import fiji.plugin.imaging_fcs.new_imfcs.model.ExpSettingsModel;
 import fiji.plugin.imaging_fcs.new_imfcs.model.PixelModel;
 import fiji.plugin.imaging_fcs.new_imfcs.model.correlations.Correlator;
@@ -17,6 +18,7 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.Map;
 import java.util.Objects;
+import java.util.function.Consumer;
 import java.util.function.Function;
 
 /**
@@ -272,35 +274,129 @@ public final class ExcelExporter {
     }
 
     /**
-     * Saves PixelModel data, experimental settings, and correlator information into an Excel file at the given path.
-     * Creates various sheets for CF, standard deviation, fit functions, and MSD based on data.
+     * Creates a sheet in the workbook to store diffusion law data.
+     * Adds data for effective area (Aeff), time, standard deviation (SD), and fit parameters such as intercept, slope,
+     * fit start, and fit end.
+     *
+     * @param workbook          the workbook to add the sheet to
+     * @param diffusionLawModel the model containing the diffusion law data
+     */
+    public static void saveDiffusionLawSheet(Workbook workbook, DiffusionLawModel diffusionLawModel) {
+        // check if the diffusion law was computed.
+        if (diffusionLawModel.getTime() == null) {
+            return;
+        }
+
+        Sheet sheet = workbook.createSheet("Diffusion law");
+        Row headerRow = sheet.createRow(0);
+        headerRow.createCell(0).setCellValue("Aeff");
+        headerRow.createCell(1).setCellValue("Time");
+        headerRow.createCell(2).setCellValue("SD");
+        headerRow.createCell(3).setCellValue("intercept");
+        headerRow.createCell(4).setCellValue("slope");
+        headerRow.createCell(5).setCellValue("fit start");
+        headerRow.createCell(6).setCellValue("fit end");
+
+        for (int i = 0; i < diffusionLawModel.getEffectiveArea().length; i++) {
+            Row row = sheet.createRow(i + 1);
+
+            row.createCell(0).setCellValue(diffusionLawModel.getEffectiveArea()[i]);
+            row.createCell(1).setCellValue(diffusionLawModel.getTime()[i]);
+            row.createCell(2).setCellValue(diffusionLawModel.getStandardDeviation()[i]);
+        }
+
+        Row firstRow = sheet.getRow(1);
+        firstRow.createCell(3).setCellValue(diffusionLawModel.getIntercept());
+        firstRow.createCell(4).setCellValue(diffusionLawModel.getSlope());
+        firstRow.createCell(5).setCellValue(diffusionLawModel.getFitStart());
+        firstRow.createCell(6).setCellValue(diffusionLawModel.getFitEnd());
+    }
+
+    /**
+     * Creates a sheet in the workbook to store point spread function (PSF) results.
+     * The sheet includes binning values, D values, and their corresponding standard deviations.
+     *
+     * @param workbook   the workbook to add the sheet to
+     * @param psfResults a map where the key is the PSF value and the value is a 2D array containing the results
+     */
+    public static void savePSFSheet(Workbook workbook, Map<Double, double[][]> psfResults) {
+        if (psfResults == null) {
+            return;
+        }
+
+        Sheet sheet = workbook.createSheet("PSF");
+        int column = 0;
+
+        Row row = sheet.createRow(0);
+        row.createCell(column).setCellValue("Binning");
+
+        boolean init = false;
+
+        for (Map.Entry<Double, double[][]> entry : psfResults.entrySet()) {
+            if (!init) {
+                double[] binnings = entry.getValue()[0];
+
+                for (int i = 0; i < binnings.length; i++) {
+                    sheet.createRow(i + 1).createCell(column).setCellValue(binnings[i]);
+                }
+
+                column += 1;
+                init = true;
+            }
+
+            row = sheet.getRow(0);
+            row.createCell(column).setCellValue(String.format("D (PSF = %.2f)", entry.getKey()));
+            row.createCell(column + 1).setCellValue(String.format("SD (PSF = %.2f)", entry.getKey()));
+
+            for (int i = 0; i < entry.getValue()[1].length; i++) {
+                row = sheet.getRow(i + 1);
+                row.createCell(column).setCellValue(entry.getValue()[1][i]);
+                row.createCell(column + 1).setCellValue(entry.getValue()[2][i]);
+            }
+
+            column += 2;
+        }
+    }
+
+    /**
+     * Creates sheets in the workbook for the correlation function (CF), standard deviation, fit functions,
+     * and MSD data based on the pixel models. Also adds sheets for ACF1 and ACF2 if applicable.
+     *
+     * @param workbook    the workbook to add the sheets to
+     * @param pixelModels the 2D array of PixelModel objects
+     * @param settings    the experimental settings used to determine which sheets to create
+     * @param correlator  the correlator providing lag and sample times
+     */
+    public static void saveExcelPixelModels(Workbook workbook, PixelModel[][] pixelModels, ExpSettingsModel settings,
+                                            Correlator correlator) {
+        if (pixelModels != null) {
+            ExcelExporter.createSheetLagTime(workbook, correlator.getLagTimes(), correlator.getSampleTimes());
+
+            saveSheetsPixelModels(workbook, "CF", pixelModels, settings.isMSD());
+            if (settings.getFitModel().equals(Constants.DC_FCCS_2D)) {
+                saveSheetsPixelModels(workbook, "ACF1",
+                        PixelModel.extractAcfPixelModels(pixelModels, PixelModel::getAcf1PixelModel), settings.isMSD());
+
+                saveSheetsPixelModels(workbook, "ACF2",
+                        PixelModel.extractAcfPixelModels(pixelModels, PixelModel::getAcf2PixelModel), settings.isMSD());
+            }
+        }
+    }
+
+    /**
+     * Saves experimental settings and additional data sheets into an Excel file.
+     * The method first writes the experimental settings and then uses the provided addSheets function
+     * to add specific data sheets (e.g., CF, ACF, PSF) before saving the file.
      *
      * @param filePath    the path where the Excel file will be saved
-     * @param pixelModels the 2D array of PixelModel objects containing ACF and fit data
-     * @param settings    the experimental settings model used for determining whether MSD data should be included
-     * @param correlator  the correlator providing lag times and sample times for the data
-     * @param settingsMap a map of experimental settings to be exported in a dedicated sheet
+     * @param settingsMap a map of experimental settings to be written to the file
+     * @param addSheets   a consumer function that adds additional sheets to the workbook
      */
-    public static void saveExcelFile(String filePath, PixelModel[][] pixelModels, ExpSettingsModel settings,
-                                     Correlator correlator, Map<String, Object> settingsMap) {
+    public static void saveExcelFile(String filePath, Map<String, Object> settingsMap, Consumer<Workbook> addSheets) {
         try (Workbook workbook = new XSSFWorkbook()) {
             // Add different sheets
-            if (pixelModels != null) {
-                ExcelExporter.createSheetFromMap(workbook, "Experimental settings", settingsMap);
-
-                ExcelExporter.createSheetLagTime(workbook, correlator.getLagTimes(), correlator.getSampleTimes());
-
-                saveSheetsPixelModels(workbook, "CF", pixelModels, settings.isMSD());
-                if (settings.getFitModel().equals(Constants.DC_FCCS_2D)) {
-                    saveSheetsPixelModels(workbook, "ACF1",
-                            PixelModel.extractAcfPixelModels(pixelModels, PixelModel::getAcf1PixelModel),
-                            settings.isMSD());
-
-                    saveSheetsPixelModels(workbook, "ACF2",
-                            PixelModel.extractAcfPixelModels(pixelModels, PixelModel::getAcf2PixelModel),
-                            settings.isMSD());
-                }
-            }
+            ExcelExporter.createSheetFromMap(workbook, "Experimental settings", settingsMap);
+            addSheets.accept(workbook);
 
             try (FileOutputStream fileOut = new FileOutputStream(filePath)) {
                 workbook.write(fileOut);

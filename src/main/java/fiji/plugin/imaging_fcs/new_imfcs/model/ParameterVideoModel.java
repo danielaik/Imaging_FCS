@@ -172,8 +172,8 @@ public class ParameterVideoModel {
         settingsMap.putAll(imageModel.toMap());
         settingsMap.put("Polynomial Order", bleachCorrectionModel.getPolynomialOrder());
 
-        ExcelExporter.saveExcelFile(filePath.toAbsolutePath().toString(), pixelModels, settings, correlator,
-                settingsMap);
+        ExcelExporter.saveExcelFile(filePath.toAbsolutePath().toString(), settingsMap,
+                (workbook) -> ExcelExporter.saveExcelPixelModels(workbook, pixelModels, settings, correlator));
     }
 
     // Getter and setter methods for parameters

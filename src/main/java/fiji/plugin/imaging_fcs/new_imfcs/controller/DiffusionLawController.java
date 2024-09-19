@@ -1,11 +1,13 @@
 package fiji.plugin.imaging_fcs.new_imfcs.controller;
 
 import fiji.plugin.imaging_fcs.new_imfcs.model.*;
+import fiji.plugin.imaging_fcs.new_imfcs.utils.ExcelExporter;
 import fiji.plugin.imaging_fcs.new_imfcs.utils.Pair;
 import fiji.plugin.imaging_fcs.new_imfcs.view.DiffusionLawView;
 import fiji.plugin.imaging_fcs.new_imfcs.view.Plots;
 import fiji.plugin.imaging_fcs.new_imfcs.view.dialogs.PSFView;
 import ij.IJ;
+import org.apache.poi.ss.usermodel.Workbook;
 
 import javax.swing.*;
 import java.awt.event.ActionEvent;
@@ -112,6 +114,17 @@ public class DiffusionLawController {
                 throw new RejectResetException();
             }
         }
+    }
+
+    /**
+     * Saves the diffusion law and PSF data into the given Excel workbook.
+     * This method creates and adds sheets for diffusion law data and PSF results using the corresponding model.
+     *
+     * @param workbook the Excel workbook to which the sheets will be added
+     */
+    public void saveExcelSheets(Workbook workbook) {
+        ExcelExporter.saveDiffusionLawSheet(workbook, model);
+        ExcelExporter.savePSFSheet(workbook, model.getPsfResults());
     }
 
     /**
