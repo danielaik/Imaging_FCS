@@ -6,7 +6,6 @@ import fiji.plugin.imaging_fcs.new_imfcs.model.correlations.AverageCorrelation;
 import fiji.plugin.imaging_fcs.new_imfcs.model.correlations.Correlator;
 import fiji.plugin.imaging_fcs.new_imfcs.model.correlations.DeltaCCFWorker;
 import fiji.plugin.imaging_fcs.new_imfcs.model.correlations.MeanSquareDisplacement;
-import fiji.plugin.imaging_fcs.new_imfcs.model.fit.BleachCorrectionModel;
 import fiji.plugin.imaging_fcs.new_imfcs.utils.*;
 import fiji.plugin.imaging_fcs.new_imfcs.view.BleachCorrectionView;
 import fiji.plugin.imaging_fcs.new_imfcs.view.ExpSettingsView;

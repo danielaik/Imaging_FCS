@@ -1,6 +1,6 @@
 package fiji.plugin.imaging_fcs.new_imfcs.view.dialogs;
 
-import fiji.plugin.imaging_fcs.new_imfcs.model.fit.BleachCorrectionModel;
+import fiji.plugin.imaging_fcs.new_imfcs.model.BleachCorrectionModel;
 import ij.gui.GenericDialog;
 
 import java.util.function.Consumer;

@@ -1,7 +1,6 @@
 package fiji.plugin.imaging_fcs.new_imfcs.model;
 
 import fiji.plugin.imaging_fcs.new_imfcs.constants.Constants;
-import fiji.plugin.imaging_fcs.new_imfcs.model.fit.BleachCorrectionModel;
 import ij.IJ;
 import ij.ImagePlus;
 import ij.process.ImageProcessor;
