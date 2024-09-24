@@ -4,7 +4,6 @@ import fiji.plugin.imaging_fcs.new_imfcs.controller.InvalidUserInputException;
 import fiji.plugin.imaging_fcs.new_imfcs.model.fit.BayesFit;
 import fiji.plugin.imaging_fcs.new_imfcs.model.fit.GLSFit;
 import fiji.plugin.imaging_fcs.new_imfcs.model.fit.StandardFit;
-import ij.ImagePlus;
 
 import java.util.Arrays;
 
@@ -17,14 +16,13 @@ import static fiji.plugin.imaging_fcs.new_imfcs.constants.Constants.PIXEL_SIZE_R
  */
 public class FitModel {
     private final ExpSettingsModel settings;
-    private final Threshold chi2Threshold;
+    private final FilteringModel chi2Threshold;
     private Parameter D, N, F2, F3, D2, D3, G, vx, vy, fTrip, tTrip;
     private double modProb1, modProb2, modProb3, Q2, Q3;
     private int fitStart, fitEnd;
     private boolean fix = false;
     private boolean GLS = false;
     private boolean bayes = false;
-    private ImagePlus filteringBinaryImage = null;
 
     /**
      * Constructs a new FitModel with the given experimental settings.
@@ -34,7 +32,7 @@ public class FitModel {
     public FitModel(ExpSettingsModel settings) {
         this.settings = settings;
 
-        this.chi2Threshold = new Threshold();
+        this.chi2Threshold = new FilteringModel();
 
         initValues();
     }
@@ -47,7 +45,7 @@ public class FitModel {
     public FitModel(ExpSettingsModel settings, FitModel other) {
         this.settings = settings;
 
-        this.chi2Threshold = new Threshold();
+        this.chi2Threshold = new FilteringModel();
 
         this.D = new Parameter(other.D);
         this.N = new Parameter(other.N);
@@ -197,7 +195,21 @@ public class FitModel {
 
         Arrays.stream(parameters).forEach(parameter -> parameter.getThreshold().setDefault());
         chi2Threshold.setDefault();
-        filteringBinaryImage = null;
+        FilteringModel.setFilteringBinaryImage(null);
+    }
+
+    /**
+     * Activates or deactivates the ACF thresholds for all parameters and chi2.
+     * This method sets the active state of ACF-related thresholds across all parameters,
+     * enabling or disabling them based on the provided boolean value.
+     *
+     * @param acfsActive {@code true} to activate ACF thresholds, {@code false} to deactivate them.
+     */
+    public void setAllAcfsThreshold(boolean acfsActive) {
+        Parameter[] parameters = {N, D, vx, vy, G, F2, D2, F3, D3, fTrip, tTrip};
+
+        Arrays.stream(parameters).forEach(parameter -> parameter.getThreshold().setAcfActive(acfsActive));
+        chi2Threshold.setAcfActive(acfsActive);
     }
 
     /**
@@ -500,16 +512,8 @@ public class FitModel {
         this.bayes = bayes;
     }
 
-    public Threshold getChi2Threshold() {
+    public FilteringModel getChi2Threshold() {
         return chi2Threshold;
-    }
-
-    public ImagePlus getFilteringBinaryImage() {
-        return filteringBinaryImage;
-    }
-
-    public void setFilteringBinaryImage(ImagePlus filteringBinaryImage) {
-        this.filteringBinaryImage = filteringBinaryImage;
     }
 
     /**
@@ -518,7 +522,7 @@ public class FitModel {
      * and active state for the parameter during fitting operations.
      */
     public static class Parameter {
-        private final Threshold threshold;
+        private final FilteringModel threshold;
         private double value;
         private boolean hold;
 
@@ -531,7 +535,7 @@ public class FitModel {
         public Parameter(double value, boolean hold) {
             this.value = value;
             this.hold = hold;
-            this.threshold = new Threshold();
+            this.threshold = new FilteringModel();
         }
 
         /**
@@ -561,79 +565,13 @@ public class FitModel {
             this.hold = hold;
         }
 
-        public Threshold getThreshold() {
+        public FilteringModel getThreshold() {
             return threshold;
         }
 
         @Override
         public String toString() {
             return String.valueOf(value);
-        }
-    }
-
-    /**
-     * The {@code Threshold} class represents the threshold settings (min, max, and active state)
-     * for a parameter in the {@code FitModel}. It is used to constrain the parameter values during fitting.
-     */
-    public static class Threshold {
-        private double min;
-        private double max;
-        private boolean active;
-
-        /**
-         * Constructs a new {@code Threshold} with default settings.
-         */
-        public Threshold() {
-            setDefault();
-        }
-
-        /**
-         * Determines if a given value should be filtered based on the threshold settings.
-         *
-         * @param value The value to check against the threshold.
-         * @return {@code true} if the value is outside the threshold bounds and the threshold is active,
-         * {@code false} otherwise.
-         */
-        public boolean toFilter(double value) {
-            if (active) {
-                return min > value || max < value;
-            }
-
-            return false;
-        }
-
-        /**
-         * Resets the threshold to its default values.
-         * The default minimum is -0.01, the default maximum is 0.01, and the threshold is inactive.
-         */
-        public void setDefault() {
-            min = -0.01;
-            max = 0.01;
-            active = false;
-        }
-
-        public double getMin() {
-            return min;
-        }
-
-        public void setMin(String min) {
-            this.min = Double.parseDouble(min);
-        }
-
-        public double getMax() {
-            return max;
-        }
-
-        public void setMax(String max) {
-            this.max = Double.parseDouble(max);
-        }
-
-        public boolean getActive() {
-            return active;
-        }
-
-        public void setActive(boolean active) {
-            this.active = active;
         }
     }
 }

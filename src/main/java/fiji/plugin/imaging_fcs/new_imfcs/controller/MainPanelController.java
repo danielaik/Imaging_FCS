@@ -376,10 +376,16 @@ public final class MainPanelController {
                         previousSelection = fitModel;
 
                         // If the model is not DC_FCCS_2D, deactivate FCCSDisp
-                        if (!fitModel.equals(Constants.DC_FCCS_2D)) {
+                        boolean isDCFCCS = fitModel.equals(Constants.DC_FCCS_2D);
+                        if (!isDCFCCS) {
                             view.resetFCCSDisplay();
                             settings.setFCCSDisp(false);
                         }
+
+                        // update the threshold fields depending on the model used.
+                        fitController.setAllAcfsThreshold(isDCFCCS);
+                        filteringController.enableButtonSameAsCCF(isDCFCCS);
+                        filteringController.refreshFilteringView();
 
                         updateSettingsField();
                     }

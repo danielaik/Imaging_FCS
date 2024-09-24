@@ -150,6 +150,35 @@ public class PixelModel {
     }
 
     /**
+     * Determines whether the given pixel model should be filtered based on the thresholds
+     * defined in the {@code FitModel}. This method applies filtering criteria to each parameter
+     * using the provided threshold transformation function.
+     *
+     * @param pixelModel   The pixel model to be checked for filtering.
+     * @param model        The fit model containing the parameters and their thresholds.
+     * @param getThreshold A function that applies a transformation to the thresholds (e.g., switching between
+     *                     the default threshold and an ACF threshold).
+     * @return {@code true} if the pixel model should be filtered, {@code false} otherwise.
+     */
+    private static boolean toFilterPixelModel(PixelModel pixelModel, FitModel model,
+                                              Function<FilteringModel, FilteringModel> getThreshold) {
+        return pixelModel.fitParams == null ||
+                getThreshold.apply(model.getN().getThreshold()).toFilter(pixelModel.fitParams.getN()) ||
+                getThreshold.apply(model.getD().getThreshold()).toFilter(pixelModel.fitParams.getDInterface()) ||
+                getThreshold.apply(model.getF2().getThreshold()).toFilter(pixelModel.fitParams.getF2()) ||
+                getThreshold.apply(model.getD2().getThreshold()).toFilter(pixelModel.fitParams.getD2Interface()) ||
+                getThreshold.apply(model.getF3().getThreshold()).toFilter(pixelModel.fitParams.getF3()) ||
+                getThreshold.apply(model.getD3().getThreshold()).toFilter(pixelModel.fitParams.getD3Interface()) ||
+                getThreshold.apply(model.getG().getThreshold()).toFilter(pixelModel.fitParams.getG()) ||
+                getThreshold.apply(model.getVx().getThreshold()).toFilter(pixelModel.fitParams.getVxInterface()) ||
+                getThreshold.apply(model.getVy().getThreshold()).toFilter(pixelModel.fitParams.getVyInterface()) ||
+                getThreshold.apply(model.getFTrip().getThreshold()).toFilter(pixelModel.fitParams.getFTrip()) ||
+                getThreshold.apply(model.getTTrip().getThreshold())
+                        .toFilter(pixelModel.fitParams.getTTripInterface()) ||
+                getThreshold.apply(model.getChi2Threshold()).toFilter(pixelModel.chi2);
+    }
+
+    /**
      * Adds the values of another PixelModel to this one using a sliding window approach.
      *
      * @param other The other PixelModel whose values are to be added.
@@ -217,12 +246,14 @@ public class PixelModel {
     /**
      * Determines whether the current pixel model should be filtered based on the provided {@code FitModel} settings.
      * <p>
-     * This method evaluates the pixel model against several criteria to decide if it should be excluded from analysis:
+     * This method evaluates the pixel model using the following criteria:
      * <ul>
-     *     <li>If a binary filtering image is present in the {@code FitModel}, the pixel is filtered based on the value
-     *     at its coordinates in the binary image.</li>
+     *     <li>If a binary filtering image is present in the {@code FitModel}, the pixel is filtered based on the pixel
+     *     value at its coordinates in the binary image. If the pixel value is 0, the pixel is flagged for filtering
+     *     .</li>
      *     <li>If no binary image is used, the method checks if any fit parameters exceed their respective thresholds
-     *     defined in the {@code FitModel}. If any threshold is exceeded, the pixel model is flagged for filtering.</li>
+     *     defined in the {@code FitModel}. The pixel model and its related ACF pixel models (if present) are checked
+     *     against these thresholds. If any threshold is exceeded, the pixel model is flagged for filtering.</li>
      * </ul>
      * </p>
      *
@@ -232,34 +263,23 @@ public class PixelModel {
      * @return {@code true} if the pixel model should be filtered, {@code false} otherwise.
      */
     public boolean toFilter(FitModel model, int x, int y) {
-        if (model.getFilteringBinaryImage() != null) {
+        ImagePlus filteringImage = FilteringModel.getFilteringBinaryImage();
+        if (filteringImage != null) {
             // filter only based on the binary image
-            ImagePlus filteringImage = model.getFilteringBinaryImage();
             ImageProcessor ip = filteringImage.getImageStack().getProcessor(1);
-            int pixelValue;
+            int pixelValue = filteringImage.getBitDepth() == 16 ? ip.getPixel(x, y) : (int) ip.getf(x, y);
 
-            if (filteringImage.getBitDepth() == 16) {
-                pixelValue = ip.getPixel(x, y);
-            } else {
-                pixelValue = (int) ip.getf(x, y);
-            }
-
-            // if the pixel value is 0 then we need to filter it
+            // if the pixel value is 0, we need to filter it
             return pixelValue == 0;
         }
 
-        return fitParams == null || model.getN().getThreshold().toFilter(fitParams.getN()) ||
-                model.getD().getThreshold().toFilter(fitParams.getDInterface()) ||
-                model.getF2().getThreshold().toFilter(fitParams.getF2()) ||
-                model.getD2().getThreshold().toFilter(fitParams.getD2Interface()) ||
-                model.getF3().getThreshold().toFilter(fitParams.getF3()) ||
-                model.getD3().getThreshold().toFilter(fitParams.getD3Interface()) ||
-                model.getG().getThreshold().toFilter(fitParams.getG()) ||
-                model.getVx().getThreshold().toFilter(fitParams.getVxInterface()) ||
-                model.getVy().getThreshold().toFilter(fitParams.getVyInterface()) ||
-                model.getFTrip().getThreshold().toFilter(fitParams.getFTrip()) ||
-                model.getTTrip().getThreshold().toFilter(fitParams.getTTripInterface()) ||
-                model.getChi2Threshold().toFilter(chi2);
+        if (acf1PixelModel != null && acf2PixelModel != null) {
+            return toFilterPixelModel(this, model, Function.identity()) ||
+                    toFilterPixelModel(acf1PixelModel, model, FilteringModel::getAcfThreshold) ||
+                    toFilterPixelModel(acf2PixelModel, model, FilteringModel::getAcfThreshold);
+        } else {
+            return toFilterPixelModel(this, model, Function.identity());
+        }
     }
 
     public double[] getCorrelationFunction() {

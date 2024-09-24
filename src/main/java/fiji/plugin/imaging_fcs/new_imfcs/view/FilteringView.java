@@ -2,10 +2,13 @@ package fiji.plugin.imaging_fcs.new_imfcs.view;
 
 import fiji.plugin.imaging_fcs.new_imfcs.constants.Constants;
 import fiji.plugin.imaging_fcs.new_imfcs.controller.FilteringController;
+import fiji.plugin.imaging_fcs.new_imfcs.model.FilteringModel;
 import fiji.plugin.imaging_fcs.new_imfcs.model.FitModel;
 
 import javax.swing.*;
 import java.awt.*;
+import java.awt.event.ActionListener;
+import java.util.function.Function;
 
 import static fiji.plugin.imaging_fcs.new_imfcs.controller.FieldListenerFactory.createFocusListener;
 import static fiji.plugin.imaging_fcs.new_imfcs.view.ButtonFactory.createJButton;
@@ -20,7 +23,7 @@ import static fiji.plugin.imaging_fcs.new_imfcs.view.UIUtils.createJLabel;
  */
 public class FilteringView extends BaseView {
     // TODO: add columns for DCCF and two row for rel G and chi2
-    private static final GridLayout FILTERING_LAYOUT = new GridLayout(17, 4); // should be 17 and 6
+    private static final GridLayout FILTERING_LAYOUT = new GridLayout(17, 6); // should be 17 and 6
     private static final Point FILTERING_POSITION =
             new Point(Constants.MAIN_PANEL_POS.x + Constants.MAIN_PANEL_DIM.width + 310,
                     Constants.MAIN_PANEL_POS.y + 335);
@@ -31,16 +34,16 @@ public class FilteringView extends BaseView {
     private final FitModel model;
 
     // UI components for text fields and radio buttons associated with each parameter
-    private FilterTextField filterN, filterD, filterVx, filterVy, filterG, filterF2, filterD2, filterF3, filterD3,
+    private FilterFields filterN, filterD, filterVx, filterVy, filterG, filterF2, filterD2, filterF3, filterD3,
             filterFTrip, filterTTrip, filterChi2;
-    private JRadioButton rbtnFilterN, rbtnFilterD, rbtnFilterVx, rbtnFilterVy, rbtnFilterG, rbtnFilterF2, rbtnFilterD2,
-            rbtnFilterF3, rbtnFilterD3, rbtnFilterFTrip, rbtnFilterTTrip, rbtnFilterChi2;
+    private JRadioButton rbtnSameAsCCF;
     private JButton btnFilter, btnReset, btnLoadBinaryFilter;
 
     /**
-     * Constructs the FilteringView with the specified FitModel.
+     * Constructs the {@code FilteringView} with the specified {@code FilteringController} and {@code FitModel}.
      *
-     * @param model the model containing the thresholds and parameter data
+     * @param controller the controller managing the filtering actions
+     * @param model      the model containing threshold and parameter data
      */
     public FilteringView(FilteringController controller, FitModel model) {
         super("Thresholds settings");
@@ -63,96 +66,25 @@ public class FilteringView extends BaseView {
 
     @Override
     protected void initializeTextFields() {
-        filterN = new FilterTextField(model.getN().getThreshold());
-        filterD = new FilterTextField(model.getD().getThreshold());
-        filterVx = new FilterTextField(model.getVx().getThreshold());
-        filterVy = new FilterTextField(model.getVy().getThreshold());
-        filterG = new FilterTextField(model.getG().getThreshold());
-        filterF2 = new FilterTextField(model.getF2().getThreshold());
-        filterD2 = new FilterTextField(model.getD2().getThreshold());
-        filterF3 = new FilterTextField(model.getF3().getThreshold());
-        filterD3 = new FilterTextField(model.getD3().getThreshold());
-        filterFTrip = new FilterTextField(model.getFTrip().getThreshold());
-        filterTTrip = new FilterTextField(model.getTTrip().getThreshold());
-        filterChi2 = new FilterTextField(model.getChi2Threshold());
-    }
-
-    /**
-     * Resets all filter fields and corresponding radio buttons in the view.
-     * <p>
-     * This method clears the values in each filter field and unselects the
-     * associated radio buttons, returning the view to its default state.
-     */
-    public void resetFields() {
-        filterN.reset();
-        filterD.reset();
-        filterVx.reset();
-        filterVy.reset();
-        filterG.reset();
-        filterF2.reset();
-        filterD2.reset();
-        filterF3.reset();
-        filterD3.reset();
-        filterFTrip.reset();
-        filterTTrip.reset();
-        filterChi2.reset();
-
-        rbtnFilterN.setSelected(false);
-        rbtnFilterD.setSelected(false);
-        rbtnFilterVx.setSelected(false);
-        rbtnFilterVy.setSelected(false);
-        rbtnFilterG.setSelected(false);
-        rbtnFilterF2.setSelected(false);
-        rbtnFilterD2.setSelected(false);
-        rbtnFilterF3.setSelected(false);
-        rbtnFilterD3.setSelected(false);
-        rbtnFilterFTrip.setSelected(false);
-        rbtnFilterTTrip.setSelected(false);
-        rbtnFilterChi2.setSelected(false);
-
-        btnLoadBinaryFilter.setText("Binary");
-    }
-
-    /**
-     * Creates a JRadioButton linked to a specific threshold and associated text field.
-     *
-     * @param filterTextField the text field that will be enabled or disabled based on the radio button state
-     * @return the created JRadioButton
-     */
-    private JRadioButton createRadioButton(FilterTextField filterTextField) {
-        JRadioButton radioButton = new JRadioButton();
-        FitModel.Threshold threshold = filterTextField.threshold;
-        radioButton.setSelected(threshold.getActive());
-
-        radioButton.addActionListener(ev -> {
-            threshold.setActive(radioButton.isSelected());
-            filterTextField.setEnabled(radioButton.isSelected());
-        });
-
-        return radioButton;
-    }
-
-    /**
-     * Initializes the radio buttons for each filter parameter.
-     */
-    private void initializeRadioButtons() {
-        rbtnFilterN = createRadioButton(filterN);
-        rbtnFilterD = createRadioButton(filterD);
-        rbtnFilterVx = createRadioButton(filterVx);
-        rbtnFilterVy = createRadioButton(filterVy);
-        rbtnFilterG = createRadioButton(filterG);
-        rbtnFilterF2 = createRadioButton(filterF2);
-        rbtnFilterD2 = createRadioButton(filterD2);
-        rbtnFilterF3 = createRadioButton(filterF3);
-        rbtnFilterD3 = createRadioButton(filterD3);
-        rbtnFilterFTrip = createRadioButton(filterFTrip);
-        rbtnFilterTTrip = createRadioButton(filterTTrip);
-        rbtnFilterChi2 = createRadioButton(filterChi2);
+        filterN = new FilterFields(model.getN().getThreshold(), controller::enabledThresholdPressed);
+        filterD = new FilterFields(model.getD().getThreshold(), controller::enabledThresholdPressed);
+        filterVx = new FilterFields(model.getVx().getThreshold(), controller::enabledThresholdPressed);
+        filterVy = new FilterFields(model.getVy().getThreshold(), controller::enabledThresholdPressed);
+        filterG = new FilterFields(model.getG().getThreshold(), controller::enabledThresholdPressed);
+        filterF2 = new FilterFields(model.getF2().getThreshold(), controller::enabledThresholdPressed);
+        filterD2 = new FilterFields(model.getD2().getThreshold(), controller::enabledThresholdPressed);
+        filterF3 = new FilterFields(model.getF3().getThreshold(), controller::enabledThresholdPressed);
+        filterD3 = new FilterFields(model.getD3().getThreshold(), controller::enabledThresholdPressed);
+        filterFTrip = new FilterFields(model.getFTrip().getThreshold(), controller::enabledThresholdPressed);
+        filterTTrip = new FilterFields(model.getTTrip().getThreshold(), controller::enabledThresholdPressed);
+        filterChi2 = new FilterFields(model.getChi2Threshold(), controller::enabledThresholdPressed);
     }
 
     @Override
     protected void initializeButtons() {
-        initializeRadioButtons();
+        rbtnSameAsCCF = new JRadioButton();
+        rbtnSameAsCCF.setEnabled(false);
+        rbtnSameAsCCF.addActionListener(controller.sameAsCCFPressed());
 
         btnFilter = createJButton("Filter",
                 "Creates filtering mask according to specified thresholds and applies it on the parameter maps", null,
@@ -163,22 +95,14 @@ public class FilteringView extends BaseView {
         btnLoadBinaryFilter = createJButton("Binary", "", null, controller.btnLoadBinaryFilterPressed());
     }
 
-    /**
-     * Adds the components (text fields for min and max values) to the frame.
-     *
-     * @param filterTextField the FilterTextField containing the min and max text fields
-     */
-    private void add(FilterTextField filterTextField) {
-        add(filterTextField.min);
-        add(filterTextField.max);
-    }
-
     @Override
     protected void addComponentsToFrame() {
         // row 1
         add(btnLoadBinaryFilter);
         add(createJLabel(" ", ""));
-        add(createJLabel("ACF", ""));
+        add(createJLabel("CF", ""));
+        add(createJLabel(" ", ""));
+        add(createJLabel("ACF 1/2", ""));
         add(createJLabel(" ", ""));
 
         // row 2
@@ -186,117 +110,203 @@ public class FilteringView extends BaseView {
         add(createJLabel("filter", ""));
         add(createJLabel("Min.", ""));
         add(createJLabel("Max.", ""));
+        add(createJLabel("Min.", ""));
+        add(createJLabel("Max.", ""));
 
         // row 3
         add(createJLabel("N", ""));
-        add(rbtnFilterN);
         add(filterN);
 
         // row 4
         add(createJLabel("D [um2/s]", ""));
-        add(rbtnFilterD);
         add(filterD);
 
         // row 5
         add(createJLabel("vx [um/s]", ""));
-        add(rbtnFilterVx);
         add(filterVx);
 
         // row 6
         add(createJLabel("vy [um/s]", ""));
-        add(rbtnFilterVy);
         add(filterVy);
 
         // row 7
         add(createJLabel("G", ""));
-        add(rbtnFilterG);
         add(filterG);
 
         // TODO: add rel.G
 
         // row 8
         add(createJLabel("F2", ""));
-        add(rbtnFilterF2);
         add(filterF2);
 
         // row 9
         add(createJLabel("D2 [um2/s]", ""));
-        add(rbtnFilterD2);
         add(filterD2);
 
         // row 10
         add(createJLabel("F3", ""));
-        add(rbtnFilterF3);
         add(filterF3);
 
         // row 11
         add(createJLabel("D3 [um2/s]", ""));
-        add(rbtnFilterD3);
         add(filterD3);
 
         // row 12
         add(createJLabel("Ftrip", ""));
-        add(rbtnFilterFTrip);
         add(filterFTrip);
 
         // row 13
         add(createJLabel("Ttrip", ""));
-        add(rbtnFilterTTrip);
         add(filterTTrip);
 
         // row 14
         add(createJLabel("Chi2", ""));
-        add(rbtnFilterChi2);
         add(filterChi2);
 
         // row 15
         add(btnFilter);
         add(createJLabel(" ", ""));
-        add(createJLabel(" ", ""));
-        add(createJLabel(" ", ""));
+        add(createJLabel("ACF 1/2 ", ""));
+        add(createJLabel("same as ", ""));
+        add(createJLabel("CCF", ""));
+        add(rbtnSameAsCCF);
 
         // row 16
         add(btnReset);
         add(createJLabel(" ", ""));
         add(createJLabel(" ", ""));
         add(createJLabel(" ", ""));
+        add(createJLabel(" ", ""));
+        add(createJLabel(" ", ""));
+    }
+
+    /**
+     * Refreshes the filter fields based on the current model state.
+     */
+    public void refreshFields() {
+        for (FilterFields filterFields : new FilterFields[]{
+                filterN,
+                filterD,
+                filterVx,
+                filterVy,
+                filterG,
+                filterF2,
+                filterD2,
+                filterF3,
+                filterD3,
+                filterFTrip,
+                filterTTrip,
+                filterChi2
+        }) {
+            filterFields.refresh();
+        }
+
+        if (FilteringModel.getFilteringBinaryImage() != null) {
+            btnLoadBinaryFilter.setText("Loaded");
+        } else {
+            btnLoadBinaryFilter.setText("Binary");
+        }
+    }
+
+    /**
+     * Adds the specified {@code FilterFields} components (radio button, min/max text fields) to the frame.
+     *
+     * @param filterFields the {@code FilterFields} containing the UI components to be added
+     */
+    private void add(FilterFields filterFields) {
+        add(filterFields.radioButton);
+        add(filterFields.min);
+        add(filterFields.max);
+        add(filterFields.minAcf);
+        add(filterFields.maxAcf);
+    }
+
+    /**
+     * Enables or disables the "Same as CCF" button based on the specified value.
+     *
+     * @param b whether to enable the button
+     */
+    public void enableButtonSameAsCCF(boolean b) {
+        if (!b) {
+            // unselect the button if it was selected when we deactivate the button.
+            rbtnSameAsCCF.setSelected(false);
+        }
+        rbtnSameAsCCF.setEnabled(b);
     }
 
     /**
      * Inner class representing the filter text fields (min and max) for each parameter.
+     * Each parameter has a radio button for enabling/disabling the threshold, and
+     * text fields for setting the min/max thresholds for both CF and ACF.
      */
-    private static class FilterTextField {
-        private final FitModel.Threshold threshold;
-        private JTextField min;
-        private JTextField max;
+    public static class FilterFields {
+        private final FilteringModel threshold;
+        private final JRadioButton radioButton;
+        private final JTextField min;
+        private final JTextField max;
+        private final JTextField minAcf;
+        private final JTextField maxAcf;
 
         /**
-         * Constructs a FilterTextField with the specified threshold.
+         * Constructs {@code FilterFields} for a given threshold and listener.
          *
-         * @param threshold the threshold associated with this text field
+         * @param threshold               the threshold model linked to the fields
+         * @param enabledThresholdPressed the action listener for enabling/disabling the threshold
          */
-        public FilterTextField(FitModel.Threshold threshold) {
+        public FilterFields(FilteringModel threshold, Function<FilterFields, ActionListener> enabledThresholdPressed) {
             this.threshold = threshold;
+            this.radioButton = createRadioButton(enabledThresholdPressed);
+            FilteringModel acfThreshold = threshold.getAcfThreshold();
 
             min = createTextField(threshold.getMin(), "", createFocusListener(threshold::setMin));
             max = createTextField(threshold.getMax(), "", createFocusListener(threshold::setMax));
-            this.setEnabled(false);
-        }
+            minAcf = createTextField(acfThreshold.getMin(), "", createFocusListener(acfThreshold::setMin));
+            maxAcf = createTextField(acfThreshold.getMax(), "", createFocusListener(acfThreshold::setMax));
 
-        public void reset() {
-            setText(min, threshold.getMin());
-            setText(max, threshold.getMax());
-            setEnabled(false);
+            this.refreshEnabled();
         }
 
         /**
-         * Enables or disables the text fields based on the provided flag.
+         * Creates a radio button with an action listener to enable or disable the threshold.
          *
-         * @param enabled true to enable the text fields, false to disable
+         * @param enabledThresholdPressed the action listener for the radio button
+         * @return the created {@code JRadioButton}
          */
-        public void setEnabled(boolean enabled) {
-            min.setEnabled(enabled);
-            max.setEnabled(enabled);
+        private JRadioButton createRadioButton(Function<FilterFields, ActionListener> enabledThresholdPressed) {
+            JRadioButton radioButton = new JRadioButton();
+            radioButton.setSelected(threshold.getActive());
+
+            radioButton.addActionListener(enabledThresholdPressed.apply(this));
+
+            return radioButton;
+        }
+
+        /**
+         * Refreshes the text fields and radio button based on the current threshold values.
+         * Updates the UI elements with the current min/max values for both CF and ACF.
+         */
+        public void refresh() {
+            setText(min, threshold.getMin());
+            setText(max, threshold.getMax());
+            setText(minAcf, threshold.getAcfThreshold().getMin());
+            setText(maxAcf, threshold.getAcfThreshold().getMax());
+            refreshEnabled();
+        }
+
+        /**
+         * Enables or disables the text fields based on whether the threshold is active.
+         * If the threshold is active, the corresponding text fields are enabled for editing.
+         */
+        public void refreshEnabled() {
+            radioButton.setSelected(threshold.getActive());
+            min.setEnabled(threshold.getActive());
+            max.setEnabled(threshold.getActive());
+            minAcf.setEnabled(threshold.getAcfActive());
+            maxAcf.setEnabled(threshold.getAcfActive());
+        }
+
+        public FilteringModel getThreshold() {
+            return threshold;
         }
     }
 }

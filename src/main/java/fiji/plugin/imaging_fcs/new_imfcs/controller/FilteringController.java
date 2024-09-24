@@ -1,9 +1,7 @@
 package fiji.plugin.imaging_fcs.new_imfcs.controller;
 
-import fiji.plugin.imaging_fcs.new_imfcs.model.ExpSettingsModel;
-import fiji.plugin.imaging_fcs.new_imfcs.model.FitModel;
-import fiji.plugin.imaging_fcs.new_imfcs.model.OptionsModel;
-import fiji.plugin.imaging_fcs.new_imfcs.model.PixelModel;
+import fiji.plugin.imaging_fcs.new_imfcs.constants.Constants;
+import fiji.plugin.imaging_fcs.new_imfcs.model.*;
 import fiji.plugin.imaging_fcs.new_imfcs.model.correlations.Correlator;
 import fiji.plugin.imaging_fcs.new_imfcs.model.correlations.SelectedPixel;
 import fiji.plugin.imaging_fcs.new_imfcs.view.FilteringView;
@@ -66,6 +64,44 @@ public class FilteringController {
     }
 
     /**
+     * Loads a binary filtering image to be applied to parameter maps.
+     * Ensures the loaded image matches the dimensions of the parameter maps.
+     *
+     * @param width  The width of the parameter map.
+     * @param height The height of the parameter map.
+     * @return The loaded binary image.
+     * @throws IllegalArgumentException if the filtering image does not match the size of the parameter map.
+     */
+    private ImagePlus loadBinaryFilteringImage(int width, int height) {
+        ImagePlus filteringImg = IJ.openImage();
+        if (filteringImg != null && (filteringImg.getWidth() != width || filteringImg.getHeight() != height)) {
+            throw new IllegalArgumentException("Filtering image must be the same size as the parameter map.");
+        }
+        FilteringModel.setFilteringBinaryImage(filteringImg);
+        return filteringImg;
+    }
+
+    /**
+     * Enables or disables the "Same as CCF" button and sets the ACFsSameAsCCF state.
+     *
+     * @param b True to enable the button, false to disable it.
+     */
+    public void enableButtonSameAsCCF(boolean b) {
+        if (!b) {
+            // unselect the option if it was set when we deactivate the button.
+            FilteringModel.setAcfsSameAsCCF(false);
+        }
+        view.enableButtonSameAsCCF(b);
+    }
+
+    /**
+     * Refreshes the filtering-related UI components in the view.
+     */
+    public void refreshFilteringView() {
+        view.refreshFields();
+    }
+
+    /**
      * Creates an ActionListener for the filtering button, updating parameter maps
      * or showing an error if unavailable.
      *
@@ -89,7 +125,7 @@ public class FilteringController {
     public ActionListener btnResetPressed() {
         return (ActionEvent) -> {
             fitController.resetFilters();
-            view.resetFields();
+            view.refreshFields();
 
             if (Plots.imgParam != null && Plots.imgParam.isVisible()) {
                 filterAndPlot();
@@ -106,7 +142,13 @@ public class FilteringController {
         return (ActionEvent ev) -> {
             if (Plots.imgParam != null && Plots.imgParam.isVisible()) {
                 JButton button = (JButton) ev.getSource();
-                ImagePlus filterImage = fitController.loadBinaryFilteringImage();
+                ImagePlus filterImage = null;
+                try {
+                    filterImage = loadBinaryFilteringImage(Plots.imgParam.getWidth(), Plots.imgParam.getHeight());
+                } catch (IllegalArgumentException e) {
+                    IJ.showMessage("Error", e.getMessage());
+                }
+
                 if (filterImage != null) {
                     button.setText("Loaded");
 
@@ -117,6 +159,42 @@ public class FilteringController {
             } else {
                 IJ.showMessage("No parameter map available. Perform a correlation or load an experiment.");
             }
+        };
+    }
+
+    /**
+     * Creates an ActionListener for enabling or disabling a threshold, updating
+     * the active state of the associated filter field and refreshing the UI.
+     *
+     * @param filterFields The filter fields associated with the threshold.
+     * @return ActionListener for enabling or disabling a threshold.
+     */
+    public ActionListener enabledThresholdPressed(FilteringView.FilterFields filterFields) {
+        return (ActionEvent ev) -> {
+            JRadioButton radioButton = (JRadioButton) ev.getSource();
+
+            boolean acfsEnabled = settings.getFitModel().equals(Constants.DC_FCCS_2D);
+
+            FilteringModel threshold = filterFields.getThreshold();
+            threshold.setActive(radioButton.isSelected(), acfsEnabled);
+
+            filterFields.refreshEnabled();
+        };
+    }
+
+    /**
+     * Creates an ActionListener for toggling the "Same as CCF" setting,
+     * updating the ACF thresholds accordingly and refreshing the view.
+     *
+     * @return ActionListener for toggling the "Same as CCF" button.
+     */
+    public ActionListener sameAsCCFPressed() {
+        return (ActionEvent ev) -> {
+            JRadioButton radioButton = (JRadioButton) ev.getSource();
+            FilteringModel.setAcfsSameAsCCF(radioButton.isSelected());
+            // Deactivate or activate the acfs thresholds depending on the value of the button
+            fitController.setAllAcfsThreshold(!radioButton.isSelected());
+            view.refreshFields();
         };
     }
 

@@ -5,7 +5,6 @@ import fiji.plugin.imaging_fcs.new_imfcs.model.FitModel;
 import fiji.plugin.imaging_fcs.new_imfcs.model.PixelModel;
 import fiji.plugin.imaging_fcs.new_imfcs.view.FitView;
 import ij.IJ;
-import ij.ImagePlus;
 
 import javax.swing.*;
 import java.awt.*;
@@ -95,21 +94,21 @@ public class FitController {
     }
 
     /**
-     * Loads a binary image used for filtering and sets it in the current model.
-     *
-     * @return The loaded ImagePlus object representing the binary filtering image.
-     */
-    public ImagePlus loadBinaryFilteringImage() {
-        ImagePlus filteringImg = IJ.openImage();
-        model.setFilteringBinaryImage(filteringImg);
-        return filteringImg;
-    }
-
-    /**
      * Resets the filters in the FitModel.
      */
     public void resetFilters() {
         model.resetFilters();
+    }
+
+    /**
+     * Sets the active state of all ACF thresholds in the model.
+     * This method delegates the activation or deactivation of ACF thresholds
+     * to the underlying model.
+     *
+     * @param acfsActive {@code true} to activate ACF thresholds, {@code false} to deactivate them.
+     */
+    public void setAllAcfsThreshold(boolean acfsActive) {
+        model.setAllAcfsThreshold(acfsActive);
     }
 
     /**
