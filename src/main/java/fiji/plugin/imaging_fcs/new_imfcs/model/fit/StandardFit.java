@@ -25,8 +25,11 @@ public class StandardFit extends BaseFit {
     protected final FitModel model;
     protected final ParametricUnivariateFunction function;
     protected final int numFreeParameters;
-    private final int MAX_EVALUATIONS = 2000;
-    private final int MAX_ITERATIONS = 2000;
+    // TODO: see if these values are really necessary as it can make the fitting process very long.
+    // private final int MAX_EVALUATIONS = 2000;
+    // private final int MAX_ITERATIONS = 2000;
+    private final int MAX_EVALUATIONS = 400;
+    private final int MAX_ITERATIONS = 400;
 
     /**
      * Constructs a new StandardFit instance with the given model and settings.
