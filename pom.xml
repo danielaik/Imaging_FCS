@@ -1,11 +1,50 @@
-<project xmlns="http://maven.apache.org/POM/4.0.0"
-         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+<project xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xmlns="http://maven.apache.org/POM/4.0.0"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>imagej.imfcs</groupId>
-    <artifactId>Imaging_FCS</artifactId>
-    <version>1_631</version>
+    <groupId>imagej.new_imfcs</groupId>
+    <artifactId>ImagingFCS</artifactId>
+    <version>2_0</version>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-shade-plugin</artifactId>
+                <version>3.5.2</version> <!-- Use the latest available version -->
+                <executions>
+                    <execution>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>shade</goal>
+                        </goals>
+                        <configuration>
+                            <transformers>
+                                <transformer
+                                        implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+                                    <mainClass>fiji.plugin.imaging_fcs.new_imfcs.ImagingFCS</mainClass>
+                                </transformer>
+                            </transformers>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <version>3.4.0</version> <!-- use latest or a specific version as necessary -->
+                <configuration>
+                    <archive>
+                        <manifest>
+                            <addClasspath>true</addClasspath>
+                            <mainClass>fiji.plugin.imaging_fcs.new_imfcs.ImagingFCS</mainClass>
+                        </manifest>
+                    </archive>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
 
     <properties>
         <java.version>1.8</java.version>
@@ -199,7 +238,7 @@
         </profile>
 
         <profile>
-             <id>compile_libs</id>
+            <id>compile_libs</id>
             <!-- This profile activates when compile_libs is true -->
             <activation>
                 <property>

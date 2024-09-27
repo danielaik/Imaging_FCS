@@ -1,7 +1,5 @@
 package fiji.plugin.imaging_fcs.new_imfcs.model;
 
-import fiji.plugin.imaging_fcs.gpufitImFCS.GpufitImFCS;
-
 /**
  * Represents the hardware configuration model for the Imaging FCS application.
  * This class is responsible for determining if CUDA (GPU computing) is available
@@ -16,8 +14,10 @@ public final class HardwareModel {
      * and the CUDA message based on the GpufitImFCS library's status.
      */
     public HardwareModel() {
-        this.cuda = GpufitImFCS.isCudaAvailable();
-        this.cudaMessage = GpufitImFCS.ALERT;
+        // this.cuda = GpufitImFCS.isCudaAvailable();
+        this.cuda = false;
+        // this.cudaMessage = GpufitImFCS.ALERT;
+        this.cudaMessage = "BETA version: you may experience some bugs.";
     }
 
     /**
