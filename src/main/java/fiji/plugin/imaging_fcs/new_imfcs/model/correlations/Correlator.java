@@ -956,6 +956,10 @@ public class Correlator {
      */
     public void resetResults() {
         pixelModels = null;
+        lags = null;
+        lagTimes = null;
+        sampleTimes = null;
+        numSamples = null;
     }
 
     public Map<String, double[][]> getDccf() {
