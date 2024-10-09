@@ -5,20 +5,32 @@ import fiji.plugin.imaging_fcs.new_imfcs.model.FitModel;
 import fiji.plugin.imaging_fcs.new_imfcs.model.PixelModel;
 import org.apache.commons.math3.special.Erf;
 
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.IntStream;
 
-import static fiji.plugin.imaging_fcs.new_imfcs.constants.Constants.*;
+import static fiji.plugin.imaging_fcs.new_imfcs.constants.Constants.REFRACTIVE_INDEX;
+import static fiji.plugin.imaging_fcs.new_imfcs.constants.Constants.SQRT_PI;
 
 /**
  * This class represents the 3D Single Plane Illumination Microscopy (SPIM) model for Fluorescence Correlation
  * Spectroscopy (FCS).
- * It extends the FCSFit class and provides implementations for calculating the value and gradient of the model.
+ * It extends the FCSFit class and provides optimized implementations for calculating the value and gradient of the
+ * model
+ * using memoization and precomputations for performance improvements.
  */
 public class FCS3pSPIM extends FCSFit {
-    // general parameters
-    private static final int LOOP_ITERATIONS = 6401;
-    private static final double INVERSE_SQRT_PI = Math.sqrt(1 / PI);
+    // General parameters
+    private static final int Z_STEPS = 80;
+    private static final int LOOP_ITERATIONS = Z_STEPS * Z_STEPS;
+    private static final double INVERSE_SQRT_PI = 1.0 / SQRT_PI;
+    // Caches for memoization
+    private final Map<Double, double[][]> zExpCache = new ConcurrentHashMap<>();
+    private final Map<ComponentKey, double[]> componentCache = new ConcurrentHashMap<>();
     private double srn, NA, modifiedObservationVolume;
+    // Precomputed arrays
+    private double[] zValues;
+    private double[] psfZValues;
 
     /**
      * Constructor for the FCS3pSPIM class.
@@ -28,6 +40,7 @@ public class FCS3pSPIM extends FCSFit {
      */
     public FCS3pSPIM(ExpSettingsModel settings, FitModel fitModel) {
         super(settings, fitModel, 0);
+        precomputeZValues();
     }
 
     @Override
@@ -40,6 +53,18 @@ public class FCS3pSPIM extends FCSFit {
     }
 
     /**
+     * Precomputes zValues and psfZValues arrays.
+     */
+    private void precomputeZValues() {
+        zValues = new double[Z_STEPS];
+        psfZValues = new double[Z_STEPS];
+        for (int i = 0; i < Z_STEPS; i++) {
+            zValues[i] = calculateZ(i);
+            psfZValues[i] = calculatePSFz(zValues[i]);
+        }
+    }
+
+    /**
      * Calculates the modified observation volume.
      *
      * @param settings The experimental settings model.
@@ -49,13 +74,11 @@ public class FCS3pSPIM extends FCSFit {
         double fitObservationVolume = getFitObservationVolume(ax, ay, s);
 
         // Additional calculations for 3D volume
-        // size of PSF in axial direction convolution of two Gaussians depending on illumination profile and
-        // detection PSF
         double psfZ = 2 * settings.getEmLambda() * REFRACTIVE_INDEX / Math.pow(NA, 2.0);
         double szEff = Math.sqrt(1 / (Math.pow(sz, -2.0) + Math.pow(psfZ, -2.0)));
 
         double volume3d = SQRT_PI * szEff * fitObservationVolume;
-        return (volume3d / (SQRT_PI * sz));
+        return volume3d / (SQRT_PI * sz);
     }
 
     /**
@@ -69,7 +92,7 @@ public class FCS3pSPIM extends FCSFit {
     }
 
     /**
-     * Calculates the Point Spread Function (PSF) in the z direction.
+     * Calculates the PSF in the z direction.
      *
      * @param z The z coordinate.
      * @return The PSF in the z direction.
@@ -79,175 +102,236 @@ public class FCS3pSPIM extends FCSFit {
     }
 
     /**
-     * Calculates a component used in the model.
-     *
-     * @param x                 The x coordinate.
-     * @param a                 Parameter a.
-     * @param r                 Parameter r.
-     * @param sdt               Standard deviation of t.
-     * @param sp0t              Square root of p0t.
-     * @param tsp0t             Cube of sp0t.
-     * @param qp0t              Square of p0t.
-     * @param computeDerivative Whether to compute the derivative.
-     * @return An array containing the part and the derivative.
-     */
-    private double[] calculateComponent(double x, double a, double r, double sdt, double sp0t, double tsp0t,
-                                        double qp0t, boolean computeDerivative) {
-        double p1 = a + r;
-        double p2 = a - r;
-
-        double p10t = p1 / sp0t;
-        double p20t = p2 / sp0t;
-        double p30t = r / sp0t;
-        double p1exp = Math.exp(-Math.pow(p10t, 2));
-        double p2exp = Math.exp(-Math.pow(p20t, 2));
-        double p3exp = Math.exp(-Math.pow(p30t, 2));
-        double pexp = p1exp + p2exp - (2 * p3exp);
-        double perf = (p1 * Erf.erf(p10t)) + (p2 * Erf.erf(p20t)) - (2 * r * Erf.erf(p30t));
-        double part = ((pexp * sp0t) / SQRT_PI) + perf;
-
-        double derivative = 0;
-
-        if (computeDerivative) {
-            double d1exp = 4 * x * (p1exp * Math.pow(p1, 2));
-            double d2exp = 4 * x * (p2exp * Math.pow(p2, 2));
-            double d3exp = 4 * x * (p3exp * Math.pow(r, 2));
-            double d0exp = 2 * x * (pexp);
-            double dexp = d1exp + d2exp - (2 * d3exp);
-
-            derivative = (1 / sdt) *
-                    (INVERSE_SQRT_PI * ((d0exp / sp0t) - (dexp / tsp0t)) + (dexp / SQRT_PI) * (sp0t / qp0t));
-        }
-
-        return new double[]{part, derivative};
-    }
-
-    /**
-     * Calculates the z components used in the model.
+     * Calculates the z exponential term.
      *
      * @param z1 The first z coordinate.
      * @param z2 The second z coordinate.
      * @param D  The diffusion coefficient.
-     * @param x  The x coordinate.
-     * @param sz The size in the z direction.
-     * @return An array containing the z difference and the z exponent.
+     * @param x  The lag time.
+     * @return The z exponential term.
      */
-    private double[] calculateZComponents(double z1, double z2, double D, double x, double sz) {
-        double zdiff = (z1 - z2);
-        double z1exp = (2 / Math.pow(sz, 2)) * (Math.pow(z1, 2) + Math.pow(z2, 2));
-        double z2exp = (Math.pow(zdiff, 2)) / (4 * D * x);
-        double zexp = Math.exp(-(z1exp + z2exp));
-        return new double[]{zdiff, zexp};
+    private double calculateZExp(double z1, double z2, double D, double x) {
+        double zdiff = z1 - z2;
+        double z1exp = (2 / (sz * sz)) * (z1 * z1 + z2 * z2);
+        double z2exp = (zdiff * zdiff) / (4 * D * x);
+        return Math.exp(-(z1exp + z2exp));
+    }
+
+    /**
+     * Retrieves precomputed zExpValues for a given D and x, or computes them if not already cached.
+     *
+     * @param D Diffusion coefficient.
+     * @param x Lag time.
+     * @return Precomputed or newly computed z exponential values.
+     */
+    private double[][] getZExpValues(double D, double x) {
+        double key = D * x;
+        return zExpCache.computeIfAbsent(key, k -> {
+            double[][] zExpValues = new double[Z_STEPS][Z_STEPS];
+            for (int i = 0; i < Z_STEPS; i++) {
+                double z1 = zValues[i];
+                for (int j = 0; j < Z_STEPS; j++) {
+                    double z2 = zValues[j];
+                    zExpValues[i][j] = calculateZExp(z1, z2, D, x);
+                }
+            }
+            return zExpValues;
+        });
+    }
+
+    /**
+     * Calculates a component and its derivative.
+     *
+     * @param x    The lag time.
+     * @param a    Parameter a.
+     * @param r    Parameter r.
+     * @param sdt  Standard deviation of t.
+     * @param sp0t Square root of p0t.
+     * @param p0t  p0t value.
+     * @return An array containing the part and the derivative.
+     */
+    private double[] calculateComponentWithDerivative(double x, double a, double r, double sdt, double sp0t,
+                                                      double p0t) {
+        ComponentKey key = new ComponentKey(a, r, sp0t);
+
+        return componentCache.computeIfAbsent(key, k -> {
+            double p1 = a + r;
+            double p2 = a - r;
+
+            double p10t = p1 / sp0t;
+            double p20t = p2 / sp0t;
+            double p30t = r / sp0t;
+            double p1exp = Math.exp(-p10t * p10t);
+            double p2exp = Math.exp(-p20t * p20t);
+            double p3exp = Math.exp(-p30t * p30t);
+            double pexp = p1exp + p2exp - 2 * p3exp;
+            double perf = p1 * Erf.erf(p10t) + p2 * Erf.erf(p20t) - 2 * r * Erf.erf(p30t);
+            double part = (pexp * sp0t) / SQRT_PI + perf;
+
+            double tsp0t = sp0t * sp0t * sp0t;
+            double qp0t = p0t * p0t;
+
+            double d1exp = 4 * x * (p1exp * p1 * p1);
+            double d2exp = 4 * x * (p2exp * p2 * p2);
+            double d3exp = 4 * x * (p3exp * r * r);
+            double d0exp = 2 * x * pexp;
+            double dexp = d1exp + d2exp - 2 * d3exp;
+
+            double derivative = (1 / sdt) *
+                    (INVERSE_SQRT_PI * ((d0exp / sp0t) - (dexp / tsp0t)) + (dexp / SQRT_PI) * (sp0t / qp0t));
+
+            return new double[]{part, derivative};
+        });
+    }
+
+    @Override
+    public double value(double x, double[] params) {
+        PixelModel.FitParameters p = new PixelModel.FitParameters(fitModel.fillParamsArray(params));
+
+        double D = p.getD();
+        double sdt = Math.sqrt(D * x);
+
+        // Get precomputed zExpValues
+        double[][] zExpValues = getZExpValues(D, x);
+
+        double sum = IntStream.range(0, LOOP_ITERATIONS).parallel().mapToDouble(i -> {
+            int z1Index = i / Z_STEPS;
+            int z2Index = i % Z_STEPS;
+
+            double zExp = zExpValues[z1Index][z2Index];
+
+            double psfxz1 = psfZValues[z1Index];
+            double psfxz2 = psfZValues[z2Index];
+
+            double p0t = ((8 * D * x) + psfxz1 * psfxz1 + psfxz2 * psfxz2) / 2;
+            double sp0t = Math.sqrt(p0t);
+
+            // Compute xPart and yPart
+            double[] xComp = calculateComponentWithDerivative(x, ax, rx, sdt, sp0t, p0t);
+            double[] yComp = calculateComponentWithDerivative(x, ay, ry, sdt, sp0t, p0t);
+
+            double xPart = xComp[0];
+            double yPart = yComp[0];
+
+            return ((zExp * xPart * yPart) * ((sz * sz) / 400)) / sdt;
+        }).sum();
+
+        double acf1 = (sum * 1e6) / (4 * ax * ax * ay * ay / modifiedObservationVolume);
+        double triplet = 1 + p.getFTrip() / (1 - p.getFTrip()) * Math.exp(-x / p.getTTrip());
+
+        return (acf1 / p.getN()) * triplet + p.getG();
     }
 
     @Override
     public double[] gradient(double x, double[] params) {
         PixelModel.FitParameters p = new PixelModel.FitParameters(fitModel.fillParamsArray(params));
 
-        double sdt = Math.sqrt(p.getD() * x);
+        double D = p.getD();
+        double sdt = Math.sqrt(D * x);
 
-        // numerical integration for z and z' components in the ACF. This is required as no analytical solutions were
-        // found
+        // Get precomputed zExpValues
+        double[][] zExpValues = getZExpValues(D, x);
+
         double[] sums = IntStream.range(0, LOOP_ITERATIONS).parallel().mapToObj(i -> {
-            double z1 = calculateZ(i / 80);
-            double z2 = calculateZ(i % 80);
+            int z1Index = i / Z_STEPS;
+            int z2Index = i % Z_STEPS;
 
-            double psfxz1 = calculatePSFz(z1);
-            double psfxz2 = calculatePSFz(z2);
+            double zExp = zExpValues[z1Index][z2Index];
 
-            // help variables, which are dependent on time, to write the full function
-            double p0t = ((8 * p.getD() * x) + Math.pow(psfxz1, 2) + Math.pow(psfxz2, 2)) / 2;
+            double psfxz1 = psfZValues[z1Index];
+            double psfxz2 = psfZValues[z2Index];
+
+            double p0t = ((8 * D * x) + psfxz1 * psfxz1 + psfxz2 * psfxz2) / 2;
             double sp0t = Math.sqrt(p0t);
-            double tsp0t = Math.pow(sp0t, 3);
-            double qp0t = Math.pow(p0t, 2);
 
-            double[] xComponents = calculateComponent(x, ax, rx, sdt, sp0t, tsp0t, qp0t, true);
-            double[] yComponents = calculateComponent(x, ay, ry, sdt, sp0t, tsp0t, qp0t, true);
+            // Compute xPart and yPart with derivatives
+            double[] xComp = calculateComponentWithDerivative(x, ax, rx, sdt, sp0t, p0t);
+            double[] yComp = calculateComponentWithDerivative(x, ay, ry, sdt, sp0t, p0t);
 
-            double xPart = xComponents[0];
-            double xDerivative = xComponents[1];
+            double xPart = xComp[0];
+            double xDerivative = xComp[1];
+            double yPart = yComp[0];
+            double yDerivative = yComp[1];
 
-            double yPart = yComponents[0];
-            double yDerivative = yComponents[1];
+            double z1 = zValues[z1Index];
+            double z2 = zValues[z2Index];
+            double zDiff = z1 - z2;
 
-            double[] zComponents = calculateZComponents(z1, z2, p.getD(), x, sz);
-            double zDiff = zComponents[0];
-            double zExp = zComponents[1];
+            double dt1 = -(0.5 * x) / (sdt * sdt * sdt);
+            double dt2 = (0.25 * (zDiff * zDiff)) / (x * sdt * D * D);
 
-            double dt1 = -(0.5 * x) / (Math.pow(sdt, 3));
-            double dt2 = (0.25 * (Math.pow((zDiff), 2))) / (x * sdt * Math.pow(p.getD(), 2));
+            double sumTerm = ((zExp * xPart * yPart) * ((sz * sz) / 400)) / sdt;
+            double derivativeTerm =
+                    zExp * ((dt1 + dt2) * xPart * yPart + xDerivative * yPart + xPart * yDerivative) * (sz * sz / 400);
 
-            // TODO: double check that the two values are correct
-            double sum = ((zExp * xPart * yPart) * ((sz * sz) / 400)) / sdt;
-            double sumDerivative =
-                    zExp * ((dt1 + dt2) * xPart * yPart + xPart * yDerivative + yPart * xDerivative) * (sz * sz / 400);
-            return new double[]{sum, sumDerivative};
+            return new double[]{sumTerm, derivativeTerm};
         }).reduce(new double[]{0, 0}, (a, b) -> new double[]{a[0] + b[0], a[1] + b[1]});
 
         double sum = sums[0];
         double sumDerivative = sums[1];
 
-        double acf1 = (sum * 1000000) / (4 * Math.pow(ax * ay, 2) / (modifiedObservationVolume));
-        double Dpspim = (sumDerivative * 1000000) / (4 * Math.pow(ax * ay, 2) / (modifiedObservationVolume));
-        // TRIPLET
-        double triplet = 1 + p.getFTrip() / (1 - p.getFTrip()) * Math.exp(-x / p.getTTrip());
-        double dtripletFtrip =
-                Math.exp(-x / p.getTTrip()) * (1 / (1 - p.getFTrip()) + p.getFTrip() / Math.pow(1 - p.getFTrip(), 2));
-        double dtripletTtrip =
-                Math.exp(-x / p.getTTrip()) * (p.getFTrip() * x) / ((1 - p.getFTrip()) * Math.pow(p.getTTrip(), 2));
+        double acf1 = (sum * 1e6) / (4 * ax * ax * ay * ay / modifiedObservationVolume);
+        double Dpspim = (sumDerivative * 1e6) / (4 * ax * ax * ay * ay / modifiedObservationVolume);
 
-        double pacf = ((1 / p.getN()) * acf1) * triplet + p.getG();
+        // Triplet correction
+        double triplet = 1 + p.getFTrip() / (1 - p.getFTrip()) * Math.exp(-x / p.getTTrip());
+        double dTripletFtrip = Math.exp(-x / p.getTTrip()) *
+                (1 / (1 - p.getFTrip()) + p.getFTrip() / ((1 - p.getFTrip()) * (1 - p.getFTrip())));
+        double dTripletTtrip =
+                Math.exp(-x / p.getTTrip()) * (p.getFTrip() * x) / ((1 - p.getFTrip()) * p.getTTrip() * p.getTTrip());
+
+        double pacf = (acf1 / p.getN()) * triplet + p.getG();
 
         double[] results = new double[]{
-                (-1 / Math.pow(p.getN(), 2)) * acf1 * triplet,
-                (1 / p.getN()) * (Dpspim),
+                (-acf1 * triplet) / (p.getN() * p.getN()), (Dpspim / p.getN()), 0,
+                // Vx derivative (not applicable)
                 0,
-                0,
+                // Vy derivative (not applicable)
                 1,
+                // G derivative
                 0,
+                // F2 derivative (not applicable)
                 0,
+                // D2 derivative (not applicable)
                 0,
+                // F3 derivative (not applicable)
                 0,
-                dtripletFtrip * pacf,
-                dtripletTtrip * pacf
+                // D3 derivative (not applicable)
+                dTripletFtrip * pacf, dTripletTtrip * pacf
         };
 
         return fitModel.filterFitArray(results);
     }
 
+    /**
+     * Key class for caching components.
+     */
+    private static class ComponentKey {
+        private final double a;
+        private final double r;
+        private final double sp0t;
 
-    @Override
-    public double value(double x, double[] params) {
-        PixelModel.FitParameters p = new PixelModel.FitParameters(fitModel.fillParamsArray(params));
+        public ComponentKey(double a, double r, double sp0t) {
+            this.a = a;
+            this.r = r;
+            this.sp0t = sp0t;
+        }
 
-        double sdt = Math.sqrt(p.getD() * x);
+        @Override
+        public int hashCode() {
+            int result = Double.hashCode(a);
+            result = 31 * result + Double.hashCode(r);
+            result = 31 * result + Double.hashCode(sp0t);
+            return result;
+        }
 
-        double sum = IntStream.range(0, LOOP_ITERATIONS).parallel().mapToDouble(i -> {
-            double z1 = calculateZ(i / 80);
-            double z2 = calculateZ(i % 80);
-
-            double psfxz1 = calculatePSFz(z1);
-            double psfxz2 = calculatePSFz(z2);
-
-            // help variables, which are dependent on time, to write the full function
-            double p0t = ((8 * p.getD() * x) + Math.pow(psfxz1, 2) + Math.pow(psfxz2, 2)) / 2;
-            double sp0t = Math.sqrt(p0t);
-
-            double[] xComponents = calculateComponent(x, ax, rx, sdt, sp0t, 0, 0, false);
-            double[] yComponents = calculateComponent(x, ay, ry, sdt, sp0t, 0, 0, false);
-
-            double xPart = xComponents[0];
-            double yPart = yComponents[0];
-
-            double[] zComponents = calculateZComponents(z1, z2, p.getD(), x, sz);
-            double zExp = zComponents[1];
-
-            return ((zExp * xPart * yPart) * ((sz * sz) / 400)) / sdt;
-        }).sum();
-
-        double acf1 = (sum * 1000000) / (4 * Math.pow(ax * ay, 2) / (modifiedObservationVolume));
-        double triplet = 1 + p.getFTrip() / (1 - p.getFTrip()) * Math.exp(-x / p.getTTrip());
-
-        return ((1 / p.getN()) * acf1) * triplet + p.getG();
+        @Override
+        public boolean equals(Object obj) {
+            if (!(obj instanceof ComponentKey))
+                return false;
+            ComponentKey other = (ComponentKey) obj;
+            return Double.compare(a, other.a) == 0 && Double.compare(r, other.r) == 0 &&
+                    Double.compare(sp0t, other.sp0t) == 0;
+        }
     }
 }

@@ -222,7 +222,6 @@ public abstract class FCSFit implements ParametricUnivariateFunction {
                 dTripletTtrip * pacf
         };
 
-        // TODO: check if the filtering actually makes sense
         return fitModel.filterFitArray(results);
     }
 
