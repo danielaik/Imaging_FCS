@@ -6,6 +6,9 @@ import fiji.plugin.imaging_fcs.new_imfcs.model.PixelModel;
 import org.apache.commons.math3.analysis.ParametricUnivariateFunction;
 import org.apache.commons.math3.special.Erf;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import static fiji.plugin.imaging_fcs.new_imfcs.constants.Constants.SQRT_PI;
 
 /**
@@ -14,6 +17,7 @@ import static fiji.plugin.imaging_fcs.new_imfcs.constants.Constants.SQRT_PI;
  */
 public abstract class FCSFit implements ParametricUnivariateFunction {
     protected final FitModel fitModel;
+    private final Map<ComponentKey, double[]> componentCache = new HashMap<>();
     protected double ax, ay, s, sz, rx, ry, fitObservationVolume, q2, q3;
 
     /**
@@ -98,19 +102,23 @@ public abstract class FCSFit implements ParametricUnivariateFunction {
      * @return An array of calculated component values.
      */
     private double[] calculateComponent(double x, double D, double vx, double vy) {
-        double sqrtTerm = Math.sqrt(4 * D * x + Math.pow(s, 2));
-        PerfTerms perfTermX = calculatePerfTerms(x, vx, ax, rx, sqrtTerm);
-        PerfTerms perfTermY = calculatePerfTerms(x, vy, ay, ry, sqrtTerm);
+        ComponentKey key = new ComponentKey(D, vx, vy, x);
 
-        double plat = calculatePlat(perfTermX, perfTermY, sqrtTerm);
-        double dDplat = calculateDPlat(perfTermX, perfTermY, sqrtTerm, x);
+        return componentCache.computeIfAbsent(key, k -> {
+            double sqrtTerm = Math.sqrt(4 * D * x + Math.pow(s, 2));
+            PerfTerms perfTermX = calculatePerfTerms(x, vx, ax, rx, sqrtTerm);
+            PerfTerms perfTermY = calculatePerfTerms(x, vy, ay, ry, sqrtTerm);
 
-        double pspim = 1 / Math.sqrt(1 + (4 * D * x) / Math.pow(sz, 2));
-        double dDpspim = -4 * x / (2 * Math.pow(sz, 2) * Math.pow(Math.sqrt(1 + (4 * D * x) / Math.pow(sz, 2)), 3));
+            double plat = calculatePlat(perfTermX, perfTermY, sqrtTerm);
+            double dDplat = calculateDPlat(perfTermX, perfTermY, sqrtTerm, x);
 
-        double acf = plat * pspim;
+            double pspim = 1 / Math.sqrt(1 + (4 * D * x) / Math.pow(sz, 2));
+            double dDpspim = -4 * x / (2 * Math.pow(sz, 2) * Math.pow(Math.sqrt(1 + (4 * D * x) / Math.pow(sz, 2)), 3));
 
-        return new double[]{plat, dDplat, perfTermX.dPerf, perfTermY.dPerf, pspim, dDpspim, acf};
+            double acf = plat * pspim;
+
+            return new double[]{plat, dDplat, perfTermX.dPerf, perfTermY.dPerf, pspim, dDpspim, acf};
+        });
     }
 
     /**
@@ -329,6 +337,41 @@ public abstract class FCSFit implements ParametricUnivariateFunction {
             this.perf = perf;
             this.dExp = dExp;
             this.dPerf = dPerf;
+        }
+    }
+
+    /**
+     * The ComponentKey class is used for caching components.
+     */
+    private static class ComponentKey {
+        private final double D;
+        private final double vx;
+        private final double vy;
+        private final double x;
+
+        public ComponentKey(double D, double vx, double vy, double x) {
+            this.D = D;
+            this.vx = vx;
+            this.vy = vy;
+            this.x = x;
+        }
+
+        @Override
+        public int hashCode() {
+            int result = Double.hashCode(D);
+            result = 31 * result + Double.hashCode(vx);
+            result = 31 * result + Double.hashCode(vy);
+            result = 31 * result + Double.hashCode(x);
+            return result;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (!(obj instanceof ComponentKey))
+                return false;
+            ComponentKey other = (ComponentKey) obj;
+            return Double.compare(D, other.D) == 0 && Double.compare(vx, other.vx) == 0 &&
+                    Double.compare(vy, other.vy) == 0 && Double.compare(x, other.x) == 0;
         }
     }
 }
