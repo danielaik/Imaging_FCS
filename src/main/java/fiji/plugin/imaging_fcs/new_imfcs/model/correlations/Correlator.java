@@ -432,7 +432,7 @@ public class Correlator {
                                double[] lowerQuartile, double[] upperQuartile) {
         int currentIncrement = BLOCK_LAG;
         int numBinnedDataPoints = numFrames;
-        double[] numProducts = new double[blockCount];
+        int[] numProducts = new int[blockCount];
 
         for (int i = 0; i < settings.getChannelNumber(); i++) {
             // check whether the kcf width has changed
@@ -519,11 +519,11 @@ public class Correlator {
      */
     private void performBlockingOperations(int blockCount, int currentIncrement, double[][] varianceBlocks,
                                            double directMonitor, double delayedMonitor, double[] products,
-                                           double[] numProducts) {
+                                           int[] numProducts) {
         double sumProd, sumProdSquared;
 
         for (int i = 1; i < blockCount; i++) {
-            numProducts[i] = (int) (numProducts[i - 1] / 2);
+            numProducts[i] = numProducts[i - 1] / 2;
             sumProd = sumProdSquared = 0.0;
             for (int j = 0; j < numProducts[i]; j++) {
                 products[j] = (products[2 * j] + products[2 * j + 1]) / 2;
@@ -553,7 +553,7 @@ public class Correlator {
      * @param currentIncrement    The current increment value.
      */
     private void processCorrelationData(int i, int blockCount, int numFrames, int numBinnedDataPoints,
-                                        double[][] intensityBlock, double[][] varianceBlocks, double[] numProducts,
+                                        double[][] intensityBlock, double[][] varianceBlocks, int[] numProducts,
                                         int currentIncrement) {
         int delay = lags[i] / currentIncrement;
         numProducts[0] = numBinnedDataPoints - delay;
@@ -870,7 +870,7 @@ public class Correlator {
         // the final results does not contain information about the zero lagtime kcf
         regularizedCovarianceMatrix = new double[settings.getChannelNumber() - 1][settings.getChannelNumber() - 1];
 
-        double[] numProducts = new double[settings.getChannelNumber()];
+        int[] numProducts = new int[settings.getChannelNumber()];
         double[][] products = new double[settings.getChannelNumber()][numFrames];
 
         double[] correlationMean = new double[settings.getChannelNumber()];
