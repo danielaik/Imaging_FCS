@@ -103,7 +103,8 @@ public class Correlator {
         ExcelReader.readSheetToPixelModels(workbook, name + " - Fit Functions", pixelModels, PixelModel::setFittedCF);
         ExcelReader.readSheetToPixelModels(workbook, name + " - Residuals", pixelModels, PixelModel::setResiduals);
         ExcelReader.readSheetToPixelModels(workbook, name + " - MSD", pixelModels, PixelModel::setMSD);
-        ExcelReader.readFitParameters(workbook, name + " - Fit Parameters", pixelModels);
+        ExcelReader.readSheetToPixelModels(workbook, name + " - Fit Parameters", pixelModels,
+                (pixelModel, values) -> pixelModel.setFitParams(new PixelModel.FitParameters(values)));
     }
 
     /**

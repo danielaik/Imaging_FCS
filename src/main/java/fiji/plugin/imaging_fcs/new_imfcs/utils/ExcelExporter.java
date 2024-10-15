@@ -86,7 +86,7 @@ public final class ExcelExporter {
         int numRow = pixelModels.length;
         int numCol = pixelModels[0].length;
 
-        int columnIndex = 0;
+        int rowIndex = 0;
 
         // Here x and y are inverted to follow the behavior of previous ImagingFCS version
         for (int y = 0; y < numCol; y++) {
@@ -97,21 +97,20 @@ public final class ExcelExporter {
                     if (array == null) {
                         continue;
                     }
-                    Row row = getOrCreateRow(sheet, 0);
-                    row.createCell(columnIndex).setCellValue(String.format("(%d, %d)", x, y));
+                    Row row = sheet.createRow(rowIndex);
+                    row.createCell(0).setCellValue(String.format("(%d, %d)", x, y));
 
                     for (int k = 0; k < array.length; k++) {
-                        row = getOrCreateRow(sheet, k + 1);
-                        row.createCell(columnIndex).setCellValue(array[k]);
+                        row.createCell(k + 1).setCellValue(array[k]);
                     }
 
-                    columnIndex++;
+                    rowIndex++;
                 }
             }
         }
 
-        if (columnIndex == 0) {
-            // delete sheet if no data was added
+        // delete sheet if no data was added
+        if (rowIndex == 0) {
             workbook.removeSheetAt(workbook.getSheetIndex(sheet));
         }
     }
@@ -141,7 +140,7 @@ public final class ExcelExporter {
 
     /**
      * Creates a sheet in the given workbook to display fit parameters for each pixel model.
-     * The sheet includes columns for each pixel's position and rows for each fit parameter.
+     * The sheet includes rows for each pixel's position and columns for each fit parameter.
      * Pixel positions are represented as "(x, y)" and fit parameters are listed by name.
      *
      * @param workbook    the workbook to create the sheet in
@@ -152,19 +151,19 @@ public final class ExcelExporter {
         Sheet sheet = workbook.createSheet(name + " - Fit Parameters");
         Row row = sheet.createRow(0);
 
-        row.createCell(0).setCellValue("Parameter");
+        row.createCell(0).setCellValue("Coordinate");
 
         int numParams = PixelModel.paramsName.length;
 
+        // Write parameter names as column headers (starting from column 1)
         for (int i = 0; i < numParams; i++) {
-            row = sheet.createRow(i + 1);
-            row.createCell(0).setCellValue(PixelModel.paramsName[i]);
+            row.createCell(i + 1).setCellValue(PixelModel.paramsName[i]);
         }
 
         int numRow = pixelModels.length;
         int numCol = pixelModels[0].length;
 
-        int columnIndex = 1;
+        int rowIndex = 1;
 
         // Here x and y are inverted to follow the behavior of previous ImagingFCS version
         for (int y = 0; y < numCol; y++) {
@@ -174,17 +173,21 @@ public final class ExcelExporter {
                     continue;
                 }
 
-                row = sheet.getRow(0);
-                row.createCell(columnIndex).setCellValue(String.format("(%d, %d)", x, y));
+                row = sheet.createRow(rowIndex);
+                row.createCell(0).setCellValue(String.format("(%d, %d)", x, y));
 
                 Pair<String, Double>[] fitParams = pixelModel.getParams();
 
                 for (int i = 0; i < numParams; i++) {
-                    row = sheet.getRow(i + 1);
-                    row.createCell(columnIndex).setCellValue(fitParams[i].getRight());
+                    row.createCell(i + 1).setCellValue(fitParams[i].getRight());
                 }
-                columnIndex++;
+                rowIndex++;
             }
+        }
+
+        // delete sheet if no data was added
+        if (rowIndex == 1) {
+            workbook.removeSheetAt(workbook.getSheetIndex(sheet));
         }
     }
 
@@ -452,11 +455,11 @@ public final class ExcelExporter {
      * The sheet includes multiple sections such as "Number", "Brightness", "Num (corrected)",
      * and "Epsilon (corrected)", with each section containing the values from the corresponding 2D array.
      *
-     * @param workbook   the workbook to add the sheet to
-     * @param NBB        a 2D array representing brightness values
-     * @param NBN        a 2D array representing number values
-     * @param NBNum      a 2D array representing corrected number values
-     * @param NBEpsilon  a 2D array representing corrected epsilon values
+     * @param workbook  the workbook to add the sheet to
+     * @param NBB       a 2D array representing brightness values
+     * @param NBN       a 2D array representing number values
+     * @param NBNum     a 2D array representing corrected number values
+     * @param NBEpsilon a 2D array representing corrected epsilon values
      */
     public static void saveNumberAndBrightnessSheet(Workbook workbook, double[][] NBB, double[][] NBN, double[][] NBNum,
                                                     double[][] NBEpsilon) {
