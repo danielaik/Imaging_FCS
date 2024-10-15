@@ -135,6 +135,22 @@ public final class ExcelReader {
     }
 
     /**
+     * Extracts numeric values from a row, excluding the first cell.
+     *
+     * @param row the row to extract values from
+     * @return a double array with numeric values from the row
+     */
+    private static double[] getValuesFromRow(Row row) {
+        int numValues = row.getPhysicalNumberOfCells() - 1; // Exclude the coordinate cell
+        double[] values = new double[numValues];
+
+        for (int i = 0; i < numValues; i++) {
+            values[i] = row.getCell(i + 1).getNumericCellValue();
+        }
+        return values;
+    }
+
+    /**
      * Retrieves or initializes a PixelModel at the specified position in the array.
      *
      * @param pixelModels the 2D array of PixelModel objects
@@ -167,16 +183,38 @@ public final class ExcelReader {
             return;
         }
 
-        Row headerRow = sheet.getRow(0);
-        if (headerRow == null) {
-            IJ.log(String.format("Sheet '%s' doesn't have a header row.", sheetName));
+        int initialRow = 0;
+
+        // Read the header from the first column instead of the first row
+        Row firstColumnRow = sheet.getRow(initialRow);
+        if (firstColumnRow == null) {
+            IJ.log(String.format("Sheet '%s' doesn't have any rows.", sheetName));
             return;
         }
 
-        for (int colIndex = 0; colIndex < headerRow.getPhysicalNumberOfCells(); colIndex++) {
-            Point position = parsePosition(headerRow.getCell(colIndex).getStringCellValue());
+        try {
+            parsePosition(firstColumnRow.getCell(0).getStringCellValue());
+        } catch (IllegalArgumentException e) {
+            // Here it means that the first line is not a position, so we need to skip the first line (headers)
+            initialRow = 1;
+        }
+
+        for (int rowIndex = initialRow; rowIndex < sheet.getPhysicalNumberOfRows(); rowIndex++) {
+            Row row = sheet.getRow(rowIndex);
+            if (row == null) {
+                continue;
+            }
+
+            // Read the pixel coordinates from the first column
+            Cell cell = row.getCell(0);
+            if (cell == null) {
+                continue;
+            }
+
+            Point position = parsePosition(cell.getStringCellValue());
             PixelModel pixelModel = getOrInitPixelModel(pixelModels, position);
-            setter.accept(pixelModel, getValues(sheet, colIndex));
+
+            setter.accept(pixelModel, getValuesFromRow(row));
         }
     }
 
@@ -201,36 +239,6 @@ public final class ExcelReader {
 
         lagTimesSetter.accept(getValues(sheet, 1));
         sampleTimesSetter.accept(DoubleStream.of(getValues(sheet, 2)).mapToInt(d -> (int) d).toArray());
-    }
-
-    /**
-     * Reads fit parameters for PixelModel objects from a specified sheet.
-     * The first column contains the names of fit parameters.
-     *
-     * @param workbook    the workbook to read from
-     * @param sheetName   the name of the sheet containing fit parameters
-     * @param pixelModels a 2D array of PixelModel objects to update
-     */
-    public static void readFitParameters(Workbook workbook, String sheetName, PixelModel[][] pixelModels) {
-        Sheet sheet;
-        try {
-            sheet = getSheet(workbook, sheetName);
-        } catch (IllegalArgumentException e) {
-            return;
-        }
-
-        Row headerRow = sheet.getRow(0);
-        if (headerRow == null) {
-            IJ.log(String.format("Sheet '%s' doesn't have a header row", sheetName));
-            return;
-        }
-
-        // The first column contains the name of the fit parameters, so we start on the second column, at index 1.
-        for (int colIndex = 1; colIndex < headerRow.getPhysicalNumberOfCells(); colIndex++) {
-            Point position = parsePosition(headerRow.getCell(colIndex).getStringCellValue());
-            PixelModel pixelModel = getOrInitPixelModel(pixelModels, position);
-            pixelModel.setFitParams(new PixelModel.FitParameters(getValues(sheet, colIndex)));
-        }
     }
 
     /**
