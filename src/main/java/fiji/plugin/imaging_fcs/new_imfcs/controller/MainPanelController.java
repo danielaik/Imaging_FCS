@@ -522,12 +522,12 @@ public final class MainPanelController {
             settingsMap.put("Polynomial Order", bleachCorrectionModel.getPolynomialOrder());
             settingsMap.putAll(imageController.toMap());
 
-            ExcelExporter.saveExcelFile(filePath, settingsMap, (workbook) -> {
+            new BackgroundTaskWorker(() -> ExcelExporter.saveExcelFile(filePath, settingsMap, (workbook) -> {
                 ExcelExporter.saveExcelPixelModels(workbook, correlator.getPixelModels(), settings, correlator);
                 diffusionLawController.saveExcelSheets(workbook);
                 nbController.saveExcelSheet(workbook);
                 ExcelExporter.savedCCFSheets(workbook, correlator.getDccf());
-            });
+            })).execute();
         };
     }
 

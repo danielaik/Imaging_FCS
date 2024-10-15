@@ -9,7 +9,7 @@ import ij.IJ;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
-import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.apache.poi.xssf.streaming.SXSSFWorkbook;
 
 import javax.swing.*;
 import java.io.File;
@@ -522,7 +522,7 @@ public final class ExcelExporter {
      * @param addSheets   a consumer function that adds additional sheets to the workbook
      */
     public static void saveExcelFile(String filePath, Map<String, Object> settingsMap, Consumer<Workbook> addSheets) {
-        try (Workbook workbook = new XSSFWorkbook()) {
+        try (Workbook workbook = new SXSSFWorkbook(100)) {
             // Add different sheets
             ExcelExporter.createSheetFromMap(workbook, "Experimental settings", settingsMap);
             addSheets.accept(workbook);

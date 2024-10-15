@@ -1,19 +1,18 @@
 package fiji.plugin.imaging_fcs.new_imfcs.utils;
 
+import com.github.pjfanning.xlsx.StreamingReader;
+import com.github.pjfanning.xlsx.exceptions.MissingSheetException;
 import fiji.plugin.imaging_fcs.new_imfcs.model.PixelModel;
 import ij.IJ;
 import org.apache.poi.ss.usermodel.*;
-import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 
 import javax.swing.*;
 import java.awt.*;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.stream.DoubleStream;
@@ -47,23 +46,6 @@ public final class ExcelReader {
     }
 
     /**
-     * Retrieves a sheet from the workbook by name.
-     *
-     * @param workbook  the workbook containing the sheet
-     * @param sheetName the name of the sheet to retrieve
-     * @return the sheet with the specified name
-     * @throws IllegalArgumentException if the sheet does not exist
-     */
-    private static Sheet getSheet(Workbook workbook, String sheetName) {
-        Sheet sheet = workbook.getSheet(sheetName);
-        if (sheet == null) {
-            throw new IllegalArgumentException(String.format("Sheet '%s' does not exist.", sheetName));
-        }
-
-        return sheet;
-    }
-
-    /**
      * Reads data from a sheet and returns it as a map.
      * Assumes the first column contains keys and the second column contains values.
      *
@@ -74,7 +56,7 @@ public final class ExcelReader {
     public static Map<String, Object> readSheetToMap(Workbook workbook, String sheetName) {
         Map<String, Object> data = new HashMap<>();
 
-        Sheet sheet = getSheet(workbook, sheetName);
+        Sheet sheet = workbook.getSheet(sheetName);
 
         for (Row row : sheet) {
             // Skip the header row
@@ -119,16 +101,25 @@ public final class ExcelReader {
      */
     private static double[] getValues(Sheet sheet, int columnIndex) {
         List<Double> valuesList = new ArrayList<>();
-        int rowIndex = 1;
-        Row row = sheet.getRow(rowIndex);
-        while (row != null) {
+
+        // Get the row iterator and skip the first row (index 0)
+        Iterator<Row> rowIterator = sheet.iterator();
+        if (rowIterator.hasNext()) {
+            // Skip the header row
+            rowIterator.next();
+        }
+
+        // Iterate over the remaining rows
+        while (rowIterator.hasNext()) {
+            Row row = rowIterator.next();
             Cell cell = row.getCell(columnIndex);
+
+            // Stop if the cell is null or not numeric
             if (cell == null || cell.getCellType() != CellType.NUMERIC) {
                 break;
             }
 
             valuesList.add(cell.getNumericCellValue());
-            row = sheet.getRow(++rowIndex);
         }
 
         return valuesList.stream().mapToDouble(Double::doubleValue).toArray();
@@ -178,43 +169,30 @@ public final class ExcelReader {
                                               BiConsumer<PixelModel, double[]> setter) {
         Sheet sheet;
         try {
-            sheet = getSheet(workbook, sheetName);
-        } catch (IllegalArgumentException e) {
+            sheet = workbook.getSheet(sheetName);
+        } catch (MissingSheetException e) {
             return;
         }
 
-        int initialRow = 0;
-
-        // Read the header from the first column instead of the first row
-        Row firstColumnRow = sheet.getRow(initialRow);
-        if (firstColumnRow == null) {
-            IJ.log(String.format("Sheet '%s' doesn't have any rows.", sheetName));
+        Iterator<Row> rowIterator = sheet.iterator();
+        if (!rowIterator.hasNext()) {
+            IJ.log(String.format("Sheet '%s' is empty.", sheetName));
             return;
         }
 
+        Row row = rowIterator.next();
         try {
-            parsePosition(firstColumnRow.getCell(0).getStringCellValue());
+            parsePosition(row.getCell(0).getStringCellValue());
         } catch (IllegalArgumentException e) {
-            // Here it means that the first line is not a position, so we need to skip the first line (headers)
-            initialRow = 1;
+            row = rowIterator.next();
         }
 
-        for (int rowIndex = initialRow; rowIndex < sheet.getPhysicalNumberOfRows(); rowIndex++) {
-            Row row = sheet.getRow(rowIndex);
-            if (row == null) {
-                continue;
-            }
-
-            // Read the pixel coordinates from the first column
-            Cell cell = row.getCell(0);
-            if (cell == null) {
-                continue;
-            }
-
-            Point position = parsePosition(cell.getStringCellValue());
+        while (row != null) {
+            Point position = parsePosition(row.getCell(0).getStringCellValue());
             PixelModel pixelModel = getOrInitPixelModel(pixelModels, position);
-
             setter.accept(pixelModel, getValuesFromRow(row));
+
+            row = rowIterator.hasNext() ? rowIterator.next() : null;
         }
     }
 
@@ -232,8 +210,8 @@ public final class ExcelReader {
                                                   Consumer<int[]> sampleTimesSetter) {
         Sheet sheet;
         try {
-            sheet = getSheet(workbook, sheetName);
-        } catch (IllegalArgumentException e) {
+            sheet = workbook.getSheet(sheetName);
+        } catch (MissingSheetException e) {
             return;
         }
 
@@ -258,11 +236,10 @@ public final class ExcelReader {
             String filePath = fileToOpen.getAbsolutePath();
 
             try (FileInputStream fileIn = new FileInputStream(filePath)) {
-                return new XSSFWorkbook(fileIn);
+                return StreamingReader.builder().rowCacheSize(100).bufferSize(4096).open(fileIn);
             } catch (IOException e) {
                 throw new RuntimeException("Error reading Excel file");
             }
-
         }
 
         return null;
