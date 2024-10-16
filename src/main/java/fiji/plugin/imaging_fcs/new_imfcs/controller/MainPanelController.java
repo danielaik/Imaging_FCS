@@ -968,7 +968,7 @@ public final class MainPanelController {
             if (selected) {
                 settings.setMSD(true);
                 button.setText("MSD On");
-                new MSDView(settings.isMSD3d(), settings::setMSD3d);
+                SwingUtilities.invokeLater(() -> new MSDView(settings.isMSD3d(), settings::setMSD3d));
             } else {
                 settings.setMSD(false);
                 button.setText("MSD Off");
