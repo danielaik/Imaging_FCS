@@ -200,30 +200,26 @@ public final class ImageController {
      */
     private Point[] correlatePixel(int x, int y, boolean singlePixelCorrelation) {
         SelectedPixel selectedPixel = new SelectedPixel(imageModel, correlator, settings);
-        try {
-            Point[] cursorPositions = selectedPixel.performCorrelationFunctionEvaluation(x, y, singlePixelCorrelation);
-            Point pixel = cursorPositions[0];
 
-            PixelModel pixelModel = correlator.getPixelModel(pixel.x, pixel.y);
+        Point[] cursorPositions = selectedPixel.performCorrelationFunctionEvaluation(x, y, singlePixelCorrelation);
+        Point pixel = cursorPositions[0];
 
-            if (settings.isFCCSDisp()) {
-                fitFCCS(pixelModel.getAcf1PixelModel(), pixelModel.getAcf2PixelModel(), x, y);
-            }
+        PixelModel pixelModel = correlator.getPixelModel(pixel.x, pixel.y);
 
-            fitController.fit(pixelModel, settings.getFitModel(), correlator.getLagTimes(),
-                    correlator.getRegularizedCovarianceMatrix(), x, y);
-
-            if (settings.isMSD()) {
-                pixelModel.setMSD(correlationToMSD(pixelModel.getCorrelationFunction(), settings.getParamAx(),
-                        settings.getParamAy(), settings.getParamW(), settings.getSigmaZ(), settings.isMSD3d()));
-            }
-
-            return cursorPositions;
-        } catch (Exception e) {
-            IJ.showMessage("Error", e.getMessage());
+        if (settings.isFCCSDisp()) {
+            fitFCCS(pixelModel.getAcf1PixelModel(), pixelModel.getAcf2PixelModel(), x, y);
         }
 
-        return null;
+        fitController.fit(pixelModel, settings.getFitModel(), correlator.getLagTimes(),
+                correlator.getRegularizedCovarianceMatrix(), x, y);
+
+        if (settings.isMSD()) {
+            pixelModel.setMSD(
+                    correlationToMSD(pixelModel.getCorrelationFunction(), settings.getParamAx(), settings.getParamAy(),
+                            settings.getParamW(), settings.getSigmaZ(), settings.isMSD3d()));
+        }
+
+        return cursorPositions;
     }
 
     /**
@@ -259,16 +255,13 @@ public final class ImageController {
      * @param y The y-coordinate of the pixel.
      */
     private void correlateSinglePixelAndPlot(int x, int y) {
-        Point[] cursorPositions = correlatePixel(x, y, true);
-        if (cursorPositions == null) {
-            return;
-        }
-
         try {
+            Point[] cursorPositions = correlatePixel(x, y, true);
             plotResuts(cursorPositions);
             plotFittedParams(cursorPositions);
-        } catch (RuntimeException e) {
-            IJ.showMessage("Plot error", e.getMessage());
+        } catch (Exception e) {
+            IJ.showMessage("Error",
+                    String.format("Fail to correlate points for x=%d, y=%d with error: %s", x, y, e.getMessage()));
         }
     }
 
@@ -311,16 +304,16 @@ public final class ImageController {
 
         for (int x = xRange.getStart(); x <= xRange.getEnd(); x += xRange.getStep()) {
             for (int y = yRange.getStart(); y <= yRange.getEnd(); y += yRange.getStep()) {
-                Point[] points = correlatePixel(x, y, false);
-                if (points == null) {
-                    IJ.log(String.format("Fail to correlate points for x=%d, y=%d", x, y));
-                    continue;
+                try {
+                    Point[] points = correlatePixel(x, y, false);
+                    PixelModel pixelModel = correlator.getPixelModel(points[0].x, points[0].y);
+                    correlatedPixels.add(pixelModel);
+
+                    plotFittedParams(points);
+                } catch (Exception e) {
+                    IJ.log(String.format("Fail to correlate points for x=%d, y=%d with error: %s", x, y,
+                            e.getMessage()));
                 }
-
-                PixelModel pixelModel = correlator.getPixelModel(points[0].x, points[0].y);
-                correlatedPixels.add(pixelModel);
-
-                plotFittedParams(points);
             }
             IJ.showProgress(x - xRange.getStart(), xRange.length());
         }
