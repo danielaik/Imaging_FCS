@@ -173,7 +173,7 @@ public class GpufitImFCS {
     private static void writeLibraryFile(File Directory, String LibName, Boolean DeleteOnExit) {
         try {
             //NOTE: include package fiji.plugin.imaging_fcs.name, which becomes the folder name in .jar file.'
-            InputStream in = ClassLoader.class.getResourceAsStream("/gpufitImFCS/" + LibName);
+            InputStream in = ClassLoader.class.getResourceAsStream("/libs/" + LibName);
             if (in == null) {
                 throw new FileNotFoundException("Library " + LibName + " is not available");
             }
@@ -883,7 +883,7 @@ public class GpufitImFCS {
         // ACF_1D function is a generalized function which can be used for fitting auto and cross-correlation functions.
         // LINEAR_1D function is for polynomial bleach correction fitting.
         // ACF_NUMERICAL_3D is a generalized model used to calculate auto and cross-correlation functions paraneters numerically for SPIM-FCS.
-        GAUSS_2D(1, 5), ACF_1D(2, 20), LINEAR_1D(3, 11), ACF_NUMERICAL_3D(4, 20);
+        GAUSS_2D(1, 5), ACF_1D(2, 20), LINEAR_1D(3, 11), ACF_NUMERICAL_3D(4, 22);
 
         public final int id, numberParameters;
 

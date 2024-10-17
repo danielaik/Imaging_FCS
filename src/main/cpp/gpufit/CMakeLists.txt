@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.8 FATAL_ERROR)
 project(agpufit LANGUAGES CXX CUDA)
 
-set(CMAKE_CUDA_STANDARD 14)
+set(CMAKE_CUDA_STANDARD 11)
 set(CMAKE_CUDA_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -54,5 +54,9 @@ add_library(agpufit SHARED
     lm_fit.cpp
     lm_fit.h
     )
+
+if (WIN32)
+    target_compile_definitions(agpufit PRIVATE USE_CUBLAS)
+endif()
 
 target_link_libraries(agpufit ${CUDA_LIBRARIES})

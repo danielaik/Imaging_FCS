@@ -22,16 +22,19 @@ __device__ void calculate_acfnumerical3d(
     double ay = (double)parameters[12];
     double s = (double)parameters[13];
     double sz = (double)parameters[14];
-    double psfz = 2 * (515.0 / pow(10.0, 9.0)) * ridx / pow(1.0, 2.0);
+
+    double emLambda = (double) parameters[20];
+    double NA = (double) parameters[21];
+
+    double psfz = 2 * (emLambda / pow(10.0, 9.0)) * ridx / pow(NA, 2.0);
     double szeff = sqrt(1.0 / (pow(sz, -2.0) + pow(psfz, -2.0)));
 
     double rx = (double)parameters[15];
     double ry = (double)parameters[16];
 
-    double srn = sqrt(pow(ridx, 2.0) - pow(1.0, 2.0));
+    double srn = sqrt(pow(ridx, 2.0) - pow(NA, 2.0));
     double z1;
     double z2;
-    double NA = 1.0;
 
     double p1xt = ax + rx;
     double p2xt = ax - rx;

@@ -11,6 +11,7 @@ import fiji.plugin.imaging_fcs.directCameraReadout.DirectCapture;
 import fiji.plugin.imaging_fcs.gpufitImFCS.GpufitImFCS;
 import fiji.plugin.imaging_fcs.gpufitImFCS.GpufitImFCS.*;
 import ij.IJ;
+import ij.ImageJ;
 import ij.ImagePlus;
 import ij.ImageStack;
 import ij.WindowManager;
@@ -1083,6 +1084,11 @@ public class Imaging_FCS implements PlugIn {
         if (false) {
             IJ.log(msg);
         }
+    }
+
+     public static void main(final String[] args) {
+        ImageJ.main(args);
+        new Imaging_FCS().run("");
     }
 
     // main program; starts the FCS panel
@@ -21274,7 +21280,10 @@ public class Imaging_FCS implements PlugIn {
                     (float) pixeldimy * cfYshift / binningY,
                     (float) fitobsvol,
                     (float) Double.parseDouble(tfParamQ2.getText()),
-                    (float) Double.parseDouble(tfParamQ3.getText()) };
+                    (float) Double.parseDouble(tfParamQ3.getText()),
+                    (float) emlambda,
+                    (float) NA,
+                };
 
             float[] initialParameters = new float[numberFits * model.numberParameters];
 
@@ -21378,7 +21387,7 @@ public class Imaging_FCS implements PlugIn {
                 }
             }
 
-            float[] convergedParameterMean = new float[] { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+            float[] convergedParameterMean = new float[model.numberParameters];
             // float[] convergedParameterStd = new float[]{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
             // 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
