@@ -266,7 +266,6 @@ public class FitModel {
         return null;
     }
 
-
     /**
      * Performs the standard fitting operation on the given pixel model and lag times.
      *
@@ -277,6 +276,18 @@ public class FitModel {
     public void standardFit(PixelModel pixelModel, String modelName, double[] lagTimes) {
         StandardFit fitter = new StandardFit(this, settings, modelName);
         fitter.fitPixel(pixelModel, lagTimes);
+    }
+
+    /**
+     * Computes theoretical fit values for the given pixel model using current parameters
+     * and specified lag times, storing the results within the pixel model.
+     *
+     * @param pixelModel The pixel model to fit.
+     * @param lagTimes   The lag times for calculating fit values.
+     */
+    public void theoreticalFit(PixelModel pixelModel, double[] lagTimes) {
+        StandardFit fitter = new StandardFit(this, settings, settings.getFitModel());
+        fitter.theoreticalFit(pixelModel, lagTimes);
     }
 
     public Parameter getD() {

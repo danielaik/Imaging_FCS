@@ -3,6 +3,7 @@ package fiji.plugin.imaging_fcs.new_imfcs.model.correlations;
 import fiji.plugin.imaging_fcs.new_imfcs.constants.Constants;
 import fiji.plugin.imaging_fcs.new_imfcs.model.*;
 import fiji.plugin.imaging_fcs.new_imfcs.utils.ExcelReader;
+import fiji.plugin.imaging_fcs.new_imfcs.utils.Pair;
 import ij.ImagePlus;
 import org.apache.poi.ss.usermodel.Workbook;
 
@@ -31,6 +32,7 @@ public class Correlator {
     private double[] lagTimes;
     private double[][] regularizedCovarianceMatrix, varianceBlocks;
     private PixelModel[][] pixelModels;
+    private Pair<Point[], PixelModel> lastUsedPixelModel;
 
     /**
      * Constructs a Correlator with the specified settings, bleach correction model, and fit model.
@@ -189,6 +191,7 @@ public class Correlator {
         // Create or update the PixelModel for the first pixel and perform correlation
         pixelModels[x][y] = new PixelModel();
         PixelModel pixelModel = pixelModels[x][y];
+        lastUsedPixelModel = new Pair<>(new Point[]{new Point(x, y), new Point(x2, y2)}, pixelModel);
 
         if (settings.isFCCSDisp()) {
             correlateFCCS(img, pixelModel, x, y, x2, y2, initialFrame, finalFrame);
@@ -957,6 +960,7 @@ public class Correlator {
      */
     public void resetResults() {
         pixelModels = null;
+        lastUsedPixelModel = null;
         lags = null;
         lagTimes = null;
         sampleTimes = null;
@@ -1013,5 +1017,9 @@ public class Correlator {
 
     public int getBlockIndex() {
         return blockIndex;
+    }
+
+    public Pair<Point[], PixelModel> getLastUsedPixelModel() {
+        return lastUsedPixelModel;
     }
 }

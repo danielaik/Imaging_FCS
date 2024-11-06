@@ -161,6 +161,25 @@ public class StandardFit extends BaseFit {
     }
 
     /**
+     * Calculates the theoretical fit values for a pixel model using the specified lag times
+     * and the current model parameters, storing the result in the pixel model.
+     *
+     * @param pixelModel The pixel model to apply the theoretical fit.
+     * @param lagTimes   The lag times used for the fit calculation.
+     */
+    public void theoreticalFit(PixelModel pixelModel, double[] lagTimes) {
+        int channelNumber = pixelModel.getCorrelationFunction().length;
+        double[] fitAcf = new double[channelNumber];
+        double[] parameters = model.getNonHeldParameterValues();
+
+        for (int i = model.getFitStart(); i <= model.getFitEnd(); i++) {
+            fitAcf[i] = function.value(lagTimes[i], parameters);
+        }
+
+        pixelModel.setFittedCF(fitAcf);
+    }
+
+    /**
      * A static class representing the output of a fitting process.
      * It contains the covariance matrix, residuals, and sigma values.
      */

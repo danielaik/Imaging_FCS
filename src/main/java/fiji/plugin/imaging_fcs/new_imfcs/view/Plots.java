@@ -354,6 +354,7 @@ public class Plots {
                                                          Color fitColor) {
 
         Pair<Double, Double> minMax = findAdjustedMinMax(pixelModel.getCorrelationFunction());
+        minMax = selectMinMax(minMax, findAdjustedMinMax(pixelModel.getFittedCF()));
 
         plot.setColor(color);
         plot.addPoints(lagTimes, pixelModel.getCorrelationFunction(), Plot.LINE);

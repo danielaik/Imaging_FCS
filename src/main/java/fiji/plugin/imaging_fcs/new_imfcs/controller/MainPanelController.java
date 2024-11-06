@@ -87,12 +87,12 @@ public final class MainPanelController {
         this.settings = new ExpSettingsModel(this::askResetResults);
 
         FitModel fitModel = new FitModel(settings);
-        this.fitController = new FitController(fitModel);
 
         ImageModel imageModel = new ImageModel(this::askResetResults);
         this.backgroundSubtractionController = new BackgroundSubtractionController(imageModel, this::askResetResults);
         this.bleachCorrectionModel = new BleachCorrectionModel(settings, imageModel);
         this.correlator = new Correlator(settings, bleachCorrectionModel, fitModel);
+        this.fitController = new FitController(fitModel, correlator, settings);
         this.imageController = new ImageController(this, imageModel, backgroundSubtractionController, fitController,
                 bleachCorrectionModel, correlator, settings, optionsModel);
 

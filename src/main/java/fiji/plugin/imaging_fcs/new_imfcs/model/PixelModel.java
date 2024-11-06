@@ -56,6 +56,22 @@ public class PixelModel {
     }
 
     /**
+     * Copy constructor that creates a new PixelModel by copying only the non-fit parameters
+     * (CorrelationFunction, varianceCF, standardDeviationCF, and ACF models) from the specified model.
+     * This is used for performing theoretical fit.
+     *
+     * @param other The PixelModel to copy from.
+     */
+    public PixelModel(PixelModel other) {
+        this.CorrelationFunction = other.CorrelationFunction;
+        this.varianceCF = other.varianceCF;
+        this.standardDeviationCF = other.standardDeviationCF;
+
+        acf1PixelModel = other.acf1PixelModel;
+        acf2PixelModel = other.acf2PixelModel;
+    }
+
+    /**
      * Returns a function that retrieves a specific parameter from a FitParameters instance.
      *
      * @param param The name of the parameter to retrieve.

@@ -111,7 +111,7 @@ public class FitView extends BaseView {
 
     @Override
     protected void initializeButtons() {
-        btnTest = createJButton("Test", "", null, (ItemListener) null);
+        btnTest = createJButton("Test", "", null, controller.btnTestPressed());
         btnSetPar = createJButton("Default", "", null, controller.btnResetParametersPressed());
         btnCNNImage = createJButton("ImFCSNet", "", null, (ItemListener) null);
         btnCNNACF = createJButton("FCSNet", "", null, (ItemListener) null);
@@ -184,6 +184,24 @@ public class FitView extends BaseView {
         setText(tfParamG, formatter.apply(params.getG()));
         setText(tfParamFTrip, formatter.apply(params.getFTrip()));
         setText(tfParamTTrip, formatter.apply(params.getTTripInterface()));
+    }
+
+    /**
+     * Updates the model parameters with values from the text fields, reflecting any changes
+     * made by the user in the view.
+     */
+    public void refreshModel() {
+        model.setN(tfParamN.getText());
+        model.setF2(tfParamF2.getText());
+        model.setD(tfParamD.getText());
+        model.setD2(tfParamD2.getText());
+        model.setF3(tfParamF3.getText());
+        model.setD3(tfParamD3.getText());
+        model.setVx(tfParamVx.getText());
+        model.setVy(tfParamVy.getText());
+        model.setG(tfParamG.getText());
+        model.setFTrip(tfParamFTrip.getText());
+        model.setTTrip(tfParamTTrip.getText());
     }
 
     @Override

@@ -3,7 +3,10 @@ package fiji.plugin.imaging_fcs.new_imfcs.controller;
 import fiji.plugin.imaging_fcs.new_imfcs.model.ExpSettingsModel;
 import fiji.plugin.imaging_fcs.new_imfcs.model.FitModel;
 import fiji.plugin.imaging_fcs.new_imfcs.model.PixelModel;
+import fiji.plugin.imaging_fcs.new_imfcs.model.correlations.Correlator;
+import fiji.plugin.imaging_fcs.new_imfcs.utils.Pair;
 import fiji.plugin.imaging_fcs.new_imfcs.view.FitView;
+import fiji.plugin.imaging_fcs.new_imfcs.view.Plots;
 import ij.IJ;
 
 import javax.swing.*;
@@ -12,6 +15,7 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.ItemEvent;
 import java.awt.event.ItemListener;
+import java.util.Collections;
 import java.util.function.Consumer;
 
 /**
@@ -21,15 +25,19 @@ import java.util.function.Consumer;
 public class FitController {
     private final FitModel model;
     private final FitView view;
+    private final Correlator correlator;
+    private final ExpSettingsModel settings;
 
     /**
      * Constructs a new FitController with the given FitModel.
      *
      * @param model The FitModel instance.
      */
-    public FitController(FitModel model) {
+    public FitController(FitModel model, Correlator correlator, ExpSettingsModel settings) {
         this.model = model;
         this.view = new FitView(this, model);
+        this.correlator = correlator;
+        this.settings = settings;
     }
 
     /**
@@ -163,6 +171,29 @@ public class FitController {
             boolean selected = (ev.getStateChange() == ItemEvent.SELECTED);
             button.setForeground(selected ? Color.BLACK : Color.LIGHT_GRAY);
             setter.accept(selected);
+        };
+    }
+
+    /**
+     * Creates an ActionListener for the test button to perform a theoretical fit
+     * on the last correlated pixel model. If no correlation has been run, displays
+     * a message to the user. Otherwise, fits and plots the correlation function.
+     *
+     * @return The ActionListener for the test button.
+     */
+    public ActionListener btnTestPressed() {
+        return (ActionEvent ev) -> {
+            view.refreshModel();
+            Pair<Point[], PixelModel> lastUsedPixelModel = correlator.getLastUsedPixelModel();
+            if (lastUsedPixelModel == null) {
+                IJ.showMessage("You need to run at least one correlation to do a theoretical fit.");
+            } else {
+                PixelModel pixelModel = new PixelModel(lastUsedPixelModel.getRight());
+                model.theoreticalFit(pixelModel, correlator.getLagTimes());
+                Plots.plotCorrelationFunction(Collections.singletonList(pixelModel), settings.isFCCSDisp(),
+                        correlator.getLagTimes(), lastUsedPixelModel.getLeft(), settings.getBinning(),
+                        settings.getCCF(), model.getFitStart(), model.getFitEnd());
+            }
         };
     }
 
