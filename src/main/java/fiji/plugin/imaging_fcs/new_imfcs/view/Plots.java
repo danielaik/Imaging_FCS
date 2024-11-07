@@ -354,13 +354,15 @@ public class Plots {
                                                          Color fitColor) {
 
         Pair<Double, Double> minMax = findAdjustedMinMax(pixelModel.getCorrelationFunction());
-        minMax = selectMinMax(minMax, findAdjustedMinMax(pixelModel.getFittedCF()));
 
         plot.setColor(color);
         plot.addPoints(lagTimes, pixelModel.getCorrelationFunction(), Plot.LINE);
 
         // Plot the fitted ACF
-        plotFittedCF(plot, pixelModel, lagTimes, fitStart, fitEnd, fitColor);
+        if (pixelModel.isFitted()) {
+            minMax = selectMinMax(minMax, findAdjustedMinMax(pixelModel.getFittedCF()));
+            plotFittedCF(plot, pixelModel, lagTimes, fitStart, fitEnd, fitColor);
+        }
 
         if (FCCSDisp && pixelModel.getAcf1PixelModel() != null) {
             minMax = selectMinMax(minMax,
@@ -386,11 +388,9 @@ public class Plots {
      */
     private static void plotFittedCF(Plot plot, PixelModel pixelModel, double[] lagTimes, int fitStart, int fitEnd,
                                      Color color) {
-        if (pixelModel.isFitted()) {
-            plot.setColor(color);
-            plot.addPoints(Arrays.copyOfRange(lagTimes, fitStart, fitEnd + 1),
-                    Arrays.copyOfRange(pixelModel.getFittedCF(), fitStart, fitEnd + 1), Plot.LINE);
-        }
+        plot.setColor(color);
+        plot.addPoints(Arrays.copyOfRange(lagTimes, fitStart, fitEnd + 1),
+                Arrays.copyOfRange(pixelModel.getFittedCF(), fitStart, fitEnd + 1), Plot.LINE);
     }
 
     /**
