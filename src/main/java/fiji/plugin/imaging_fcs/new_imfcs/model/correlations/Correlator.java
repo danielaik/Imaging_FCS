@@ -1022,4 +1022,8 @@ public class Correlator {
     public Pair<Point[], PixelModel> getLastUsedPixelModel() {
         return lastUsedPixelModel;
     }
+
+    public void setLastUsedPixelModel(Pair<Point[], PixelModel> lastUsedPixelModel) {
+        this.lastUsedPixelModel = lastUsedPixelModel;
+    }
 }

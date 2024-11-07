@@ -4,6 +4,7 @@ import fiji.plugin.imaging_fcs.new_imfcs.constants.Constants;
 import fiji.plugin.imaging_fcs.new_imfcs.model.*;
 import fiji.plugin.imaging_fcs.new_imfcs.model.correlations.Correlator;
 import fiji.plugin.imaging_fcs.new_imfcs.model.correlations.SelectedPixel;
+import fiji.plugin.imaging_fcs.new_imfcs.utils.Pair;
 import fiji.plugin.imaging_fcs.new_imfcs.utils.Range;
 import fiji.plugin.imaging_fcs.new_imfcs.view.ImageView;
 import fiji.plugin.imaging_fcs.new_imfcs.view.Plots;
@@ -581,6 +582,7 @@ public final class ImageController {
 
                     Point[] points = new Point[]{new Point(x, y), new Point(x2, y2)};
 
+                    correlator.setLastUsedPixelModel(new Pair<>(points, pixelModel));
                     plotResuts(points);
                 }
             }
