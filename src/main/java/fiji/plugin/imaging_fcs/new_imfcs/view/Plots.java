@@ -360,8 +360,7 @@ public class Plots {
 
         // Plot the fitted ACF
         if (pixelModel.isFitted()) {
-            minMax = selectMinMax(minMax, findAdjustedMinMax(pixelModel.getFittedCF()));
-            plotFittedCF(plot, pixelModel, lagTimes, fitStart, fitEnd, fitColor);
+            minMax = selectMinMax(minMax, plotFittedCF(plot, pixelModel, lagTimes, fitStart, fitEnd, fitColor));
         }
 
         if (FCCSDisp && pixelModel.getAcf1PixelModel() != null) {
@@ -385,12 +384,15 @@ public class Plots {
      * @param fitStart   The starting index for fitting.
      * @param fitEnd     The ending index for fitting.
      * @param color      The color to use for plotting.
+     * @return Pair of min and max values for the fitted CF scale.
      */
-    private static void plotFittedCF(Plot plot, PixelModel pixelModel, double[] lagTimes, int fitStart, int fitEnd,
-                                     Color color) {
+    private static Pair<Double, Double> plotFittedCF(Plot plot, PixelModel pixelModel, double[] lagTimes, int fitStart,
+                                                     int fitEnd, Color color) {
         plot.setColor(color);
         plot.addPoints(Arrays.copyOfRange(lagTimes, fitStart, fitEnd + 1),
                 Arrays.copyOfRange(pixelModel.getFittedCF(), fitStart, fitEnd + 1), Plot.LINE);
+
+        return findAdjustedMinMax(pixelModel.getFittedCF());
     }
 
     /**
