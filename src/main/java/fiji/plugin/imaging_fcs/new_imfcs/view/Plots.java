@@ -662,14 +662,19 @@ public class Plots {
 
     /**
      * Initializes an ImagePlus object for parameter maps, setting pixels to NaN and adding listeners.
+     * The number of slices in the image is adjusted based on the FCCSDisp flag.
      *
      * @param dimension     Dimensions of the image.
-     * @param paramsLength  Number of slices (parameters to map).
+     * @param paramsLength  Number of parameters to map per pixel model.
      * @param mouseListener Listener for mouse events on the image.
+     * @param FCCSDisp      Flag indicating if FCCS Display is on; if true, additional slices for ACF1 and ACF2 are
+     *                      added.
      * @return Initialized ImagePlus object with parameter maps.
      */
-    private static ImagePlus initParameterMaps(Dimension dimension, int paramsLength, MouseListener mouseListener) {
-        ImagePlus img = IJ.createImage("Maps", "GRAY32", dimension.width, dimension.height, paramsLength);
+    private static ImagePlus initParameterMaps(Dimension dimension, int paramsLength, MouseListener mouseListener,
+                                               boolean FCCSDisp) {
+        int totalParamsLength = FCCSDisp ? paramsLength * 3 : paramsLength;
+        ImagePlus img = IJ.createImage("Maps", "GRAY32", dimension.width, dimension.height, totalParamsLength);
 
         // Set all pixel values to NaN
         setAllPixelToNaN(img, dimension);
@@ -682,65 +687,97 @@ public class Plots {
     }
 
     /**
-     * Updates parameter map values at a given point in the image.
+     * Adds parameter values to the image at a given point, starting from a specific index.
+     * Optionally initializes the slice labels if initImg is true.
      *
-     * @param img     ImagePlus object representing the parameter maps.
-     * @param p       Point in the image to update.
-     * @param params  Array of parameter names and values.
-     * @param initImg If true, initializes the image display.
+     * @param img        The ImagePlus object to update.
+     * @param p          The point (x, y) in the image to update.
+     * @param params     Array of parameter name and value pairs to add.
+     * @param startIndex Starting index in the image stack where parameters should be added.
+     * @param initImg    If true, initializes the image slice labels.
+     * @param label      A prefix label to add before each parameter name when labeling slices.
      */
-    private static void updateParameterMapsValue(ImagePlus img, Point p, Pair<String, Double>[] params,
-                                                 boolean initImg) {
-        // Enter value from the end to be on the first slice on output
-        for (int i = params.length - 1; i >= 0; i--) {
-            ImageProcessor ip = img.getStack().getProcessor(i + 1);
+    private static void addParamsValues(ImagePlus img, Point p, Pair<String, Double>[] params, int startIndex,
+                                        boolean initImg, String label) {
+        int pLength = params.length;
+        for (int i = pLength - 1; i >= 0; i--) {
+            ImageProcessor ip = img.getStack().getProcessor(startIndex + i + 1);
             ip.putPixelValue(p.x, p.y, params[i].getRight());
             if (initImg) {
-                img.setSlice(i + 1);
-                IJ.run("Set Label...", "label=" + params[i].getLeft());
+                img.setSlice(startIndex + i + 1);
+                IJ.run("Set Label...", "label=" + label + params[i].getLeft());
             }
         }
     }
 
     /**
+     * Updates parameter map values at a given point in the image.
+     * If FCCSDisp is true and the pixel model contains ACF1 and ACF2 pixel models, their parameters are also added.
+     *
+     * @param img        ImagePlus object representing the parameter maps.
+     * @param p          Point in the image to update.
+     * @param pixelModel The PixelModel containing parameters to map.
+     * @param initImg    If true, initializes the image display (e.g., sets slice labels).
+     * @param FCCSDisp   Flag indicating if FCCS Display is on; if true, parameters from ACF1 and ACF2 pixel models
+     *                   are added.
+     */
+    private static void updateParameterMapsValue(ImagePlus img, Point p, PixelModel pixelModel, boolean initImg,
+                                                 boolean FCCSDisp) {
+        int pLength = pixelModel.getParams().length;
+
+        if (FCCSDisp && pixelModel.getAcf1PixelModel() != null) {
+            addParamsValues(img, p, pixelModel.getAcf1PixelModel().getParams(), pLength, initImg, "ACF1-");
+            addParamsValues(img, p, pixelModel.getAcf2PixelModel().getParams(), pLength * 2, initImg, "ACF2-");
+        }
+
+        // Enter value from the end to be on the first slice on output
+        addParamsValues(img, p, pixelModel.getParams(), 0, initImg, "");
+    }
+
+    /**
      * Plots parameter maps for a given pixel model at a specific point within the image dimensions.
+     * If FCCSDisp is true, additional parameter maps for ACF1 and ACF2 are included.
      *
      * @param pixelModel    Model containing the parameters to plot.
      * @param p             Point in the image to plot parameters.
      * @param dimension     Image dimensions.
      * @param mouseListener Listener for mouse events on the image.
+     * @param FCCSDisp      Flag indicating if FCCS Display is on; if true, parameters from ACF1 and ACF2 pixel
+     *                      models are plotted.
      */
     public static void plotParameterMaps(PixelModel pixelModel, Point p, Dimension dimension,
-                                         MouseListener mouseListener) {
+                                         MouseListener mouseListener, boolean FCCSDisp) {
         Pair<String, Double>[] params = pixelModel.getParams();
 
         boolean initImg = false;
         if (imgParam == null || !imgParam.isVisible()) {
             initImg = true;
-            imgParam = initParameterMaps(dimension, params.length, mouseListener);
+            imgParam = initParameterMaps(dimension, params.length, mouseListener, FCCSDisp);
         }
 
-        updateParameterMapsValue(imgParam, p, params, initImg);
+        updateParameterMapsValue(imgParam, p, pixelModel, initImg, FCCSDisp);
         IJ.run(imgParam, "Enhance Contrast", "saturated=0.35");
     }
 
     /**
-     * Set parameter maps for a given pixel model at a specific point.
+     * Sets parameter maps for a given pixel model at a specific point.
+     * If FCCSDisp is true, parameters from ACF1 and ACF2 pixel models are also included.
      *
      * @param img        ImagePlus object to update, or null to create a new one.
      * @param pixelModel Model containing parameters to map.
      * @param p          Point in the image to update.
      * @param dimension  Image dimensions.
+     * @param FCCSDisp   Flag indicating if FCCS Display is on; if true, parameters from ACF1 and ACF2 pixel models
+     *                   are included.
      * @return ImagePlus object with updated parameter maps.
      */
-    public static ImagePlus setParameterMaps(ImagePlus img, PixelModel pixelModel, Point p, Dimension dimension) {
-        Pair<String, Double>[] params = pixelModel.getParams();
-
+    public static ImagePlus setParameterMaps(ImagePlus img, PixelModel pixelModel, Point p, Dimension dimension,
+                                             boolean FCCSDisp) {
         if (img == null) {
-            img = initParameterMaps(dimension, params.length, null);
+            img = initParameterMaps(dimension, pixelModel.getParams().length, null, FCCSDisp);
         }
 
-        updateParameterMapsValue(img, p, params, false);
+        updateParameterMapsValue(img, p, pixelModel, false, FCCSDisp);
 
         return img;
     }
@@ -748,7 +785,8 @@ public class Plots {
     /**
      * Updates the parameter maps for a set of pixel models across the image dimensions,
      * creating or updating an ImagePlus object. Initializes the image if not already visible,
-     * and sets pixel values for each parameter slice.
+     * and sets pixel values for each parameter slice. If FCCSDisp is true, parameters from ACF1 and ACF2 pixel
+     * models are included.
      *
      * @param pixelModels           The 2D array of PixelModel objects to be plotted.
      * @param dimension             The dimensions of the image.
@@ -756,15 +794,17 @@ public class Plots {
      * @param mouseListener         The MouseListener to handle mouse events on the plotted image.
      * @param fitController         The FitController used to determine if a pixel should be filtered.
      * @param plotParaHist          Flag indicating whether to plot the parameter histogram.
+     * @param FCCSDisp              Flag indicating if FCCS Display is on; if true, parameters from ACF1 and ACF2
+     *                              pixel models are included.
      */
     public static void updateParameterMaps(PixelModel[][] pixelModels, Dimension dimension,
                                            Function<Point, Point> convertPointToBinning, MouseListener mouseListener,
-                                           FitController fitController, boolean plotParaHist) {
+                                           FitController fitController, boolean plotParaHist, boolean FCCSDisp) {
         int paramsLength = PixelModel.paramsName.length;
 
         boolean initImg = false;
         if (imgParam == null || !imgParam.isVisible()) {
-            imgParam = initParameterMaps(dimension, paramsLength, mouseListener);
+            imgParam = initParameterMaps(dimension, paramsLength, mouseListener, FCCSDisp);
             initImg = true;
         } else {
             // Set all pixel values to NaN
@@ -778,16 +818,7 @@ public class Plots {
 
                 if (currentPixelModel != null && currentPixelModel.isFitted() &&
                         !fitController.needToFilter(currentPixelModel, binningPoint.x, binningPoint.y)) {
-                    Pair<String, Double>[] params = currentPixelModel.getParams();
-                    for (int i = paramsLength - 1; i >= 0; i--) {
-                        ImageProcessor ip = imgParam.getStack().getProcessor(i + 1);
-
-                        ip.putPixelValue(binningPoint.x, binningPoint.y, params[i].getRight());
-                        if (initImg) {
-                            imgParam.setSlice(i + 1);
-                            IJ.run("Set Label...", "label=" + params[i].getLeft());
-                        }
-                    }
+                    updateParameterMapsValue(imgParam, binningPoint, currentPixelModel, initImg, FCCSDisp);
                 }
             }
         }
@@ -800,10 +831,21 @@ public class Plots {
     }
 
     /**
-     * Plots a histogram window for the parameter image.
+     * Plots a histogram window for the current parameter slice in the parameter image.
+     * The histogram title is adjusted based on the current slice to reflect whether it corresponds
+     * to the main pixel model, ACF1, or ACF2 parameters when FCCSDisp is enabled.
      */
     public static void plotParamHistogramWindow() {
-        String title = PixelModel.paramsName[imgParam.getSlice() - 1];
+        int paramsLength = PixelModel.paramsName.length;
+        String title = PixelModel.paramsName[(imgParam.getSlice() - 1) % paramsLength];
+
+        // if the slice is over the number of parameters, it means that we are either on the ACF1 or ACF2 pixel model
+        // for DC-FCCS
+        if ((imgParam.getSlice() - 1) / paramsLength > 1) {
+            title = "ACF2 - " + title;
+        } else if ((imgParam.getSlice() - 1) / paramsLength > 0) {
+            title = "ACF1 - " + title;
+        }
 
         int numBins = getNumBins(imgParam.getStatistics());
 

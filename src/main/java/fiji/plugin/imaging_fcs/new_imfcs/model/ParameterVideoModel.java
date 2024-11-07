@@ -128,7 +128,8 @@ public class ParameterVideoModel {
                     Point binningPoint = settings.convertPointToBinning(new Point(x, y));
                     if (currentPixelModel.isFitted() &&
                             !currentPixelModel.toFilter(fitModel, binningPoint.x, binningPoint.y)) {
-                        img = Plots.setParameterMaps(img, currentPixelModel, binningPoint, convertedDimension);
+                        img = Plots.setParameterMaps(img, currentPixelModel, binningPoint, convertedDimension,
+                                settings.isFCCSDisp());
                     }
 
                     pixelModels[x][y] = currentPixelModel;

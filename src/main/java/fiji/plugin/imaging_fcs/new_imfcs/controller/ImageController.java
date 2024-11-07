@@ -433,7 +433,7 @@ public final class ImageController {
         if (pixelModel.isFitted() && !fitController.needToFilter(pixelModel, binningPoint.x, binningPoint.y)) {
 
             Plots.plotParameterMaps(pixelModel, binningPoint, settings.getConvertedImageDimension(getImageDimension()),
-                    imageParamClicked());
+                    imageParamClicked(), settings.isFCCSDisp());
 
             if (options.isPlotParaHist()) {
                 Plots.plotParamHistogramWindow();
@@ -452,7 +452,8 @@ public final class ImageController {
         PixelModel[][] pixelModels = correlator.getPixelModels();
 
         Plots.updateParameterMaps(pixelModels, settings.getConvertedImageDimension(getImageDimension()),
-                settings::convertPointToBinning, imageParamClicked(), fitController, options.isPlotParaHist());
+                settings::convertPointToBinning, imageParamClicked(), fitController, options.isPlotParaHist(),
+                settings.isFCCSDisp());
 
         for (PixelModel[] pixelModelsRow : pixelModels) {
             for (PixelModel currentPixelModel : pixelModelsRow) {

@@ -54,7 +54,7 @@ public class FilteringController {
         Plots.updateParameterMaps(correlator.getPixelModels(),
                 settings.getConvertedImageDimension(imageController.getImageDimension()),
                 settings::convertPointToBinning, imageController.imageParamClicked(), fitController,
-                optionsModel.isPlotParaHist());
+                optionsModel.isPlotParaHist(), settings.isFCCSDisp());
 
         List<PixelModel> pixelModelList =
                 SelectedPixel.getPixelModelsInRoi(null, settings.getPixelBinning(), settings.getMinCursorPosition(),
