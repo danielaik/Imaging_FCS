@@ -8,7 +8,6 @@ import ij.IJ;
 
 import javax.swing.*;
 import java.awt.*;
-import java.awt.event.ItemListener;
 import java.util.function.Function;
 
 import static fiji.plugin.imaging_fcs.new_imfcs.controller.FieldListenerFactory.createFocusListener;
@@ -24,7 +23,7 @@ import static fiji.plugin.imaging_fcs.new_imfcs.view.UIUtils.createJLabel;
  * FitController.
  */
 public class FitView extends BaseView {
-    private static final GridLayout FIT_LAYOUT = new GridLayout(17, 6);
+    private static final GridLayout FIT_LAYOUT = new GridLayout(16, 6);
     private static final Point FIT_LOCATION =
             new Point(10, Constants.MAIN_PANEL_POS.y + Constants.MAIN_PANEL_DIM.height + 10);
     private static final Dimension FIT_DIMENSION = new Dimension(370, 370);
@@ -34,10 +33,9 @@ public class FitView extends BaseView {
     private JTextField tfParamQ2, tfParamN, tfParamF2, tfParamD, tfParamD2, tfParamF3, tfParamD3, tfParamQ3, tfParamVx,
             tfParamVy, tfParamG, tfParamFTrip, tfParamTTrip, tfFitStart, tfFitEnd, tfFitModel, tfModProb1, tfModProb2,
             tfModProb3;
-    private JButton btnTest, btnSetPar, btnCNNImage, btnCNNACF;
+    private JButton btnTest, btnSetPar;
     private JToggleButton tbGLS, tbBayes, tbFixPar;
-    private JRadioButton holdN, holdF2, holdD, holdD2, holdF3, holdD3, holdVx, holdVy, holdG, holdFTrip, holdTTtrip,
-            rbtnCNNImage, rbtnCNNACF;
+    private JRadioButton holdN, holdF2, holdD, holdD2, holdF3, holdD3, holdVx, holdVy, holdG, holdFTrip, holdTTtrip;
 
 
     /**
@@ -113,8 +111,6 @@ public class FitView extends BaseView {
     protected void initializeButtons() {
         btnTest = createJButton("Test", "", null, controller.btnTestPressed());
         btnSetPar = createJButton("Default", "", null, controller.btnResetParametersPressed());
-        btnCNNImage = createJButton("ImFCSNet", "", null, (ItemListener) null);
-        btnCNNACF = createJButton("FCSNet", "", null, (ItemListener) null);
 
         tbGLS = createJToggleButton("GLS", "", null, controller.tbOptionPressed(model::setGLS));
         tbGLS.setForeground(Color.LIGHT_GRAY);
@@ -133,11 +129,6 @@ public class FitView extends BaseView {
         holdG = createHoldButton(model.getG());
         holdFTrip = createHoldButton(model.getFTrip());
         holdTTtrip = createHoldButton(model.getTTrip());
-
-        rbtnCNNImage = new JRadioButton("ImFCSNet");
-        rbtnCNNImage.setVisible(false);
-        rbtnCNNACF = new JRadioButton("FCSNet");
-        rbtnCNNACF.setVisible(false);
     }
 
     /**
@@ -322,14 +313,6 @@ public class FitView extends BaseView {
         add(tfModProb2);
         add(createJLabel("Model 3", ""));
         add(tfModProb3);
-
-        // row 17 - CNN related settings
-        add(btnCNNImage);
-        add(rbtnCNNImage);
-        add(createJLabel("", ""));
-        add(createJLabel("", ""));
-        add(btnCNNACF);
-        add(rbtnCNNACF);
     }
 
     /**
