@@ -246,6 +246,8 @@ public final class ImageModel {
             removeListeners(canvas.getKeyListeners(), canvas::removeKeyListener);
         }
 
+        image.close();
+
         image = null;
     }
 
