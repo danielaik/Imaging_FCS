@@ -29,7 +29,9 @@ import java.io.FileInputStream;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.FileSystems;
+import java.text.SimpleDateFormat;
 import java.util.Collections;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.BiConsumer;
@@ -215,6 +217,7 @@ public final class MainPanelController {
                     JOptionPane.YES_NO_OPTION);
 
             if (response == JOptionPane.YES_OPTION) {
+                //                SingleTaskWorker.cancelWorker();
                 correlator.resetResults();
                 Plots.closePlots();
             } else {
@@ -500,6 +503,26 @@ public final class MainPanelController {
     }
 
     /**
+     * Exports all analysis results and settings to an Excel file.
+     * Saves the current settings, polynomial order, image data, pixel models, diffusion law data,
+     * N&B data, and DCCF sheets into the specified Excel file.
+     *
+     * @param filePath the path where the Excel file will be saved
+     */
+    private void exportAllToExcel(String filePath) {
+        Map<String, Object> settingsMap = settings.toMap();
+        settingsMap.put("Polynomial Order", bleachCorrectionModel.getPolynomialOrder());
+        settingsMap.putAll(imageController.toMap());
+
+        ExcelExporter.saveExcelFile(filePath, settingsMap, (workbook) -> {
+            ExcelExporter.saveExcelPixelModels(workbook, correlator.getPixelModels(), settings, correlator);
+            diffusionLawController.saveExcelSheets(workbook);
+            nbController.saveExcelSheet(workbook);
+            ExcelExporter.savedCCFSheets(workbook, correlator.getDccf());
+        });
+    }
+
+    /**
      * Creates an ActionListener for the save button, allowing the user to select a file path and save parameters and
      * results to an Excel file.
      *
@@ -518,16 +541,7 @@ public final class MainPanelController {
                 return;
             }
 
-            Map<String, Object> settingsMap = settings.toMap();
-            settingsMap.put("Polynomial Order", bleachCorrectionModel.getPolynomialOrder());
-            settingsMap.putAll(imageController.toMap());
-
-            new BackgroundTaskWorker(() -> ExcelExporter.saveExcelFile(filePath, settingsMap, (workbook) -> {
-                ExcelExporter.saveExcelPixelModels(workbook, correlator.getPixelModels(), settings, correlator);
-                diffusionLawController.saveExcelSheets(workbook);
-                nbController.saveExcelSheet(workbook);
-                ExcelExporter.savedCCFSheets(workbook, correlator.getDccf());
-            })).execute();
+            new BackgroundTaskWorker<Void, Void>(() -> exportAllToExcel(filePath)).execute();
         };
     }
 
@@ -561,9 +575,120 @@ public final class MainPanelController {
         };
     }
 
+    /**
+     * Creates an ActionListener for the "Batch" button.
+     * When triggered, it opens the BatchView to configure and execute batch processing of images.
+     *
+     * @return an ActionListener that handles the "Batch" button press event
+     */
     public ActionListener btnBatchPressed() {
-        // TODO: FIXME
-        return null;
+        return (ActionEvent ev) -> new BatchView(this::runBatch);
+    }
+
+    /**
+     * Executes batch processing of images based on user-selected options.
+     * Processes multiple images selected by the user, performing operations such as correlation, PSF calculation,
+     * diffusion law analysis, DCCF computation, saving results, and plotting, depending on the options specified in
+     * the run parameter.
+     *
+     * @param run a Map containing options for batch processing, specifying which operations to perform on each image
+     */
+    private void runBatch(Map<String, Object> run) {
+        fitController.setVisible((boolean) run.get("Fit"));
+
+        JFileChooser fileChooser = new JFileChooser(imageController.getDirectory());
+        fileChooser.setMultiSelectionEnabled(true);
+        fileChooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
+        int returnVal = fileChooser.showOpenDialog(null);
+        if (returnVal == JFileChooser.APPROVE_OPTION) {
+            File[] files = fileChooser.getSelectedFiles();
+
+            new BackgroundTaskWorker<Void, Void>(() -> {
+                for (File file : files) {
+                    imageController.loadImage(IJ.openImage(file.getAbsolutePath()), null);
+
+                    if ((boolean) run.get("Correlate All")) {
+                        // Perform the correlation synchronously
+                        Range[] ranges = settings.getAllArea(imageController.getImageDimension());
+                        Range xRange = ranges[0];
+                        Range yRange = ranges[1];
+
+                        Roi imgRoi = new Roi(xRange.getStart(), yRange.getStart(), xRange.getEnd(), yRange.getEnd());
+
+                        imageController.correlateROI(imgRoi);
+                    }
+
+                    if ((boolean) run.get("PSF Calculation")) {
+                        Dimension imageDimension = imageController.getImageDimension();
+                        if (imageDimension.width < 20 || imageDimension.height < 20) {
+                            IJ.log("Image is too small to provide good PSF statistics. At least 20x20 pixels are " +
+                                    "required");
+                        } else {
+                            // Every condition is validated (image loaded and size >= 20), so we can run the PSF.
+                            diffusionLawController.displayPSFDialog();
+                        }
+                    }
+
+                    if ((boolean) run.get("Diffusion Law")) {
+                        diffusionLawController.runCalculate();
+                        diffusionLawController.btnFitPressed().actionPerformed(null);
+                    }
+
+                    if ((boolean) run.get("Vertical DCCF")) {
+                        new DeltaCCFWorker(settings, correlator, imageController.getImage(), Constants.X_DIRECTION,
+                                (dccfArray, direction) -> {
+                                    IJ.showStatus("Done");
+                                    Plots.plotDCCFWindow(dccfArray, direction);
+                                }).executeAndWait();
+                    }
+
+                    if ((boolean) run.get("Horizontal DCCF")) {
+                        new DeltaCCFWorker(settings, correlator, imageController.getImage(), Constants.Y_DIRECTION,
+                                (dccfArray, direction) -> {
+                                    IJ.showStatus("Done");
+                                    Plots.plotDCCFWindow(dccfArray, direction);
+                                }).executeAndWait();
+                    }
+
+                    if ((boolean) run.get("Diagonal Up DCCF")) {
+                        new DeltaCCFWorker(settings, correlator, imageController.getImage(),
+                                Constants.DIAGONAL_UP_DIRECTION, (dccfArray, direction) -> {
+                            IJ.showStatus("Done");
+                            Plots.plotDCCFWindow(dccfArray, direction);
+                        }).executeAndWait();
+                    }
+
+                    if ((boolean) run.get("Diagonal Down DCCF")) {
+                        new DeltaCCFWorker(settings, correlator, imageController.getImage(),
+                                Constants.DIAGONAL_DOWN_DIRECTION, (dccfArray, direction) -> {
+                            IJ.showStatus("Done");
+                            Plots.plotDCCFWindow(dccfArray, direction);
+                        }).executeAndWait();
+                    }
+
+                    // Get the suffix
+                    String suffix = run.get("File suffix").toString();
+                    if (suffix.isEmpty()) {
+                        suffix = new SimpleDateFormat("yyyy_MM_dd-HH_mm_ss").format(new Date());
+                    }
+
+                    // Get the absolute path without the extension
+                    String absolutePathNoExt = file.getAbsolutePath().replaceFirst("[.][^.]+$", "");
+
+                    if ((boolean) run.get("Save excel")) {
+                        exportAllToExcel(absolutePathNoExt + suffix + ".xlsx");
+                    }
+
+                    if ((boolean) run.get("Save plot windows")) {
+                        Plots.saveWindows(absolutePathNoExt + suffix);
+                    }
+
+                    Plots.closePlots();
+                    imageController.unloadImage();
+                    fitController.btnResetParametersPressed().actionPerformed(null);
+                }
+            }).execute();
+        }
     }
 
     /**
@@ -837,7 +962,7 @@ public final class MainPanelController {
 
                 // Perform ROI
                 IJ.showStatus("Correlating pixels");
-                new BackgroundTaskWorker(() -> imageController.correlateROI(imgRoi)).execute();
+                new BackgroundTaskWorker<Void, Void>(() -> imageController.correlateROI(imgRoi)).execute();
             }
         };
     }

@@ -1123,6 +1123,11 @@ public class Plots {
         windowsList.add(diffusionLawWindow);
         windowsList.add(psfWindow);
 
+        for (String key : dccfWindows.keySet()) {
+            windowsList.add(dccfWindows.get(key));
+            windowsList.add(dccfHistogramWindows.get(key));
+        }
+
         if (imgParam != null) {
             windowsList.add(imgParam.getWindow());
         }
@@ -1158,6 +1163,48 @@ public class Plots {
     public static void closePlots() {
         for (ImageWindow window : getImageWindows()) {
             closeWindow(window);
+        }
+    }
+
+    /**
+     * Saves the specified ImageWindow to a file with a sanitized title.
+     * The file is saved in TIFF format with a PNG extension at the given path.
+     *
+     * @param window the ImageWindow to be saved
+     * @param path   the file path prefix where the image will be saved
+     */
+    private static void saveWindow(ImageWindow window, String path) {
+        if (window != null && !window.isClosed()) {
+            String title = window.getTitle();
+
+            // Remove the last part with parentheses, if present
+            title = title.replaceAll("\\s*\\([^)]*\\)", "");
+
+            // Trim any trailing whitespace after removing parentheses
+            title = title.trim();
+
+            // Replace spaces with underscores
+            title = title.replace(" ", "_");
+
+            // Replace slashes with "up" (this prevents error since / is used to separate folders)
+            title = title.replace("/", "up");
+            // Same here since \ is used for Windows
+            title = title.replace("\\", "down");
+
+            IJ.saveAsTiff(window.getImagePlus(), path + "_" + title + ".png");
+        }
+    }
+
+    /**
+     * Saves all open image windows to files using the specified path as a prefix.
+     * It iterates through all ImageWindow instances retrieved by getImageWindows()
+     * and saves each one by calling the saveWindow method.
+     *
+     * @param path the file path prefix for saving the images
+     */
+    public static void saveWindows(String path) {
+        for (ImageWindow window : getImageWindows()) {
+            saveWindow(window, path);
         }
     }
 
