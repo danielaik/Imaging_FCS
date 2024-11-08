@@ -60,16 +60,24 @@ public class DiffusionLawController {
     }
 
     /**
+     * Executes the diffusion law calculation and updates the plot with the results.
+     * Calls the model to perform the calculation and then plots the effective area against time.
+     */
+    public void runCalculate() {
+        model.calculateDiffusionLaw();
+        Plots.plotDiffLaw(model.getEffectiveArea(), model.getTime(), model.getStandardDeviation(),
+                model.getMinValueDiffusionLaw(), model.getMaxValueDiffusionLaw());
+    }
+
+    /**
      * Creates a listener for the "Calculate" button, triggering the diffusion law calculation and plotting the results.
      *
      * @return Listener that initiates the calculation and updates the plot.
      */
     public ActionListener btnCalculatePressed() {
-        return (ActionEvent ev) -> new BackgroundTaskWorker(() -> {
+        return (ActionEvent ev) -> new BackgroundTaskWorker<Void, Void>(() -> {
             IJ.showStatus("Calculating diffusion law");
-            model.calculateDiffusionLaw();
-            Plots.plotDiffLaw(model.getEffectiveArea(), model.getTime(), model.getStandardDeviation(),
-                    model.getMinValueDiffusionLaw(), model.getMaxValueDiffusionLaw());
+            runCalculate();
         }).execute();
     }
 
@@ -156,7 +164,7 @@ public class DiffusionLawController {
         int binningStart = (int) view.getNextNumber();
         int binningEnd = (int) view.getNextNumber();
 
-        new BackgroundTaskWorker(() -> {
+        new BackgroundTaskWorker<Void, Void>(() -> {
             IJ.showStatus("Calculating PSF");
             try {
                 Pair<Double, Double> minMax =

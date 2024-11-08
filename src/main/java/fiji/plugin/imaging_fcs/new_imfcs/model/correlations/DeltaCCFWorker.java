@@ -1,17 +1,17 @@
 package fiji.plugin.imaging_fcs.new_imfcs.model.correlations;
 
+import fiji.plugin.imaging_fcs.new_imfcs.model.BackgroundTaskWorker;
 import fiji.plugin.imaging_fcs.new_imfcs.model.ExpSettingsModel;
 import ij.IJ;
 import ij.ImagePlus;
 
-import javax.swing.*;
 import java.util.function.BiConsumer;
 
 /**
- * The DCCFWorker class extends SwingWorker to perform the DCCF computation in a separate thread,
+ * The DCCFWorker class extends BackgroundTaskWorker to perform the DCCF computation in a separate thread,
  * ensuring that the UI remains responsive.
  */
-public final class DeltaCCFWorker extends SwingWorker<double[][], Void> {
+public final class DeltaCCFWorker extends BackgroundTaskWorker<double[][], Void> {
     private final ExpSettingsModel settings;
     private final Correlator correlator;
     private final ImagePlus image;
@@ -30,6 +30,8 @@ public final class DeltaCCFWorker extends SwingWorker<double[][], Void> {
      */
     public DeltaCCFWorker(ExpSettingsModel settings, Correlator correlator, ImagePlus image, String directionName,
                           BiConsumer<double[][], String> runOnCompletion) {
+        super(() -> {});
+
         this.settings = settings;
         this.correlator = correlator;
         this.image = image;

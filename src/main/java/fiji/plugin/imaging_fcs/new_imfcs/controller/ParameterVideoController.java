@@ -108,7 +108,7 @@ public class ParameterVideoController {
             model.setExcelDirectory(excelDirectory);
         }
 
-        new BackgroundTaskWorker(() -> {
+        new BackgroundTaskWorker<Void, Void>(() -> {
             try {
                 model.createParameterVideo();
             } catch (Exception e) {

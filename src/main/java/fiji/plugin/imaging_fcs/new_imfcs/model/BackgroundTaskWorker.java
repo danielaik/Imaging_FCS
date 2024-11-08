@@ -3,14 +3,15 @@ package fiji.plugin.imaging_fcs.new_imfcs.model;
 import ij.IJ;
 
 import javax.swing.*;
+import java.util.concurrent.ExecutionException;
 
 /**
  * The BackgroundTaskWorker class extends SwingWorker to perform a background task.
  * This class takes a Runnable that defines the task logic and executes it in a background thread,
  * updating the status upon completion.
  */
-public class BackgroundTaskWorker extends SwingWorker<Void, Void> {
-    private final Runnable task;
+public class BackgroundTaskWorker<T, V> extends SwingWorker<T, V> {
+    protected final Runnable task;
 
     /**
      * Constructs a BackgroundTaskWorker with the specified task.
@@ -29,9 +30,24 @@ public class BackgroundTaskWorker extends SwingWorker<Void, Void> {
      * @return null upon completion
      */
     @Override
-    protected Void doInBackground() throws Exception {
+    protected T doInBackground() throws Exception {
         task.run();
         return null;
+    }
+
+    /**
+     * Executes the background task and waits for its completion.
+     * Starts the task asynchronously and then blocks until the task finishes.
+     * Any interruptions or execution exceptions are caught and logged.
+     */
+    public void executeAndWait() {
+        this.execute();
+        try {
+            // wait for the task to complete
+            this.get();
+        } catch (InterruptedException | ExecutionException e) {
+            IJ.log(e.getMessage());
+        }
     }
 
     /**
