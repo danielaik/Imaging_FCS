@@ -33,8 +33,9 @@ public final class MainPanelView extends BaseView {
     // Animation parameters
     private static final int ANIMATION_DELAY = 15; // milliseconds between animation updates
     private static final int ANIMATION_STEP = 20;  // pixels to expand/shrink per step
-    // Column number
-    private static int COLUMN_NUMBER = 4;
+    // UI Constants
+    private static final int COLUMN_NUMBER = 4;
+    private static final int EMPTY_ROW_HEIGHT = 15;
     // Controller for handling user actions
     private final MainPanelController controller;
 
@@ -327,8 +328,10 @@ public final class MainPanelView extends BaseView {
         addRow(mainPanel, btnUseExisting, btnLoad, btnBatch, btnDCR);
 
         // Save, Read, Background
-        addRow(mainPanel, btnSave, btnRead, tbBackground, null);
+        addRow(mainPanel, btnSave, btnRead, tbBackground, btnExit);
 
+        // Empty row
+        addRow(mainPanel, Box.createVerticalStrut(EMPTY_ROW_HEIGHT), null, null, null);
         // SETTINGS label
         addRow(mainPanel, createJLabel("SETTINGS", "", BOLD_FONT), null, null, null);
 
@@ -348,6 +351,8 @@ public final class MainPanelView extends BaseView {
         addRow(mainPanel, createJLabel("Correlator P", ""), cbCorrelatorP, createJLabel("Correlator Q", ""),
                 tfCorrelatorQ);
 
+        // Empty row
+        addRow(mainPanel, Box.createVerticalStrut(EMPTY_ROW_HEIGHT), null, null, null);
         // EVALUATION label
         addRow(mainPanel, createJLabel("EVALUATION", "", BOLD_FONT), null, null, null);
 
@@ -357,8 +362,8 @@ public final class MainPanelView extends BaseView {
         // Filter (All), cbFilter, Average, ROI
         addRow(mainPanel, createJLabel("Filter (All)", ""), cbFilter, btnAve, btnROI);
 
-        // Threshold, PVideo, Exit, More
-        addRow(mainPanel, tbFiltering, btnParamVideo, btnExit, btnMore);
+        // Threshold, PVideo, NB, More
+        addRow(mainPanel, tbFiltering, btnParamVideo, tbNB, btnMore);
 
         // Initialize extended panel and add to main panel
         initializeExtendedPanel();
@@ -386,14 +391,14 @@ public final class MainPanelView extends BaseView {
         extendedPanel = new JPanel();
         extendedPanel.setLayout(new BoxLayout(extendedPanel, BoxLayout.Y_AXIS));
 
-        // Empty line
-        addRow(extendedPanel, createJLabel("", ""), null, null, null);
+        // Empty row
+        addRow(extendedPanel, Box.createVerticalStrut(EMPTY_ROW_HEIGHT), null, null, null);
         // ADDITIONAL label
         addRow(extendedPanel, createJLabel("ADDITIONAL", "", BOLD_FONT), null, null, null);
 
         addRow(extendedPanel, btnDCCF, cbDCCF, btnParaCor, cbParaCor);
-        addRow(extendedPanel, btnPSF, tbDL, tbNB, tbSim);
-        addRow(extendedPanel, tbMSD, btnBtf, null, null);
+        addRow(extendedPanel, btnPSF, tbDL, tbMSD, tbSim);
+        addRow(extendedPanel, btnBtf, null, null, null);
     }
 
     /**
