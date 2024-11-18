@@ -36,6 +36,7 @@ public class FitView extends BaseView {
     private JButton btnTest, btnSetPar;
     private JToggleButton tbGLS, tbBayes, tbFixPar;
     private JRadioButton holdN, holdF2, holdD, holdD2, holdF3, holdD3, holdVx, holdVy, holdG, holdFTrip, holdTTtrip;
+    private JComboBox<String> cbFitModel;
 
 
     /**
@@ -131,6 +132,13 @@ public class FitView extends BaseView {
         holdTTtrip = createHoldButton(model.getTTrip());
     }
 
+    @Override
+    protected void initializeComboBoxes() {
+        cbFitModel = new JComboBox<>(new String[]{Constants.ITIR_FCS_2D, Constants.SPIM_FCS_3D, Constants.DC_FCCS_2D});
+        cbFitModel.setSelectedItem(controller.getFitModel());
+        cbFitModel.addActionListener(controller.cbFitModelChanged(cbFitModel));
+    }
+
     /**
      * Sets the text fields to their default values based on the model's current state.
      */
@@ -199,7 +207,7 @@ public class FitView extends BaseView {
     protected void addComponentsToFrame() {
         // row 1
         add(createJLabel("Fit Model: ", ""));
-        add(tfFitModel);
+        add(cbFitModel);
         add(createJLabel("", ""));
         add(tbGLS);
         add(createJLabel("", ""));

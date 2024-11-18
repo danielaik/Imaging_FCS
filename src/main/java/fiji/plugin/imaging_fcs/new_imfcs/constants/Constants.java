@@ -22,7 +22,7 @@ public final class Constants {
     public static final String BLEACH_CORRECTION_SINGLE_EXP = "Single Exp";
     public static final String BLEACH_CORRECTION_DOUBLE_EXP = "Double Exp";
     public static final String BLEACH_CORRECTION_POLYNOMIAL = "Polynomial";
-    public static final String BLEACH_CORRECTION_LINEAR_SEGMENT = "Lin Segment";
+    public static final String BLEACH_CORRECTION_LINEAR_SEGMENT = "Linear Segment";
 
     // filtering method
     public static final String NO_FILTER = "none";

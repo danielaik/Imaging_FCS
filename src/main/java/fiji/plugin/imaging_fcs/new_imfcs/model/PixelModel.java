@@ -91,7 +91,7 @@ public class PixelModel {
                 return fp -> fp.getN() * (1 - fp.getF2());
             case "N*F2":
                 return fp -> fp.getN() * fp.getF2();
-            case "Sqrt(vx^2+vy^2)":
+            case "Sqrt(vx²+vy²)":
                 return fp -> Math.sqrt(Math.pow(fp.getVxInterface(), 2) + Math.pow(fp.getVyInterface(), 2));
             default:
                 throw new RuntimeException("The scatter method doesn't exist for this param " + param);

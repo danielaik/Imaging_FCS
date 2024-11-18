@@ -94,7 +94,7 @@ public final class MainPanelController {
         this.backgroundSubtractionController = new BackgroundSubtractionController(imageModel, this::askResetResults);
         this.bleachCorrectionModel = new BleachCorrectionModel(settings, imageModel);
         this.correlator = new Correlator(settings, bleachCorrectionModel, fitModel);
-        this.fitController = new FitController(fitModel, correlator, settings);
+        this.fitController = new FitController(fitModel, correlator, settings, this::updateSettingsField);
         this.imageController = new ImageController(this, imageModel, backgroundSubtractionController, fitController,
                 bleachCorrectionModel, correlator, settings, optionsModel);
 
@@ -360,46 +360,6 @@ public final class MainPanelController {
     }
 
     /**
-     * Creates an ActionListener that updates the fit model selection in the experimental settings model.
-     * This listener is triggered when the fit model combo box selection changes.
-     *
-     * @return an ActionListener that processes the action event
-     */
-    public ActionListener cbFitModelChanged(JComboBox<String> comboBox) {
-        return new ActionListener() {
-            private String previousSelection = (String) comboBox.getSelectedItem();
-
-            @Override
-            public void actionPerformed(ActionEvent ev) {
-                String fitModel = getComboBoxSelectionFromEvent(ev);
-                try {
-                    if (!previousSelection.equals(fitModel)) {
-                        settings.setFitModel(fitModel);
-                        // Update previous selection to current if successful
-                        previousSelection = fitModel;
-
-                        // If the model is not DC_FCCS_2D, deactivate FCCSDisp
-                        boolean isDCFCCS = fitModel.equals(Constants.DC_FCCS_2D);
-                        if (!isDCFCCS) {
-                            view.resetFCCSDisplay();
-                            settings.setFCCSDisp(false);
-                        }
-
-                        // update the threshold fields depending on the model used.
-                        fitController.setAllAcfsThreshold(isDCFCCS);
-                        filteringController.enableButtonSameAsCCF(isDCFCCS);
-                        filteringController.refreshFilteringView();
-
-                        updateSettingsField();
-                    }
-                } catch (RejectResetException e) {
-                    comboBox.setSelectedItem(previousSelection);
-                }
-            }
-        };
-    }
-
-    /**
      * Callback method for accepting filter limits.
      * It validates the filter limits and sets them in the model or prompts re-entry if the input is invalid.
      *
@@ -439,6 +399,15 @@ public final class MainPanelController {
 
             Plots.closePlots();
         };
+    }
+
+    /**
+     * Returns an ActionListener for the "More" button to toggle the extended panel.
+     *
+     * @return An ActionListener that toggles the extended panel in the view.
+     */
+    public ActionListener btnMorePressed() {
+        return (ActionEvent ev) -> view.toggleExtendedPanel();
     }
 
     /**
@@ -998,25 +967,6 @@ public final class MainPanelController {
     }
 
     /**
-     * Creates an ItemListener that handles the FCCS display toggle button press.
-     * If the fit model is DC_FCCS_2D and the button is selected, the FCCS display is enabled;
-     * otherwise, it is disabled and the button is set to off.
-     *
-     * @return an ItemListener to manage FCCS display state changes
-     */
-    public ItemListener tbFCCSDisplayPressed() {
-        return (ItemEvent ev) -> {
-            if (settings.getFitModel().equals(Constants.DC_FCCS_2D) && ev.getStateChange() == ItemEvent.SELECTED) {
-                settings.setFCCSDisp(true);
-                ((JToggleButton) ev.getSource()).setText("FCCS Disp On");
-            } else {
-                settings.setFCCSDisp(false);
-                view.resetFCCSDisplay();
-            }
-        };
-    }
-
-    /**
      * Returns an item listener to handle the "Exp Settings" toggle button press event.
      * This listener toggles the visibility of the experimental settings view.
      *
@@ -1138,6 +1088,8 @@ public final class MainPanelController {
         Runnable doUpdateSettingsField = () -> {
             settings.updateSettings();
             expSettingsView.setNonUserSettings();
+            filteringController.enableButtonSameAsCCF(settings.isFCCSDisp());
+            filteringController.refreshFilteringView();
         };
 
         // Execute the update in the Swing event dispatch thread to ensure thread safety

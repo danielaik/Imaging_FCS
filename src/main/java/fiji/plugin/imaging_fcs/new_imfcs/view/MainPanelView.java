@@ -6,6 +6,8 @@ import fiji.plugin.imaging_fcs.new_imfcs.model.ExpSettingsModel;
 
 import javax.swing.*;
 import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.awt.event.ItemListener;
 
 import static fiji.plugin.imaging_fcs.new_imfcs.controller.ControllerUtils.updateComboBoxValue;
@@ -22,14 +24,17 @@ import static fiji.plugin.imaging_fcs.version.VERSION.IMFCS_VERSION;
  * It extends BaseView and uses a MainPanelController to handle events.
  */
 public final class MainPanelView extends BaseView {
-    // Constants for UI design
-    private static final GridLayout PANEL_LAYOUT = new GridLayout(14, 4);
-
+    // Font for bold labels
+    private static final Font BOLD_FONT = new Font(Constants.PANEL_FONT, Font.BOLD, 12);
     // Colors for buttons
     private static final Color SAVE_BUTTON_COLOR = Color.BLUE;
     private static final Color LOAD_BUTTON_COLOR = Color.BLUE;
     private static final Color EXIT_BUTTON_COLOR = Color.RED;
-
+    // Animation parameters
+    private static final int ANIMATION_DELAY = 15; // milliseconds between animation updates
+    private static final int ANIMATION_STEP = 20;  // pixels to expand/shrink per step
+    // Column number
+    private static int COLUMN_NUMBER = 4;
     // Controller for handling user actions
     private final MainPanelController controller;
 
@@ -40,13 +45,21 @@ public final class MainPanelView extends BaseView {
     private JTextField tfFirstFrame, tfLastFrame, tfFrameTime, tfBinning, tfCCFDistance, tfCorrelatorQ;
 
     // Combo boxes for selecting options
-    private JComboBox<String> cbCorrelatorP, cbBleachCor, cbFilter, cbParaCor, cbDCCF, cbFitModel;
+    private JComboBox<String> cbCorrelatorP, cbBleachCor, cbFilter, cbParaCor, cbDCCF;
 
     // Buttons
     private JButton btnSave, btnRead, btnExit, btnLoad, btnBatch, btnDCCF, btnWriteConfig, btnUseExisting, btnDCR,
-            btnParamVideo, btnOptions, btnAve, btnParaCor, btnPSF, btnAll, btnRT, btnROI, btnBtf;
-    private JToggleButton tbExpSettings, tbFCCSDisplay, tbFit, tbOverlap, tbBackground, tbNB, tbFiltering,
-            tbBleachCorStride, tbDL, tbSim, tbMSD;
+            btnParamVideo, btnOptions, btnAve, btnParaCor, btnPSF, btnAll, btnROI, btnBtf, btnMore;
+    private JToggleButton tbExpSettings, tbFit, tbOverlap, tbBackground, tbNB, tbFiltering, tbBleachCorStride, tbDL,
+            tbSim, tbMSD;
+
+    // Extended panel for additional features
+    private JPanel extendedPanel;
+    // Variables for animation
+    private Timer animationTimer;
+    private boolean isAnimating;
+    private boolean isExpanding;
+    private int extendedPanelHeight;
 
     /**
      * Constructs the MainPanelView with a specified controller.
@@ -86,7 +99,6 @@ public final class MainPanelView extends BaseView {
     protected void configureWindow() {
         super.configureWindow();
 
-        setLayout(PANEL_LAYOUT);
         setLocation(Constants.MAIN_PANEL_POS);
         setSize(Constants.MAIN_PANEL_DIM);
 
@@ -130,9 +142,6 @@ public final class MainPanelView extends BaseView {
      */
     @Override
     protected void initializeComboBoxes() {
-        cbFitModel = new JComboBox<>(new String[]{Constants.ITIR_FCS_2D, Constants.SPIM_FCS_3D, Constants.DC_FCCS_2D});
-        cbFitModel.setSelectedItem(settings.getFitModel());
-
         cbCorrelatorP = new JComboBox<>(new String[]{"16", "32"});
         cbCorrelatorP.setSelectedItem(String.valueOf(settings.getCorrelatorP()));
 
@@ -156,8 +165,8 @@ public final class MainPanelView extends BaseView {
                 "D vs F2",
                 "N*(1-F2) vs D",
                 "N*F2 vs D2",
-                "D vs Sqrt(vx^2+vy^2)",
-                "D2 vs Sqrt(vx^2+vy^2)"
+                "D vs Sqrt(vx²+vy²)",
+                "D2 vs Sqrt(vx²+vy²)"
         });
 
         cbDCCF = new JComboBox<>(new String[]{
@@ -168,7 +177,6 @@ public final class MainPanelView extends BaseView {
         });
 
         // add listeners
-        cbFitModel.addActionListener(controller.cbFitModelChanged(cbFitModel));
         cbCorrelatorP.addActionListener(
                 createComboBoxListener(cbCorrelatorP, controller.updateFitEnd(settings::setCorrelatorP)));
         cbParaCor.addActionListener(updateComboBoxValue(settings::setParaCor));
@@ -177,6 +185,10 @@ public final class MainPanelView extends BaseView {
         cbDCCF.addActionListener(updateComboBoxValue(settings::setdCCF));
     }
 
+    /**
+     * Initializes all buttons used in the main panel.
+     * This method calls sub-methods to create regular buttons and toggle buttons.
+     */
     @Override
     protected void initializeButtons() {
         createJButtons();
@@ -221,20 +233,16 @@ public final class MainPanelView extends BaseView {
                 "correlation in a direction (see scroll down menu).", null, controller.btnDCCFPressed());
         btnPSF = createJButton("PSF", "Calculates the calibration for the PSF.", null, controller.btnPSFPressed());
         btnAll = createJButton("All", "Calculates all ACFs.", null, controller.btnAllPressed());
-        btnRT = createJButton("Res. Table", "Create a results table.", null, controller.btnResultTablePressed());
         btnROI = createJButton("ROI", "Calculates ACFs only in the currently chose ROI.", null,
                 controller.btnROIPressed());
         btnBtf = createJButton("To Front", "Bring all windows of this plugin instance to the front.", null,
                 controller.btnBringToFrontPressed());
+        btnMore = createJButton("More \u25BC", "Show more options", null, controller.btnMorePressed());
     }
 
     private void createJToggleButtons() {
         tbExpSettings = createJToggleButton("Exp Set", "Opens a dialog with experimental settings.", null,
                 controller.tbExpSettingsPressed());
-
-        // set the button FCCS Disp based on the settings value
-        tbFCCSDisplay = createOnOffToggleButton("FCCS Disp", settings.isFCCSDisp(), "",
-                new Font(Constants.PANEL_FONT, Font.BOLD, 9), controller.tbFCCSDisplayPressed());
 
         // Set the button overlap based on the settings value
         tbOverlap = createOnOffToggleButton("Overlap", settings.isOverlap(), "",
@@ -262,96 +270,130 @@ public final class MainPanelView extends BaseView {
     }
 
     /**
+     * Adds a row of components to the main panel.
+     * Each component is added to a row panel with a GridLayout to ensure uniform sizes.
+     *
+     * @param mainPanel  The main panel to which the row is added.
+     * @param components The components to add in the row.
+     */
+    private void addRow(JPanel mainPanel, Component... components) {
+        JPanel rowPanel = new JPanel(new GridLayout(1, COLUMN_NUMBER, 1, 1));
+        for (Component comp : components) {
+            if (comp != null) {
+                rowPanel.add(comp);
+            } else {
+                rowPanel.add(Box.createGlue()); // Add an empty space if component is null
+            }
+        }
+        mainPanel.add(rowPanel);
+    }
+
+    /**
+     * Recursively sets the preferred and maximum size for all components in a container.
+     * This ensures that all components have a uniform size, contributing to a consistent UI appearance.
+     *
+     * @param component The component to set the size for.
+     * @param size      The dimension to set as both preferred and maximum size.
+     */
+    private void setUniformSize(Component component, Dimension size) {
+        if (component instanceof JButton || component instanceof JTextField || component instanceof JComboBox ||
+                component instanceof JToggleButton) {
+            component.setPreferredSize(size);
+            component.setMaximumSize(size);
+        }
+        if (component instanceof Container) {
+            for (Component child : ((Container) component).getComponents()) {
+                setUniformSize(child, size);
+            }
+        }
+    }
+
+
+    /**
      * Adds components to the frame, organizing them according to the specified layout.
      * This method meticulously places labels, text fields, combo boxes, and buttons into the
-     * frame, utilizing a grid layout. It also configures action listeners for buttons to
+     * frame, utilizing a box layout. It also configures action listeners for buttons to
      * interact with the controller for executing actions based on user input.
      */
     @Override
     protected void addComponentsToFrame() {
-        // row 1
-        add(createJLabel("Image", ""));
-        add(btnUseExisting);
-        add(btnLoad);
-        add(btnBatch);
+        JPanel mainPanel = new JPanel();
+        mainPanel.setLayout(new BoxLayout(mainPanel, BoxLayout.Y_AXIS));
 
-        // row 2
-        add(createJLabel("First frame: ", ""));
-        add(tfFirstFrame);
-        add(createJLabel("Last frame: ", ""));
-        add(tfLastFrame);
+        // FILE label
+        addRow(mainPanel, createJLabel("FILE", "", BOLD_FONT), null, null, null);
 
-        // row 3
-        add(createJLabel("Frame time: ", ""));
-        add(tfFrameTime);
-        add(tbExpSettings);
-        add(btnWriteConfig);
+        // FILE buttons
+        addRow(mainPanel, btnUseExisting, btnLoad, btnBatch, btnDCR);
 
-        // row 4
-        add(createJLabel("CCF distance: ", ""));
-        add(tfCCFDistance);
-        add(createJLabel("Binning", ""));
-        add(tfBinning);
+        // Save, Read, Background
+        addRow(mainPanel, btnSave, btnRead, tbBackground, null);
 
-        // row 5
-        add(createJLabel("Correlator P: ", ""));
-        add(cbCorrelatorP);
-        add(createJLabel("Correlator Q: ", ""));
-        add(tfCorrelatorQ);
+        // SETTINGS label
+        addRow(mainPanel, createJLabel("SETTINGS", "", BOLD_FONT), null, null, null);
 
-        // row 6
-        add(createJLabel("Fit Model: ", ""));
-        add(cbFitModel);
-        add(tbFCCSDisplay);
-        add(tbOverlap);
+        // Settings buttons
+        addRow(mainPanel, tbExpSettings, btnOptions, tbOverlap, btnWriteConfig);
 
-        // row 7
-        add(createJLabel("", ""));
-        add(createJLabel("", ""));
-        add(createJLabel("", ""));
-        add(createJLabel("", ""));
+        // Frame Time
+        addRow(mainPanel, createJLabel("Frame time", ""), tfFrameTime, null, null);
 
-        // row 8
-        add(btnDCR);
-        add(btnParamVideo);
-        add(tbBackground);
-        add(createJLabel("", ""));
+        // First Frame, Last Frame
+        addRow(mainPanel, createJLabel("First Frame", ""), tfFirstFrame, createJLabel("Last Frame", ""), tfLastFrame);
 
-        // row 9
-        add(btnOptions);
-        add(tbNB);
-        add(tbFiltering);
-        add(btnAve);
+        // CCF Distance, Binning
+        addRow(mainPanel, createJLabel("CCF Distance", ""), tfCCFDistance, createJLabel("Binning", ""), tfBinning);
 
-        // row 10
-        add(btnParaCor);
-        add(cbParaCor);
-        add(tbBleachCorStride);
-        add(cbBleachCor);
+        // Correlator P, Correlator Q
+        addRow(mainPanel, createJLabel("Correlator P", ""), cbCorrelatorP, createJLabel("Correlator Q", ""),
+                tfCorrelatorQ);
 
-        // row 11
-        add(btnDCCF);
-        add(cbDCCF);
-        add(createJLabel("Filter (All):", ""));
-        add(cbFilter);
+        // EVALUATION label
+        addRow(mainPanel, createJLabel("EVALUATION", "", BOLD_FONT), null, null, null);
 
-        // row 12
-        add(btnPSF);
-        add(tbDL);
-        add(tbFit);
-        add(btnAll);
+        // Bleach Cor, cbBleachCor, Fit, All
+        addRow(mainPanel, tbBleachCorStride, cbBleachCor, tbFit, btnAll);
 
-        // row 13
-        add(tbSim);
-        add(btnRT);
-        add(tbMSD);
-        add(btnROI);
+        // Filter (All), cbFilter, Average, ROI
+        addRow(mainPanel, createJLabel("Filter (All)", ""), cbFilter, btnAve, btnROI);
 
-        // row 14
-        add(btnBtf);
-        add(btnSave);
-        add(btnRead);
-        add(btnExit);
+        // Threshold, PVideo, Exit, More
+        addRow(mainPanel, tbFiltering, btnParamVideo, btnExit, btnMore);
+
+        // Initialize extended panel and add to main panel
+        initializeExtendedPanel();
+
+        // Add extended panel to main panel
+        mainPanel.add(extendedPanel);
+        extendedPanel.setVisible(false);
+
+        Dimension uniformSize = new Dimension(100, 25);
+        setUniformSize(mainPanel, uniformSize);
+        setUniformSize(extendedPanel, uniformSize);
+
+        // Add main panel to frame
+        getContentPane().add(mainPanel);
+
+        // Adjust window size
+        pack();
+    }
+
+    /**
+     * Initializes the extended panel, which contains additional controls that can be toggled visible or hidden.
+     * This panel is added to the main panel and starts as hidden.
+     */
+    private void initializeExtendedPanel() {
+        extendedPanel = new JPanel();
+        extendedPanel.setLayout(new BoxLayout(extendedPanel, BoxLayout.Y_AXIS));
+
+        // Empty line
+        addRow(extendedPanel, createJLabel("", ""), null, null, null);
+        // ADDITIONAL label
+        addRow(extendedPanel, createJLabel("ADDITIONAL", "", BOLD_FONT), null, null, null);
+
+        addRow(extendedPanel, btnDCCF, cbDCCF, btnParaCor, cbParaCor);
+        addRow(extendedPanel, btnPSF, tbDL, tbNB, tbSim);
+        addRow(extendedPanel, tbMSD, btnBtf, null, null);
     }
 
     /**
@@ -364,11 +406,70 @@ public final class MainPanelView extends BaseView {
     }
 
     /**
-     * Resets the FCCS display toggle button to its default state.
-     * Sets the button text to "FCCS Disp Off" and ensures it is unselected.
+     * Toggles the visibility of the extended panel with animation and updates the "More" button label.
+     * This method is called from the controller when the "More" button is pressed.
      */
-    public void resetFCCSDisplay() {
-        tbFCCSDisplay.setText("FCCS Disp Off");
-        tbFCCSDisplay.setSelected(false);
+    public void toggleExtendedPanel() {
+        if (isAnimating) {
+            return; // Ignore if an animation is already running
+        }
+
+        isAnimating = true;
+        isExpanding = !extendedPanel.isVisible();
+
+        if (isExpanding) {
+            extendedPanel.setVisible(true);
+            btnMore.setText("Less \u25B2"); // Up arrow
+        } else {
+            btnMore.setText("More \u25BC"); // Down arrow
+        }
+
+        extendedPanelHeight = isExpanding ? 0 : extendedPanel.getPreferredSize().height;
+
+        animationTimer = new Timer(ANIMATION_DELAY, new AnimationListener());
+        animationTimer.start();
+    }
+
+    /**
+     * Inner class to handle the animation steps.
+     */
+    private class AnimationListener implements ActionListener {
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            int panelHeight = extendedPanel.getPreferredSize().height;
+            int targetHeight = getExtendedPanelTargetHeight();
+
+            if (isExpanding) {
+                panelHeight += ANIMATION_STEP;
+                if (panelHeight >= targetHeight) {
+                    panelHeight = targetHeight;
+                    animationTimer.stop();
+                    isAnimating = false;
+                }
+            } else {
+                panelHeight -= ANIMATION_STEP;
+                if (panelHeight <= 0) {
+                    panelHeight = 0;
+                    animationTimer.stop();
+                    extendedPanel.setVisible(false);
+                    isAnimating = false;
+                }
+            }
+
+            extendedPanel.setPreferredSize(new Dimension(extendedPanel.getPreferredSize().width, panelHeight));
+            extendedPanel.revalidate();
+            pack();
+        }
+
+        private int getExtendedPanelTargetHeight() {
+            if (isExpanding) {
+                // Calculate the preferred height when fully expanded
+                extendedPanel.setPreferredSize(null);
+                extendedPanelHeight = extendedPanel.getPreferredSize().height;
+                return extendedPanelHeight;
+            } else {
+                return 0;
+            }
+        }
     }
 }

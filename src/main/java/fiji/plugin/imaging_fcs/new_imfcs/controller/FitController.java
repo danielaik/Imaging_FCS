@@ -1,5 +1,6 @@
 package fiji.plugin.imaging_fcs.new_imfcs.controller;
 
+import fiji.plugin.imaging_fcs.new_imfcs.constants.Constants;
 import fiji.plugin.imaging_fcs.new_imfcs.model.ExpSettingsModel;
 import fiji.plugin.imaging_fcs.new_imfcs.model.FitModel;
 import fiji.plugin.imaging_fcs.new_imfcs.model.PixelModel;
@@ -18,6 +19,8 @@ import java.awt.event.ItemListener;
 import java.util.Collections;
 import java.util.function.Consumer;
 
+import static fiji.plugin.imaging_fcs.new_imfcs.controller.ControllerUtils.getComboBoxSelectionFromEvent;
+
 /**
  * The FitController class handles the interactions between the FitModel and the FitView,
  * managing the fitting process and updating the view based on user actions.
@@ -27,17 +30,21 @@ public class FitController {
     private final FitView view;
     private final Correlator correlator;
     private final ExpSettingsModel settings;
+    private final Runnable updateSettingsField;
 
     /**
      * Constructs a new FitController with the given FitModel.
      *
      * @param model The FitModel instance.
      */
-    public FitController(FitModel model, Correlator correlator, ExpSettingsModel settings) {
+    public FitController(FitModel model, Correlator correlator, ExpSettingsModel settings,
+                         Runnable updateSettingsField) {
         this.model = model;
-        this.view = new FitView(this, model);
         this.correlator = correlator;
         this.settings = settings;
+        this.updateSettingsField = updateSettingsField;
+
+        this.view = new FitView(this, model);
     }
 
     /**
@@ -198,6 +205,40 @@ public class FitController {
     }
 
     /**
+     * Creates an ActionListener that updates the fit model selection in the experimental settings model.
+     * This listener is triggered when the fit model combo box selection changes.
+     *
+     * @return an ActionListener that processes the action event
+     */
+    public ActionListener cbFitModelChanged(JComboBox<String> comboBox) {
+        return new ActionListener() {
+            private String previousSelection = (String) comboBox.getSelectedItem();
+
+            @Override
+            public void actionPerformed(ActionEvent ev) {
+                String fitModel = getComboBoxSelectionFromEvent(ev);
+                try {
+                    if (!previousSelection.equals(fitModel)) {
+                        settings.setFitModel(fitModel);
+                        // Update previous selection to current if successful
+                        previousSelection = fitModel;
+
+                        // If the model is not DC_FCCS_2D, deactivate FCCSDisp
+                        boolean isDCFCCS = fitModel.equals(Constants.DC_FCCS_2D);
+                        settings.setFCCSDisp(isDCFCCS);
+                        // update the threshold fields depending on the model used.
+                        setAllAcfsThreshold(isDCFCCS);
+
+                        updateSettingsField.run();
+                    }
+                } catch (RejectResetException e) {
+                    comboBox.setSelectedItem(previousSelection);
+                }
+            }
+        };
+    }
+
+    /**
      * Updates the fit end position based on the current experimental settings.
      * This method is invoked later on the event dispatch thread.
      *
@@ -253,5 +294,13 @@ public class FitController {
 
     public int getFitEnd() {
         return model.getFitEnd();
+    }
+
+    public String getFitModel() {
+        return settings.getFitModel();
+    }
+
+    public void setFitModel(String fitModel) {
+        settings.setFitModel(fitModel);
     }
 }

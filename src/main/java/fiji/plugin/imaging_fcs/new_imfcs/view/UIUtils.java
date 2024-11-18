@@ -54,10 +54,28 @@ public final class UIUtils {
      * @return A {@link JLabel} instance configured with the specified text and an optional tooltip.
      */
     public static JLabel createJLabel(String text, String toolTip) {
+        return createJLabel(text, toolTip, null);
+    }
+
+    /**
+     * Creates a {@link JLabel} with specified text, an optional tooltip, and an optional font.
+     * This method streamlines the creation of labels with consistent tooltip handling and font styling.
+     *
+     * @param text    The text to be displayed by the {@link JLabel}.
+     * @param toolTip The tooltip text to be displayed when hovering over the label. If this parameter
+     *                is an empty string, no tooltip is set.
+     * @param font    The {@link Font} to be used for the label's text. If null, the default font is used.
+     * @return A {@link JLabel} instance configured with the specified text, optional tooltip, and optional font.
+     */
+    public static JLabel createJLabel(String text, String toolTip, Font font) {
         JLabel label = new JLabel(text);
 
         if (!toolTip.isEmpty()) {
             label.setToolTipText(toolTip);
+        }
+
+        if (font != null) {
+            label.setFont(font);
         }
 
         return label;
