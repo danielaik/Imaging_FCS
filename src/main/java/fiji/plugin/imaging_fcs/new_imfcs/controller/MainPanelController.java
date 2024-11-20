@@ -95,8 +95,9 @@ public final class MainPanelController {
         this.bleachCorrectionModel = new BleachCorrectionModel(settings, imageModel);
         this.correlator = new Correlator(settings, bleachCorrectionModel, fitModel);
         this.fitController = new FitController(fitModel, correlator, settings, this::updateSettingsField);
-        this.imageController = new ImageController(this, imageModel, backgroundSubtractionController, fitController,
-                bleachCorrectionModel, correlator, settings, optionsModel);
+        this.imageController =
+                new ImageController(imageModel, backgroundSubtractionController, fitController, bleachCorrectionModel,
+                        correlator, settings, optionsModel, this::setLastFrame);
 
         this.simulationController = new SimulationController(imageController, settings);
 
@@ -106,6 +107,7 @@ public final class MainPanelController {
 
         this.filteringController =
                 new FilteringController(settings, optionsModel, imageController, fitController, fitModel, correlator);
+        imageController.setRefreshThresholdView(filteringController::refreshFilteringView);
 
         this.parameterVideoController = new ParameterVideoController(settings, imageModel, fitModel);
 

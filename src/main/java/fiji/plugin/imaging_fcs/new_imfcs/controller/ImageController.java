@@ -20,6 +20,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Consumer;
 
 import static fiji.plugin.imaging_fcs.new_imfcs.model.correlations.MeanSquareDisplacement.correlationToMSD;
 
@@ -29,13 +30,14 @@ import static fiji.plugin.imaging_fcs.new_imfcs.model.correlations.MeanSquareDis
  */
 public final class ImageController {
     private final ImageModel imageModel;
-    private final MainPanelController mainPanelController;
     private final BackgroundSubtractionController backgroundSubtractionController;
     private final BleachCorrectionModel bleachCorrectionModel;
     private final Correlator correlator;
     private final FitController fitController;
     private final ExpSettingsModel settings;
     private final OptionsModel options;
+    private final Consumer<Integer> setLastFrame;
+    private Runnable refreshThresholdView = () -> {};
     private ImageView imageView;
     private int previousX = -1;
     private int previousY = -1;
@@ -43,7 +45,6 @@ public final class ImageController {
     /**
      * Constructs a new ImageController with the given dependencies.
      *
-     * @param mainPanelController             The main panel controller.
      * @param imageModel                      The image model.
      * @param backgroundSubtractionController The background subtraction controller.
      * @param fitController                   The fit controller.
@@ -51,12 +52,12 @@ public final class ImageController {
      * @param correlator                      The correlator.
      * @param settings                        The experimental settings model.
      * @param options                         The options model.
+     * @param setLastFrame                    A {@code Consumer<Integer>} to set the last frame index.
      */
-    public ImageController(MainPanelController mainPanelController, ImageModel imageModel,
-                           BackgroundSubtractionController backgroundSubtractionController, FitController fitController,
-                           BleachCorrectionModel bleachCorrectionModel, Correlator correlator,
-                           ExpSettingsModel settings, OptionsModel options) {
-        this.mainPanelController = mainPanelController;
+    public ImageController(ImageModel imageModel, BackgroundSubtractionController backgroundSubtractionController,
+                           FitController fitController, BleachCorrectionModel bleachCorrectionModel,
+                           Correlator correlator, ExpSettingsModel settings, OptionsModel options,
+                           Consumer<Integer> setLastFrame) {
         this.imageModel = imageModel;
         this.backgroundSubtractionController = backgroundSubtractionController;
         this.fitController = fitController;
@@ -64,6 +65,7 @@ public final class ImageController {
         this.correlator = correlator;
         this.settings = settings;
         this.options = options;
+        this.setLastFrame = setLastFrame;
         imageView = null;
     }
 
@@ -168,7 +170,7 @@ public final class ImageController {
 
         ImageModel.adaptImageScale(image);
 
-        mainPanelController.setLastFrame(imageModel.getStackSize());
+        setLastFrame.accept(imageModel.getStackSize());
         backgroundSubtractionController.setTfBackground(imageModel.getBackground());
         backgroundSubtractionController.setTfBackground2(imageModel.getBackground2());
     }
@@ -213,6 +215,11 @@ public final class ImageController {
 
         fitController.fit(pixelModel, settings.getFitModel(), correlator.getLagTimes(),
                 correlator.getRegularizedCovarianceMatrix(), x, y);
+
+        if (pixelModel.isFitted()) {
+            fitController.updateThresholds(pixelModel);
+            refreshThresholdView.run();
+        }
 
         if (settings.isMSD()) {
             pixelModel.setMSD(
@@ -614,5 +621,9 @@ public final class ImageController {
                 }
             }
         };
+    }
+
+    public void setRefreshThresholdView(Runnable refreshThresholdView) {
+        this.refreshThresholdView = refreshThresholdView;
     }
 }

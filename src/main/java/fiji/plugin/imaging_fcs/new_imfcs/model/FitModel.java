@@ -6,6 +6,7 @@ import fiji.plugin.imaging_fcs.new_imfcs.model.fit.GLSFit;
 import fiji.plugin.imaging_fcs.new_imfcs.model.fit.StandardFit;
 
 import java.util.Arrays;
+import java.util.function.Function;
 
 import static fiji.plugin.imaging_fcs.new_imfcs.constants.Constants.DIFFUSION_COEFFICIENT_BASE;
 import static fiji.plugin.imaging_fcs.new_imfcs.constants.Constants.PIXEL_SIZE_REAL_SPACE_CONVERSION_FACTOR;
@@ -32,7 +33,7 @@ public class FitModel {
     public FitModel(ExpSettingsModel settings) {
         this.settings = settings;
 
-        this.chi2Threshold = new FilteringModel();
+        this.chi2Threshold = new FilteringModel(1);
 
         initValues();
     }
@@ -45,7 +46,7 @@ public class FitModel {
     public FitModel(ExpSettingsModel settings, FitModel other) {
         this.settings = settings;
 
-        this.chi2Threshold = new FilteringModel();
+        this.chi2Threshold = new FilteringModel(1);
 
         this.D = new Parameter(other.D);
         this.N = new Parameter(other.N);
@@ -77,17 +78,17 @@ public class FitModel {
      * Initializes the parameter values to their default settings.
      */
     private void initValues() {
-        D = new Parameter(1 / DIFFUSION_COEFFICIENT_BASE, false);
-        N = new Parameter(1, false);
-        F2 = new Parameter(0, true);
-        F3 = new Parameter(0, true);
-        D2 = new Parameter(0, true);
-        D3 = new Parameter(0, true);
-        vx = new Parameter(0, true);
-        vy = new Parameter(0, true);
-        G = new Parameter(0, false);
-        fTrip = new Parameter(0, true);
-        tTrip = new Parameter(0, true);
+        D = new Parameter(1 / DIFFUSION_COEFFICIENT_BASE, false, DIFFUSION_COEFFICIENT_BASE);
+        N = new Parameter(1, false, 1);
+        F2 = new Parameter(0, true, 1);
+        F3 = new Parameter(0, true, 1);
+        D2 = new Parameter(0, true, DIFFUSION_COEFFICIENT_BASE);
+        D3 = new Parameter(0, true, DIFFUSION_COEFFICIENT_BASE);
+        vx = new Parameter(0, true, PIXEL_SIZE_REAL_SPACE_CONVERSION_FACTOR);
+        vy = new Parameter(0, true, PIXEL_SIZE_REAL_SPACE_CONVERSION_FACTOR);
+        G = new Parameter(0, false, 1);
+        fTrip = new Parameter(0, true, 1);
+        tTrip = new Parameter(0, true, PIXEL_SIZE_REAL_SPACE_CONVERSION_FACTOR);
 
         Q2 = 1;
         Q3 = 1;
@@ -288,6 +289,53 @@ public class FitModel {
     public void theoreticalFit(PixelModel pixelModel, double[] lagTimes) {
         StandardFit fitter = new StandardFit(this, settings, settings.getFitModel());
         fitter.theoreticalFit(pixelModel, lagTimes);
+    }
+
+    /**
+     * Updates the minimum and maximum values of the thresholds for various fit parameters
+     * based on the provided {@code PixelModel}'s fit parameters.
+     *
+     * @param pixelModel   The {@code PixelModel} containing the fit parameters to update thresholds with.
+     * @param getThreshold A function that takes a {@code FilteringModel} and returns the appropriate threshold model.
+     */
+    private void updateParameterThreshold(PixelModel pixelModel,
+                                          Function<FilteringModel, FilteringModel> getThreshold) {
+        PixelModel.FitParameters fitParameters = pixelModel.getFitParams();
+
+        // Update thresholds for all relevant parameters
+        getThreshold.apply(D.getThreshold()).updateMinMax(fitParameters.getD());
+        getThreshold.apply(N.getThreshold()).updateMinMax(fitParameters.getN());
+        getThreshold.apply(F2.getThreshold()).updateMinMax(fitParameters.getF2());
+        getThreshold.apply(F3.getThreshold()).updateMinMax(fitParameters.getF3());
+        getThreshold.apply(D2.getThreshold()).updateMinMax(fitParameters.getD2());
+        getThreshold.apply(D3.getThreshold()).updateMinMax(fitParameters.getD3());
+        getThreshold.apply(G.getThreshold()).updateMinMax(fitParameters.getG());
+        getThreshold.apply(vx.getThreshold()).updateMinMax(fitParameters.getVx());
+        getThreshold.apply(vy.getThreshold()).updateMinMax(fitParameters.getVy());
+        getThreshold.apply(fTrip.getThreshold()).updateMinMax(fitParameters.getFTrip());
+        getThreshold.apply(tTrip.getThreshold()).updateMinMax(fitParameters.getTTrip());
+
+        getThreshold.apply(chi2Threshold).updateMinMax(pixelModel.getChi2());
+    }
+
+    /**
+     * Updates the thresholds for the given {@code PixelModel} and its associated autocorrelation pixel models.
+     * If the pixel model has been fitted, it updates the thresholds for its parameters and for the parameters
+     * of its autocorrelation pixel models (ACF1 and ACF2) if they exist.
+     *
+     * @param pixelModel The {@code PixelModel} whose thresholds are to be updated.
+     */
+    public void updateThresholds(PixelModel pixelModel) {
+        if (pixelModel.isFitted()) {
+            // Update thresholds for the main PixelModel
+            updateParameterThreshold(pixelModel, Function.identity());
+
+            // Update thresholds for ACF1 and ACF2 if they exist
+            if (pixelModel.getAcf1PixelModel() != null) {
+                updateParameterThreshold(pixelModel.getAcf1PixelModel(), FilteringModel::getAcfThreshold);
+                updateParameterThreshold(pixelModel.getAcf2PixelModel(), FilteringModel::getAcfThreshold);
+            }
+        }
     }
 
     public Parameter getD() {
@@ -540,13 +588,14 @@ public class FitModel {
         /**
          * Constructs a new Parameter with the given value and hold state.
          *
-         * @param value The value of the parameter.
-         * @param hold  The hold state of the parameter.
+         * @param value       The value of the parameter.
+         * @param hold        The hold state of the parameter.
+         * @param fieldFactor The factor by which min and max values are adjusted.
          */
-        public Parameter(double value, boolean hold) {
+        public Parameter(double value, boolean hold, double fieldFactor) {
             this.value = value;
             this.hold = hold;
-            this.threshold = new FilteringModel();
+            this.threshold = new FilteringModel(fieldFactor);
         }
 
         /**

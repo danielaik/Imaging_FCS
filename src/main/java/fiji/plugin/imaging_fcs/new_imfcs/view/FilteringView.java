@@ -267,6 +267,16 @@ public class FilteringView extends BaseView {
         }
 
         /**
+         * Formats a given double value to two decimal places.
+         *
+         * @param value The double value to be formatted.
+         * @return A string representation of the value rounded to two decimal places.
+         */
+        private static String formatValue(double value) {
+            return String.format("%.2f", value);
+        }
+
+        /**
          * Creates a radio button with an action listener to enable or disable the threshold.
          *
          * @param enabledThresholdPressed the action listener for the radio button
@@ -286,10 +296,10 @@ public class FilteringView extends BaseView {
          * Updates the UI elements with the current min/max values for both CF and ACF.
          */
         public void refresh() {
-            setText(min, threshold.getMin());
-            setText(max, threshold.getMax());
-            setText(minAcf, threshold.getAcfThreshold().getMin());
-            setText(maxAcf, threshold.getAcfThreshold().getMax());
+            setText(min, formatValue(threshold.getMin()));
+            setText(max, formatValue(threshold.getMax()));
+            setText(minAcf, formatValue(threshold.getAcfThreshold().getMin()));
+            setText(maxAcf, formatValue(threshold.getAcfThreshold().getMax()));
             refreshEnabled();
         }
 

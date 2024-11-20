@@ -97,6 +97,15 @@ public class FitController {
     }
 
     /**
+     * Updates the thresholds in the underlying model based on the provided {@code PixelModel}.
+     *
+     * @param pixelModel The {@code PixelModel} containing the data used to update the thresholds.
+     */
+    public void updateThresholds(PixelModel pixelModel) {
+        model.updateThresholds(pixelModel);
+    }
+
+    /**
      * Determines if the pixel model needs to be filtered based on the current model settings.
      *
      * @param pixelModel The pixel model to check.

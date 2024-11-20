@@ -98,7 +98,7 @@ public class FilteringController {
      * Refreshes the filtering-related UI components in the view.
      */
     public void refreshFilteringView() {
-        view.refreshFields();
+        SwingUtilities.invokeLater(view::refreshFields);
     }
 
     /**
@@ -125,7 +125,7 @@ public class FilteringController {
     public ActionListener btnResetPressed() {
         return (ActionEvent) -> {
             fitController.resetFilters();
-            view.refreshFields();
+            refreshFilteringView();
 
             if (Plots.imgParam != null && Plots.imgParam.isVisible()) {
                 filterAndPlot();
