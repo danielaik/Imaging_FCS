@@ -322,7 +322,7 @@ public final class MainPanelView extends BaseView {
         mainPanel.setLayout(new BoxLayout(mainPanel, BoxLayout.Y_AXIS));
 
         // FILE label
-        addRow(mainPanel, createJLabel("FILE", "", BOLD_FONT), null, null, null);
+        addRow(mainPanel, createJLabel("FILE", "", BOLD_FONT));
 
         // FILE buttons
         addRow(mainPanel, btnUseExisting, btnLoad, btnBatch, btnDCR);
@@ -331,9 +331,9 @@ public final class MainPanelView extends BaseView {
         addRow(mainPanel, btnSave, btnRead, tbBackground, btnExit);
 
         // Empty row
-        addRow(mainPanel, Box.createVerticalStrut(EMPTY_ROW_HEIGHT), null, null, null);
+        addRow(mainPanel, Box.createVerticalStrut(EMPTY_ROW_HEIGHT));
         // SETTINGS label
-        addRow(mainPanel, createJLabel("SETTINGS", "", BOLD_FONT), null, null, null);
+        addRow(mainPanel, createJLabel("SETTINGS", "", BOLD_FONT));
 
         // Settings buttons
         addRow(mainPanel, tbExpSettings, btnOptions, tbOverlap, btnWriteConfig);
@@ -352,9 +352,9 @@ public final class MainPanelView extends BaseView {
                 tfCorrelatorQ);
 
         // Empty row
-        addRow(mainPanel, Box.createVerticalStrut(EMPTY_ROW_HEIGHT), null, null, null);
+        addRow(mainPanel, Box.createVerticalStrut(EMPTY_ROW_HEIGHT));
         // EVALUATION label
-        addRow(mainPanel, createJLabel("EVALUATION", "", BOLD_FONT), null, null, null);
+        addRow(mainPanel, createJLabel("EVALUATION", "", BOLD_FONT));
 
         // Bleach Cor, cbBleachCor, Fit, All
         addRow(mainPanel, tbBleachCorStride, cbBleachCor, tbFit, btnAll);
@@ -392,13 +392,13 @@ public final class MainPanelView extends BaseView {
         extendedPanel.setLayout(new BoxLayout(extendedPanel, BoxLayout.Y_AXIS));
 
         // Empty row
-        addRow(extendedPanel, Box.createVerticalStrut(EMPTY_ROW_HEIGHT), null, null, null);
+        addRow(extendedPanel, Box.createVerticalStrut(EMPTY_ROW_HEIGHT));
         // ADDITIONAL label
-        addRow(extendedPanel, createJLabel("ADDITIONAL", "", BOLD_FONT), null, null, null);
+        addRow(extendedPanel, createJLabel("ADDITIONAL", "", BOLD_FONT));
 
         addRow(extendedPanel, btnDCCF, cbDCCF, btnParaCor, cbParaCor);
         addRow(extendedPanel, btnPSF, tbDL, tbMSD, tbSim);
-        addRow(extendedPanel, btnBtf, null, null, null);
+        addRow(extendedPanel, btnBtf);
     }
 
     /**
