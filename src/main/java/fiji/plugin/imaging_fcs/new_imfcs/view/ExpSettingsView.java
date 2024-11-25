@@ -86,12 +86,12 @@ public final class ExpSettingsView extends BaseView {
     }
 
     /**
-     * Sets the non-user-editable settings fields in the user interface using scientific notation.
+     * Sets the non-user-editable settings fields in the user interface.
      * This method formats several parameters from the model and updates the corresponding text fields.
      */
     public void setNonUserSettings() {
-        // Use scientific notation for these fields
-        Function<Double, String> formatter = value -> String.format("%6.2e", value);
+        // Round to two decimals
+        Function<Double, String> formatter = value -> String.format("%.2f", value);
 
         tfParamAx.setText(formatter.apply(model.getParamAxInterface()));
         tfParamAy.setText(formatter.apply(model.getParamAyInterface()));
