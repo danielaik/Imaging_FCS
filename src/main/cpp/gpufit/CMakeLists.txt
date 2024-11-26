@@ -9,6 +9,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 find_package(CUDA REQUIRED)
 include_directories(${CUDA_INCLUDE_DIRS})
 
+include_directories(cuda_utils)
 include_directories(estimators)
 include_directories(models)
 
@@ -37,6 +38,8 @@ add_library(agpufit SHARED
     cuda_gaussjordan.cuh
     cuda_kernels.cu
     cuda_kernels.cuh
+    cuda_fcs_kernels.cu
+    cuda_fcs_kernels.cuh
     definitions.h
     gpu_data.cu
     gpu_data.cuh
