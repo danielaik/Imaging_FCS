@@ -23,6 +23,12 @@ public:
     jboolean isNBcalculation;
     jboolean bleachcorr_gpu;
     jint bleachcorr_order;
+    jint nopit;
+    jint ave;
+    jint win_star;
+    jint hin_star;
+    jint binningX;
+    jint binningY;
 
     ACFInputParamsWrapper(JNIEnv *env, jobject ACFInputParams);
 };

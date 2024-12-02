@@ -12,12 +12,6 @@
 #include "gpufit.h"
 #include "java_array.h"
 
-/* -------------------------------------------------------------------------------------------------------
-* from com_github_gpufit_Gpufit.cpp START
-* NOTE: creates the gpufitJNI.dll. File is located at
-/Gpufit/Gpufit/java/adapter/
--------------------------------------------------------------------------------------------------------
-*/
 void *buffer_address(JNIEnv *env, jobject buffer)
 {
     if (buffer == 0)
@@ -153,45 +147,21 @@ void JNICALL Java_fiji_plugin_imaging_1fcs_gpufitImFCS_GpufitImFCS_calcDataBleac
                                                                                             jfloatArray outdata,
                                                                                             jobject ACFInputParams)
 {
-    // input arrays required for calculations.
-    jfloat *Cpixels = nullptr;
-
     try
     {
-        Cpixels = env->GetFloatArrayElements(pixels, NULL);
-        if (Cpixels == nullptr)
-        {
-            throw std::runtime_error("Failed to access pixel data from Java array");
-        }
+        JavaArray<jfloatArray, jfloat> Cpixels(env, pixels);
 
-        // get parameters from the ACFInputParams object
-        // we need width, height, cfXDistancegpu, cfYDistancegpu, nopit, ave
-        // we also need firstframe and lastframe for setting blockSize and
-        // gridSize
-        jclass ACFInputParamsCls = env->GetObjectClass(ACFInputParams);
-
-        jfieldID w_tempId = env->GetFieldID(ACFInputParamsCls, "w_temp", "I");
-        jfieldID h_tempId = env->GetFieldID(ACFInputParamsCls, "h_temp", "I");
-        jfieldID firstframeId = env->GetFieldID(ACFInputParamsCls, "firstframe", "I");
-        jfieldID lastframeId = env->GetFieldID(ACFInputParamsCls, "lastframe", "I");
-        jfieldID nopitId = env->GetFieldID(ACFInputParamsCls, "nopit", "I");
-        jfieldID aveId = env->GetFieldID(ACFInputParamsCls, "ave", "I");
-
-        jint w_temp = env->GetIntField(ACFInputParams, w_tempId);
-        jint h_temp = env->GetIntField(ACFInputParams, h_tempId);
-        jint firstframe = env->GetIntField(ACFInputParams, firstframeId);
-        jint lastframe = env->GetIntField(ACFInputParams, lastframeId);
-        jint nopit = env->GetIntField(ACFInputParams, nopitId);
-        jint ave = env->GetIntField(ACFInputParams, aveId);
+        // Retrieve parameters using the wrapper class
+        ACFInputParamsWrapper p(env, ACFInputParams);
 
         // Compute sizes
-        int framediff = lastframe - firstframe + 1;
-        size_t num_elements_input = static_cast<size_t>(w_temp) * h_temp * framediff;
-        size_t num_elements_output = static_cast<size_t>(w_temp) * h_temp * nopit;
+        int framediff = p.lastframe - p.firstframe + 1;
+        size_t num_elements_input = static_cast<size_t>(p.w_temp) * p.h_temp * framediff;
+        size_t num_elements_output = static_cast<size_t>(p.w_temp) * p.h_temp * p.nopit;
 
         // Configure CUDA grid and block sizes
         int BLKSIZEXY = 16;
-        int max_dim = std::max(w_temp, h_temp);
+        int max_dim = std::max(p.w_temp, p.h_temp);
         int GRIDSIZEXY = (max_dim + BLKSIZEXY - 1) / BLKSIZEXY;
         dim3 blockSize(BLKSIZEXY, BLKSIZEXY, 1);
         dim3 gridSize(GRIDSIZEXY, GRIDSIZEXY, 1);
@@ -204,15 +174,15 @@ void JNICALL Java_fiji_plugin_imaging_1fcs_gpufitImFCS_GpufitImFCS_calcDataBleac
         std::vector<float> Coutput(num_elements_output);
 
         // Copy to GPU
-        CUDA_CHECK_STATUS(
-            cudaMemcpy(d_Cpixels.get(), Cpixels, num_elements_input * sizeof(float), cudaMemcpyHostToDevice));
+        CUDA_CHECK_STATUS(cudaMemcpy(d_Cpixels.get(), Cpixels.elements(), num_elements_input * sizeof(float),
+                                     cudaMemcpyHostToDevice));
 
         cudaStream_t stream;
         CUDA_CHECK_STATUS(cudaStreamCreate(&stream));
 
         // Launch CUDA kernel
-        calc_data_bleach_correction<<<gridSize, blockSize, 0, stream>>>(d_Cpixels.get(), d_Coutput.get(), w_temp,
-                                                                        h_temp, nopit, ave);
+        calc_data_bleach_correction<<<gridSize, blockSize, 0, stream>>>(d_Cpixels.get(), d_Coutput.get(), p.w_temp,
+                                                                        p.h_temp, p.nopit, p.ave);
 
         CUDA_CHECK_STATUS(cudaStreamSynchronize(stream));
         CUDA_CHECK_STATUS(cudaGetLastError());
@@ -227,20 +197,9 @@ void JNICALL Java_fiji_plugin_imaging_1fcs_gpufitImFCS_GpufitImFCS_calcDataBleac
 
         // copy values to Java output arrays.
         env->SetFloatArrayRegion(outdata, 0, num_elements_output, Coutput.data());
-
-        // release resources
-        env->ReleaseFloatArrayElements(pixels, Cpixels, 0);
     }
     catch (std::runtime_error &e)
     {
-        // Release Java array elements if they were acquired
-        if (Cpixels != nullptr)
-        {
-            env->ReleaseFloatArrayElements(pixels, Cpixels, 0);
-        }
-
-        // Throw the exception to Java
-        // see: https://www.rgagnon.com/javadetails/java-0323.html
         jclass Exception = env->FindClass("java/lang/Exception");
         env->ThrowNew(Exception, e.what());
     }
@@ -257,25 +216,13 @@ jboolean JNICALL Java_fiji_plugin_imaging_1fcs_gpufitImFCS_GpufitImFCS_isBinning
 {
     try
     {
-        // get parameters from the ACFInputParams object
-        jclass ACFInputParamsCls = env->GetObjectClass(ACFInputParams);
-        jfieldID win_starId = env->GetFieldID(ACFInputParamsCls, "win_star", "I");
-        jfieldID hin_starId = env->GetFieldID(ACFInputParamsCls, "hin_star", "I");
-        jfieldID w_tempId = env->GetFieldID(ACFInputParamsCls, "w_temp", "I");
-        jfieldID h_tempId = env->GetFieldID(ACFInputParamsCls, "h_temp", "I");
-        jfieldID firstframeId = env->GetFieldID(ACFInputParamsCls, "firstframe", "I");
-        jfieldID lastframeId = env->GetFieldID(ACFInputParamsCls, "lastframe", "I");
-
-        jint win_star = env->GetIntField(ACFInputParams, win_starId);
-        jint hin_star = env->GetIntField(ACFInputParams, hin_starId);
-        jint w_temp = env->GetIntField(ACFInputParams, w_tempId);
-        jint h_temp = env->GetIntField(ACFInputParams, h_tempId);
-        jint firstframe = env->GetIntField(ACFInputParams, firstframeId);
-        jint lastframe = env->GetIntField(ACFInputParams, lastframeId);
+        // Retrieve parameters using the wrapper class
+        ACFInputParamsWrapper p(env, ACFInputParams);
 
         // Calculate the maximum memory required for binning
-        int framediff = lastframe - firstframe + 1;
-        size_t required_memory = static_cast<size_t>(win_star) * hin_star + static_cast<size_t>(w_temp) * h_temp;
+        int framediff = p.lastframe - p.firstframe + 1;
+        size_t required_memory =
+            static_cast<size_t>(p.win_star) * p.hin_star + static_cast<size_t>(p.w_temp) * p.h_temp;
         required_memory *= static_cast<size_t>(framediff) * sizeof(float);
 
         // Get the free and total device memory
@@ -310,57 +257,27 @@ void JNICALL Java_fiji_plugin_imaging_1fcs_gpufitImFCS_GpufitImFCS_calcBinning(J
                                                                                jfloatArray indata, jfloatArray outdata,
                                                                                jobject ACFInputParams)
 {
-    jfloat *Cindata = nullptr;
-
     try
     {
-        Cindata = env->GetFloatArrayElements(indata, NULL);
-        if (Cindata == nullptr)
-        {
-            throw std::runtime_error("Failed to access input data from Java array");
-        }
+        JavaArray<jfloatArray, jfloat> Cindata(env, indata);
 
-        // get parameters from the ACFInputParams object
-        // we need w_temp, h_temp, binningX, binningY
-        // we also need firstframe and lastframe for setting blockSize and
-        // gridSize
-        jclass ACFInputParamsCls = env->GetObjectClass(ACFInputParams);
-        jfieldID win_starId = env->GetFieldID(ACFInputParamsCls, "win_star", "I");
-        jfieldID hin_starId = env->GetFieldID(ACFInputParamsCls, "hin_star", "I");
-        jfieldID w_tempId = env->GetFieldID(ACFInputParamsCls, "w_temp", "I");
-        jfieldID h_tempId = env->GetFieldID(ACFInputParamsCls, "h_temp", "I");
-        jfieldID pixbinXId = env->GetFieldID(ACFInputParamsCls, "pixbinX", "I");
-        jfieldID pixbinYId = env->GetFieldID(ACFInputParamsCls, "pixbinY", "I");
-        jfieldID binningXId = env->GetFieldID(ACFInputParamsCls, "binningX", "I");
-        jfieldID binningYId = env->GetFieldID(ACFInputParamsCls, "binningY", "I");
-        jfieldID firstframeId = env->GetFieldID(ACFInputParamsCls, "firstframe", "I");
-        jfieldID lastframeId = env->GetFieldID(ACFInputParamsCls, "lastframe", "I");
-
-        jint win_star = env->GetIntField(ACFInputParams, win_starId);
-        jint hin_star = env->GetIntField(ACFInputParams, hin_starId);
-        jint w_temp = env->GetIntField(ACFInputParams, w_tempId);
-        jint h_temp = env->GetIntField(ACFInputParams, h_tempId);
-        jint pixbinX = env->GetIntField(ACFInputParams, pixbinXId);
-        jint pixbinY = env->GetIntField(ACFInputParams, pixbinYId);
-        jint binningX = env->GetIntField(ACFInputParams, binningXId);
-        jint binningY = env->GetIntField(ACFInputParams, binningYId);
-        jint firstframe = env->GetIntField(ACFInputParams, firstframeId);
-        jint lastframe = env->GetIntField(ACFInputParams, lastframeId);
+        // Retrieve parameters using the wrapper class
+        ACFInputParamsWrapper p(env, ACFInputParams);
 
         // Compute frame difference
-        int framediff = lastframe - firstframe + 1;
+        int framediff = p.lastframe - p.firstframe + 1;
 
         // Configure CUDA grid and block sizes
         int BLKSIZEXY = 16;
-        int max_dim = std::max(w_temp, h_temp);
+        int max_dim = std::max(p.w_temp, p.h_temp);
         int GRIDSIZEXY = (max_dim + BLKSIZEXY - 1) / BLKSIZEXY;
 
         dim3 blockSizeBin(BLKSIZEXY, BLKSIZEXY, 1);
         dim3 gridSizeBin(GRIDSIZEXY, GRIDSIZEXY, 1);
 
         // Calculate sizes for device and host memory
-        size_t num_input_elements = static_cast<size_t>(win_star) * hin_star * framediff;
-        size_t num_output_elements = static_cast<size_t>(w_temp) * h_temp * framediff;
+        size_t num_input_elements = static_cast<size_t>(p.win_star) * p.hin_star * framediff;
+        size_t num_output_elements = static_cast<size_t>(p.w_temp) * p.h_temp * framediff;
 
         // Allocate device memory using cuda_utils::CudaDevicePtr
         cuda_utils::CudaDevicePtr<float> d_Cindata(num_input_elements);
@@ -370,15 +287,15 @@ void JNICALL Java_fiji_plugin_imaging_1fcs_gpufitImFCS_GpufitImFCS_calcBinning(J
         std::vector<float> Coutput(num_output_elements);
 
         // Copy to GPU
-        CUDA_CHECK_STATUS(
-            cudaMemcpy(d_Cindata.get(), Cindata, num_input_elements * sizeof(float), cudaMemcpyHostToDevice));
+        CUDA_CHECK_STATUS(cudaMemcpy(d_Cindata.get(), Cindata.elements(), num_input_elements * sizeof(float),
+                                     cudaMemcpyHostToDevice));
 
         cudaStream_t stream;
         CUDA_CHECK_STATUS(cudaStreamCreate(&stream));
 
-        calc_binning<<<gridSizeBin, blockSizeBin, 0, stream>>>(d_Cindata.get(), d_Coutput.get(), win_star, hin_star,
-                                                               w_temp, h_temp, framediff, pixbinX, pixbinY, binningX,
-                                                               binningY);
+        calc_binning<<<gridSizeBin, blockSizeBin, 0, stream>>>(d_Cindata.get(), d_Coutput.get(), p.win_star, p.hin_star,
+                                                               p.w_temp, p.h_temp, framediff, p.pixbinX, p.pixbinY,
+                                                               p.binningX, p.binningY);
 
         // Synchronize and check for errors
         CUDA_CHECK_STATUS(cudaStreamSynchronize(stream));
@@ -394,19 +311,9 @@ void JNICALL Java_fiji_plugin_imaging_1fcs_gpufitImFCS_GpufitImFCS_calcBinning(J
 
         // copy values to Java output arrays.
         env->SetFloatArrayRegion(outdata, 0, num_output_elements, Coutput.data());
-
-        // release resources
-        env->ReleaseFloatArrayElements(indata, Cindata, 0);
     }
     catch (std::runtime_error &e)
     {
-        // Release resources if they were acquired
-        if (Cindata != nullptr)
-        {
-            env->ReleaseFloatArrayElements(indata, Cindata, 0);
-        }
-
-        // see: https://www.rgagnon.com/javadetails/java-0323.html
         jclass Exception = env->FindClass("java/lang/Exception");
         env->ThrowNew(Exception, e.what());
     }
@@ -422,58 +329,11 @@ jboolean JNICALL Java_fiji_plugin_imaging_1fcs_gpufitImFCS_GpufitImFCS_isACFmemo
 {
     try
     {
-        // get parameters that are required for the ACF calculations from the
-        // ACFInputParams object
-        jclass ACFInputParamsCls = env->GetObjectClass(ACFInputParams);
-
-        jfieldID widthId = env->GetFieldID(ACFInputParamsCls, "width", "I");
-        jfieldID heightId = env->GetFieldID(ACFInputParamsCls, "height", "I");
-        jfieldID w_tempId = env->GetFieldID(ACFInputParamsCls, "w_temp", "I");
-        jfieldID h_tempId = env->GetFieldID(ACFInputParamsCls, "h_temp", "I");
-        jfieldID firstframeId = env->GetFieldID(ACFInputParamsCls, "firstframe", "I");
-        jfieldID lastframeId = env->GetFieldID(ACFInputParamsCls, "lastframe", "I");
-        jfieldID cfXDistanceId = env->GetFieldID(ACFInputParamsCls, "cfXDistance", "I");
-        jfieldID cfYDistanceId = env->GetFieldID(ACFInputParamsCls, "cfYDistance", "I");
-        //      jfieldID correlatorpId = env->GetFieldID(ACFInputParamsCls,
-        //      "correlatorp", "D"); jfieldID correlatorqId =
-        //      env->GetFieldID(ACFInputParamsCls, "correlatorq", "D");
-        jfieldID frametimeId = env->GetFieldID(ACFInputParamsCls, "frametime", "D");
-        jfieldID backgroundId = env->GetFieldID(ACFInputParamsCls, "background", "I");
-        jfieldID mtab1Id = env->GetFieldID(ACFInputParamsCls, "mtab1", "D");
-        jfieldID mtabchanumminus1Id = env->GetFieldID(ACFInputParamsCls, "mtabchanumminus1", "D");
-        jfieldID sampchanumminus1Id = env->GetFieldID(ACFInputParamsCls, "sampchanumminus1", "D");
-        jfieldID chanumId = env->GetFieldID(ACFInputParamsCls, "chanum", "I");
-        jfieldID isNBcalculationId = env->GetFieldID(ACFInputParamsCls, "isNBcalculation", "Z");
-        jfieldID bleachcorr_gpuId = env->GetFieldID(ACFInputParamsCls, "bleachcorr_gpu", "Z");
-        jfieldID bleachcorr_orderId = env->GetFieldID(ACFInputParamsCls, "bleachcorr_order", "I");
-
-        jint width = env->GetIntField(ACFInputParams, widthId);
-        jint height = env->GetIntField(ACFInputParams, heightId);
-        jint w_temp = env->GetIntField(ACFInputParams, w_tempId);
-        jint h_temp = env->GetIntField(ACFInputParams, h_tempId);
-        jint firstframe = env->GetIntField(ACFInputParams, firstframeId);
-        jint lastframe = env->GetIntField(ACFInputParams, lastframeId);
-        jint cfXDistance = env->GetIntField(ACFInputParams, cfXDistanceId);
-        jint cfYDistance = env->GetIntField(ACFInputParams, cfYDistanceId);
-        //      jdouble correlatorpdbl = env->GetDoubleField(ACFInputParams,
-        //      correlatorpId); jdouble correlatorqdbl =
-        //      env->GetDoubleField(ACFInputParams, correlatorqId);
-        jdouble frametime = env->GetDoubleField(ACFInputParams, frametimeId);
-        jint background = env->GetIntField(ACFInputParams, backgroundId);
-        jdouble mtab1 = env->GetDoubleField(ACFInputParams, mtab1Id); // mtab[1], used to calculate blocknumgpu.
-        jdouble mtabchanumminus1 = env->GetDoubleField(ACFInputParams,
-                                                       mtabchanumminus1Id); // mtab[chanum-1], used to calculate
-                                                                            // pnumgpu[counter_indexarray]
-        jdouble sampchanumminus1 = env->GetDoubleField(ACFInputParams,
-                                                       sampchanumminus1Id); // samp[chanum-1], used to calculate
-                                                                            // pnumgpu[counter_indexarray]
-        jint chanum = env->GetIntField(ACFInputParams, chanumId);
-        jboolean isNBcalculation = env->GetBooleanField(ACFInputParams, isNBcalculationId);
-        jboolean bleachcorr_gpu = env->GetBooleanField(ACFInputParams, bleachcorr_gpuId);
-        jint bleachcorr_order = env->GetIntField(ACFInputParams, bleachcorr_orderId);
+        // Retrieve parameters using the wrapper class
+        ACFInputParamsWrapper p(env, ACFInputParams);
 
         // Compute frame difference
-        jint framediff = lastframe - firstframe + 1;
+        jint framediff = p.lastframe - p.firstframe + 1;
 
         // Size constants
         size_t size_int = sizeof(int);
@@ -481,44 +341,45 @@ jboolean JNICALL Java_fiji_plugin_imaging_1fcs_gpufitImFCS_GpufitImFCS_isACFmemo
         size_t size_double = sizeof(double);
 
         // Compute sizes of arrays
-        size_t size_pixels = static_cast<size_t>(w_temp) * h_temp * framediff * size_float;
-        size_t size_Cpixels1 = static_cast<size_t>(width) * height * chanum * size_double;
-        size_t size_prod = static_cast<size_t>(framediff) * width * height * size_float;
-        size_t size_blockvararray = static_cast<size_t>(chanum) * width * height * size_double;
-        size_t size_samp = static_cast<size_t>(chanum) * size_double;
-        size_t size_lag = static_cast<size_t>(chanum) * size_int;
-        size_t size_bleachcorr = static_cast<size_t>(width) * height * bleachcorr_order * size_double;
+        size_t size_pixels = static_cast<size_t>(p.w_temp) * p.h_temp * framediff * size_float;
+        size_t size_Cpixels1 = static_cast<size_t>(p.width) * p.height * p.chanum * size_double;
+        size_t size_prod = static_cast<size_t>(framediff) * p.width * p.height * size_float;
+        size_t size_blockvararray = static_cast<size_t>(p.chanum) * p.width * p.height * size_double;
+        size_t size_samp = static_cast<size_t>(p.chanum) * size_double;
+        size_t size_lag = static_cast<size_t>(p.chanum) * size_int;
+        size_t size_bleachcorr = static_cast<size_t>(p.width) * p.height * p.bleachcorr_order * size_double;
 
         // Total memory required for common parameters
         size_t total_memory_common = size_Cpixels1 + size_prod + size_pixels + size_samp + size_lag + size_bleachcorr;
 
         // Calculate blocknumgpu
-        int blocknumgpu = static_cast<int>(std::floor(std::log(mtab1) / std::log(2.0)) - 2);
+        int blocknumgpu = static_cast<int>(std::floor(std::log2(p.mtab1)) - 2);
 
         // Memory required for calcacf3
         size_t total_memory_calcacf3 = 0;
-        if (!isNBcalculation)
+        if (!p.isNBcalculation)
         {
             size_t size_prodnum = static_cast<size_t>(blocknumgpu) * size_double;
-            size_t size_upper = static_cast<size_t>(blocknumgpu) * width * height * size_double;
+            size_t size_upper = static_cast<size_t>(blocknumgpu) * p.width * p.height * size_double;
             size_t size_lower = size_upper;
-            size_t size_varblock = static_cast<size_t>(blocknumgpu) * width * height * size_double * 3; // varblock0,1,2
+            size_t size_varblock =
+                static_cast<size_t>(blocknumgpu) * p.width * p.height * size_double * 3; // varblock0,1,2
 
             total_memory_calcacf3 = size_prodnum + size_blockvararray + size_upper + size_lower + size_varblock;
         }
 
         // Memory required for calcacf2
         size_t total_memory_calcacf2 = 0;
-        size_t size_prodnumarray = static_cast<size_t>(chanum) * width * height * size_int;
-        size_t size_indexarray = static_cast<size_t>(width) * height * size_int;
+        size_t size_prodnumarray = static_cast<size_t>(p.chanum) * p.width * p.height * size_int;
+        size_t size_indexarray = static_cast<size_t>(p.width) * p.height * size_int;
         size_t size_pnumgpu = size_indexarray;
         size_t size_NB_arrays = 0;
 
-        if (isNBcalculation)
+        if (p.isNBcalculation)
         {
             // Memory for N&B calculations
             size_NB_arrays =
-                static_cast<size_t>(width) * height * size_double * 3; // NBmeanGPU, NBmean2GPU, NBcovarianceGPU
+                static_cast<size_t>(p.width) * p.height * size_double * 3; // NBmeanGPU, NBmean2GPU, NBcovarianceGPU
         }
 
         total_memory_calcacf2 =
@@ -552,21 +413,21 @@ jboolean JNICALL Java_fiji_plugin_imaging_1fcs_gpufitImFCS_GpufitImFCS_isACFmemo
     }
 }
 
-void NBCalculationFunction(JNIEnv *env, ACFInputParamsWrapper &params, jfloat *Cpixels, jdouble *Cbleachcorr_params,
+void NBCalculationFunction(JNIEnv *env, ACFInputParamsWrapper &p, jfloat *Cpixels, jdouble *Cbleachcorr_p,
                            jdouble *Csamp, jint *Clag, jdoubleArray NBmeanGPU, jdoubleArray NBcovarianceGPU)
 {
     // Initialize parameters
-    int framediff = params.lastframe - params.firstframe + 1;
-    size_t size_pixels = static_cast<size_t>(params.w_temp) * params.h_temp * framediff;
-    size_t size_bleachcorr_params = static_cast<size_t>(params.w_temp) * params.h_temp * params.bleachcorr_order;
-    size_t size2 = static_cast<size_t>(framediff) * params.width * params.height;
-    size_t size_prodnumarray = static_cast<size_t>(params.chanum) * params.width * params.height;
+    int framediff = p.lastframe - p.firstframe + 1;
+    size_t size_pixels = static_cast<size_t>(p.w_temp) * p.h_temp * framediff;
+    size_t size_bleachcorr_p = static_cast<size_t>(p.w_temp) * p.h_temp * p.bleachcorr_order;
+    size_t size2 = static_cast<size_t>(framediff) * p.width * p.height;
+    size_t size_prodnumarray = static_cast<size_t>(p.chanum) * p.width * p.height;
 
     // Host arrays
-    std::vector<double> CNBmeanGPU(params.width * params.height, 0.0);
-    std::vector<double> CNBcovarianceGPU(params.width * params.height, 0.0);
-    std::vector<float> prod(size2, 0.0f);                  // Initialize prod
-    std::vector<int> prodnumarray(size_prodnumarray, 0);   // Initialize prodnumarray
+    std::vector<double> CNBmeanGPU(p.width * p.height, 0.0);
+    std::vector<double> CNBcovarianceGPU(p.width * p.height, 0.0);
+    std::vector<float> prod(size2, 0.0f); // Initialize prod
+    std::vector<int> prodnumarray(size_prodnumarray, 0); // Initialize prodnumarray
 
     // Create CUDA stream
     cudaStream_t stream;
@@ -574,21 +435,23 @@ void NBCalculationFunction(JNIEnv *env, ACFInputParamsWrapper &params, jfloat *C
 
     // Device arrays
     cuda_utils::CudaDevicePtr<float> d_Cpixels(size_pixels);
-    cuda_utils::CudaDevicePtr<double> d_Cbleachcorr_params(size_bleachcorr_params);
-    cuda_utils::CudaDevicePtr<int> d_Clag(params.chanum);
-    cuda_utils::CudaDevicePtr<double> d_NBmeanGPU(params.width * params.height);
-    cuda_utils::CudaDevicePtr<double> d_NBcovarianceGPU(params.width * params.height);
+    cuda_utils::CudaDevicePtr<double> d_Cbleachcorr_p(size_bleachcorr_p);
+    cuda_utils::CudaDevicePtr<int> d_Clag(p.chanum);
+    cuda_utils::CudaDevicePtr<double> d_NBmeanGPU(p.width * p.height);
+    cuda_utils::CudaDevicePtr<double> d_NBcovarianceGPU(p.width * p.height);
     cuda_utils::CudaDevicePtr<float> d_prod(size2);
     cuda_utils::CudaDevicePtr<int> d_prodnumarray(size_prodnumarray);
 
     // Copy data to device
-    CUDA_CHECK_STATUS(cudaMemcpyAsync(d_Cpixels.get(), Cpixels, size_pixels * sizeof(float), cudaMemcpyHostToDevice, stream));
-    CUDA_CHECK_STATUS(cudaMemcpyAsync(d_Cbleachcorr_params.get(), Cbleachcorr_params,
-                                      size_bleachcorr_params * sizeof(double), cudaMemcpyHostToDevice, stream));
-    CUDA_CHECK_STATUS(cudaMemcpyAsync(d_Clag.get(), Clag, params.chanum * sizeof(int), cudaMemcpyHostToDevice, stream));
-    CUDA_CHECK_STATUS(cudaMemcpyAsync(d_prod.get(), prod.data(), size2 * sizeof(float), cudaMemcpyHostToDevice, stream));
-    CUDA_CHECK_STATUS(cudaMemcpyAsync(d_prodnumarray.get(), prodnumarray.data(),
-                                      size_prodnumarray * sizeof(int), cudaMemcpyHostToDevice, stream));
+    CUDA_CHECK_STATUS(
+        cudaMemcpyAsync(d_Cpixels.get(), Cpixels, size_pixels * sizeof(float), cudaMemcpyHostToDevice, stream));
+    CUDA_CHECK_STATUS(cudaMemcpyAsync(d_Cbleachcorr_p.get(), Cbleachcorr_p, size_bleachcorr_p * sizeof(double),
+                                      cudaMemcpyHostToDevice, stream));
+    CUDA_CHECK_STATUS(cudaMemcpyAsync(d_Clag.get(), Clag, p.chanum * sizeof(int), cudaMemcpyHostToDevice, stream));
+    CUDA_CHECK_STATUS(
+        cudaMemcpyAsync(d_prod.get(), prod.data(), size2 * sizeof(float), cudaMemcpyHostToDevice, stream));
+    CUDA_CHECK_STATUS(cudaMemcpyAsync(d_prodnumarray.get(), prodnumarray.data(), size_prodnumarray * sizeof(int),
+                                      cudaMemcpyHostToDevice, stream));
     // Copy N & B arrays to device (initialized to zero)
     CUDA_CHECK_STATUS(cudaMemcpyAsync(d_NBmeanGPU.get(), CNBmeanGPU.data(), CNBmeanGPU.size() * sizeof(double),
                                       cudaMemcpyHostToDevice, stream));
@@ -599,21 +462,20 @@ void NBCalculationFunction(JNIEnv *env, ACFInputParamsWrapper &params, jfloat *C
 
     // Configure CUDA grid and block sizes
     int BLKSIZEXY = 16;
-    int max_dim = std::max(params.width, params.height);
+    int max_dim = std::max(p.width, p.height);
     int GRIDSIZEXY = (max_dim + BLKSIZEXY - 1) / BLKSIZEXY;
     dim3 blockSize(BLKSIZEXY, BLKSIZEXY, 1);
     dim3 gridSize(GRIDSIZEXY, GRIDSIZEXY, 1);
 
-    int max_dim_input = std::max(params.w_temp, params.h_temp);
+    int max_dim_input = std::max(p.w_temp, p.h_temp);
     int GRIDSIZEXY_Input = (max_dim_input + BLKSIZEXY - 1) / BLKSIZEXY;
     dim3 gridSize_Input(GRIDSIZEXY_Input, GRIDSIZEXY_Input, 1);
 
     // Run bleach correction kernel if needed
-    if (params.bleachcorr_gpu)
+    if (p.bleachcorr_gpu)
     {
-        bleachcorrection<<<gridSize_Input, blockSize, 0, stream>>>(d_Cpixels.get(), params.w_temp, params.h_temp,
-                                                                   framediff, params.bleachcorr_order, params.frametime,
-                                                                   d_Cbleachcorr_params.get());
+        bleachcorrection<<<gridSize_Input, blockSize, 0, stream>>>(
+            d_Cpixels.get(), p.w_temp, p.h_temp, framediff, p.bleachcorr_order, p.frametime, d_Cbleachcorr_p.get());
         CUDA_CHECK_STATUS(cudaStreamSynchronize(stream));
         CUDA_CHECK_STATUS(cudaGetLastError());
     }
@@ -623,7 +485,7 @@ void NBCalculationFunction(JNIEnv *env, ACFInputParamsWrapper &params, jfloat *C
     int ctbin = 0;
 
     // Ensure Csamp has enough elements
-    if (params.chanum < 2)
+    if (p.chanum < 2)
     {
         throw std::runtime_error("Csamp array does not have enough elements for N&B calculation.");
     }
@@ -635,16 +497,16 @@ void NBCalculationFunction(JNIEnv *env, ACFInputParamsWrapper &params, jfloat *C
             numbin = static_cast<int>(std::floor(static_cast<double>(numbin) / 2.0));
             currentIncrement = static_cast<int>(Csamp[x]);
             ctbin++;
-            calcacf2a<<<gridSize_Input, blockSize, 0, stream>>>(d_Cpixels.get(), params.w_temp, params.h_temp, numbin);
+            calcacf2a<<<gridSize_Input, blockSize, 0, stream>>>(d_Cpixels.get(), p.w_temp, p.h_temp, numbin);
             CUDA_CHECK_STATUS(cudaStreamSynchronize(stream));
             CUDA_CHECK_STATUS(cudaGetLastError());
         }
 
         // Launch calcacf2b_NB kernel with proper arguments
         calcacf2b_NB<<<gridSize, blockSize, 0, stream>>>(
-            d_Cpixels.get(), params.cfXDistance, params.cfYDistance, params.width, params.height, params.w_temp,
-            params.h_temp, params.pixbinX, params.pixbinY, d_prod.get(), d_Clag.get(), d_prodnumarray.get(),
-            d_NBmeanGPU.get(), d_NBcovarianceGPU.get(), x, numbin, currentIncrement);
+            d_Cpixels.get(), p.cfXDistance, p.cfYDistance, p.width, p.height, p.w_temp, p.h_temp, p.pixbinX, p.pixbinY,
+            d_prod.get(), d_Clag.get(), d_prodnumarray.get(), d_NBmeanGPU.get(), d_NBcovarianceGPU.get(), x, numbin,
+            currentIncrement);
 
         CUDA_CHECK_STATUS(cudaStreamSynchronize(stream));
         CUDA_CHECK_STATUS(cudaGetLastError());
@@ -665,28 +527,28 @@ void NBCalculationFunction(JNIEnv *env, ACFInputParamsWrapper &params, jfloat *C
     env->SetDoubleArrayRegion(NBcovarianceGPU, 0, CNBcovarianceGPU.size(), CNBcovarianceGPU.data());
 }
 
-void ACFCalculationFunction(JNIEnv *env, ACFInputParamsWrapper &params, jfloat *Cpixels, jdouble *Cbleachcorr_params,
+void ACFCalculationFunction(JNIEnv *env, ACFInputParamsWrapper &p, jfloat *Cpixels, jdouble *Cbleachcorr_p,
                             jdouble *Csamp, jint *Clag, jdoubleArray pixels1, jdoubleArray blockvararray,
                             jdoubleArray blocked1D)
 {
     // Initialize parameters
-    int framediff = params.lastframe - params.firstframe + 1;
-    size_t size_pixels = static_cast<size_t>(params.w_temp) * params.h_temp * framediff;
-    size_t size1 = static_cast<size_t>(params.width) * params.height * params.chanum;
-    size_t size2 = static_cast<size_t>(framediff) * params.width * params.height;
-    size_t sizeblockvararray = static_cast<size_t>(params.chanum) * params.width * params.height;
-    size_t size_bleachcorr_params = static_cast<size_t>(params.w_temp) * params.h_temp * params.bleachcorr_order;
+    int framediff = p.lastframe - p.firstframe + 1;
+    size_t size_pixels = static_cast<size_t>(p.w_temp) * p.h_temp * framediff;
+    size_t size1 = static_cast<size_t>(p.width) * p.height * p.chanum;
+    size_t size2 = static_cast<size_t>(framediff) * p.width * p.height;
+    size_t sizeblockvararray = static_cast<size_t>(p.chanum) * p.width * p.height;
+    size_t size_bleachcorr_p = static_cast<size_t>(p.w_temp) * p.h_temp * p.bleachcorr_order;
 
-    int blocknumgpu = static_cast<int>(std::floor(std::log(params.mtab1) / std::log(2.0)) - 2);
+    int blocknumgpu = static_cast<int>(std::floor(std::log(p.mtab1) / std::log(2.0)) - 2);
 
     // Configure CUDA grid and block sizes
     int BLKSIZEXY = 16;
-    int max_dim = std::max(params.width, params.height);
+    int max_dim = std::max(p.width, p.height);
     int GRIDSIZEXY = (max_dim + BLKSIZEXY - 1) / BLKSIZEXY;
     dim3 blockSize(BLKSIZEXY, BLKSIZEXY, 1);
     dim3 gridSize(GRIDSIZEXY, GRIDSIZEXY, 1);
 
-    int max_dim_input = std::max(params.w_temp, params.h_temp);
+    int max_dim_input = std::max(p.w_temp, p.h_temp);
     int GRIDSIZEXY_Input = (max_dim_input + BLKSIZEXY - 1) / BLKSIZEXY;
     dim3 gridSize_Input(GRIDSIZEXY_Input, GRIDSIZEXY_Input, 1);
 
@@ -695,17 +557,17 @@ void ACFCalculationFunction(JNIEnv *env, ACFInputParamsWrapper &params, jfloat *
     std::vector<float> prod(size2);
     std::vector<double> Cblocked1D(size1);
     std::vector<double> prodnum(blocknumgpu, 1.0);
-    std::vector<double> upper(blocknumgpu * params.width * params.height, 0.0);
-    std::vector<double> lower(blocknumgpu * params.width * params.height, 0.0);
-    std::vector<double> varblock0(blocknumgpu * params.width * params.height, 0.0);
-    std::vector<double> varblock1(blocknumgpu * params.width * params.height, 0.0);
-    std::vector<double> varblock2(blocknumgpu * params.width * params.height, 0.0);
+    std::vector<double> upper(blocknumgpu * p.width * p.height, 0.0);
+    std::vector<double> lower(blocknumgpu * p.width * p.height, 0.0);
+    std::vector<double> varblock0(blocknumgpu * p.width * p.height, 0.0);
+    std::vector<double> varblock1(blocknumgpu * p.width * p.height, 0.0);
+    std::vector<double> varblock2(blocknumgpu * p.width * p.height, 0.0);
 
-    std::vector<int> prodnumarray(params.chanum * params.width * params.height);
-    std::vector<int> indexarray(params.width * params.height);
+    std::vector<int> prodnumarray(p.chanum * p.width * p.height);
+    std::vector<int> indexarray(p.width * p.height);
     std::vector<double> Cblockvararray(sizeblockvararray);
     std::vector<double> blocksdarray(sizeblockvararray);
-    std::vector<int> pnumgpu(params.width * params.height);
+    std::vector<int> pnumgpu(p.width * p.height);
 
     // Create CUDA stream
     cudaStream_t stream;
@@ -714,8 +576,8 @@ void ACFCalculationFunction(JNIEnv *env, ACFInputParamsWrapper &params, jfloat *
     // Device arrays
     cuda_utils::CudaDevicePtr<float> d_Cpixels(size_pixels);
     cuda_utils::CudaDevicePtr<double> d_Cpixels1(size1);
-    cuda_utils::CudaDevicePtr<double> d_Cbleachcorr_params(size_bleachcorr_params);
-    cuda_utils::CudaDevicePtr<int> d_Clag(params.chanum);
+    cuda_utils::CudaDevicePtr<double> d_Cbleachcorr_p(size_bleachcorr_p);
+    cuda_utils::CudaDevicePtr<int> d_Clag(p.chanum);
     cuda_utils::CudaDevicePtr<float> d_prod(size2);
     cuda_utils::CudaDevicePtr<double> d_prodnum(prodnum.size());
     cuda_utils::CudaDevicePtr<double> d_upper(upper.size());
@@ -727,9 +589,9 @@ void ACFCalculationFunction(JNIEnv *env, ACFInputParamsWrapper &params, jfloat *
     // Copy data to device
     CUDA_CHECK_STATUS(
         cudaMemcpyAsync(d_Cpixels.get(), Cpixels, size_pixels * sizeof(float), cudaMemcpyHostToDevice, stream));
-    CUDA_CHECK_STATUS(cudaMemcpyAsync(d_Cbleachcorr_params.get(), Cbleachcorr_params,
-                                      size_bleachcorr_params * sizeof(double), cudaMemcpyHostToDevice, stream));
-    CUDA_CHECK_STATUS(cudaMemcpyAsync(d_Clag.get(), Clag, params.chanum * sizeof(int), cudaMemcpyHostToDevice, stream));
+    CUDA_CHECK_STATUS(cudaMemcpyAsync(d_Cbleachcorr_p.get(), Cbleachcorr_p, size_bleachcorr_p * sizeof(double),
+                                      cudaMemcpyHostToDevice, stream));
+    CUDA_CHECK_STATUS(cudaMemcpyAsync(d_Clag.get(), Clag, p.chanum * sizeof(int), cudaMemcpyHostToDevice, stream));
     CUDA_CHECK_STATUS(cudaMemcpyAsync(d_prodnum.get(), prodnum.data(), prodnum.size() * sizeof(double),
                                       cudaMemcpyHostToDevice, stream));
     CUDA_CHECK_STATUS(
@@ -745,20 +607,18 @@ void ACFCalculationFunction(JNIEnv *env, ACFInputParamsWrapper &params, jfloat *
     CUDA_CHECK_STATUS(cudaStreamSynchronize(stream));
 
     // Run kernels
-    if (params.bleachcorr_gpu)
+    if (p.bleachcorr_gpu)
     {
-        bleachcorrection<<<gridSize_Input, blockSize, 0, stream>>>(d_Cpixels.get(), params.w_temp, params.h_temp,
-                                                                   framediff, params.bleachcorr_order, params.frametime,
-                                                                   d_Cbleachcorr_params.get());
+        bleachcorrection<<<gridSize_Input, blockSize, 0, stream>>>(
+            d_Cpixels.get(), p.w_temp, p.h_temp, framediff, p.bleachcorr_order, p.frametime, d_Cbleachcorr_p.get());
         CUDA_CHECK_STATUS(cudaStreamSynchronize(stream));
         CUDA_CHECK_STATUS(cudaGetLastError());
     }
 
     calcacf3<<<gridSize, blockSize, 0, stream>>>(
-        d_Cpixels.get(), params.cfXDistance, params.cfYDistance, 1, params.width, params.height, params.w_temp,
-        params.h_temp, params.pixbinX, params.pixbinY, framediff, static_cast<int>(params.correlatorq),
-        params.frametime, d_Cpixels1.get(), d_prod.get(), d_prodnum.get(), d_upper.get(), d_lower.get(),
-        d_varblock0.get(), d_varblock1.get(), d_varblock2.get(), d_Clag.get());
+        d_Cpixels.get(), p.cfXDistance, p.cfYDistance, 1, p.width, p.height, p.w_temp, p.h_temp, p.pixbinX, p.pixbinY,
+        framediff, static_cast<int>(p.correlatorq), p.frametime, d_Cpixels1.get(), d_prod.get(), d_prodnum.get(),
+        d_upper.get(), d_lower.get(), d_varblock0.get(), d_varblock1.get(), d_varblock2.get(), d_Clag.get());
 
     CUDA_CHECK_STATUS(cudaStreamSynchronize(stream));
     CUDA_CHECK_STATUS(cudaGetLastError());
@@ -773,21 +633,20 @@ void ACFCalculationFunction(JNIEnv *env, ACFInputParamsWrapper &params, jfloat *
 
     // Initialize indexarray and pnumgpu
     size_t counter_indexarray = 0;
-    for (int y = 0; y < params.height; y++)
+    for (int y = 0; y < p.height; y++)
     {
-        for (int x = 0; x < params.width; x++)
+        for (int x = 0; x < p.width; x++)
         {
-            int idx = y * params.width + x;
+            int idx = y * p.width + x;
             indexarray[counter_indexarray] = static_cast<int>(Cpixels1[idx]);
 
             // Minimum number of products
-            double tempval = indexarray[counter_indexarray] - std::log2(params.sampchanumminus1);
+            double tempval = indexarray[counter_indexarray] - std::log2(p.sampchanumminus1);
             if (tempval < 0)
             {
                 tempval = 0;
             }
-            pnumgpu[counter_indexarray] =
-                static_cast<int>(std::floor(params.mtabchanumminus1 / std::pow(2.0, tempval)));
+            pnumgpu[counter_indexarray] = static_cast<int>(std::floor(p.mtabchanumminus1 / std::pow(2.0, tempval)));
             counter_indexarray++;
         }
     }
@@ -798,11 +657,11 @@ void ACFCalculationFunction(JNIEnv *env, ACFInputParamsWrapper &params, jfloat *
     CUDA_CHECK_STATUS(cudaStreamSynchronize(stream));
 
     // Device arrays for calcacf2
-    cuda_utils::CudaDevicePtr<int> d_prodnumarray(params.chanum * params.width * params.height);
-    cuda_utils::CudaDevicePtr<int> d_indexarray(params.width * params.height);
+    cuda_utils::CudaDevicePtr<int> d_prodnumarray(p.chanum * p.width * p.height);
+    cuda_utils::CudaDevicePtr<int> d_indexarray(p.width * p.height);
     cuda_utils::CudaDevicePtr<double> d_Cblockvararray(sizeblockvararray);
     cuda_utils::CudaDevicePtr<double> d_blocksdarray(sizeblockvararray);
-    cuda_utils::CudaDevicePtr<int> d_pnumgpu(params.width * params.height);
+    cuda_utils::CudaDevicePtr<int> d_pnumgpu(p.width * p.height);
 
     // Copy data for calcacf2
     CUDA_CHECK_STATUS(cudaMemcpyAsync(d_prodnumarray.get(), prodnumarray.data(), prodnumarray.size() * sizeof(int),
@@ -818,11 +677,10 @@ void ACFCalculationFunction(JNIEnv *env, ACFInputParamsWrapper &params, jfloat *
     CUDA_CHECK_STATUS(cudaStreamSynchronize(stream));
 
     // Run calcacf2 kernels
-    if (params.bleachcorr_gpu)
+    if (p.bleachcorr_gpu)
     {
-        bleachcorrection<<<gridSize_Input, blockSize, 0, stream>>>(d_Cpixels.get(), params.w_temp, params.h_temp,
-                                                                   framediff, params.bleachcorr_order, params.frametime,
-                                                                   d_Cbleachcorr_params.get());
+        bleachcorrection<<<gridSize_Input, blockSize, 0, stream>>>(
+            d_Cpixels.get(), p.w_temp, p.h_temp, framediff, p.bleachcorr_order, p.frametime, d_Cbleachcorr_p.get());
         CUDA_CHECK_STATUS(cudaStreamSynchronize(stream));
         CUDA_CHECK_STATUS(cudaGetLastError());
     }
@@ -831,24 +689,23 @@ void ACFCalculationFunction(JNIEnv *env, ACFInputParamsWrapper &params, jfloat *
     int currentIncrement = 1;
     int ctbin = 0;
 
-    for (int x = 0; x < params.chanum; x++)
+    for (int x = 0; x < p.chanum; x++)
     {
         if (currentIncrement != Csamp[x])
         {
             numbin = static_cast<int>(std::floor(static_cast<double>(numbin) / 2.0));
             currentIncrement = static_cast<int>(Csamp[x]);
             ctbin++;
-            calcacf2a<<<gridSize_Input, blockSize, 0, stream>>>(d_Cpixels.get(), params.w_temp, params.h_temp, numbin);
+            calcacf2a<<<gridSize_Input, blockSize, 0, stream>>>(d_Cpixels.get(), p.w_temp, p.h_temp, numbin);
             CUDA_CHECK_STATUS(cudaStreamSynchronize(stream));
             CUDA_CHECK_STATUS(cudaGetLastError());
         }
 
         // Launch calcacf2b_ACF
         calcacf2b_ACF<<<gridSize, blockSize, 0, stream>>>(
-            d_Cpixels.get(), params.cfXDistance, params.cfYDistance, params.width, params.height, params.w_temp,
-            params.h_temp, params.pixbinX, params.pixbinY, d_Cpixels1.get(), d_prod.get(), d_Clag.get(),
-            d_prodnumarray.get(), d_indexarray.get(), d_Cblockvararray.get(), d_blocksdarray.get(), d_pnumgpu.get(), x,
-            numbin, currentIncrement, ctbin);
+            d_Cpixels.get(), p.cfXDistance, p.cfYDistance, p.width, p.height, p.w_temp, p.h_temp, p.pixbinX, p.pixbinY,
+            d_Cpixels1.get(), d_prod.get(), d_Clag.get(), d_prodnumarray.get(), d_indexarray.get(),
+            d_Cblockvararray.get(), d_blocksdarray.get(), d_pnumgpu.get(), x, numbin, currentIncrement, ctbin);
 
         CUDA_CHECK_STATUS(cudaStreamSynchronize(stream));
     }
@@ -871,28 +728,28 @@ void ACFCalculationFunction(JNIEnv *env, ACFInputParamsWrapper &params, jfloat *
 
 void JNICALL Java_fiji_plugin_imaging_1fcs_gpufitImFCS_GpufitImFCS_calcACF(
     JNIEnv *env, jclass cls, jfloatArray pixels, jdoubleArray pixels1, jdoubleArray blockvararray,
-    jdoubleArray NBmeanGPU, jdoubleArray NBcovarianceGPU, jdoubleArray blocked1D, jdoubleArray bleachcorr_params,
+    jdoubleArray NBmeanGPU, jdoubleArray NBcovarianceGPU, jdoubleArray blocked1D, jdoubleArray bleachcorr_p,
     jdoubleArray samp, jintArray lag, jobject ACFInputParams)
 {
     try
     {
         // Wrap Java arrays with JavaArray class
         JavaArray<jfloatArray, jfloat> Cpixels(env, pixels);
-        JavaArray<jdoubleArray, jdouble> Cbleachcorr_params(env, bleachcorr_params);
+        JavaArray<jdoubleArray, jdouble> Cbleachcorr_p(env, bleachcorr_p);
         JavaArray<jdoubleArray, jdouble> Csamp(env, samp);
         JavaArray<jintArray, jint> Clag(env, lag);
 
         // Retrieve parameters using the wrapper class
-        ACFInputParamsWrapper params(env, ACFInputParams);
+        ACFInputParamsWrapper p(env, ACFInputParams);
 
-        if (params.isNBcalculation)
+        if (p.isNBcalculation)
         {
-            NBCalculationFunction(env, params, Cpixels.elements(), Cbleachcorr_params.elements(), Csamp.elements(),
+            NBCalculationFunction(env, p, Cpixels.elements(), Cbleachcorr_p.elements(), Csamp.elements(),
                                   Clag.elements(), NBmeanGPU, NBcovarianceGPU);
         }
         else
         {
-            ACFCalculationFunction(env, params, Cpixels.elements(), Cbleachcorr_params.elements(), Csamp.elements(),
+            ACFCalculationFunction(env, p, Cpixels.elements(), Cbleachcorr_p.elements(), Csamp.elements(),
                                    Clag.elements(), pixels1, blockvararray, blocked1D);
         }
     }
