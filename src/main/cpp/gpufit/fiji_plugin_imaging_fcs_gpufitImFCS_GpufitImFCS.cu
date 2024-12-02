@@ -4,11 +4,13 @@
 #include <stdexcept>
 #include <vector>
 
+#include "acf_input_params_wrapper.h"
 #include "cuda_fcs_kernels.cuh"
 #include "cuda_utils/cuda_device_ptr.h"
 #include "definitions.h"
 #include "fiji_plugin_imaging_fcs_gpufitImFCS_GpufitImFCS.h"
 #include "gpufit.h"
+#include "java_array.h"
 
 /* -------------------------------------------------------------------------------------------------------
 * from com_github_gpufit_Gpufit.cpp START
@@ -550,409 +552,352 @@ jboolean JNICALL Java_fiji_plugin_imaging_1fcs_gpufitImFCS_GpufitImFCS_isACFmemo
     }
 }
 
+void NBCalculationFunction(JNIEnv *env, ACFInputParamsWrapper &params, jfloat *Cpixels, jdouble *Cbleachcorr_params,
+                           jdouble *Csamp, jint *Clag, jdoubleArray NBmeanGPU, jdoubleArray NBcovarianceGPU)
+{
+    // Initialize parameters
+    int framediff = params.lastframe - params.firstframe + 1;
+    size_t size_pixels = static_cast<size_t>(params.w_temp) * params.h_temp * framediff;
+    size_t size_bleachcorr_params = static_cast<size_t>(params.w_temp) * params.h_temp * params.bleachcorr_order;
+    size_t size2 = static_cast<size_t>(framediff) * params.width * params.height;
+    size_t size_prodnumarray = static_cast<size_t>(params.chanum) * params.width * params.height;
+
+    // Host arrays
+    std::vector<double> CNBmeanGPU(params.width * params.height, 0.0);
+    std::vector<double> CNBcovarianceGPU(params.width * params.height, 0.0);
+    std::vector<float> prod(size2, 0.0f);                  // Initialize prod
+    std::vector<int> prodnumarray(size_prodnumarray, 0);   // Initialize prodnumarray
+
+    // Create CUDA stream
+    cudaStream_t stream;
+    CUDA_CHECK_STATUS(cudaStreamCreate(&stream));
+
+    // Device arrays
+    cuda_utils::CudaDevicePtr<float> d_Cpixels(size_pixels);
+    cuda_utils::CudaDevicePtr<double> d_Cbleachcorr_params(size_bleachcorr_params);
+    cuda_utils::CudaDevicePtr<int> d_Clag(params.chanum);
+    cuda_utils::CudaDevicePtr<double> d_NBmeanGPU(params.width * params.height);
+    cuda_utils::CudaDevicePtr<double> d_NBcovarianceGPU(params.width * params.height);
+    cuda_utils::CudaDevicePtr<float> d_prod(size2);
+    cuda_utils::CudaDevicePtr<int> d_prodnumarray(size_prodnumarray);
+
+    // Copy data to device
+    CUDA_CHECK_STATUS(cudaMemcpyAsync(d_Cpixels.get(), Cpixels, size_pixels * sizeof(float), cudaMemcpyHostToDevice, stream));
+    CUDA_CHECK_STATUS(cudaMemcpyAsync(d_Cbleachcorr_params.get(), Cbleachcorr_params,
+                                      size_bleachcorr_params * sizeof(double), cudaMemcpyHostToDevice, stream));
+    CUDA_CHECK_STATUS(cudaMemcpyAsync(d_Clag.get(), Clag, params.chanum * sizeof(int), cudaMemcpyHostToDevice, stream));
+    CUDA_CHECK_STATUS(cudaMemcpyAsync(d_prod.get(), prod.data(), size2 * sizeof(float), cudaMemcpyHostToDevice, stream));
+    CUDA_CHECK_STATUS(cudaMemcpyAsync(d_prodnumarray.get(), prodnumarray.data(),
+                                      size_prodnumarray * sizeof(int), cudaMemcpyHostToDevice, stream));
+    // Copy N & B arrays to device (initialized to zero)
+    CUDA_CHECK_STATUS(cudaMemcpyAsync(d_NBmeanGPU.get(), CNBmeanGPU.data(), CNBmeanGPU.size() * sizeof(double),
+                                      cudaMemcpyHostToDevice, stream));
+    CUDA_CHECK_STATUS(cudaMemcpyAsync(d_NBcovarianceGPU.get(), CNBcovarianceGPU.data(),
+                                      CNBcovarianceGPU.size() * sizeof(double), cudaMemcpyHostToDevice, stream));
+
+    CUDA_CHECK_STATUS(cudaStreamSynchronize(stream));
+
+    // Configure CUDA grid and block sizes
+    int BLKSIZEXY = 16;
+    int max_dim = std::max(params.width, params.height);
+    int GRIDSIZEXY = (max_dim + BLKSIZEXY - 1) / BLKSIZEXY;
+    dim3 blockSize(BLKSIZEXY, BLKSIZEXY, 1);
+    dim3 gridSize(GRIDSIZEXY, GRIDSIZEXY, 1);
+
+    int max_dim_input = std::max(params.w_temp, params.h_temp);
+    int GRIDSIZEXY_Input = (max_dim_input + BLKSIZEXY - 1) / BLKSIZEXY;
+    dim3 gridSize_Input(GRIDSIZEXY_Input, GRIDSIZEXY_Input, 1);
+
+    // Run bleach correction kernel if needed
+    if (params.bleachcorr_gpu)
+    {
+        bleachcorrection<<<gridSize_Input, blockSize, 0, stream>>>(d_Cpixels.get(), params.w_temp, params.h_temp,
+                                                                   framediff, params.bleachcorr_order, params.frametime,
+                                                                   d_Cbleachcorr_params.get());
+        CUDA_CHECK_STATUS(cudaStreamSynchronize(stream));
+        CUDA_CHECK_STATUS(cudaGetLastError());
+    }
+
+    int numbin = framediff;
+    int currentIncrement = 1;
+    int ctbin = 0;
+
+    // Ensure Csamp has enough elements
+    if (params.chanum < 2)
+    {
+        throw std::runtime_error("Csamp array does not have enough elements for N&B calculation.");
+    }
+
+    for (int x = 1; x < 2; x++)
+    {
+        if (currentIncrement != static_cast<int>(Csamp[x]))
+        {
+            numbin = static_cast<int>(std::floor(static_cast<double>(numbin) / 2.0));
+            currentIncrement = static_cast<int>(Csamp[x]);
+            ctbin++;
+            calcacf2a<<<gridSize_Input, blockSize, 0, stream>>>(d_Cpixels.get(), params.w_temp, params.h_temp, numbin);
+            CUDA_CHECK_STATUS(cudaStreamSynchronize(stream));
+            CUDA_CHECK_STATUS(cudaGetLastError());
+        }
+
+        // Launch calcacf2b_NB kernel with proper arguments
+        calcacf2b_NB<<<gridSize, blockSize, 0, stream>>>(
+            d_Cpixels.get(), params.cfXDistance, params.cfYDistance, params.width, params.height, params.w_temp,
+            params.h_temp, params.pixbinX, params.pixbinY, d_prod.get(), d_Clag.get(), d_prodnumarray.get(),
+            d_NBmeanGPU.get(), d_NBcovarianceGPU.get(), x, numbin, currentIncrement);
+
+        CUDA_CHECK_STATUS(cudaStreamSynchronize(stream));
+        CUDA_CHECK_STATUS(cudaGetLastError());
+    }
+
+    // Copy results back to host
+    CUDA_CHECK_STATUS(cudaMemcpyAsync(CNBmeanGPU.data(), d_NBmeanGPU.get(), CNBmeanGPU.size() * sizeof(double),
+                                      cudaMemcpyDeviceToHost, stream));
+    CUDA_CHECK_STATUS(cudaMemcpyAsync(CNBcovarianceGPU.data(), d_NBcovarianceGPU.get(),
+                                      CNBcovarianceGPU.size() * sizeof(double), cudaMemcpyDeviceToHost, stream));
+    CUDA_CHECK_STATUS(cudaStreamSynchronize(stream));
+
+    // Destroy CUDA stream
+    CUDA_CHECK_STATUS(cudaStreamDestroy(stream));
+
+    // Copy results back to Java arrays
+    env->SetDoubleArrayRegion(NBmeanGPU, 0, CNBmeanGPU.size(), CNBmeanGPU.data());
+    env->SetDoubleArrayRegion(NBcovarianceGPU, 0, CNBcovarianceGPU.size(), CNBcovarianceGPU.data());
+}
+
+void ACFCalculationFunction(JNIEnv *env, ACFInputParamsWrapper &params, jfloat *Cpixels, jdouble *Cbleachcorr_params,
+                            jdouble *Csamp, jint *Clag, jdoubleArray pixels1, jdoubleArray blockvararray,
+                            jdoubleArray blocked1D)
+{
+    // Initialize parameters
+    int framediff = params.lastframe - params.firstframe + 1;
+    size_t size_pixels = static_cast<size_t>(params.w_temp) * params.h_temp * framediff;
+    size_t size1 = static_cast<size_t>(params.width) * params.height * params.chanum;
+    size_t size2 = static_cast<size_t>(framediff) * params.width * params.height;
+    size_t sizeblockvararray = static_cast<size_t>(params.chanum) * params.width * params.height;
+    size_t size_bleachcorr_params = static_cast<size_t>(params.w_temp) * params.h_temp * params.bleachcorr_order;
+
+    int blocknumgpu = static_cast<int>(std::floor(std::log(params.mtab1) / std::log(2.0)) - 2);
+
+    // Configure CUDA grid and block sizes
+    int BLKSIZEXY = 16;
+    int max_dim = std::max(params.width, params.height);
+    int GRIDSIZEXY = (max_dim + BLKSIZEXY - 1) / BLKSIZEXY;
+    dim3 blockSize(BLKSIZEXY, BLKSIZEXY, 1);
+    dim3 gridSize(GRIDSIZEXY, GRIDSIZEXY, 1);
+
+    int max_dim_input = std::max(params.w_temp, params.h_temp);
+    int GRIDSIZEXY_Input = (max_dim_input + BLKSIZEXY - 1) / BLKSIZEXY;
+    dim3 gridSize_Input(GRIDSIZEXY_Input, GRIDSIZEXY_Input, 1);
+
+    // Host arrays
+    std::vector<double> Cpixels1(size1);
+    std::vector<float> prod(size2);
+    std::vector<double> Cblocked1D(size1);
+    std::vector<double> prodnum(blocknumgpu, 1.0);
+    std::vector<double> upper(blocknumgpu * params.width * params.height, 0.0);
+    std::vector<double> lower(blocknumgpu * params.width * params.height, 0.0);
+    std::vector<double> varblock0(blocknumgpu * params.width * params.height, 0.0);
+    std::vector<double> varblock1(blocknumgpu * params.width * params.height, 0.0);
+    std::vector<double> varblock2(blocknumgpu * params.width * params.height, 0.0);
+
+    std::vector<int> prodnumarray(params.chanum * params.width * params.height);
+    std::vector<int> indexarray(params.width * params.height);
+    std::vector<double> Cblockvararray(sizeblockvararray);
+    std::vector<double> blocksdarray(sizeblockvararray);
+    std::vector<int> pnumgpu(params.width * params.height);
+
+    // Create CUDA stream
+    cudaStream_t stream;
+    CUDA_CHECK_STATUS(cudaStreamCreate(&stream));
+
+    // Device arrays
+    cuda_utils::CudaDevicePtr<float> d_Cpixels(size_pixels);
+    cuda_utils::CudaDevicePtr<double> d_Cpixels1(size1);
+    cuda_utils::CudaDevicePtr<double> d_Cbleachcorr_params(size_bleachcorr_params);
+    cuda_utils::CudaDevicePtr<int> d_Clag(params.chanum);
+    cuda_utils::CudaDevicePtr<float> d_prod(size2);
+    cuda_utils::CudaDevicePtr<double> d_prodnum(prodnum.size());
+    cuda_utils::CudaDevicePtr<double> d_upper(upper.size());
+    cuda_utils::CudaDevicePtr<double> d_lower(lower.size());
+    cuda_utils::CudaDevicePtr<double> d_varblock0(varblock0.size());
+    cuda_utils::CudaDevicePtr<double> d_varblock1(varblock1.size());
+    cuda_utils::CudaDevicePtr<double> d_varblock2(varblock2.size());
+
+    // Copy data to device
+    CUDA_CHECK_STATUS(
+        cudaMemcpyAsync(d_Cpixels.get(), Cpixels, size_pixels * sizeof(float), cudaMemcpyHostToDevice, stream));
+    CUDA_CHECK_STATUS(cudaMemcpyAsync(d_Cbleachcorr_params.get(), Cbleachcorr_params,
+                                      size_bleachcorr_params * sizeof(double), cudaMemcpyHostToDevice, stream));
+    CUDA_CHECK_STATUS(cudaMemcpyAsync(d_Clag.get(), Clag, params.chanum * sizeof(int), cudaMemcpyHostToDevice, stream));
+    CUDA_CHECK_STATUS(cudaMemcpyAsync(d_prodnum.get(), prodnum.data(), prodnum.size() * sizeof(double),
+                                      cudaMemcpyHostToDevice, stream));
+    CUDA_CHECK_STATUS(
+        cudaMemcpyAsync(d_upper.get(), upper.data(), upper.size() * sizeof(double), cudaMemcpyHostToDevice, stream));
+    CUDA_CHECK_STATUS(
+        cudaMemcpyAsync(d_lower.get(), lower.data(), lower.size() * sizeof(double), cudaMemcpyHostToDevice, stream));
+    CUDA_CHECK_STATUS(cudaMemcpyAsync(d_varblock0.get(), varblock0.data(), varblock0.size() * sizeof(double),
+                                      cudaMemcpyHostToDevice, stream));
+    CUDA_CHECK_STATUS(cudaMemcpyAsync(d_varblock1.get(), varblock1.data(), varblock1.size() * sizeof(double),
+                                      cudaMemcpyHostToDevice, stream));
+    CUDA_CHECK_STATUS(cudaMemcpyAsync(d_varblock2.get(), varblock2.data(), varblock2.size() * sizeof(double),
+                                      cudaMemcpyHostToDevice, stream));
+    CUDA_CHECK_STATUS(cudaStreamSynchronize(stream));
+
+    // Run kernels
+    if (params.bleachcorr_gpu)
+    {
+        bleachcorrection<<<gridSize_Input, blockSize, 0, stream>>>(d_Cpixels.get(), params.w_temp, params.h_temp,
+                                                                   framediff, params.bleachcorr_order, params.frametime,
+                                                                   d_Cbleachcorr_params.get());
+        CUDA_CHECK_STATUS(cudaStreamSynchronize(stream));
+        CUDA_CHECK_STATUS(cudaGetLastError());
+    }
+
+    calcacf3<<<gridSize, blockSize, 0, stream>>>(
+        d_Cpixels.get(), params.cfXDistance, params.cfYDistance, 1, params.width, params.height, params.w_temp,
+        params.h_temp, params.pixbinX, params.pixbinY, framediff, static_cast<int>(params.correlatorq),
+        params.frametime, d_Cpixels1.get(), d_prod.get(), d_prodnum.get(), d_upper.get(), d_lower.get(),
+        d_varblock0.get(), d_varblock1.get(), d_varblock2.get(), d_Clag.get());
+
+    CUDA_CHECK_STATUS(cudaStreamSynchronize(stream));
+    CUDA_CHECK_STATUS(cudaGetLastError());
+
+    // Copy results back to host
+    CUDA_CHECK_STATUS(
+        cudaMemcpyAsync(Cpixels1.data(), d_Cpixels1.get(), size1 * sizeof(double), cudaMemcpyDeviceToHost, stream));
+    CUDA_CHECK_STATUS(cudaStreamSynchronize(stream));
+
+    // Copy Cpixels1 to Cblocked1D
+    std::copy(Cpixels1.begin(), Cpixels1.end(), Cblocked1D.begin());
+
+    // Initialize indexarray and pnumgpu
+    size_t counter_indexarray = 0;
+    for (int y = 0; y < params.height; y++)
+    {
+        for (int x = 0; x < params.width; x++)
+        {
+            int idx = y * params.width + x;
+            indexarray[counter_indexarray] = static_cast<int>(Cpixels1[idx]);
+
+            // Minimum number of products
+            double tempval = indexarray[counter_indexarray] - std::log2(params.sampchanumminus1);
+            if (tempval < 0)
+            {
+                tempval = 0;
+            }
+            pnumgpu[counter_indexarray] =
+                static_cast<int>(std::floor(params.mtabchanumminus1 / std::pow(2.0, tempval)));
+            counter_indexarray++;
+        }
+    }
+
+    // Re-copy Cpixels to device if modified
+    CUDA_CHECK_STATUS(
+        cudaMemcpyAsync(d_Cpixels.get(), Cpixels, size_pixels * sizeof(float), cudaMemcpyHostToDevice, stream));
+    CUDA_CHECK_STATUS(cudaStreamSynchronize(stream));
+
+    // Device arrays for calcacf2
+    cuda_utils::CudaDevicePtr<int> d_prodnumarray(params.chanum * params.width * params.height);
+    cuda_utils::CudaDevicePtr<int> d_indexarray(params.width * params.height);
+    cuda_utils::CudaDevicePtr<double> d_Cblockvararray(sizeblockvararray);
+    cuda_utils::CudaDevicePtr<double> d_blocksdarray(sizeblockvararray);
+    cuda_utils::CudaDevicePtr<int> d_pnumgpu(params.width * params.height);
+
+    // Copy data for calcacf2
+    CUDA_CHECK_STATUS(cudaMemcpyAsync(d_prodnumarray.get(), prodnumarray.data(), prodnumarray.size() * sizeof(int),
+                                      cudaMemcpyHostToDevice, stream));
+    CUDA_CHECK_STATUS(cudaMemcpyAsync(d_indexarray.get(), indexarray.data(), indexarray.size() * sizeof(int),
+                                      cudaMemcpyHostToDevice, stream));
+    CUDA_CHECK_STATUS(cudaMemcpyAsync(d_Cblockvararray.get(), Cblockvararray.data(),
+                                      Cblockvararray.size() * sizeof(double), cudaMemcpyHostToDevice, stream));
+    CUDA_CHECK_STATUS(cudaMemcpyAsync(d_blocksdarray.get(), blocksdarray.data(), blocksdarray.size() * sizeof(double),
+                                      cudaMemcpyHostToDevice, stream));
+    CUDA_CHECK_STATUS(
+        cudaMemcpyAsync(d_pnumgpu.get(), pnumgpu.data(), pnumgpu.size() * sizeof(int), cudaMemcpyHostToDevice, stream));
+    CUDA_CHECK_STATUS(cudaStreamSynchronize(stream));
+
+    // Run calcacf2 kernels
+    if (params.bleachcorr_gpu)
+    {
+        bleachcorrection<<<gridSize_Input, blockSize, 0, stream>>>(d_Cpixels.get(), params.w_temp, params.h_temp,
+                                                                   framediff, params.bleachcorr_order, params.frametime,
+                                                                   d_Cbleachcorr_params.get());
+        CUDA_CHECK_STATUS(cudaStreamSynchronize(stream));
+        CUDA_CHECK_STATUS(cudaGetLastError());
+    }
+
+    int numbin = framediff;
+    int currentIncrement = 1;
+    int ctbin = 0;
+
+    for (int x = 0; x < params.chanum; x++)
+    {
+        if (currentIncrement != Csamp[x])
+        {
+            numbin = static_cast<int>(std::floor(static_cast<double>(numbin) / 2.0));
+            currentIncrement = static_cast<int>(Csamp[x]);
+            ctbin++;
+            calcacf2a<<<gridSize_Input, blockSize, 0, stream>>>(d_Cpixels.get(), params.w_temp, params.h_temp, numbin);
+            CUDA_CHECK_STATUS(cudaStreamSynchronize(stream));
+            CUDA_CHECK_STATUS(cudaGetLastError());
+        }
+
+        // Launch calcacf2b_ACF
+        calcacf2b_ACF<<<gridSize, blockSize, 0, stream>>>(
+            d_Cpixels.get(), params.cfXDistance, params.cfYDistance, params.width, params.height, params.w_temp,
+            params.h_temp, params.pixbinX, params.pixbinY, d_Cpixels1.get(), d_prod.get(), d_Clag.get(),
+            d_prodnumarray.get(), d_indexarray.get(), d_Cblockvararray.get(), d_blocksdarray.get(), d_pnumgpu.get(), x,
+            numbin, currentIncrement, ctbin);
+
+        CUDA_CHECK_STATUS(cudaStreamSynchronize(stream));
+    }
+
+    // Copy results back to host
+    CUDA_CHECK_STATUS(
+        cudaMemcpyAsync(Cpixels1.data(), d_Cpixels1.get(), size1 * sizeof(double), cudaMemcpyDeviceToHost, stream));
+    CUDA_CHECK_STATUS(cudaMemcpyAsync(Cblockvararray.data(), d_Cblockvararray.get(),
+                                      Cblockvararray.size() * sizeof(double), cudaMemcpyDeviceToHost, stream));
+    CUDA_CHECK_STATUS(cudaStreamSynchronize(stream));
+
+    // Destroy CUDA stream
+    CUDA_CHECK_STATUS(cudaStreamDestroy(stream));
+
+    // Copy results back to Java arrays
+    env->SetDoubleArrayRegion(pixels1, 0, size1, Cpixels1.data());
+    env->SetDoubleArrayRegion(blockvararray, 0, Cblockvararray.size(), Cblockvararray.data());
+    env->SetDoubleArrayRegion(blocked1D, 0, size1, Cblocked1D.data());
+}
+
 void JNICALL Java_fiji_plugin_imaging_1fcs_gpufitImFCS_GpufitImFCS_calcACF(
     JNIEnv *env, jclass cls, jfloatArray pixels, jdoubleArray pixels1, jdoubleArray blockvararray,
     jdoubleArray NBmeanGPU, jdoubleArray NBcovarianceGPU, jdoubleArray blocked1D, jdoubleArray bleachcorr_params,
     jdoubleArray samp, jintArray lag, jobject ACFInputParams)
 {
-    // Pointers to hold Java array elements
-    jfloat *Cpixels = nullptr;
-    jdouble *Cbleachcorr_params = nullptr;
-    jdouble *Csamp = nullptr;
-    jint *Clag = nullptr;
-
     try
     {
-        // Get elements from Java arrays
-        Cpixels = env->GetFloatArrayElements(pixels, NULL);
-        Cbleachcorr_params = env->GetDoubleArrayElements(bleachcorr_params, NULL);
-        Csamp = env->GetDoubleArrayElements(samp, NULL);
-        Clag = env->GetIntArrayElements(lag, NULL);
+        // Wrap Java arrays with JavaArray class
+        JavaArray<jfloatArray, jfloat> Cpixels(env, pixels);
+        JavaArray<jdoubleArray, jdouble> Cbleachcorr_params(env, bleachcorr_params);
+        JavaArray<jdoubleArray, jdouble> Csamp(env, samp);
+        JavaArray<jintArray, jint> Clag(env, lag);
 
-        // Get parameters from ACFInputParams object
-        jclass ACFInputParamsCls = env->GetObjectClass(ACFInputParams);
+        // Retrieve parameters using the wrapper class
+        ACFInputParamsWrapper params(env, ACFInputParams);
 
-        // Retrieve field IDs
-        jfieldID widthId = env->GetFieldID(ACFInputParamsCls, "width", "I");
-        jfieldID heightId = env->GetFieldID(ACFInputParamsCls, "height", "I");
-        jfieldID w_tempId = env->GetFieldID(ACFInputParamsCls, "w_temp", "I");
-        jfieldID h_tempId = env->GetFieldID(ACFInputParamsCls, "h_temp", "I");
-        jfieldID pixbinXId = env->GetFieldID(ACFInputParamsCls, "pixbinX", "I");
-        jfieldID pixbinYId = env->GetFieldID(ACFInputParamsCls, "pixbinY", "I");
-        jfieldID firstframeId = env->GetFieldID(ACFInputParamsCls, "firstframe", "I");
-        jfieldID lastframeId = env->GetFieldID(ACFInputParamsCls, "lastframe", "I");
-        jfieldID cfXDistanceId = env->GetFieldID(ACFInputParamsCls, "cfXDistance", "I");
-        jfieldID cfYDistanceId = env->GetFieldID(ACFInputParamsCls, "cfYDistance", "I");
-        jfieldID correlatorpId = env->GetFieldID(ACFInputParamsCls, "correlatorp", "D");
-        jfieldID correlatorqId = env->GetFieldID(ACFInputParamsCls, "correlatorq", "D");
-        jfieldID frametimeId = env->GetFieldID(ACFInputParamsCls, "frametime", "D");
-        jfieldID backgroundId = env->GetFieldID(ACFInputParamsCls, "background", "I");
-        jfieldID mtab1Id = env->GetFieldID(ACFInputParamsCls, "mtab1", "D");
-        jfieldID mtabchanumminus1Id = env->GetFieldID(ACFInputParamsCls, "mtabchanumminus1", "D");
-        jfieldID sampchanumminus1Id = env->GetFieldID(ACFInputParamsCls, "sampchanumminus1", "D");
-        jfieldID chanumId = env->GetFieldID(ACFInputParamsCls, "chanum", "I");
-        jfieldID isNBcalculationId = env->GetFieldID(ACFInputParamsCls, "isNBcalculation", "Z");
-        jfieldID bleachcorr_gpuId = env->GetFieldID(ACFInputParamsCls, "bleachcorr_gpu", "Z");
-        jfieldID bleachcorr_orderId = env->GetFieldID(ACFInputParamsCls, "bleachcorr_order", "I");
-
-        // Retrieve field values
-        jint width = env->GetIntField(ACFInputParams, widthId);
-        jint height = env->GetIntField(ACFInputParams, heightId);
-        jint w_temp = env->GetIntField(ACFInputParams, w_tempId);
-        jint h_temp = env->GetIntField(ACFInputParams, h_tempId);
-        jint pixbinX = env->GetIntField(ACFInputParams, pixbinXId);
-        jint pixbinY = env->GetIntField(ACFInputParams, pixbinYId);
-        jint firstframe = env->GetIntField(ACFInputParams, firstframeId);
-        jint lastframe = env->GetIntField(ACFInputParams, lastframeId);
-        jint cfXDistance = env->GetIntField(ACFInputParams, cfXDistanceId);
-        jint cfYDistance = env->GetIntField(ACFInputParams, cfYDistanceId);
-        jdouble correlatorp = env->GetDoubleField(ACFInputParams, correlatorpId);
-        jdouble correlatorq = env->GetDoubleField(ACFInputParams, correlatorqId);
-        jdouble frametime = env->GetDoubleField(ACFInputParams, frametimeId);
-        jint background = env->GetIntField(ACFInputParams, backgroundId);
-        jdouble mtab1 = env->GetDoubleField(ACFInputParams, mtab1Id);
-        jdouble mtabchanumminus1 = env->GetDoubleField(ACFInputParams, mtabchanumminus1Id);
-        jdouble sampchanumminus1 = env->GetDoubleField(ACFInputParams, sampchanumminus1Id);
-        jint chanum = env->GetIntField(ACFInputParams, chanumId);
-        jboolean isNBcalculation = env->GetBooleanField(ACFInputParams, isNBcalculationId);
-        jboolean bleachcorr_gpu = env->GetBooleanField(ACFInputParams, bleachcorr_gpuId);
-        jint bleachcorr_order = env->GetIntField(ACFInputParams, bleachcorr_orderId);
-
-        // Initialize parameters
-        int framediff = lastframe - firstframe + 1;
-        size_t size_pixels = static_cast<size_t>(w_temp) * h_temp * framediff;
-        size_t size1 = static_cast<size_t>(width) * height * chanum;
-        size_t size2 = static_cast<size_t>(framediff) * width * height;
-        size_t sizeblockvararray = static_cast<size_t>(chanum) * width * height;
-        size_t size_bleachcorr_params = static_cast<size_t>(w_temp) * h_temp * bleachcorr_order;
-
-        int blocknumgpu = static_cast<int>(std::floor(std::log(mtab1) / std::log(2.0)) - 2);
-
-        // Configure CUDA grid and block sizes
-        int BLKSIZEXY = 16;
-        int max_dim = std::max(width, height);
-        int GRIDSIZEXY = (max_dim + BLKSIZEXY - 1) / BLKSIZEXY;
-        dim3 blockSize(BLKSIZEXY, BLKSIZEXY, 1);
-        dim3 gridSize(GRIDSIZEXY, GRIDSIZEXY, 1);
-
-        int max_dim_input = std::max(w_temp, h_temp);
-        int GRIDSIZEXY_Input = (max_dim_input + BLKSIZEXY - 1) / BLKSIZEXY;
-        dim3 gridSize_Input(GRIDSIZEXY_Input, GRIDSIZEXY_Input, 1);
-
-        // Host arrays using std::vector
-        std::vector<double> Cpixels1(size1);
-        std::vector<float> prod(size2);
-        std::vector<double> Cblocked1D(size1);
-
-        // Host arrays for calcacf3
-        std::vector<double> prodnum;
-        std::vector<double> upper;
-        std::vector<double> lower;
-        std::vector<double> varblock0;
-        std::vector<double> varblock1;
-        std::vector<double> varblock2;
-
-        if (!isNBcalculation)
+        if (params.isNBcalculation)
         {
-            size_t size_prodnum = static_cast<size_t>(blocknumgpu);
-            size_t size_upper_lower = static_cast<size_t>(blocknumgpu) * width * height;
-            size_t size_varblock = static_cast<size_t>(blocknumgpu) * width * height;
-
-            prodnum.resize(size_prodnum, 1.0);
-            upper.resize(size_upper_lower, 0.0);
-            lower.resize(size_upper_lower, 0.0);
-            varblock0.resize(size_varblock, 0.0);
-            varblock1.resize(size_varblock, 0.0);
-            varblock2.resize(size_varblock, 0.0);
-        }
-
-        // Host arrays for calcacf2
-        std::vector<int> prodnumarray(chanum * width * height);
-        std::vector<int> indexarray(width * height);
-        std::vector<double> Cblockvararray(sizeblockvararray);
-        std::vector<double> blocksdarray(sizeblockvararray);
-        std::vector<int> pnumgpu(width * height);
-
-        // Host arrays for N & B calculations
-        std::vector<double> CNBmeanGPU;
-        std::vector<double> CNBcovarianceGPU;
-
-        if (isNBcalculation)
-        {
-            CNBmeanGPU.resize(width * height, 0.0);
-            CNBcovarianceGPU.resize(width * height, 0.0);
-        }
-
-        // Create CUDA stream
-        cudaStream_t stream;
-        CUDA_CHECK_STATUS(cudaStreamCreate(&stream));
-
-        // Device arrays using cuda_utils::CudaDevicePtr
-        cuda_utils::CudaDevicePtr<float> d_Cpixels(size_pixels);
-        cuda_utils::CudaDevicePtr<double> d_Cpixels1(size1);
-        cuda_utils::CudaDevicePtr<double> d_Cbleachcorr_params(size_bleachcorr_params);
-        cuda_utils::CudaDevicePtr<double> d_Csamp(chanum);
-        cuda_utils::CudaDevicePtr<int> d_Clag(chanum);
-        cuda_utils::CudaDevicePtr<float> d_prod(size2);
-
-        // Device arrays for calcacf3
-        cuda_utils::CudaDevicePtr<double> d_prodnum;
-        cuda_utils::CudaDevicePtr<double> d_upper;
-        cuda_utils::CudaDevicePtr<double> d_lower;
-        cuda_utils::CudaDevicePtr<double> d_varblock0;
-        cuda_utils::CudaDevicePtr<double> d_varblock1;
-        cuda_utils::CudaDevicePtr<double> d_varblock2;
-
-        if (!isNBcalculation)
-        {
-            d_prodnum = cuda_utils::CudaDevicePtr<double>(prodnum.size());
-            d_upper = cuda_utils::CudaDevicePtr<double>(upper.size());
-            d_lower = cuda_utils::CudaDevicePtr<double>(lower.size());
-            d_varblock0 = cuda_utils::CudaDevicePtr<double>(varblock0.size());
-            d_varblock1 = cuda_utils::CudaDevicePtr<double>(varblock1.size());
-            d_varblock2 = cuda_utils::CudaDevicePtr<double>(varblock2.size());
-        }
-
-        // Copy data to device
-        CUDA_CHECK_STATUS(
-            cudaMemcpyAsync(d_Cpixels.get(), Cpixels, size_pixels * sizeof(float), cudaMemcpyHostToDevice, stream));
-        // Initialize d_Cpixels1 if needed
-        CUDA_CHECK_STATUS(
-            cudaMemcpyAsync(d_Cpixels1.get(), Cpixels1.data(), size1 * sizeof(double), cudaMemcpyHostToDevice, stream));
-        CUDA_CHECK_STATUS(cudaMemcpyAsync(d_Cbleachcorr_params.get(), Cbleachcorr_params,
-                                          size_bleachcorr_params * sizeof(double), cudaMemcpyHostToDevice, stream));
-        CUDA_CHECK_STATUS(cudaMemcpyAsync(d_Clag.get(), Clag, chanum * sizeof(int), cudaMemcpyHostToDevice, stream));
-        CUDA_CHECK_STATUS(
-            cudaMemcpyAsync(d_prod.get(), prod.data(), size2 * sizeof(float), cudaMemcpyHostToDevice, stream));
-
-        // Copy data for calcacf3
-        if (!isNBcalculation)
-        {
-            CUDA_CHECK_STATUS(cudaMemcpyAsync(d_prodnum.get(), prodnum.data(), prodnum.size() * sizeof(double),
-                                              cudaMemcpyHostToDevice, stream));
-            CUDA_CHECK_STATUS(cudaMemcpyAsync(d_upper.get(), upper.data(), upper.size() * sizeof(double),
-                                              cudaMemcpyHostToDevice, stream));
-            CUDA_CHECK_STATUS(cudaMemcpyAsync(d_lower.get(), lower.data(), lower.size() * sizeof(double),
-                                              cudaMemcpyHostToDevice, stream));
-            CUDA_CHECK_STATUS(cudaMemcpyAsync(d_varblock0.get(), varblock0.data(), varblock0.size() * sizeof(double),
-                                              cudaMemcpyHostToDevice, stream));
-            CUDA_CHECK_STATUS(cudaMemcpyAsync(d_varblock1.get(), varblock1.data(), varblock1.size() * sizeof(double),
-                                              cudaMemcpyHostToDevice, stream));
-            CUDA_CHECK_STATUS(cudaMemcpyAsync(d_varblock2.get(), varblock2.data(), varblock2.size() * sizeof(double),
-                                              cudaMemcpyHostToDevice, stream));
-        }
-
-        // Synchronize stream to ensure data is copied
-        CUDA_CHECK_STATUS(cudaStreamSynchronize(stream));
-
-        // Run kernels for calcacf3
-        if (!isNBcalculation)
-        {
-            if (bleachcorr_gpu)
-            {
-                bleachcorrection<<<gridSize_Input, blockSize, 0, stream>>>(d_Cpixels.get(), w_temp, h_temp, framediff,
-                                                                           bleachcorr_order, frametime,
-                                                                           d_Cbleachcorr_params.get());
-                CUDA_CHECK_STATUS(cudaStreamSynchronize(stream));
-                CUDA_CHECK_STATUS(cudaGetLastError());
-            }
-
-            calcacf3<<<gridSize, blockSize, 0, stream>>>(
-                d_Cpixels.get(), cfXDistance, cfYDistance, 1, width, height, w_temp, h_temp, pixbinX, pixbinY,
-                framediff, static_cast<int>(correlatorq), frametime, d_Cpixels1.get(), d_prod.get(),
-                d_prodnum.get(), d_upper.get(), d_lower.get(), d_varblock0.get(), d_varblock1.get(),
-                d_varblock2.get(), d_Clag.get());
-
-            CUDA_CHECK_STATUS(cudaStreamSynchronize(stream));
-            CUDA_CHECK_STATUS(cudaGetLastError());
-
-            // Copy results back to host
-            CUDA_CHECK_STATUS(cudaMemcpyAsync(Cpixels1.data(), d_Cpixels1.get(), size1 * sizeof(double),
-                                              cudaMemcpyDeviceToHost, stream));
-            CUDA_CHECK_STATUS(cudaStreamSynchronize(stream));
-
-            // Copy Cpixels1 to Cblocked1D
-            std::copy(Cpixels1.begin(), Cpixels1.end(), Cblocked1D.begin());
-
-            // Initialize indexarray and pnumgpu
-            size_t counter_indexarray = 0;
-            for (int y = 0; y < height; y++)
-            {
-                for (int x = 0; x < width; x++)
-                {
-                    int idx = y * width + x;
-                    indexarray[counter_indexarray] = static_cast<int>(Cpixels1[idx]);
-
-                    // Minimum number of products
-                    double tempval = indexarray[counter_indexarray] - std::log2(sampchanumminus1);
-                    if (tempval < 0)
-                    {
-                        tempval = 0;
-                    }
-                    pnumgpu[counter_indexarray] =
-                        static_cast<int>(std::floor(mtabchanumminus1 / std::pow(2.0, tempval)));
-                    counter_indexarray++;
-                }
-            }
-        }
-
-        // Re-copy Cpixels to device if modified
-        CUDA_CHECK_STATUS(
-            cudaMemcpyAsync(d_Cpixels.get(), Cpixels, size_pixels * sizeof(float), cudaMemcpyHostToDevice, stream));
-        CUDA_CHECK_STATUS(cudaStreamSynchronize(stream));
-
-        // Device arrays for calcacf2
-        cuda_utils::CudaDevicePtr<int> d_prodnumarray(chanum * width * height);
-        cuda_utils::CudaDevicePtr<int> d_indexarray(width * height);
-        cuda_utils::CudaDevicePtr<double> d_Cblockvararray(sizeblockvararray);
-        cuda_utils::CudaDevicePtr<double> d_blocksdarray(sizeblockvararray);
-        cuda_utils::CudaDevicePtr<int> d_pnumgpu(width * height);
-
-        // Device arrays for N & B calculations
-        cuda_utils::CudaDevicePtr<double> d_NBmeanGPU;
-        cuda_utils::CudaDevicePtr<double> d_NBcovarianceGPU;
-
-        if (isNBcalculation)
-        {
-            d_NBmeanGPU = cuda_utils::CudaDevicePtr<double>(width * height);
-            d_NBcovarianceGPU = cuda_utils::CudaDevicePtr<double>(width * height);
-
-            // Copy N & B arrays to device
-            CUDA_CHECK_STATUS(cudaMemcpyAsync(d_NBmeanGPU.get(), CNBmeanGPU.data(), CNBmeanGPU.size() * sizeof(double),
-                                              cudaMemcpyHostToDevice, stream));
-            CUDA_CHECK_STATUS(cudaMemcpyAsync(d_NBcovarianceGPU.get(), CNBcovarianceGPU.data(),
-                                              CNBcovarianceGPU.size() * sizeof(double), cudaMemcpyHostToDevice,
-                                              stream));
-        }
-
-        // Copy data for calcacf2
-        CUDA_CHECK_STATUS(cudaMemcpyAsync(d_prodnumarray.get(), prodnumarray.data(), prodnumarray.size() * sizeof(int),
-                                          cudaMemcpyHostToDevice, stream));
-        CUDA_CHECK_STATUS(cudaMemcpyAsync(d_indexarray.get(), indexarray.data(), indexarray.size() * sizeof(int),
-                                          cudaMemcpyHostToDevice, stream));
-        CUDA_CHECK_STATUS(cudaMemcpyAsync(d_Cblockvararray.get(), Cblockvararray.data(),
-                                          Cblockvararray.size() * sizeof(double), cudaMemcpyHostToDevice, stream));
-        CUDA_CHECK_STATUS(cudaMemcpyAsync(d_blocksdarray.get(), blocksdarray.data(),
-                                          blocksdarray.size() * sizeof(double), cudaMemcpyHostToDevice, stream));
-        CUDA_CHECK_STATUS(cudaMemcpyAsync(d_pnumgpu.get(), pnumgpu.data(), pnumgpu.size() * sizeof(int),
-                                          cudaMemcpyHostToDevice, stream));
-        CUDA_CHECK_STATUS(cudaStreamSynchronize(stream));
-
-        // Run kernels for calcacf2
-        if (bleachcorr_gpu)
-        {
-            bleachcorrection<<<gridSize_Input, blockSize, 0, stream>>>(
-                d_Cpixels.get(), w_temp, h_temp, framediff, bleachcorr_order, frametime, d_Cbleachcorr_params.get());
-            CUDA_CHECK_STATUS(cudaStreamSynchronize(stream));
-            CUDA_CHECK_STATUS(cudaGetLastError());
-        }
-
-        int numbin = framediff;
-        int currentIncrement = 1;
-        int ctbin = 0;
-
-        int calcacf2_x_start = isNBcalculation ? 1 : 0;
-        int calcacf2_x_end = isNBcalculation ? 2 : chanum;
-
-        for (int x = calcacf2_x_start; x < calcacf2_x_end; x++)
-        {
-            bool runthis = false;
-            if (currentIncrement != Csamp[x])
-            {
-                numbin = static_cast<int>(std::floor(static_cast<double>(numbin) / 2.0));
-                currentIncrement = static_cast<int>(Csamp[x]);
-                ctbin++;
-                runthis = true;
-            }
-
-            if (runthis)
-            {
-                calcacf2a<<<gridSize_Input, blockSize, 0, stream>>>(d_Cpixels.get(), w_temp, h_temp, numbin);
-                CUDA_CHECK_STATUS(cudaStreamSynchronize(stream));
-                CUDA_CHECK_STATUS(cudaGetLastError());
-            }
-
-            if (isNBcalculation)
-            {
-                // Launch calcacf2b_NB
-                calcacf2b_NB<<<gridSize, blockSize>>>(d_Cpixels.get(), cfXDistance, cfYDistance, width, height, w_temp,
-                                                      h_temp, pixbinX, pixbinY, d_prod.get(), d_Clag.get(),
-                                                      d_prodnumarray.get(), d_NBmeanGPU.get(), d_NBcovarianceGPU.get(),
-                                                      x, numbin, currentIncrement);
-            }
-            else
-            {
-                // Launch calcacf2b_ACF
-                calcacf2b_ACF<<<gridSize, blockSize>>>(
-                    d_Cpixels.get(), cfXDistance, cfYDistance, width, height, w_temp, h_temp, pixbinX, pixbinY,
-                    d_Cpixels1.get(), d_prod.get(), d_Clag.get(), d_prodnumarray.get(), d_indexarray.get(),
-                    d_Cblockvararray.get(), d_blocksdarray.get(), d_pnumgpu.get(), x, numbin, currentIncrement, ctbin);
-            }
-
-            CUDA_CHECK_STATUS(cudaStreamSynchronize(stream));
-            CUDA_CHECK_STATUS(cudaGetLastError());
-        }
-
-        // Copy results back to host
-        if (isNBcalculation)
-        {
-            CUDA_CHECK_STATUS(cudaMemcpyAsync(CNBmeanGPU.data(), d_NBmeanGPU.get(), CNBmeanGPU.size() * sizeof(double),
-                                              cudaMemcpyDeviceToHost, stream));
-            CUDA_CHECK_STATUS(cudaMemcpyAsync(CNBcovarianceGPU.data(), d_NBcovarianceGPU.get(),
-                                              CNBcovarianceGPU.size() * sizeof(double), cudaMemcpyDeviceToHost,
-                                              stream));
+            NBCalculationFunction(env, params, Cpixels.elements(), Cbleachcorr_params.elements(), Csamp.elements(),
+                                  Clag.elements(), NBmeanGPU, NBcovarianceGPU);
         }
         else
         {
-            CUDA_CHECK_STATUS(cudaMemcpyAsync(Cpixels1.data(), d_Cpixels1.get(), size1 * sizeof(double),
-                                              cudaMemcpyDeviceToHost, stream));
-            CUDA_CHECK_STATUS(cudaMemcpyAsync(Cblockvararray.data(), d_Cblockvararray.get(),
-                                              Cblockvararray.size() * sizeof(double), cudaMemcpyDeviceToHost, stream));
-        }
-
-        CUDA_CHECK_STATUS(cudaStreamSynchronize(stream));
-
-        // Destroy CUDA stream
-        CUDA_CHECK_STATUS(cudaStreamDestroy(stream));
-
-        // Release Java array elements
-        env->ReleaseFloatArrayElements(pixels, Cpixels, 0);
-        env->ReleaseDoubleArrayElements(bleachcorr_params, Cbleachcorr_params, 0);
-        env->ReleaseDoubleArrayElements(samp, Csamp, 0);
-        env->ReleaseIntArrayElements(lag, Clag, 0);
-
-        // Copy results back to Java arrays
-        env->SetDoubleArrayRegion(pixels1, 0, size1, Cpixels1.data());
-        env->SetDoubleArrayRegion(blockvararray, 0, Cblockvararray.size(), Cblockvararray.data());
-        env->SetDoubleArrayRegion(blocked1D, 0, size1, Cblocked1D.data());
-
-        if (isNBcalculation)
-        {
-            env->SetDoubleArrayRegion(NBmeanGPU, 0, CNBmeanGPU.size(), CNBmeanGPU.data());
-            env->SetDoubleArrayRegion(NBcovarianceGPU, 0, CNBcovarianceGPU.size(), CNBcovarianceGPU.data());
+            ACFCalculationFunction(env, params, Cpixels.elements(), Cbleachcorr_params.elements(), Csamp.elements(),
+                                   Clag.elements(), pixels1, blockvararray, blocked1D);
         }
     }
     catch (const std::exception &e)
     {
-        // Release Java array elements if they were acquired
-        if (Cpixels != nullptr)
-        {
-            env->ReleaseFloatArrayElements(pixels, Cpixels, 0);
-        }
-        if (Cbleachcorr_params != nullptr)
-        {
-            env->ReleaseDoubleArrayElements(bleachcorr_params, Cbleachcorr_params, 0);
-        }
-        if (Csamp != nullptr)
-        {
-            env->ReleaseDoubleArrayElements(samp, Csamp, 0);
-        }
-        if (Clag != nullptr)
-        {
-            env->ReleaseIntArrayElements(lag, Clag, 0);
-        }
-
-        // Throw Java exception
         jclass Exception = env->FindClass("java/lang/Exception");
         env->ThrowNew(Exception, e.what());
     }
