@@ -26,10 +26,8 @@ extern __global__ void calcacf2b_ACF(const float *data, int cfXDistancegpu, int 
                                      int ctbin);
 
 extern __global__ void calcacf3(float *data, int cfXDistancegpu, int cfYDistancegpu, int blocklag, int w, int h,
-                                int w_temp, int h_temp, int pixbinX, int pixbinY, int d, int correlatorp,
-                                int correlatorq, int chanum, double frametimegpu, double *data1, float *prod,
-                                double *prodnum, double *blocksd, double *upper, double *lower, int *crt, int *cr12,
-                                int *cr3, int *diffpos, double *varblock0, double *varblock1, double *varblock2,
-                                double *sampgpu, int *laggpu);
+                                int w_temp, int h_temp, int pixbinX, int pixbinY, int d, int correlatorq,
+                                double frametimegpu, double *data1, float *prod, double *prodnum, double *upper,
+                                double *lower, double *varblock0, double *varblock1, double *varblock2, int *laggpu);
 
 #endif // CUDA_FCS_KERNELS_H

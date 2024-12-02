@@ -1,5 +1,3 @@
-#include "fiji_plugin_imaging_fcs_gpufitImFCS_GpufitImFCS.h"
-
 #include <algorithm>
 #include <cmath>
 #include <cuda_runtime.h>
@@ -9,6 +7,7 @@
 #include "cuda_fcs_kernels.cuh"
 #include "cuda_utils/cuda_device_ptr.h"
 #include "definitions.h"
+#include "fiji_plugin_imaging_fcs_gpufitImFCS_GpufitImFCS.h"
 #include "gpufit.h"
 
 /* -------------------------------------------------------------------------------------------------------
@@ -501,14 +500,9 @@ jboolean JNICALL Java_fiji_plugin_imaging_1fcs_gpufitImFCS_GpufitImFCS_isACFmemo
             size_t size_prodnum = static_cast<size_t>(blocknumgpu) * size_double;
             size_t size_upper = static_cast<size_t>(blocknumgpu) * width * height * size_double;
             size_t size_lower = size_upper;
-            size_t size_crt = static_cast<size_t>(blocknumgpu - 1) * width * height * size_int;
-            size_t size_cr12 = static_cast<size_t>(blocknumgpu - 2) * width * height * size_int;
-            size_t size_cr3 = size_cr12;
-            size_t size_diffpos = size_crt;
             size_t size_varblock = static_cast<size_t>(blocknumgpu) * width * height * size_double * 3; // varblock0,1,2
 
-            total_memory_calcacf3 = size_prodnum + size_blockvararray + size_upper + size_lower + size_crt + size_cr12
-                + size_cr3 + size_diffpos + size_varblock;
+            total_memory_calcacf3 = size_prodnum + size_blockvararray + size_upper + size_lower + size_varblock;
         }
 
         // Memory required for calcacf2
@@ -652,13 +646,8 @@ void JNICALL Java_fiji_plugin_imaging_1fcs_gpufitImFCS_GpufitImFCS_calcACF(
 
         // Host arrays for calcacf3
         std::vector<double> prodnum;
-        std::vector<double> blocksd;
         std::vector<double> upper;
         std::vector<double> lower;
-        std::vector<int> crt;
-        std::vector<int> cr12;
-        std::vector<int> cr3;
-        std::vector<int> diffpos;
         std::vector<double> varblock0;
         std::vector<double> varblock1;
         std::vector<double> varblock2;
@@ -666,21 +655,12 @@ void JNICALL Java_fiji_plugin_imaging_1fcs_gpufitImFCS_GpufitImFCS_calcACF(
         if (!isNBcalculation)
         {
             size_t size_prodnum = static_cast<size_t>(blocknumgpu);
-            size_t size_blocksd = sizeblockvararray;
             size_t size_upper_lower = static_cast<size_t>(blocknumgpu) * width * height;
-            size_t size_crt = static_cast<size_t>(blocknumgpu - 1) * width * height;
-            size_t size_cr12_cr3 = static_cast<size_t>(blocknumgpu - 2) * width * height;
-            size_t size_diffpos = size_crt;
             size_t size_varblock = static_cast<size_t>(blocknumgpu) * width * height;
 
             prodnum.resize(size_prodnum, 1.0);
-            blocksd.resize(size_blocksd, 0.0);
             upper.resize(size_upper_lower, 0.0);
             lower.resize(size_upper_lower, 0.0);
-            crt.resize(size_crt, 0);
-            cr12.resize(size_cr12_cr3, 0);
-            cr3.resize(size_cr12_cr3, 0);
-            diffpos.resize(size_diffpos, 0);
             varblock0.resize(size_varblock, 0.0);
             varblock1.resize(size_varblock, 0.0);
             varblock2.resize(size_varblock, 0.0);
@@ -717,13 +697,8 @@ void JNICALL Java_fiji_plugin_imaging_1fcs_gpufitImFCS_GpufitImFCS_calcACF(
 
         // Device arrays for calcacf3
         cuda_utils::CudaDevicePtr<double> d_prodnum;
-        cuda_utils::CudaDevicePtr<double> d_blocksd;
         cuda_utils::CudaDevicePtr<double> d_upper;
         cuda_utils::CudaDevicePtr<double> d_lower;
-        cuda_utils::CudaDevicePtr<int> d_crt;
-        cuda_utils::CudaDevicePtr<int> d_cr12;
-        cuda_utils::CudaDevicePtr<int> d_cr3;
-        cuda_utils::CudaDevicePtr<int> d_diffpos;
         cuda_utils::CudaDevicePtr<double> d_varblock0;
         cuda_utils::CudaDevicePtr<double> d_varblock1;
         cuda_utils::CudaDevicePtr<double> d_varblock2;
@@ -731,13 +706,8 @@ void JNICALL Java_fiji_plugin_imaging_1fcs_gpufitImFCS_GpufitImFCS_calcACF(
         if (!isNBcalculation)
         {
             d_prodnum = cuda_utils::CudaDevicePtr<double>(prodnum.size());
-            d_blocksd = cuda_utils::CudaDevicePtr<double>(blocksd.size());
             d_upper = cuda_utils::CudaDevicePtr<double>(upper.size());
             d_lower = cuda_utils::CudaDevicePtr<double>(lower.size());
-            d_crt = cuda_utils::CudaDevicePtr<int>(crt.size());
-            d_cr12 = cuda_utils::CudaDevicePtr<int>(cr12.size());
-            d_cr3 = cuda_utils::CudaDevicePtr<int>(cr3.size());
-            d_diffpos = cuda_utils::CudaDevicePtr<int>(diffpos.size());
             d_varblock0 = cuda_utils::CudaDevicePtr<double>(varblock0.size());
             d_varblock1 = cuda_utils::CudaDevicePtr<double>(varblock1.size());
             d_varblock2 = cuda_utils::CudaDevicePtr<double>(varblock2.size());
@@ -751,8 +721,6 @@ void JNICALL Java_fiji_plugin_imaging_1fcs_gpufitImFCS_GpufitImFCS_calcACF(
             cudaMemcpyAsync(d_Cpixels1.get(), Cpixels1.data(), size1 * sizeof(double), cudaMemcpyHostToDevice, stream));
         CUDA_CHECK_STATUS(cudaMemcpyAsync(d_Cbleachcorr_params.get(), Cbleachcorr_params,
                                           size_bleachcorr_params * sizeof(double), cudaMemcpyHostToDevice, stream));
-        CUDA_CHECK_STATUS(
-            cudaMemcpyAsync(d_Csamp.get(), Csamp, chanum * sizeof(double), cudaMemcpyHostToDevice, stream));
         CUDA_CHECK_STATUS(cudaMemcpyAsync(d_Clag.get(), Clag, chanum * sizeof(int), cudaMemcpyHostToDevice, stream));
         CUDA_CHECK_STATUS(
             cudaMemcpyAsync(d_prod.get(), prod.data(), size2 * sizeof(float), cudaMemcpyHostToDevice, stream));
@@ -762,19 +730,9 @@ void JNICALL Java_fiji_plugin_imaging_1fcs_gpufitImFCS_GpufitImFCS_calcACF(
         {
             CUDA_CHECK_STATUS(cudaMemcpyAsync(d_prodnum.get(), prodnum.data(), prodnum.size() * sizeof(double),
                                               cudaMemcpyHostToDevice, stream));
-            CUDA_CHECK_STATUS(cudaMemcpyAsync(d_blocksd.get(), blocksd.data(), blocksd.size() * sizeof(double),
-                                              cudaMemcpyHostToDevice, stream));
             CUDA_CHECK_STATUS(cudaMemcpyAsync(d_upper.get(), upper.data(), upper.size() * sizeof(double),
                                               cudaMemcpyHostToDevice, stream));
             CUDA_CHECK_STATUS(cudaMemcpyAsync(d_lower.get(), lower.data(), lower.size() * sizeof(double),
-                                              cudaMemcpyHostToDevice, stream));
-            CUDA_CHECK_STATUS(
-                cudaMemcpyAsync(d_crt.get(), crt.data(), crt.size() * sizeof(int), cudaMemcpyHostToDevice, stream));
-            CUDA_CHECK_STATUS(
-                cudaMemcpyAsync(d_cr12.get(), cr12.data(), cr12.size() * sizeof(int), cudaMemcpyHostToDevice, stream));
-            CUDA_CHECK_STATUS(
-                cudaMemcpyAsync(d_cr3.get(), cr3.data(), cr3.size() * sizeof(int), cudaMemcpyHostToDevice, stream));
-            CUDA_CHECK_STATUS(cudaMemcpyAsync(d_diffpos.get(), diffpos.data(), diffpos.size() * sizeof(int),
                                               cudaMemcpyHostToDevice, stream));
             CUDA_CHECK_STATUS(cudaMemcpyAsync(d_varblock0.get(), varblock0.data(), varblock0.size() * sizeof(double),
                                               cudaMemcpyHostToDevice, stream));
@@ -801,10 +759,9 @@ void JNICALL Java_fiji_plugin_imaging_1fcs_gpufitImFCS_GpufitImFCS_calcACF(
 
             calcacf3<<<gridSize, blockSize, 0, stream>>>(
                 d_Cpixels.get(), cfXDistance, cfYDistance, 1, width, height, w_temp, h_temp, pixbinX, pixbinY,
-                framediff, static_cast<int>(correlatorp), static_cast<int>(correlatorq), chanum, frametime,
-                d_Cpixels1.get(), d_prod.get(), d_prodnum.get(), d_blocksd.get(), d_upper.get(), d_lower.get(),
-                d_crt.get(), d_cr12.get(), d_cr3.get(), d_diffpos.get(), d_varblock0.get(), d_varblock1.get(),
-                d_varblock2.get(), d_Csamp.get(), d_Clag.get());
+                framediff, static_cast<int>(correlatorq), frametime, d_Cpixels1.get(), d_prod.get(),
+                d_prodnum.get(), d_upper.get(), d_lower.get(), d_varblock0.get(), d_varblock1.get(),
+                d_varblock2.get(), d_Clag.get());
 
             CUDA_CHECK_STATUS(cudaStreamSynchronize(stream));
             CUDA_CHECK_STATUS(cudaGetLastError());
@@ -827,7 +784,7 @@ void JNICALL Java_fiji_plugin_imaging_1fcs_gpufitImFCS_GpufitImFCS_calcACF(
                     indexarray[counter_indexarray] = static_cast<int>(Cpixels1[idx]);
 
                     // Minimum number of products
-                    double tempval = indexarray[counter_indexarray] - std::log(sampchanumminus1) / std::log(2.0);
+                    double tempval = indexarray[counter_indexarray] - std::log2(sampchanumminus1);
                     if (tempval < 0)
                     {
                         tempval = 0;

@@ -281,189 +281,187 @@ __global__ void calcacf2b_ACF(const float *data, int cfXDistancegpu, int cfYDist
     sdarray[x * w * h + pixelIdx] = sqrt(variance);
 }
 
-/* ------------------------------------------
-NOTE: SEE JCudaImageJExampleKernelcalcacf3.cu
------------------------------------------- */
-
 __global__ void calcacf3(float *data, int cfXDistancegpu, int cfYDistancegpu, int blocklag, int w, int h, int w_temp,
-                         int h_temp, int pixbinX, int pixbinY, int d, int correlatorp, int correlatorq, int chanum,
-                         double frametimegpu, double *data1, float *prod, double *prodnum, double *blocksd,
-                         double *upper, double *lower, int *crt, int *cr12, int *cr3, int *diffpos, double *varblock0,
-                         double *varblock1, double *varblock2, double *sampgpu, int *laggpu)
+                         int h_temp, int pixbinX, int pixbinY, int d, int correlatorq, double frametimegpu,
+                         double *data1, float *prod, double *prodnum, double *upper, double *lower, double *varblock0,
+                         double *varblock1, double *varblock2, int *laggpu)
 {
     // this function calculates the block transformation values of the
     // intensity.
 
-    int blocknumgpu = (int)floor(log((double)d - 1.0) / log(2.0)) - 2;
-    int numbin = d; // number Of data points When they are binned
-    int del; // delay Or correlation time expressed In lags
-    int currentIncrement = blocklag;
-    double sumprod = 0.0; // sum of all intensity products; divide by num to get
-                          // the average <i(n)i(n+del)>
-    double sumprod2 = 0.0; // sum of all intensity products squared; divide by
-                           // num to get the average <(i(n)i(n+del))^2>
-    double directm = 0.0; // direct monitor required for ACF normalization
+    int idx = blockIdx.x * blockDim.x + threadIdx.x; // x-coordinate
+    int idy = blockIdx.y * blockDim.y + threadIdx.y; // y-coordinate
+
+    if (idx >= w || idy >= h)
+        return;
+
+    int pixelIdx = idy * w + idx;
+
+    int blocknumgpu = (int)floor(log2((double)d - 1.0)) - 2;
+    int numbin = d;
+    int del = laggpu[1] / blocklag; // Since x is fixed at 1
+
+    // Initialize variables for direct and delayed monitors
+    double directm = 0.0;
     double delayedm = 0.0;
-    int ind = 0;
-    int last0 = 0;
-    int idx = blockIdx.x * blockDim.x + threadIdx.x, idy = blockIdx.y * blockDim.y + threadIdx.y;
-    int blockIndS = 0;
 
-    __syncthreads();
-    if ((idx < w) && (idy < h))
+    int prodnum0 = numbin - del;
+    prodnum[0] = prodnum0;
+
+    // Calculate directm and delayedm
+    for (int y = 0; y < prodnum0; y++)
     {
-        int x = 1;
-        del = laggpu[x] / currentIncrement; // calculate the delay, i.e. the
-                                            // correlation time
-        for (int y = 0; y < numbin - del; y++)
-        { // calculate the ...
-            directm += data[y * w_temp * h_temp + idy * pixbinY * w_temp + idx * pixbinX]; // direct And ...
-            delayedm += data[(y + del) * w_temp * h_temp + (idy * pixbinY + cfYDistancegpu) * w_temp
-                             + (idx * pixbinX + cfXDistancegpu)]; // delayed monitor
-        }
-        prodnum[0] = numbin - del; // number Of correlation products
-        directm /= prodnum[0]; // calculate average Of direct And delayed monitor,
-        delayedm /= prodnum[0]; // i.e. the average intesity <n(0)> And <n(tau)>
+        int idx_direct = y * w_temp * h_temp + idy * pixbinY * w_temp + idx * pixbinX;
+        int idx_delayed =
+            (y + del) * w_temp * h_temp + (idy * pixbinY + cfYDistancegpu) * w_temp + (idx * pixbinX + cfXDistancegpu);
 
-        for (int y = 0; y < prodnum[0]; y++)
-        { // calculate the correlation
-            prod[y * w * h + idy * w + idx] =
-                data[y * w_temp * h_temp + idy * pixbinY * (w + cfXDistancegpu) + idx * pixbinX]
-                    * data[(y + del) * w_temp * h_temp + (idy * pixbinY + cfYDistancegpu) * w_temp
-                           + (idx * pixbinX + cfXDistancegpu)]
-                - delayedm * data[y * w_temp * h_temp + idy * pixbinY * w_temp + idx * pixbinX]
-                - directm
-                    * data[(y + del) * w_temp * h_temp + (idy * pixbinY + cfYDistancegpu) * w_temp
-                           + (idx * pixbinX + cfXDistancegpu)]
-                + delayedm * directm;
-            __syncthreads();
-            sumprod += prod[y * w * h + idy * w + idx]; // calculate the sum Of prod, i.e. the raw
-                                                        // correlation value ...
-            sumprod2 += powf(prod[y * w * h + idy * w + idx],
-                             2.0); // ... And the sum Of the squares
-        }
+        float val_direct = data[idx_direct];
+        float val_delayed = data[idx_delayed];
 
-        varblock0[idy * w + idx] = currentIncrement * frametimegpu; // the time Of the block curve
-        varblock1[idy * w + idx] =
-            (sumprod2 / prodnum[0] - powf(sumprod / prodnum[0], 2.0)) / (prodnum[0] * powf(directm * delayedm, 2.0));
+        directm += val_direct;
+        delayedm += val_delayed;
+    }
 
-        for (int y = 1; y < blocknumgpu; y++)
-        { // perform blocking operations
-            prodnum[y] = (int)floor((double)prodnum[y - 1] / 2); // the number Of samples For the blocking curve
-                                                                 // decreases by a factor 2 With every Step
-            sumprod = 0;
-            sumprod2 = 0;
-            for (int z = 0; z < prodnum[y]; z++)
-            { // bin the correlation data And calculate the blocked values for
-              // the SD
-                prod[z * w * h + idy * w + idx] =
-                    (prod[2 * z * w * h + idy * w + idx] + prod[(2 * z + 1) * w * h + idy * w + idx]) / 2;
-                __syncthreads();
-                sumprod += prod[z * w * h + idy * w + idx];
-                sumprod2 += powf(prod[z * w * h + idy * w + idx], 2.0);
-            }
+    directm /= prodnum0;
+    delayedm /= prodnum0;
 
-            // This is the correct one
-            varblock0[y * w * h + idy * w + idx] =
-                (currentIncrement * powf(2, (double)y)) * frametimegpu; // the time Of the block curve
-            varblock1[y * w * h + idy * w + idx] = (sumprod2 / prodnum[y] - powf(sumprod / prodnum[y], 2.0))
-                / (prodnum[y] * powf(directm * delayedm, 2.0)); // value of the block curve
-        }
+    double sumprod = 0.0;
+    double sumprod2 = 0.0;
 
-        for (int x = 0; x < blocknumgpu; x++)
+    // Calculate prod, sumprod, and sumprod2
+    for (int y = 0; y < prodnum0; y++)
+    {
+        int idx_direct = y * w_temp * h_temp + idy * pixbinY * w_temp + idx * pixbinX;
+        int idx_delayed =
+            (y + del) * w_temp * h_temp + (idy * pixbinY + cfYDistancegpu) * w_temp + (idx * pixbinX + cfXDistancegpu);
+
+        float val_direct = data[idx_direct];
+        float val_delayed = data[idx_delayed];
+
+        float prod_val = val_direct * val_delayed - delayedm * val_direct - directm * val_delayed + directm * delayedm;
+
+        prod[y * w * h + pixelIdx] = prod_val;
+
+        sumprod += prod_val;
+        sumprod2 += prod_val * prod_val;
+    }
+
+    // Compute variance for initial block
+    double variance = (sumprod2 / prodnum0 - (sumprod / prodnum0) * (sumprod / prodnum0))
+        / (prodnum0 * directm * directm * delayedm * delayedm);
+
+    varblock0[pixelIdx] = blocklag * frametimegpu; // Time of the block curve
+    varblock1[pixelIdx] = variance;
+
+    // Blocking operations
+    for (int y = 1; y < blocknumgpu; y++)
+    {
+        prodnum[y] = prodnum[y - 1] / 2;
+        int pnum = prodnum[y];
+        sumprod = 0.0;
+        sumprod2 = 0.0;
+
+        for (int z = 0; z < pnum; z++)
         {
-            varblock1[x * w * h + idy * w + idx] =
-                sqrt(varblock1[x * w * h + idy * w + idx]); // calculate the standard deviation
-            varblock2[x * w * h + idy * w + idx] =
-                varblock1[x * w * h + idy * w + idx] / sqrt((double)2 * (prodnum[x] - 1)); // calculate the error
-            __syncthreads();
-            upper[x * w * h + idy * w + idx] =
-                varblock1[x * w * h + idy * w + idx] + varblock2[x * w * h + idy * w + idx]; // upper and lower quartile
-            lower[x * w * h + idy * w + idx] =
-                varblock1[x * w * h + idy * w + idx] - varblock2[x * w * h + idy * w + idx];
+            int idx1 = 2 * z * w * h + pixelIdx;
+            int idx2 = (2 * z + 1) * w * h + pixelIdx;
+
+            prod[z * w * h + pixelIdx] = (prod[idx1] + prod[idx2]) / 2.0f;
+
+            double prod_val = prod[z * w * h + pixelIdx];
+            sumprod += prod_val;
+            sumprod2 += prod_val * prod_val;
         }
 
-        // determine index where blocking criteria are fulfilled
-        for (int x = 0; x < blocknumgpu - 1; x++)
-        { // do neighboring points have overlapping error bars?
-            if (upper[x * w * h + idy * w + idx] > lower[(x + 1) * w * h + idy * w + idx]
-                && upper[(x + 1) * w * h + idy * w + idx] > lower[x * w * h + idy * w + idx])
+        variance =
+            (sumprod2 / pnum - (sumprod / pnum) * (sumprod / pnum)) / (pnum * directm * directm * delayedm * delayedm);
+
+        varblock0[y * w * h + pixelIdx] = blocklag * pow(2.0, (double)y) * frametimegpu;
+        varblock1[y * w * h + pixelIdx] = variance;
+    }
+
+    // Compute standard deviation and error estimates
+    for (int x = 0; x < blocknumgpu; x++)
+    {
+        double stddev = sqrt(varblock1[x * w * h + pixelIdx]);
+        varblock1[x * w * h + pixelIdx] = stddev;
+
+        double error = stddev / sqrt(2.0 * (prodnum[x] - 1));
+        varblock2[x * w * h + pixelIdx] = error;
+
+        upper[x * w * h + pixelIdx] = stddev + error;
+        lower[x * w * h + pixelIdx] = stddev - error;
+    }
+
+    // Assume that idx and idy are already defined and within bounds
+    int last_index_meeting_criteria = -1;
+    int index = 0;
+    int blockIndS = 0; // Indicator for whether optimal blocking is possible
+
+    // Loop over blocks to determine the last index meeting the criteria
+    for (int x = 0; x <= blocknumgpu - 3; x++)
+    {
+        // Check if neighboring points have overlapping error bars
+        bool overlap1 = upper[x * w * h + pixelIdx] > lower[(x + 1) * w * h + pixelIdx]
+            && upper[(x + 1) * w * h + pixelIdx] > lower[x * w * h + pixelIdx];
+        bool overlap2 = upper[(x + 1) * w * h + pixelIdx] > lower[(x + 2) * w * h + pixelIdx]
+            && upper[(x + 2) * w * h + pixelIdx] > lower[(x + 1) * w * h + pixelIdx];
+        bool overlap = overlap1 && overlap2;
+
+        // Check if variance values are increasing
+        bool increasing1 = varblock1[(x + 1) * w * h + pixelIdx] - varblock1[x * w * h + pixelIdx] > 0;
+        bool increasing2 = varblock1[(x + 2) * w * h + pixelIdx] - varblock1[(x + 1) * w * h + pixelIdx] > 0;
+        bool isIncreasing = increasing1 && increasing2;
+
+        // Update last_index_meeting_criteria if conditions are met
+        if (!overlap && isIncreasing)
+        {
+            last_index_meeting_criteria = x;
+        }
+    }
+
+    // If a suitable index was found, search for overlapping error bars
+    if (last_index_meeting_criteria != -1)
+    {
+        for (int x = last_index_meeting_criteria + 1; x <= blocknumgpu - 3; x++)
+        {
+            bool overlap1 = upper[x * w * h + pixelIdx] > lower[(x + 1) * w * h + pixelIdx]
+                && upper[(x + 1) * w * h + pixelIdx] > lower[x * w * h + pixelIdx];
+            bool overlap2 = upper[(x + 1) * w * h + pixelIdx] > lower[(x + 2) * w * h + pixelIdx]
+                && upper[(x + 2) * w * h + pixelIdx] > lower[(x + 1) * w * h + pixelIdx];
+            bool overlap = overlap1 && overlap2;
+
+            if (overlap)
             {
-                crt[x * w * h + idy * w + idx] = 1;
+                index = x + 1;
+                break;
             }
         }
+    }
 
-        for (int x = 0; x < blocknumgpu - 2; x++)
-        { // do three adjacent points have overlapping error bars?
-            if (crt[x * w * h + idy * w + idx] * crt[(x + 1) * w * h + idy * w + idx] == 1)
-            {
-                cr12[x * w * h + idy * w + idx] = 1;
-            }
-        }
-
-        for (int x = 0; x < blocknumgpu - 1; x++)
-        { // do neighboring points have a positive difference (increasing SD)?
-            if (varblock1[(x + 1) * w * h + idy * w + idx] - varblock1[x * w * h + idy * w + idx] > 0)
-            {
-                diffpos[x * w * h + idy * w + idx] = 1;
-            }
-        }
-
-        for (int x = 0; x < blocknumgpu - 2; x++)
-        { // do three neighboring points monotonically increase?
-            if (diffpos[x * w * h + idy * w + idx] * diffpos[(x + 1) * w * h + idy * w + idx] == 1)
-            {
-                cr3[x * w * h + idy * w + idx] = 1;
-            }
-        }
-
-        for (int x = 0; x < blocknumgpu - 2; x++)
-        { // find the last triple of points with monotonically increasing
-          // differences and non-overlapping error bars
-            if ((cr3[x * w * h + idy * w + idx] == 1 && cr12[x * w * h + idy * w + idx] == 0))
-            {
-                last0 = x;
-            }
-        }
-
-        for (int x = 0; x <= last0; x++)
-        { // indices of two pairs that pass criterion 1 an 2
-            cr12[x * w * h + idy * w + idx] = 0;
-        }
-
-        cr12[(blocknumgpu - 3) * w * h + idy * w + idx] = 0; // criterion 3, the last two points can't be part of the
-                                                             // blocking triple
-        cr12[(blocknumgpu - 4) * w * h + idy * w + idx] = 0;
-
-        for (int x = blocknumgpu - 5; x > 0; x--)
-        { // index of triplet with overlapping error bars and after which no
-          // other triplet has a significant monotonic increase
-            if (cr12[x * w * h + idy * w + idx] == 1)
-            { // or 4 increasing points
-                ind = x + 1;
-            }
-        }
-
-        if (ind == 0)
-        { // if optimal blocking is not possible, use maximal blocking
-            blockIndS = 0;
-            if (blocknumgpu - 3 > 0)
-            {
-                ind = blocknumgpu - 3;
-            }
-            else
-            {
-                ind = blocknumgpu - 1;
-            }
+    // Determine if optimal blocking is possible
+    if (index == 0)
+    {
+        // Optimal blocking is not possible; use maximal blocking
+        blockIndS = 0;
+        if (blocknumgpu - 3 > 0)
+        {
+            index = blocknumgpu - 3; // Use the third-last point if it exists
         }
         else
         {
-            blockIndS = 1;
+            index = blocknumgpu - 1;
         }
+    }
+    else
+    {
+        blockIndS = 1;
+    }
 
-        ind = (int)fmax((double)ind, (double)correlatorq - 1);
-        data1[idy * w + idx] = (double)ind;
-        data1[w * h + idy * w + idx] = (double)blockIndS;
+    // Ensure the index is at least correlatorq - 1
+    index = max(index, correlatorq - 1);
 
-    } // if ((idx < w) && (idy < h))
+    // Store the results
+    data1[idy * w + idx] = (double)index;
+    data1[w * h + idy * w + idx] = (double)blockIndS;
 } // calcacf3
