@@ -987,6 +987,10 @@ public class Correlator {
         return pixelModels[x][y];
     }
 
+    public void resetPixelModel(int x, int y) {
+        pixelModels[x][y] = null;
+    }
+
     public PixelModel[][] getPixelModels() {
         return pixelModels;
     }
