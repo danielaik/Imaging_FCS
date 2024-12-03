@@ -5,7 +5,7 @@
 
     <groupId>imagej.new_imfcs</groupId>
     <artifactId>ImagingFCS</artifactId>
-    <version>1_632</version>
+    <version>2_0</version>
 
     <build>
         <plugins>
@@ -23,7 +23,7 @@
                             <transformers>
                                 <transformer
                                         implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
-                                    <mainClass>fiji.plugin.imaging_fcs.imfcs.Imaging_FCS</mainClass>
+                                    <mainClass>fiji.plugin.imaging_fcs.new_imfcs.ImagingFCS</mainClass>
                                 </transformer>
                             </transformers>
                         </configuration>
@@ -38,7 +38,7 @@
                     <archive>
                         <manifest>
                             <addClasspath>true</addClasspath>
-                            <mainClass>fiji.plugin.imaging_fcs.imfcs.Imaging_FCS</mainClass>
+                            <mainClass>fiji.plugin.imaging_fcs.new_imfcs.ImagingFCS</mainClass>
                         </manifest>
                     </archive>
                 </configuration>
