@@ -33,6 +33,8 @@ add_library(agpufit SHARED
     models/gauss_2d.cuh
     models/linear_1d.cuh
     models/models.cuh
+    acf_input_params_wrapper.cpp
+    acf_input_params_wrapper.h
     constants.h
     cuda_gaussjordan.cu
     cuda_gaussjordan.cuh
