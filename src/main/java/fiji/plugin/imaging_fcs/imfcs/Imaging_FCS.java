@@ -10,6 +10,7 @@ import ai.onnxruntime.OrtSession.SessionOptions.OptLevel;
 import fiji.plugin.imaging_fcs.directCameraReadout.DirectCapture;
 import fiji.plugin.imaging_fcs.gpufitImFCS.GpufitImFCS;
 import fiji.plugin.imaging_fcs.gpufitImFCS.GpufitImFCS.*;
+import fiji.plugin.imaging_fcs.new_imfcs.utils.ApplyCustomLUT;
 import ij.IJ;
 import ij.ImageJ;
 import ij.ImagePlus;
@@ -53,6 +54,7 @@ import java.beans.PropertyChangeEvent;
 import java.io.*;
 import java.text.SimpleDateFormat;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 
 import static fiji.plugin.imaging_fcs.version.VERSION.GPUFIT_VERSION;
 import static fiji.plugin.imaging_fcs.version.VERSION.IMFCS_VERSION;
@@ -68,10 +70,12 @@ import static fiji.plugin.imaging_fcs.version.VERSION.IMFCS_VERSION;
  *  The original program was written by Thorsten Wohland.
  *  Radek Machan was responsible for many bug fixes in the newer versions and work on the DC-FCCS part.
  *  Jagadish Sankaran wrote the MSD calculation algorithm and improved the data fitting part of the program.
- *  Mark Bathe and Syuan-Ming Guo wrote the first GLS and Bayesian Model Selection algorithms in Matlab (http://fcs-bayes.org/)
+ *  Mark Bathe and Syuan-Ming Guo wrote the first GLS and Bayesian Model Selection algorithms in Matlab
+ * (http://fcs-bayes.org/)
  *  and they helped Thorsten with the coding of the algorithm in Java.
  *  Jagadish Sankaran and Tang Wai Hoh wrote the CUDA codes that enables computations on NVIDIA GPU.
- *  Daniel Aik wrote the Direct Camera Readout program for real-time evaluation of FCS data, data saving and microscope alignment routine.
+ *  Daniel Aik wrote the Direct Camera Readout program for real-time evaluation of FCS data, data saving and
+ * microscope alignment routine.
  *  Many people in the lab checked the program for bugs which improved the program considerably.
  *  Any feedback or help in improving the program is welcome.
  *
@@ -138,7 +142,8 @@ import static fiji.plugin.imaging_fcs.version.VERSION.IMFCS_VERSION;
  *  https://github.com/gpufit/Gpufit
  *  https://gpufit.readthedocs.io/en/latest/
  *
- *  Direct Camera Readout: Open source data acquisition software cum live CF analysis software supports multiple sCMOS, EMCCD, and qCMOS cameras:
+ *  Direct Camera Readout: Open source data acquisition software cum live CF analysis software supports multiple
+ * sCMOS, EMCCD, and qCMOS cameras:
  *  Andor DU860, DU888, DU897 and Sona11, Hamamatsu Orcas and Quest, Photometrics 512 and 95B.
  *  Aik, D. Y. K. and Wohland, T., 2022, Biophys. J., 121: 2663-2670
  *
@@ -170,19 +175,19 @@ public class Imaging_FCS implements PlugIn {
     private final int decformat = 2; // Decimal Format for the Fit panel
     private final int decformat2 = 4; // Second Decimal Format for the Fit panel, mainly used for the parameter G
     private final int fitMaxIterations = 2000; // maximum number of iterations allowed in the fits; the maximum number
-                                               // is Integer.MAX_VALUE but that can lead to very long evaluations with
-                                               // typically little improvement on the results
+    // is Integer.MAX_VALUE but that can lead to very long evaluations with
+    // typically little improvement on the results
     private final int fitMaxEvaluations = 2000; // maximum number of evaluations allowed in the fits; the maximum number
-                                                // is Integer.MAX_VALUE but that can lead to very long evaluations with
-                                                // typically little improvement on the results
+    // is Integer.MAX_VALUE but that can lead to very long evaluations with
+    // typically little improvement on the results
     private final int BCmaxorder = 8; // highest polynomial order allowed in polynomial bleach correction
     private final int minFrameReq = 100; // a warning is given if less than minFrameReq frames are avaialable for any
-                                         // point in the CF
+    // point in the CF
     private final int swMinFrameReq = 20; // minimum number of frames required for the sliding windows; this is used to
-                                          // calculate a useful correlatorq
+    // calculate a useful correlatorq
     private final int minDLPoints = 4; // the square of this value determines the minimum number of points needed for
-                                       // diffusion law; e.g for a value of 3, the last point in the dffusion law plot
-                                       // will be calcualted from 3^2 = 9 D values.
+    // diffusion law; e.g for a value of 3, the last point in the dffusion law plot
+    // will be calcualted from 3^2 = 9 D values.
     private final int DiffLawMaxPoint = 30; // upper limit on number of points in diffusion law plot
 
     // plotting options
@@ -194,7 +199,7 @@ public class Imaging_FCS implements PlugIn {
     private boolean plotCovmats = false; // Regularized covariance matrix will not be plotted by default
     private boolean plotBlockingCurve = false; // blocking curve will not be plotted by default
     private final boolean plotAverageTrace = false; // remove plotting average intensity trace; time consuming; 14 sec
-                                                    // for 128x128x50,000
+    // for 128x128x50,000
 
     // Image window
     ImagePlus imp;
@@ -207,12 +212,12 @@ public class Imaging_FCS implements PlugIn {
     private int impmin; // minimum value in the imsPVideoNDave
     private double scimp; // scaling factor to adjust window to an acceptable size for the user
     private String $impTitle; // title of the window; this will be used in all dependent windows to
-                              // differentiate them in case multiple instances of the plugin are open
+    // differentiate them in case multiple instances of the plugin are open
     ImagePlus filterImp; // binary map to filter for parameter maps
 
     // Background windows
     ImagePlus bgrimp; // background window recorded with the same settings and at same position on
-                      // camera
+    // camera
     ImageProcessor bgrip;
     ImageWindow bgrWin;
 
@@ -242,13 +247,13 @@ public class Imaging_FCS implements PlugIn {
     // calculated in different directions
     ImagePlus impDCCF;
     private final int dccfMax = 4; // How many dCCF windows can the user open? Set to 4 (0...3) since dCCF can be
-                                   // calculated in 4 directions.
+    // calculated in 4 directions.
     HistogramWindow[] histDCCFWin = new HistogramWindow[dccfMax]; // Windows to display the dCCF histograms
     ImageWindow[] impDCCFWin = new ImageWindow[dccfMax]; // Windows to display the dCCF images
     private String $dccfTitle; // titles of ImageWindows for dCCF
     private final String[] $histDCCFWinTitle = new String[dccfMax]; // titles of HistogramWindows for dCCF
     private final boolean[] dccfCalculated = new boolean[dccfMax]; // an array to remember in which direction has been
-                                                                   // dCCF calculated
+    // dCCF calculated
     // private final int[] histDCCFBin = new int[dccfMax]; // This is an array to
     // remember which dCCF window was produced with which binning
 
@@ -276,7 +281,7 @@ public class Imaging_FCS implements PlugIn {
     PlotWindow PSFWindow; // Window for PSF determination
     PlotWindow paraCorWindow; // Window for Parameter Scatter Plots
     PlotWindow blockingWindow; // Window for blocking analysis; not shown by default; to show, set
-                               // plotBlockingCurve = true
+    // plotBlockingCurve = true
     private String $acfWindowTitle;
     private String $intWindowTitle;
     private String $resWindowTitle;
@@ -307,7 +312,7 @@ public class Imaging_FCS implements PlugIn {
     private final int optionPanelDimY = 280;
 
     private final int bleachCorStridePanelPosX = panelPosX + panelDimX + 10; // control panel, "Bleach correction stride
-                                                                             // panel", position and dimensions
+    // panel", position and dimensions
     private final int bleachCorStridePanelPosY = 125;
     private final int bleachCorStridePanelDimX = 125;
     private final int bleachCorStridePanelDimY = 75;
@@ -328,7 +333,7 @@ public class Imaging_FCS implements PlugIn {
     private final int simPanelDimY = 320;
 
     private final int difflawPanelPosX = panelPosX + panelDimX + 300; // control panel, "Diffusion Law", position and
-                                                                      // dimensions
+    // dimensions
     private final int difflawPanelPosY = 125;
     private final int difflawPanelDimX = 350;
     private final int difflawPanelDimY = 150;
@@ -342,7 +347,7 @@ public class Imaging_FCS implements PlugIn {
     private final int impwinPosY = panelPosY;
 
     private final int acfWindowPosX = panelPosX + panelDimX + 10; // ACF window positions and size, with correlation
-                                                                  // function plots
+    // function plots
     private final int acfWindowPosY = panelPosY + 335;
     private final int acfWindowDimX = 200;
     private final int acfWindowDimY = 200;
@@ -353,7 +358,7 @@ public class Imaging_FCS implements PlugIn {
     private final int intWindowDimY = 50;
 
     private final int sdWindowPosX = acfWindowPosX + acfWindowDimX + 115; // fit standard deviation window position and
-                                                                          // size
+    // size
     private final int sdWindowPosY = acfWindowPosY;
     private final int sdWindowDimX = acfWindowDimX;
     private final int sdWindowDimY = 50;
@@ -384,7 +389,7 @@ public class Imaging_FCS implements PlugIn {
     private final int paraCorWindowDimY = 200;
 
     private final int blockingWindowPosX = sdWindowPosX + sdWindowDimX + 110; // Parameter Blocking Plot Window position
-                                                                              // and size
+    // and size
     private final int blockingWindowPosY = sdWindowPosY;
     private final int blockingWindowDimX = 200;
     private final int blockingWindowDimY = 100;
@@ -408,7 +413,7 @@ public class Imaging_FCS implements PlugIn {
     private final int EpsPosY = NPosY + 30;
 
     private final int filteringPanelPosX = acfWindowPosX + acfWindowDimX + 100; // control panel, "Thresholds settings",
-                                                                                // position and dimensions
+    // position and dimensions
     private final int filteringPanelPosY = acfWindowPosY;
     private final int filteringPanelDimX = 420;
     private final int filteringPanelDimY = 300;
@@ -438,18 +443,18 @@ public class Imaging_FCS implements PlugIn {
     private int binningY = 1;
     private int binning = 1;
     private int cfXDistance; // x,y distance between pixels to be correlated; in DC-FCCS this is the distance
-                             // between corresponding pixels in red and green channels
+    // between corresponding pixels in red and green channels
     private int cfYDistance;
     private int cfXshift; // x,y distance used in fitting of FCS correlations between two pixels; (0, 0)
-                          // is for ACFs
+    // is for ACFs
     private int cfYshift;
     private double correlatorp; // parameters for the correlator structure; correlatorp refers to the number of
-                                // bins in the first kcf group.
+    // bins in the first kcf group.
     private double correlatorq; // all higher groups have correlatorp/2 channels; correaltorq refers to the
-                                // number of higher groups
+    // number of higher groups
     private double frametime; // acquisition time per frame
     private double objmag; // microscope objective magnification; note the variable 'magnification' is used
-                           // for the magnification of the imsPVideoNDave image in ImageJ
+    // for the magnification of the imsPVideoNDave image in ImageJ
     private double pixelsize; // pixel size in micrometer on camera chip (variable "a")
     private double pixeldimx; // pixel size in object space in [m] used in fit
     private double pixeldimy; // pixel size in object space in [m] used in fit
@@ -463,29 +468,29 @@ public class Imaging_FCS implements PlugIn {
     private double psfsize; // actual lateral PSF in [m] for laser 1, used in fit; this is the 1/e2 radius
     private double psfsize2; // actual lateral PSF in [m] for laser 2, used in fit; this is the 1/e2 radius
     private double rz; // offset between the two light sheets in axial direction (of the detection
-                       // objective);
+    // objective);
     private double lsthickness; // light sheet thickness for SPIM for laser 1 given as 1/e2 radius
     private double lsthickness2; // light sheet thickness for SPIM for laser 2 given as 1/e2 radius
     private double lsthickness3; // light sheet thickness for SPIM for laser 2 given as 1/e2 radius for 3D
-                                 // DC-FCCS fitting
+    // DC-FCCS fitting
     private double ccfrx; // distance in x direction in pixels between pixels to be correlated
     private double ccfry; // distance in y direction in pixels between pixels to be correlated
     private int background; // background is determined from the smallest count value from the
-                            // imsPVideoNDave; this can be maually changed in the control panel
+    // imsPVideoNDave; this can be maually changed in the control panel
     private int background2; // for FCCS background for the second region is determined as the minimum value
-                             // for that region
+    // for that region
     private int initposx; // x pixel position at which correlation is calculated after pressing "Single"
     private int initposy; // y pixel position at which correlation is calculated after pressing "Single"
     private double q2; // fit parameter, ratio of brightness of second component to first component (if
-                       // it exists)
+    // it exists)
     private double q3; // fit parameter, ratio of brightness of third component to first component (if
-                       // it exists)
+    // it exists)
     private int slidingWindowLength = 0;// sliding window size for bleach correction
     private int polyOrder = 0; // polynomial order for bleach correction
     private int fitstart = 1; // parameter for settign the range of points of the CF to be fitted
     private int fitend = 1;
     private double fitobsvol; // normalization factor including the observation volume; for ACFs this is
-                              // correct; note that N for spatial cross-correaltions has no physical meaning
+    // correct; note that N for spatial cross-correaltions has no physical meaning
     private double fitobsvol2; // valid under DC-FCCS for ACF2
     private double fitobsvol3;
 
@@ -497,11 +502,43 @@ public class Imaging_FCS implements PlugIn {
     // variables to remember last settings in the ImFCS control panel
     private final int noSettings = 33; // number of individual setting parameters
     private final String[] panelSettings = new String[noSettings]; // array to store the individual settings, the
-                                                                   // settings are stored in the same order as used to
-                                                                   // create the results table
-    private final boolean[] keyParam = { true, true, true, true, true, true, true, true, true, true, false, true, true,
-            true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, false,
-            true, true };
+    // settings are stored in the same order as used to
+    // create the results table
+    private final boolean[] keyParam = {
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            false,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            false,
+            true,
+            true
+    };
     private int parcormode;
     // whether a change in the respective setting requires resetting of results
     // arrays
@@ -520,19 +557,19 @@ public class Imaging_FCS implements PlugIn {
     private int cposx; // actual positions where the current correlation is calculated
     private int cposy;
     private int c2posx; // actual positions of the second pixel with which the current correlation is
-                        // calculated
+    // calculated
     private int c2posy;
     private int maxcposx; // max positions allowed in image depending on actual image width/height,
-                          // binning, and distance between pixels;
+    // binning, and distance between pixels;
     private int maxcposy;
     private int mincposx; // min positions allowed in image depending on actual image width/height,
-                          // binning, and distance between pixels;
+    // binning, and distance between pixels;
     private int mincposy;
     private int pixelWidthX; // determines the number of pixels that can be correlated, depending on whether
-                             // overlap is allowed for the width and height of the image
+    // overlap is allowed for the width and height of the image
     private int pixelHeightY;
     private int pixbinX; // this is a multiplication factor to determine positions in the image window;
-                         // it is 1 for overlap and equal to binning for non-overlap
+    // it is 1 for overlap and equal to binning for non-overlap
     private int pixbinY;
     private int pixbin;
     private int roi1StartX = 0; // first pixel of the ROI used for correlation
@@ -547,27 +584,27 @@ public class Imaging_FCS implements PlugIn {
     // arrays and parameters used for computation of correlations and storage of
     // results
     private double[][] datac; // temporary array which stores the values along two pixel columns to be
-                              // correlated through the imsPVideoNDave
+    // correlated through the imsPVideoNDave
     private double[][][][] acf; // ACF array to store all FCS functions for the pixels in the image; dimensions
-                                // [ccf: ACF1, ACF2, CCF][width][height][chanum]
+    // [ccf: ACF1, ACF2, CCF][width][height][chanum]
     private double[][][][] sdacf; // standerd deviation of the ACF; dimensions [ccf: ACF1, ACF2,
-                                  // CCF][width][height][chanum]
+    // CCF][width][height][chanum]
     private double[][][][] varacf; // standerd deviation of the ACF; dimensions [ccf: ACF1, ACF2,
-                                   // CCF][width][height][chanum]
+    // CCF][width][height][chanum]
     private double[][][][] msd; // MSD array to store all MSD plots for the pixels in the image; dimensions
-                                // [ccf: MSD1, MSD2, MSD of CCF][width][height][chanum]
+    // [ccf: MSD1, MSD2, MSD of CCF][width][height][chanum]
     private double[][] currentCovmats; // the regularized covariance matrix is at the moment not stored but only
-                                       // updated for the current pixel if "GLS Fit" is selected
+    // updated for the current pixel if "GLS Fit" is selected
     private double[][] aveacf; // Array to store average FCS function; dimension[ACF1, ACF2, CCF][chanum]
     private double[][] varaveacf; // Array to store variance of the average FCS function; dimension[ACF1, ACF2,
-                                  // CCF][chanum]
+    // CCF][chanum]
     private double[] msdaveacf; // Array to store variance of the average FCS function
     private double[] lagtime; // lagtime array which stores the correlation times; dimensions [chanum];
-                              // defined in setParameters()
+    // defined in setParameters()
     private double[] mtab; // number of samples for each correlation kcf; dimensions [chanum]; defined in
-                           // setParameters()
+    // setParameters()
     private double[] samp; // sampletime (or bin width) of each kcf; dimensions [chanum]; defined in
-                           // setParameters()
+    // setParameters()
     private double[] intTrace1; // intensity traces
     private double[] intTrace2;
     private double[] intTime; // time for intensity traces
@@ -579,53 +616,68 @@ public class Imaging_FCS implements PlugIn {
     private double[][][] blocked; // store yes/no whether blocking was succesful
     private double[][][] pixvalid; // filtering mask, 1 if pixel valid, NaN if not
     private boolean[][][] pixfitted; // whether pixel has been successfully fitted or not; in the absence of
-                                     // user-defined thresholds, this array determines pixvalid[][][]
+    // user-defined thresholds, this array determines pixvalid[][][]
     private double[][][] filterThresholds; // thresholds for filtering parameter values; [ACF1, ACF2, CCF][parameter:
-                                           // noparam + Chi2][min, max]
+    // noparam + Chi2][min, max]
     private double[][] CCFq; // map of cross-correlation amount
     private double[][] fitaveacf; // Array to store fit of average FCS function; dimension[ACF1, ACF2,
-                                  // CCF][chanum]
+    // CCF][chanum]
     private double[][] resaveacf; // Array to store residuals of the average FCS function; dimension[ACF1, ACF2,
-                                  // CCF][chanum]
+    // CCF][chanum]
     private double chi2aveacf; // chi2 value for fit of average ACF function
     private RealVector transACF; // transformed data L\y
     private RealMatrix lowerCholDecCovmats; // lower diagonal matrix from the Cholesky decomposition of the regularized
-                                            // covariance matrix covamts
+    // covariance matrix covamts
     private double[] transTheoreticalACF; // temporary array with transformed theoretical model function L\y(x)
     private double[][] transTheoreticalGradientACF; // temporary array with transformed theoretical model function
-                                                    // L\y(x)
+    // L\y(x)
 
     private final int noparam = 11; // number of fit parameters; at the moment there are two fit models with a
-                                    // maximum of 11 parameters
-    private final String[] $param = { "N", "D", "vx", "vy", "G", "F2", "D2", "F3", "D3", "Ftrip", "Ttrip",
-            "reduced Chi2", "blocked", "valid pixels", "q map" }; // parameter names; has to contain noparam number of
-                                                                  // parameter names
-    private final String[] $channel = { "", "g", "r" }; // names of correlation channels in DC-FCCS
+    // maximum of 11 parameters
+    private final String[] $param = {
+            "N",
+            "D",
+            "vx",
+            "vy",
+            "G",
+            "F2",
+            "D2",
+            "F3",
+            "D3",
+            "Ftrip",
+            "Ttrip",
+            "reduced Chi2",
+            "blocked",
+            "valid pixels",
+            "q map"
+    }; // parameter names; has to contain noparam number of
+    // parameter names
+    private final String[] $channel = {"", "g", "r"}; // names of correlation channels in DC-FCCS
     private final int histnum = 10; // number of parameters for which histograms will be created;
     HistogramWindow histWin; // define Histogram Windows
     private String $histWindowTitle;
 
     private double[] initparam; // store the first fit parameters given by the user
     private double[] paraminitval; // intitial values for the parameters used in the fit (can be the same as
-                                   // initparam or can be continously set; both options are given but only the
-                                   // first is used momentarily)
+    // initparam or can be continously set; both options are given but only the
+    // first is used momentarily)
     private boolean[] paramfit; // array with information whether a parameter is fit (true) or hold (false)
     private boolean[] paramfilter; // array with information whether a filter is applied on the parameter
     private boolean[] userThreshold; // settings for filtering: whether user has defined any thresholds, whether that
-                                     // was for DC-FCCS and whether the filter has been applied on current file +
-                                     // whether to use the same thresholds for ACFs and CCFs and whether to set q=0
-                                     // for pixels where ACF valid and CCF invalid
+    // was for DC-FCCS and whether the filter has been applied on current file +
+    // whether to use the same thresholds for ACFs and CCFs and whether to set q=0
+    // for pixels where ACF valid and CCF invalid
     private int[] lag; // lag for each correlation kcf counted as multiples of the smallest basic time;
-                       // independent of time; lagtime = lag * frametime
-    private final double[] empty = { 0.0 }; // dummy array used for initilizing plot (should be removed later on)
+    // independent of time; lagtime = lag * frametime
+    private final double[] empty = {0.0}; // dummy array used for initilizing plot (should be removed later on)
     private double[][] difflaw = new double[3][1]; // diffusion law values for each pixel binning case for D and its
-                                                   // standard deviation
+    // standard deviation
     private double[][][][] difflawarray = new double[1][1][3][1]; // store all points for all subregions of an image for
-                                                                  // which the diffusion law was calculated
-    private final double[] difflawfit = { 0.0, 0.0 }; // store the intercept and the slope for the diffusion law
-    private final int[] diffLawFitLim = { 0, 0 }; // store the start and end point of the diff. law fit
+    // which the diffusion law was calculated
+    private final double[] difflawfit = {0.0, 0.0}; // store the intercept and the slope for the diffusion law
+    private final int[] diffLawFitLim = {0, 0}; // store the start and end point of the diff. law fit
     private double[][][] diffLawFitMap = new double[1][1][2]; // store values if the diffusion law is applied to
-                                                              // multiple areas in the image
+    // multiple areas in the image
     private int diffLawMapwidth = 1; // width of the diffusion law map
     private int diffLawMapheight = 1; // height of the diffusion law map
     private int difflawbin = 0; // store the number of binnings that were calculated for the diffusion law
@@ -638,7 +690,7 @@ public class Imaging_FCS implements PlugIn {
     private double[][][] psfData = new double[1][3][1]; // PSF data
     private int psfmaxbin = 1; // maximum binning used for PSF calculation
     private int numofpsf = 1; // this is defined by the user in psfDialogue(); numofPSF = (psfEnd - psfStart)
-                              // / psfStep
+    // / psfStep
     private float[][] filterArray; // filter array; intensity filters to select the pixels to be correlated
 
     private int base; // base = number of channels in first group
@@ -646,10 +698,10 @@ public class Imaging_FCS implements PlugIn {
     private int chanum; // number of total channels of the correlator
     private int lagnum; // number of lag groups for the correlator
     private int blockIndS; // Index whether block Transformation is succesful (1) or maximum blocking is
-                           // used (0)
+    // used (0)
     private int nopit = 1; // points in the shortened intensity traces for plotting
     private int intAveStride = 50; // number of intensity points to be averaged before bleach correction is
-                                   // performed
+    // performed
     private double maxsc; // scale for ACF plot
     private double minsc;
     private double imaxsc; // scale for intensity plot
@@ -662,8 +714,8 @@ public class Imaging_FCS implements PlugIn {
     private int filterLL = 0; // intensity filter values with lower and upper limits LL and UL
     private int filterUL = 65536;
     private String currentmodel; // remember the current model that is used for fitting; this is not necessarily
-                                 // the cbFitModel setting as in some cases multiple different fits can be used
-                                 // in a single runCPU (e.g. for FCCS or Bayes fitting)
+    // the cbFitModel setting as in some cases multiple different fits can be used
+    // in a single runCPU (e.g. for FCCS or Bayes fitting)
 
     // background image
     private double[][] bgrVar; // variance calcualted from background file for each pixel
@@ -701,7 +753,7 @@ public class Imaging_FCS implements PlugIn {
     private boolean batchSaveParameterMaps = false; // Option to save Parameter maps during batch imageType
     private boolean batchSavePlotWindow = false; // Option to save ACF, intensity during batch imageType
     private boolean batchStopInBetween = false; // Whether user can stop in between the batch processing for data
-                                                // analysis
+    // analysis
     private boolean batchNext = false; // Only valid if batchStopInBetween == true
 
     // Parameter for MSD calculation: false is 2D, true is 3D
@@ -711,7 +763,7 @@ public class Imaging_FCS implements PlugIn {
     JFrame frame = new JFrame("ImFCS " + IMFCS_VERSION); // items for ImFCS control panel
     JFrame expSettingsFrame = new JFrame("Experimental Settings"); // experimental settings can be controlled here
     JFrame bleachCorStrideSetFrame = new JFrame("Bleach correction setting."); // settign for the intensity trace for
-                                                                               // bleach correction
+    // bleach correction
     JFrame batchFrame = new JFrame("Batch Processing"); // batch processing control
     private JTextField tfFirstFrame; // a detailed description is given in the accompanying documentation
     private JTextField tfLastFrame;
@@ -983,15 +1035,15 @@ public class Imaging_FCS implements PlugIn {
     private int fStep;
     private String $pvname; // name of the imsPVideoNDave window with the video
     private boolean mvideo = false; // flag to indicate whether video is made; if yes then changes in the parameter
-                                    // windo will not be checked
+    // windo will not be checked
     private boolean isSaveAveragePVideo = false; // flag to compute average of all CF, perform standard fit and display
-                                                 // D and N values in the form of imagestack (32-bit)
+    // D and N values in the form of imagestack (32-bit)
     private ArrayList<ArrayList<Double>> averageFitParamList = null; // store average N and D values is (0-N, 1-D) //
-                                                                     // currently store only ACF //TODO: expand to store
-                                                                     // DC-FCCS
+    // currently store only ACF //TODO: expand to store
+    // DC-FCCS
     private final int totalfitp = 2;
     private boolean isSaveCFandFitPvideo = false; // flag to save CF and fit values for all data analyzed to a text file
-                                                  // (to be further analyzed with external program)
+    // (to be further analyzed with external program)
 
     // Direct Camera Readout
     private DirectCapture dcrobj;
@@ -1006,34 +1058,34 @@ public class Imaging_FCS implements PlugIn {
 
     // DC-FCCS
     private final boolean isNormalizeQwithObsVol = true; // normalize N to observation volume. Use RMS of obs1 and obs2
-                                                         // to normalize Nccf
+    // to normalize Nccf
 
     // CNN
     // ACF-based CNN variables.
     private static String modelPathCNNACF = "./acfnet.onnx";
     private static String modelPathCNNImage = "./model_trained_opset11.onnx";
     private float[][][] cnnRawAcfInput; // ACF array to store all FCS functions for the pixels in the image for
-                                        // CNNs;dimensions [width*height][1][chanum]
+    // CNNs;dimensions [width*height][1][chanum]
     private double[][][][] fitresCnnAcf; // fit parameter results; [ccf: ACF1, ACF2, CCF][width][height][noparam]
     private double[][][] pixvalidCnnAcf; // filtering mask, 1 if pixel valid, NaN if not
     private boolean[][][] pixfittedCnnAcf; // whether pixel has been successfully fitted or not; in the absence of
-                                           // user-defined thresholds, this array determines pixvalid[][][]
+    // user-defined thresholds, this array determines pixvalid[][][]
 
     // Image-based CNN variables
     private float[][][][] cnnRawImageInput; // ACF array to store all FCS functions for the pixels in the image for
-                                            // CNNs; dimensions [width*height][1][chanum]
+    // CNNs; dimensions [width*height][1][chanum]
     private double[][][][] fitresCnnImage; // fit parameter results; [ccf: ACF1, ACF2, CCF][width][height][noparam]
     private double[][][] pixvalidCnnImage; // filtering mask, 1 if pixel valid, NaN if not
     private boolean[][][] pixfittedCnnImage; // whether pixel has been successfully fitted or not; in the absence of
-                                             // user-defined thresholds, this array determines pixvalid[][][]
+    // user-defined thresholds, this array determines pixvalid[][][]
 
     private final int noparamCnnAcf = 1; // number of fit parameters; at the moment there are two fit models with a
-                                         // maximum of 11 parameters
-    private final String[] $paramCnnAcf = { "D" }; // parameter names; has to contain noparam number of parameter names
+    // maximum of 11 parameters
+    private final String[] $paramCnnAcf = {"D"}; // parameter names; has to contain noparam number of parameter names
     private final int noparamCnnImage = 1; // number of fit parameters; at the moment there are two fit models with a
-                                           // maximum of 11 parameters
-    private final String[] $paramCnnImage = { "D" }; // parameter names; has to contain noparam number of parameter
-                                                     // names
+    // maximum of 11 parameters
+    private final String[] $paramCnnImage = {"D"}; // parameter names; has to contain noparam number of parameter
+    // names
 
     // CNN parameters
     private boolean cnnImageLoaded = false; // Whether the Image CNN model is loaded
@@ -1086,7 +1138,7 @@ public class Imaging_FCS implements PlugIn {
         }
     }
 
-     public static void main(final String[] args) {
+    public static void main(final String[] args) {
         ImageJ.main(args);
         new Imaging_FCS().run("");
     }
@@ -1113,7 +1165,7 @@ public class Imaging_FCS implements PlugIn {
         String modestr = useGpu ? "GPU mode" : "CPU mode";
         JLabel l1 = new JLabel(modestr); // create a label
         JLabel l2 = new JLabel("<html><p>" + tempmsg + "</p></html>"); // create a label. Use html tags to wrap long
-                                                                       // sentences if necessary.
+        // sentences if necessary.
         l1.setVerticalAlignment(JLabel.CENTER);
         l1.setHorizontalAlignment(JLabel.CENTER);
         l2.setVerticalAlignment(JLabel.CENTER);
@@ -1141,16 +1193,16 @@ public class Imaging_FCS implements PlugIn {
                 createBleachCorStridePanel(); // create frame for Bleach correction settings
                 createImFCSFit(); // create ImFCS fit panel, but show only when fit is demanded in control panel
                 createFiltering(); // create the JFrame for filtering panel and make it visible when "Thresholds"
-                                   // are switched on in the main panel
+                // are switched on in the main panel
                 createSimPanel(); // create Simulation panel, but show only when simulation is demanded in control
-                                  // panel
+                // panel
                 createDiffLawPanel(); // create Diffusion Law panel, but show only when DiffLaw analysis is demanded
-                                      // in control panel
+                // in control panel
                 createNBPanel(); // create NB panel, but show only when NB analysis is demanded in control panel
                 createDCR(); // create Direct camera readout window
                 createBatchPanel(); // create control panel for batch processing
                 JBackgroundSubtractionComponentObj.createBGRpanel(); // create background subtration panel for different
-                                                                     // ways of background subtration protocol
+                // ways of background subtration protocol
                 readConfigFile(); // read stored experimental config file
             });
 
@@ -1164,8 +1216,8 @@ public class Imaging_FCS implements PlugIn {
 
     // Font Manager
     public void setUIFont(int panelFontSize, String $panelFont) {
-        UIManager.getLookAndFeelDefaults().put("defaultFont",
-                new java.awt.Font($panelFont, java.awt.Font.PLAIN, panelFontSize));
+        UIManager.getLookAndFeelDefaults()
+                .put("defaultFont", new java.awt.Font($panelFont, java.awt.Font.PLAIN, panelFontSize));
         UIManager.put("Button.font", new java.awt.Font($panelFont, java.awt.Font.BOLD, panelFontSize));
         UIManager.put("ToggleButton.font", new java.awt.Font($panelFont, java.awt.Font.BOLD, panelFontSize));
         UIManager.put("RadioButton.font", new java.awt.Font($panelFont, java.awt.Font.BOLD, panelFontSize));
@@ -1305,9 +1357,9 @@ public class Imaging_FCS implements PlugIn {
      * ActionListeners:
      * btnUseExistingPressed, btnLoadNewPressed, btnROIPressed, btnAllPressed,
      * btnPSFPressed, btnDLPressed, btnParaCorPressed, tbFilteringPressed,
-     * btnAvePressed, btnDCCFPressed, btnBtfPressed, btnBatchPressed,
+     * btnAveragePressed, btnDCCFPressed, btnBringToFrontPressed, btnBatchPressed,
      * btnSavePressed, btnLoadPressed, btnExitPressed, btnRTPressed,
-     * btnParamVideoPressed, btnDCRPressed
+     * btnParamVideoPressed, btnDirectCameraReadoutPressed
      *
      * ItemListeners:
      * tbFCCSDisplayPressed, tbNBPressed, tbFitPressed, tbFitPressed, tbMSDPressed,
@@ -1348,8 +1400,8 @@ public class Imaging_FCS implements PlugIn {
         tbSim = new JToggleButton("Sim off");
         tbFiltering = new JToggleButton("Threshold");
         tbBleachCorStride = new JToggleButton("Bleach Cor");
-        tbBleachCorStride
-                .setToolTipText("Set number of intensity points to be averaged before bleach correction is performed.");
+        tbBleachCorStride.setToolTipText(
+                "Set number of intensity points to be averaged before bleach correction is performed.");
         btnSave = new JButton("Save");
         btnLoad = new JButton("Read");
         btnBatch = new JButton("Batch");
@@ -1418,7 +1470,8 @@ public class Imaging_FCS implements PlugIn {
         tfBinning.setToolTipText(
                 "Pixel binning used in the evlauations. NOTE: Changing this value will reinitialize all arrays.");
         tfCCFDistance.setToolTipText(
-                "Distance in x- and y-direction for spatial cross-correlation. NOTE: Changing this value will reinitialize all arrays.");
+                "Distance in x- and y-direction for spatial cross-correlation. NOTE: Changing this value will " +
+                        "reinitialize all arrays.");
 
         JButton btnUseExisting = new JButton("Use");
         btnUseExisting.setToolTipText("Uses the active existing image in ImageJ.");
@@ -1441,16 +1494,18 @@ public class Imaging_FCS implements PlugIn {
         btnRT.setToolTipText("Create a results table.");
         JButton btnAve = new JButton("Average");
         btnAve.setToolTipText(
-                "Calculate the average ACF from all valid ACFs and fit if fit is switched on; this does not calculate residuals or sd.");
+                "Calculate the average ACF from all valid ACFs and fit if fit is switched on; this does not calculate" +
+                        " residuals or sd.");
         JButton btnParamVideo = new JButton("PVideo");
         btnParamVideo.setToolTipText("Creates videos of parameter maps");
         JButton btnDebug = new JButton("");
 
         tbExpSettings.setToolTipText("Opens a dialog wityh experimental settings.");
         btnDCCF.setToolTipText(
-                "Create a dCCF image to see differences between forward and backward correlation in a direction (see scroll down menue).");
-        JBackgroundSubtractionComponentObj.tbBGR
-                .setToolTipText("Panel for different methods to perform background subtraction.");
+                "Create a dCCF image to see differences between forward and backward correlation in a direction (see " +
+                        "scroll down menue).");
+        JBackgroundSubtractionComponentObj.tbBGR.setToolTipText(
+                "Panel for different methods to perform background subtraction.");
         tbSim.setToolTipText("Opens/closes Simulation panel.");
         tbDL.setToolTipText("Calculates the Diffusion Law.");
         tbFit.setToolTipText("Switches Fit on/off; opens/closes Fit panel.");
@@ -1461,8 +1516,8 @@ public class Imaging_FCS implements PlugIn {
                 "Save the evaluation of the data as binary files. Which data to save can be selected in a dialog.");
         btnLoad.setToolTipText(
                 "Load a previously saved experiment. Note that the original image is not automatically loaded along.");
-        btnWriteConfig
-                .setToolTipText("Writes a configuration file int user.home that will be read at next ImFCS start");
+        btnWriteConfig.setToolTipText(
+                "Writes a configuration file int user.home that will be read at next ImFCS start");
 
         // row 1
         frame.add(new JLabel("Image"));
@@ -1555,8 +1610,8 @@ public class Imaging_FCS implements PlugIn {
         btnUseExisting.addActionListener(btnUseExistingPressed);
         btnLoadNew.addActionListener(btnLoadNewPressed);
         tbExpSettings.addItemListener(tbExpSettingsPressed);
-        JBackgroundSubtractionComponentObj.tbBGR
-                .addItemListener(JBackgroundSubtractionComponentObj.tbBackgroundPressed);
+        JBackgroundSubtractionComponentObj.tbBGR.addItemListener(
+                JBackgroundSubtractionComponentObj.tbBackgroundPressed);
         tbBleachCorStride.addItemListener(tbBleachCorStridePressed);
         btnROI.addActionListener(btnROIPressed);
         btnAll.addActionListener(btnAllPressed);
@@ -2220,11 +2275,11 @@ public class Imaging_FCS implements PlugIn {
     ActionListener btnAvePressed = (ActionEvent ev) -> {
 
         if (impPara1 != null && impPara1.getRoi() != null) {
-            printlog("btnAvePressed consider all pixel within selected rectangular ROI drawn on parameter maps");
+            printlog("btnAveragePressed consider all pixel within selected rectangular ROI drawn on parameter maps");
             calcAveCF(impPara1.getRoi(), true); // Consider all pixel within selected rectangular ROI drawn on parameter
-                                                // maps
+            // maps
         } else {
-            printlog("btnAvePressed consider all pixel processed");
+            printlog("btnAveragePressed consider all pixel processed");
             calcAveCF(null, true); // Consider all pixel processed
         }
 
@@ -2305,7 +2360,7 @@ public class Imaging_FCS implements PlugIn {
 
         if (setParameters() && proceed) {
             if (impPara1 != null) { // set the parameter window to the front to avaid a "imsPVideoNDave required"
-                                    // error from ImageJ
+                // error from ImageJ
                 WindowManager.setCurrentWindow(impPara1Win);
             }
             Roi improi = imp.getRoi();
@@ -2547,8 +2602,8 @@ public class Imaging_FCS implements PlugIn {
         isSaveCFandFitPvideo = gd.getNextBoolean();
         $pvname = gd.getNextString();
 
-        if (!(fStart > 0) || !(fEnd > 0) || !(fLength > 0) || !(fStep > 0) || fStep > (fEnd - fStart + 1)
-                || fLength > (fEnd - fStart + 1)) {
+        if (!(fStart > 0) || !(fEnd > 0) || !(fLength > 0) || !(fStep > 0) || fStep > (fEnd - fStart + 1) ||
+                fLength > (fEnd - fStart + 1)) {
             IJ.showMessage("Number error; either negative numbers or length or stepsize larger than length of frame.");
             return false;
         }
@@ -2602,8 +2657,8 @@ public class Imaging_FCS implements PlugIn {
             throw new NumberFormatException("Number format error.");
         }
 
-        if (!(psfStart > 0) || !(psfEnd > 0) || !(psfStep > 0) || !(psfBinStart > 0) || !(psfBinEnd > 0)
-                || (psfBinEnd > width) || (psfBinEnd > height)) {
+        if (!(psfStart > 0) || !(psfEnd > 0) || !(psfStep > 0) || !(psfBinStart > 0) || !(psfBinEnd > 0) ||
+                (psfBinEnd > width) || (psfBinEnd > height)) {
             IJ.showMessage("only positive numbers are accepted");
             return false;
         }
@@ -2766,8 +2821,8 @@ public class Imaging_FCS implements PlugIn {
         JTextField tfBGRloadStatus;
         JComboBox<String> cbBackgroundSubtractionMethod;
         JRadioButton rbtnIsSubtractionAfterBleachCorrection; // whether to apply background subtration before or after
-                                                             // trend correction: polynomiual, single exp, double
-                                                             // exp,...
+        // trend correction: polynomiual, single exp, double
+        // exp,...
 
         private void createBGRpanel() {
             bgrSubtractPane = new JPanel(new GridLayout(4, 2));
@@ -2786,13 +2841,14 @@ public class Imaging_FCS implements PlugIn {
 
             rbtnIsSubtractionAfterBleachCorrection = new JRadioButton("Subtract after bleach correction");
             rbtnIsSubtractionAfterBleachCorrection.setSelected(false); // by default perfrom background subtraction
-                                                                       // before bleach correction
+            // before bleach correction
 
             tfBGRloadStatus = new JTextField($BGFfileNotLoaded);
             tfBGRloadStatus.setEditable(false);
             tfBGRloadStatus.setFont(new java.awt.Font($panelFont, java.awt.Font.BOLD, 12));
             tfBGRloadStatus.setToolTipText(
-                    "Status on background file for correction. Has to be the same area recorded under the same conditions as the experimental file");
+                    "Status on background file for correction. Has to be the same area recorded under the same " +
+                            "conditions as the experimental file");
 
             bgrSubtractPane.add(new JLabel("Background correction method: "));
             bgrSubtractPane.add(cbBackgroundSubtractionMethod);
@@ -2949,7 +3005,7 @@ public class Imaging_FCS implements PlugIn {
             }
 
             for (int x = 0; x < bgrw; x++) { // caluclate mean and variance: E(x) = Sum(x)/(n-1), E(x*x') =
-                                             // Sum(x*x')/(n-1) and coVar = E(x*x') - E(x)E(x')
+                // Sum(x*x')/(n-1) and coVar = E(x*x') - E(x)E(x')
                 for (int y = 0; y < bgrh; y++) {
                     mean[x][y] /= (bgrf - 1);
                     mean2[x][y] /= (bgrf - 1);
@@ -2971,7 +3027,7 @@ public class Imaging_FCS implements PlugIn {
             }
 
             for (int x = 0; x < bgrw; x++) { // caluclate mean and variance: E(x) = Sum(x)/n, E(x^2) = Sum(x^2)/n and
-                                             // Var = E(x^2) - E(x)^2
+                // Var = E(x^2) - E(x)^2
                 for (int y = 0; y < bgrh; y++) {
                     bgrmean[x][y] /= bgrf;
                     bgrVar[x][y] = bgrVar[x][y] / bgrf - Math.pow(bgrmean[x][y], 2.0);
@@ -2993,35 +3049,40 @@ public class Imaging_FCS implements PlugIn {
         };
 
         ActionListener cbBackgroundSubtractionMethodChanged = (ActionEvent event) -> {
-            if (cbBackgroundSubtractionMethod.getSelectedItem().toString()
+            if (cbBackgroundSubtractionMethod.getSelectedItem()
+                    .toString()
                     .equals(modeBGR.getStringValue(modeBGR.modeBGREnum.CONSTANT_BACKGROUND.getValue()))) {
                 selectedMode = modeBGR.modeBGREnum.CONSTANT_BACKGROUND;
 
             }
-            if (cbBackgroundSubtractionMethod.getSelectedItem().toString()
+            if (cbBackgroundSubtractionMethod.getSelectedItem()
+                    .toString()
                     .equals(modeBGR.getStringValue(modeBGR.modeBGREnum.MIN_FRAME_BY_FRAME.getValue()))) {
                 selectedMode = modeBGR.modeBGREnum.MIN_FRAME_BY_FRAME;
 
             }
-            if (cbBackgroundSubtractionMethod.getSelectedItem().toString()
+            if (cbBackgroundSubtractionMethod.getSelectedItem()
+                    .toString()
                     .equals(modeBGR.getStringValue(modeBGR.modeBGREnum.MIN_PER_IMAGESTACK.getValue()))) {
                 selectedMode = modeBGR.modeBGREnum.MIN_PER_IMAGESTACK;
 
             }
-            if (cbBackgroundSubtractionMethod.getSelectedItem().toString()
+            if (cbBackgroundSubtractionMethod.getSelectedItem()
+                    .toString()
                     .equals(modeBGR.getStringValue(modeBGR.modeBGREnum.MIN_PIXELWISE_PER_IMAGASTACK.getValue()))) {
                 selectedMode = modeBGR.modeBGREnum.MIN_PIXELWISE_PER_IMAGASTACK;
 
             }
 
-            if (cbBackgroundSubtractionMethod.getSelectedItem().toString()
+            if (cbBackgroundSubtractionMethod.getSelectedItem()
+                    .toString()
                     .equals(modeBGR.getStringValue(modeBGR.modeBGREnum.LOAD_BGR_IMAGE.getValue()))) {
                 selectedMode = modeBGR.modeBGREnum.LOAD_BGR_IMAGE;
 
                 // Only allows background subtraction before perfroming bleach correction
                 if (rbtnIsSubtractionAfterBleachCorrection.isSelected()) {
                     rbtnIsSubtractionAfterBleachCorrection.setSelected(false); // perfrom background subtraction before
-                                                                               // bleach correction
+                    // bleach correction
                     JOptionPane.showMessageDialog(null,
                             "Unable to perform background subtraction on bleach corrected intensity traces.");
                 }
@@ -3054,7 +3115,7 @@ public class Imaging_FCS implements PlugIn {
         ActionListener rbtnIsSubtractionAfterBleachCorrectionChanged = (ActionEvent event) -> {
             if (selectedMode == modeBGR.modeBGREnum.LOAD_BGR_IMAGE) {
                 rbtnIsSubtractionAfterBleachCorrection.setSelected(false); // perfrom background subtraction before
-                                                                           // bleach correction
+                // bleach correction
                 JOptionPane.showMessageDialog(null,
                         "Unable to perform background subtraction on bleach corrected intensity traces.");
             }
@@ -3104,11 +3165,17 @@ public class Imaging_FCS implements PlugIn {
         }
 
         public static final String[] modeList = { // Current available modeList
-                "CONSTANT_BACKGROUND", // Constant background; by default the minimum voxels
-                "MIN_FRAME_BY_FRAME", // A unique background per frame
-                "MIN_PER_IMAGESTACK", // A unique background per imagestacks (More relevant during PVideo analysis)
-                "MIN_PIXELWISE_PER_IMAGASTACK", // A unique background per segment
-                "LOAD_BGR_IMAGE", // Load dark images
+                                                  "CONSTANT_BACKGROUND",
+                                                  // Constant background; by default the minimum voxels
+                                                  "MIN_FRAME_BY_FRAME",
+                                                  // A unique background per frame
+                                                  "MIN_PER_IMAGESTACK",
+                                                  // A unique background per imagestacks (More relevant during PVideo
+                                                  // analysis)
+                                                  "MIN_PIXELWISE_PER_IMAGASTACK",
+                                                  // A unique background per segment
+                                                  "LOAD_BGR_IMAGE",
+                                                  // Load dark images
         };
 
         public static String getStringValue(int idx) {
@@ -3135,7 +3202,8 @@ public class Imaging_FCS implements PlugIn {
         boolean isDoTrendCorrection;
 
         public BleachCorrectionAndOtherTransformation(int wx, int wy, int fframe, int lframe, Roi improi, int startXmap,
-                int endXmap, int startYmap, int endYmap, boolean isDoTrendCorrection) {
+                                                      int endXmap, int startYmap, int endYmap,
+                                                      boolean isDoTrendCorrection) {
             wz = lframe - fframe + 1;
             this.wx = wx;
             this.wy = wy;
@@ -3147,7 +3215,7 @@ public class Imaging_FCS implements PlugIn {
             this.fframe = fframe;
             this.lframe = lframe;
             this.isDoTrendCorrection = isDoTrendCorrection; // whether to do bleach correction or returned raw intensity
-                                                            // in binned image grid
+            // in binned image grid
         }
 
         private ImagePlus runTransformation() {
@@ -3165,8 +3233,8 @@ public class Imaging_FCS implements PlugIn {
             // do the FCS or DC-FCCS evaluation
             for (int x = startXmap; x <= endXmap; x++) {
                 for (int y = startYmap; y <= endYmap; y++) {
-                    if (filterArray[x * pixbinX][y * pixbinY] >= filterLL * binningX * binningY
-                            && filterArray[x * pixbinX][y * pixbinY] <= filterUL * binningX * binningY) {
+                    if (filterArray[x * pixbinX][y * pixbinY] >= filterLL * binningX * binningY &&
+                            filterArray[x * pixbinX][y * pixbinY] <= filterUL * binningX * binningY) {
                         calcAverageTraceForBC(imp, x * pixbinX, y * pixbinY, x * pixbinX + cfXDistance,
                                 y * pixbinY + cfYDistance, fframe, lframe, false);
                         fillCorrectedTrace(imp, x * pixbinX, y * pixbinY, x * pixbinX + cfXDistance,
@@ -3178,7 +3246,7 @@ public class Imaging_FCS implements PlugIn {
         }
 
         private void fillCorrectedTrace(ImagePlus image, int px1, int py1, int px2, int py2, int initialframe,
-                int finalframe) {
+                                        int finalframe) {
 
             String $bcmode = (String) cbBleachCor.getSelectedItem();
             if ("Sliding Window".equals($bcmode)) {
@@ -3200,8 +3268,8 @@ public class Imaging_FCS implements PlugIn {
             boolean within_bound = false;
             // For efficiency, check whether (px2, py2) is within the bound as not to run
             // double computation
-            within_bound = px2 >= (startXmap * pixbinX) && px2 <= (endXmap * pixbinX) && py2 >= (startYmap * pixbinY)
-                    && py2 <= (endYmap * pixbinY);
+            within_bound = px2 >= (startXmap * pixbinX) && px2 <= (endXmap * pixbinX) && py2 >= (startYmap * pixbinY) &&
+                    py2 <= (endYmap * pixbinY);
 
             if (!within_bound && (px1 != px2 || py1 != py2)) {
                 pxm1 = (int) px2 / pixbinX;
@@ -3216,7 +3284,7 @@ public class Imaging_FCS implements PlugIn {
         // get intensity data for creating maps of bleach corrected trace; note that you
         // should call calcIntensityTrace() before to obtain intTrace1 and 2
         private double[] getInt(ImagePlus image, int px, int py, int mode, int initialframe, int finalframe,
-                boolean isDoTrendCorrection) {
+                                boolean isDoTrendCorrection) {
             // image: imp form which intensity will be taken
             // px, py: coordinates of pixel within image
             // imageType: determines whether intensity for pixel 1 or pixel 2 is read, and
@@ -3256,26 +3324,25 @@ public class Imaging_FCS implements PlugIn {
                 }
                 if (res[0] * res[1] != 0) { // correct the full intensity trace if the fit was succesful
                     for (int x = 1; x <= num; x++) {
-                        intdat[x] = intdat[x]
-                                / Math.sqrt((res[0] * Math.exp(-frametime * (x + 0.5) / res[1]) + res[2])
-                                        / (res[0] + res[2]))
-                                + (res[0] + res[2])
-                                        * (1 - Math.sqrt((res[0] * Math.exp(-frametime * (x + 0.5) / res[1]) + res[2])
-                                                / (res[0] + res[2])));
+                        intdat[x] = intdat[x] / Math.sqrt(
+                                (res[0] * Math.exp(-frametime * (x + 0.5) / res[1]) + res[2]) / (res[0] + res[2])) +
+                                (res[0] + res[2]) * (1 - Math.sqrt(
+                                        (res[0] * Math.exp(-frametime * (x + 0.5) / res[1]) + res[2]) /
+                                                (res[0] + res[2])));
                     }
                     if (mode == 1) {
                         for (int x = 0; x < nopit; x++) {
-                            intTrace1[x] = intTrace1[x]
-                                    / Math.sqrt((res[0] * Math.exp(-intTime[x] / res[1]) + res[2]) / (res[0] + res[2]))
-                                    + (res[0] + res[2]) * (1 - Math.sqrt(
+                            intTrace1[x] = intTrace1[x] /
+                                    Math.sqrt((res[0] * Math.exp(-intTime[x] / res[1]) + res[2]) / (res[0] + res[2])) +
+                                    (res[0] + res[2]) * (1 - Math.sqrt(
                                             (res[0] * Math.exp(-intTime[x] / res[1]) + res[2]) / (res[0] + res[2])));
                         }
                     }
                     if (mode == 2) {
                         for (int x = 0; x < nopit; x++) {
-                            intTrace2[x] = intTrace2[x]
-                                    / Math.sqrt((res[0] * Math.exp(-intTime[x] / res[1]) + res[2]) / (res[0] + res[2]))
-                                    + (res[0] + res[2]) * (1 - Math.sqrt(
+                            intTrace2[x] = intTrace2[x] /
+                                    Math.sqrt((res[0] * Math.exp(-intTime[x] / res[1]) + res[2]) / (res[0] + res[2])) +
+                                    (res[0] + res[2]) * (1 - Math.sqrt(
                                             (res[0] * Math.exp(-intTime[x] / res[1]) + res[2]) / (res[0] + res[2])));
                         }
                     }
@@ -3293,37 +3360,31 @@ public class Imaging_FCS implements PlugIn {
                 }
                 if (res[0] * res[1] * res[2] * res[3] != 0) {
                     for (int x = 1; x <= num; x++) {
-                        intdat[x] = intdat[x]
-                                / Math.sqrt((res[0] * Math.exp(-frametime * (x + 0.5) / res[1])
-                                        + res[2] * Math.exp(-frametime * (x + 0.5) / res[3]) + res[4])
-                                        / (res[0] + res[2] + res[4]))
-                                + (res[0] + res[2] + res[4])
-                                        * (1 - Math.sqrt((res[0] * Math.exp(-frametime * (x + 0.5) / res[1])
-                                                + res[2] * Math.exp(-frametime * (x + 0.5) / res[3]) + res[4])
-                                                / (res[0] + res[2] + res[4])));
+                        intdat[x] = intdat[x] / Math.sqrt((res[0] * Math.exp(-frametime * (x + 0.5) / res[1]) +
+                                res[2] * Math.exp(-frametime * (x + 0.5) / res[3]) + res[4]) /
+                                (res[0] + res[2] + res[4])) + (res[0] + res[2] + res[4]) * (1 - Math.sqrt(
+                                (res[0] * Math.exp(-frametime * (x + 0.5) / res[1]) +
+                                        res[2] * Math.exp(-frametime * (x + 0.5) / res[3]) + res[4]) /
+                                        (res[0] + res[2] + res[4])));
                     }
                     if (mode == 1) {
                         for (int x = 0; x < nopit; x++) {
-                            intTrace1[x] = intTrace1[x]
-                                    / Math.sqrt((res[0] * Math.exp(-intTime[x] / res[1])
-                                            + res[2] * Math.exp(-intTime[x] / res[3]) + res[4])
-                                            / (res[0] + res[2] + res[4]))
-                                    + (res[0] + res[2] + res[4])
-                                            * (1 - Math.sqrt((res[0] * Math.exp(-intTime[x] / res[1])
-                                                    + res[2] * Math.exp(-intTime[x] / res[3]) + res[4])
-                                                    / (res[0] + res[2] + res[4])));
+                            intTrace1[x] = intTrace1[x] / Math.sqrt(
+                                    (res[0] * Math.exp(-intTime[x] / res[1]) + res[2] * Math.exp(-intTime[x] / res[3]) +
+                                            res[4]) / (res[0] + res[2] + res[4])) + (res[0] + res[2] + res[4]) * (1 -
+                                    Math.sqrt((res[0] * Math.exp(-intTime[x] / res[1]) +
+                                            res[2] * Math.exp(-intTime[x] / res[3]) + res[4]) /
+                                            (res[0] + res[2] + res[4])));
                         }
                     }
                     if (mode == 2) {
                         for (int x = 0; x < nopit; x++) {
-                            intTrace2[x] = intTrace2[x]
-                                    / Math.sqrt((res[0] * Math.exp(-intTime[x] / res[1])
-                                            + res[2] * Math.exp(-intTime[x] / res[3]) + res[4])
-                                            / (res[0] + res[2] + res[4]))
-                                    + (res[0] + res[2] + res[4])
-                                            * (1 - Math.sqrt((res[0] * Math.exp(-intTime[x] / res[1])
-                                                    + res[2] * Math.exp(-intTime[x] / res[3]) + res[4])
-                                                    / (res[0] + res[2] + res[4])));
+                            intTrace2[x] = intTrace2[x] / Math.sqrt(
+                                    (res[0] * Math.exp(-intTime[x] / res[1]) + res[2] * Math.exp(-intTime[x] / res[3]) +
+                                            res[4]) / (res[0] + res[2] + res[4])) + (res[0] + res[2] + res[4]) * (1 -
+                                    Math.sqrt((res[0] * Math.exp(-intTime[x] / res[1]) +
+                                            res[2] * Math.exp(-intTime[x] / res[3]) + res[4]) /
+                                            (res[0] + res[2] + res[4])));
                         }
                     }
                 } else {
@@ -3337,9 +3398,9 @@ public class Imaging_FCS implements PlugIn {
                 int maxord = polyOrder;
                 if (mode == 1) {
                     res = polfit.doFit(intTrace1); // note that the bleach correction is performed on the averaged
-                                                   // intensity traces to make it faster
+                    // intensity traces to make it faster
                 } else { // while you may have 20,000 intensity points, intTrace1 and 2 contain only
-                         // 1,000 points
+                    // 1,000 points
                     res = polfit.doFit(intTrace2); // see definition in setParameters()
                 }
 
@@ -3356,8 +3417,8 @@ public class Imaging_FCS implements PlugIn {
                         for (int i = 0; i <= maxord; i++) {
                             corfunc += res[i] * Math.pow(intTime[x], i);
                         }
-                        intTrace1[x] = intTrace1[x] / Math.sqrt(corfunc / res[0])
-                                + res[0] * (1 - Math.sqrt(corfunc / res[0]));
+                        intTrace1[x] =
+                                intTrace1[x] / Math.sqrt(corfunc / res[0]) + res[0] * (1 - Math.sqrt(corfunc / res[0]));
                     }
                 }
                 if (mode == 2) {
@@ -3366,8 +3427,8 @@ public class Imaging_FCS implements PlugIn {
                         for (int i = 0; i <= maxord; i++) {
                             corfunc += res[i] * Math.pow(intTime[x], i);
                         }
-                        intTrace2[x] = intTrace2[x] / Math.sqrt(corfunc / res[0])
-                                + res[0] * (1 - Math.sqrt(corfunc / res[0]));
+                        intTrace2[x] =
+                                intTrace2[x] / Math.sqrt(corfunc / res[0]) + res[0] * (1 - Math.sqrt(corfunc / res[0]));
                     }
                 }
 
@@ -3375,7 +3436,7 @@ public class Imaging_FCS implements PlugIn {
 
             if ("Lin Segment".equals($bcmode)) { // approximating bleaching by a partially linear function
                 int ave = (int) Math.floor((finalframe - initialframe + 1) / nopit); // number of points averaged in
-                                                                                     // intTrace
+                // intTrace
                 int bcNopit = (int) num / slidingWindowLength; // number of linear segments
                 int bcAve = (int) Math.floor((finalframe - initialframe + 1) / bcNopit);
                 double[] bcTrace = new double[bcNopit];
@@ -3392,35 +3453,33 @@ public class Imaging_FCS implements PlugIn {
                 }
 
                 bcInt0 = bcTrace[0] + (bcTrace[0] - bcTrace[1]) / 2; // Initial intensity obtained by extrapolating the
-                                                                     // line between average intensities in 1st and
-                                                                     // second segment to 0
+                // line between average intensities in 1st and
+                // second segment to 0
 
                 for (int x = 1; x < (int) Math.floor(bcAve / 2); x++) {
-                    intdat[x] = intdat[x]
-                            / Math.sqrt((bcTrace[0] + (bcTrace[0] - bcTrace[1]) / bcAve * (bcAve / 2 - x)) / bcInt0)
-                            + bcInt0 * (1 - Math
-                                    .sqrt((bcTrace[0] + (bcTrace[0] - bcTrace[1]) / bcAve * (bcAve / 2 - x)) / bcInt0));
+                    intdat[x] = intdat[x] /
+                            Math.sqrt((bcTrace[0] + (bcTrace[0] - bcTrace[1]) / bcAve * (bcAve / 2 - x)) / bcInt0) +
+                            bcInt0 * (1 - Math.sqrt(
+                                    (bcTrace[0] + (bcTrace[0] - bcTrace[1]) / bcAve * (bcAve / 2 - x)) / bcInt0));
                 }
 
                 for (int x = 1; x < bcNopit; x++) {
                     for (int y = 0; y < bcAve; y++) {
                         nf = (x - 1) * bcAve + (int) Math.floor(bcAve / 2) + y;
-                        intdat[nf] = intdat[nf]
-                                / Math.sqrt((bcTrace[x - 1] + (bcTrace[x] - bcTrace[x - 1]) * y / bcAve) / bcInt0)
-                                + bcInt0 * (1 - Math
-                                        .sqrt((bcTrace[x - 1] + (bcTrace[x] - bcTrace[x - 1]) * y / bcAve) / bcInt0));
+                        intdat[nf] = intdat[nf] /
+                                Math.sqrt((bcTrace[x - 1] + (bcTrace[x] - bcTrace[x - 1]) * y / bcAve) / bcInt0) +
+                                bcInt0 * (1 - Math.sqrt(
+                                        (bcTrace[x - 1] + (bcTrace[x] - bcTrace[x - 1]) * y / bcAve) / bcInt0));
                     }
                 }
 
                 for (int x = (bcNopit - 1) * bcAve + (int) Math.floor(bcAve / 2); x <= num; x++) {
                     nf = x - (bcNopit - 1) * bcAve + (int) Math.floor(bcAve / 2) + bcAve;
-                    intdat[x] = intdat[x]
-                            / Math.sqrt(
-                                    (bcTrace[bcNopit - 2] + (bcTrace[bcNopit - 1] - bcTrace[bcNopit - 2]) * nf / bcAve)
-                                            / bcInt0)
-                            + bcInt0 * (1 - Math.sqrt(
-                                    (bcTrace[bcNopit - 2] + (bcTrace[bcNopit - 1] - bcTrace[bcNopit - 2]) * nf / bcAve)
-                                            / bcInt0));
+                    intdat[x] = intdat[x] / Math.sqrt(
+                            (bcTrace[bcNopit - 2] + (bcTrace[bcNopit - 1] - bcTrace[bcNopit - 2]) * nf / bcAve) /
+                                    bcInt0) + bcInt0 * (1 - Math.sqrt(
+                            (bcTrace[bcNopit - 2] + (bcTrace[bcNopit - 1] - bcTrace[bcNopit - 2]) * nf / bcAve) /
+                                    bcInt0));
                 }
 
                 if (mode == 1) {
@@ -3455,8 +3514,8 @@ public class Imaging_FCS implements PlugIn {
                     }
                     stack.addSlice(ipf);
                 }
-                bleachCorrectedImp = new ImagePlus(
-                        $impTitle + "-" + (String) cbBleachCor.getSelectedItem() + "corrected", stack);
+                bleachCorrectedImp =
+                        new ImagePlus($impTitle + "-" + (String) cbBleachCor.getSelectedItem() + "corrected", stack);
             } else {
                 // 16-bit
                 ShortProcessor ip;
@@ -3483,12 +3542,12 @@ public class Imaging_FCS implements PlugIn {
 
         // calculate reduced intensity traces for bleach correction
         public void calcAverageTraceForBC(ImagePlus image, int ipx1, int ipy1, int ipx2, int ipy2, int initialframe,
-                int finalframe, boolean isDCsubtract) {
+                                          int finalframe, boolean isDCsubtract) {
             // image: imp form which intensity will be taken
             // px1, py1, px2, py2: coordinates of pixels to be correlated
             // initialframe and finalframe provide the range of frames to be used
             int ave = (int) Math.floor((finalframe - initialframe + 1) / nopit); // calculate number of data points
-                                                                                 // which are averaged
+            // which are averaged
             int sum1;
             int sum2;
 
@@ -4267,10 +4326,12 @@ public class Imaging_FCS implements PlugIn {
         // help texts
         JLabel jlSimSeed = new JLabel("Seed");
         jlSimSeed.setToolTipText(
-                "Integer: Seed for the random number generator. Using the same seed (>0) leads to reproducible simulations.");
+                "Integer: Seed for the random number generator. Using the same seed (>0) leads to reproducible " +
+                        "simulations.");
         JLabel jlSimParticleNum = new JLabel("Particle #");
         jlSimParticleNum.setToolTipText(
-                "Integer: Seed for the random number generator. Using the same seed (>0) leads to reproducible simulations.");
+                "Integer: Seed for the random number generator. Using the same seed (>0) leads to reproducible " +
+                        "simulations.");
         JLabel jlSimCPS = new JLabel("CPS");
         jlSimCPS.setToolTipText("Integer: counts per particle per second; brightness of the moleucles");
         JLabel jlSimTauBleach = new JLabel("Bleach time");
@@ -4293,10 +4354,11 @@ public class Imaging_FCS implements PlugIn {
                 "Double: Shows the current step size in the simulations based on D1 and time per simualtion step.");
         JLabel jlSimD1 = new JLabel("D1 [um2/s]");
         jlSimD1.setToolTipText(
-                "Double: Diffusion coefficient of first species to be simulated.  Press enter to calcualte new step size.");
+                "Double: Diffusion coefficient of first species to be simulated.  Press enter to calcualte new step " +
+                        "size.");
         JLabel jlSimDoutDinRatio = new JLabel("Dout/Din");
-        jlSimDoutDinRatio
-                .setToolTipText("Double: Ratio of diffuion coeeficients of particles outside and inside domains.");
+        jlSimDoutDinRatio.setToolTipText(
+                "Double: Ratio of diffuion coeeficients of particles outside and inside domains.");
         JLabel jlSimD2 = new JLabel("D2 [um2/s]");
         jlSimD2.setToolTipText("Double: Diffusion coefficient of second species to be simulated (if any).");
         JLabel jlSimF2 = new JLabel("F2");
@@ -5069,7 +5131,8 @@ public class Imaging_FCS implements PlugIn {
                 "Resets the thresholds to their default values and the filtering mask to 1.0 for all fitted pixels");
         rbtnCuseA.setToolTipText("Sets the thresholds for CCF to be the same as for ACFs");
         rbtnReplaceZero.setToolTipText(
-                "When calculating cross-correlation amount (q) sets q = 0 for pixels where the ACFs pass the thresholds but the CCF does not");
+                "When calculating cross-correlation amount (q) sets q = 0 for pixels where the ACFs pass the " +
+                        "thresholds but the CCF does not");
 
         btnFilter.addActionListener(btnFilterPressed);
         btnReset.addActionListener(btnResetPressed);
@@ -5091,7 +5154,7 @@ public class Imaging_FCS implements PlugIn {
     }
 
     public void ReadFilteringFrame() { // reads the settings from the "thresholds settings" panel and saves them in
-                                       // filterThresholds[][][], paramfilter[] and userThreshold[]
+        // filterThresholds[][][], paramfilter[] and userThreshold[]
 
         paramfilter[0] = rbtnFiltN.isSelected();
         paramfilter[1] = rbtnFiltD.isSelected();
@@ -5178,18 +5241,18 @@ public class Imaging_FCS implements PlugIn {
     }
 
     public void SetThresholds() { // sets the Thresholds and other settings to their default values in case no
-                                  // user defined values are vailable or they need to be reset
+        // user defined values are vailable or they need to be reset
         double Min;
         double Max;
         double eps = 0.5 * Math.pow(10, -decformat);
         double eps2 = 0.5 * Math.pow(10, -decformat2);
         int nochannels = 3; // number of correlation channels; 1 for FCS, 3 for DC-FCCS (for
-                            // cross-correlation and autocorrelation in the 2 channels respectively)
+        // cross-correlation and autocorrelation in the 2 channels respectively)
 
         // if thresholds were set for DC-FCCS and switched to FCS or vice-versa, forget
         // thresholds
-        if (((userThreshold[1]) && (cbFitModel.getSelectedItem() != "DC-FCCS (2D)"))
-                || ((!userThreshold[1]) && (cbFitModel.getSelectedItem() == "DC-FCCS (2D)"))) {
+        if (((userThreshold[1]) && (cbFitModel.getSelectedItem() != "DC-FCCS (2D)")) ||
+                ((!userThreshold[1]) && (cbFitModel.getSelectedItem() == "DC-FCCS (2D)"))) {
             userThreshold[0] = false;
         }
 
@@ -5207,7 +5270,7 @@ public class Imaging_FCS implements PlugIn {
             if (impPara1 != null) {
 
                 for (int m = 0; m < nochannels; m++) { // loop over individual correlation channels and the
-                                                       // cross-correlation
+                    // cross-correlation
                     for (int p = 0; p < noparam; p++) {
                         Max = -Double.MAX_VALUE;
                         Min = Double.MAX_VALUE;
@@ -5244,12 +5307,12 @@ public class Imaging_FCS implements PlugIn {
                     Min = Double.MAX_VALUE;
                     for (int x = 0; x < width; x++) {
                         for (int y = 0; y < height; y++) {
-                            if (fitres[m][x][y][4] * fitres[m][x][y][0] < Min && fitres[m][x][y][4] != Double.NaN
-                                    && fitres[m][x][y][0] != Double.NaN) {
+                            if (fitres[m][x][y][4] * fitres[m][x][y][0] < Min && fitres[m][x][y][4] != Double.NaN &&
+                                    fitres[m][x][y][0] != Double.NaN) {
                                 Min = fitres[m][x][y][4] * fitres[m][x][y][0];
                             }
-                            if (fitres[m][x][y][4] * fitres[m][x][y][0] > Max && fitres[m][x][y][4] != Double.NaN
-                                    && fitres[m][x][y][0] != Double.NaN) {
+                            if (fitres[m][x][y][4] * fitres[m][x][y][0] > Max && fitres[m][x][y][4] != Double.NaN &&
+                                    fitres[m][x][y][0] != Double.NaN) {
                                 Max = fitres[m][x][y][4] * fitres[m][x][y][0];
                             }
                             if (-1 * Min > Max) {
@@ -6422,7 +6485,7 @@ public class Imaging_FCS implements PlugIn {
         // columns in xlsx file as of 2019.
 
         if (nov > 16384 - 1) { // minus 1 because there is an additional (1st) column in Fit Parameters tab
-                               // that list respective parameters
+            // that list respective parameters
             IJ.log("Unable to save the data. Output data is larger than permissible 16,384 columns in .xlsx file.");
             return;
         }
@@ -7129,7 +7192,7 @@ public class Imaging_FCS implements PlugIn {
 
         row = ReconParaSheet.createRow(t++);
         row.createCell(0).setCellValue("cormode"); // cormode (cormode 1: ACF, cormode 2: ACF or CCF, cormode 3:
-                                                   // DC-FCCS, cormode 4:)
+        // DC-FCCS, cormode 4:)
         row.createCell(1).setCellValue(parcormode);
         row = ReconParaSheet.createRow(t++);
         row.createCell(0).setCellValue("plotACFCurves"); // parameter whether to plot ACF curves
@@ -7263,7 +7326,7 @@ public class Imaging_FCS implements PlugIn {
         // read block
         askOnRewrite = false; // don't prompt the user
         expload = true; // indicate that this is a load procedure limiting initializations in
-                        // setParameters()
+        // setParameters()
 
         // read panel parameters
         Sheet sheet = wb.getSheetAt(PARAM);
@@ -7350,8 +7413,8 @@ public class Imaging_FCS implements PlugIn {
         $loadfile = sheet.getRow(t++).getCell(1).getStringCellValue();
 
         // Loading the imagestack from the filepath if image is not already loaded
-        if (!setImp || !$fileName
-                .equals($loadfile.substring($loadfile.lastIndexOf(File.separator) + 1, $loadfile.length()))) {
+        if (!setImp ||
+                !$fileName.equals($loadfile.substring($loadfile.lastIndexOf(File.separator) + 1, $loadfile.length()))) {
             imp = IJ.openImage($loadfile);
             imp = IJ.openImage($loadfile);
 
@@ -7366,15 +7429,15 @@ public class Imaging_FCS implements PlugIn {
                 imp.show();
                 obtainImage();
                 closeWindows();
-                boolean DataOK = (data_width == width) && (data_height == height)
-                        && ((data_lastframe - data_firstframe + 1) == frames);
+                boolean DataOK = (data_width == width) && (data_height == height) &&
+                        ((data_lastframe - data_firstframe + 1) == frames);
 
                 if (!DataOK) {
                     IJ.log("Experimental data does not match the dimensions of current image stack.");
                     return;
                 }
-                if (!$fileName
-                        .equals($loadfile.substring($loadfile.lastIndexOf(File.separator) + 1, $loadfile.length()))) {
+                if (!$fileName.equals(
+                        $loadfile.substring($loadfile.lastIndexOf(File.separator) + 1, $loadfile.length()))) {
                     GenericDialog gd = new GenericDialog("File name discrepancy");
                     gd.addMessage("Name of selected file does not correspond to original filename.");
                     gd.addMessage("Do you wish to proceed?");
@@ -8467,7 +8530,7 @@ public class Imaging_FCS implements PlugIn {
                 }
 
                 if (reconpara.get(14) == 1 && plotACFCurves) { // if parameter window is open and plot ACF is enabled
-                                                               // then plot also the fits
+                    // then plot also the fits
                     plotCF(impRoi1, reconpara.get(17), false, recalculatefits); // get the cormode from the file
                 }
             }
@@ -8779,7 +8842,11 @@ public class Imaging_FCS implements PlugIn {
 
         @Override
         protected Void doInBackground() throws Exception {
+            long startTime = System.nanoTime(); // Start the timer
             correlateROI(currentROI);
+            long endTime = System.nanoTime();   // End the timer
+            long durationInMillis = TimeUnit.NANOSECONDS.toMillis(endTime - startTime); // Convert to milliseconds
+            IJ.log("correlateROI method took: " + durationInMillis + " ms");
             return null;
         }
 
@@ -8922,7 +8989,7 @@ public class Imaging_FCS implements PlugIn {
      * public void initializedCCF(int a, int b, int c): initializes array for dCCF
      * with NaN and closes dCCF windows and histograms if they exist
      * public void setDLparameters(): set the parametesr for the diffusion law
-     * public void performCFE(int px, int py): performs correlation and fit on a
+     * public void performCorrelationFunctionEvaluation(int px, int py): performs correlation and fit on a
      * particular pixel as chosen by coordinates in the panel, mouse click, or key
      * events
      * public void performNB(ImagePlus tmpip): performs N&B analysis
@@ -8955,7 +9022,7 @@ public class Imaging_FCS implements PlugIn {
     public void obtainImage() {
 
         if (impwin != null && !impwin.isClosed()) { // remove listeners and overlays from image window if a previous one
-                                                    // existed
+            // existed
             if (imp.getOverlay() != null) {
                 imp.deleteRoi();
                 imp.getOverlay().clear();
@@ -9004,7 +9071,7 @@ public class Imaging_FCS implements PlugIn {
                 .equals(JBackgroundSubtractionComponentObj.$BGFfileLoaded)) {
             if (width != bgrw || height != bgrh || frames != bgrf) {
                 if (impwin != null && !impwin.isClosed()) { // remove listeners and overlays from image window if a
-                                                            // previous one existed
+                    // previous one existed
                     if (imp.getOverlay() != null) {
                         imp.deleteRoi();
                         imp.getOverlay().clear();
@@ -9020,7 +9087,7 @@ public class Imaging_FCS implements PlugIn {
             impmin = 0;
         } else {
             impmin = minDetermination(imp); // calculate the minimum of the image imsPVideoNDave; this will be used as
-                                            // the default background value
+            // the default background value
         }
 
         // set position of image window
@@ -9029,7 +9096,7 @@ public class Imaging_FCS implements PlugIn {
         // enlarge image to better see pixels
         if (width >= height) {
             scimp = zoomFactor / width; // adjustable: zoomFactor is by default 250 (see parameter definitions), a value
-                                        // chosen as it produces a good size on the screen
+            // chosen as it produces a good size on the screen
         } else {
             scimp = zoomFactor / height;
         }
@@ -9072,8 +9139,8 @@ public class Imaging_FCS implements PlugIn {
         // example in plotCF function, cormode 2, fitacf array
         String $bcmode = (String) cbBleachCor.getSelectedItem();
         if ("Sliding Window".equals($bcmode)) {
-            lagnum = (int) Math
-                    .floor((Math.log(slidingWindowLength / (swMinFrameReq + correlatorp)) + 1) / Math.log(2));
+            lagnum =
+                    (int) Math.floor((Math.log(slidingWindowLength / (swMinFrameReq + correlatorp)) + 1) / Math.log(2));
             if (lagnum < correlatorq) { // allow smaller correlatorq values as minimum but not larger
                 correlatorq = lagnum;
                 tfCorrelatorQ.setText(Integer.toString(lagnum));
@@ -9186,9 +9253,9 @@ public class Imaging_FCS implements PlugIn {
         boolean resetResults = false; // whether Result arrays need to be reset
         boolean proceed = true; // whether program should proceed resetting the Results
         boolean onlySigmaOrBinChanged = true; // whether sigma0 is the only parameter changed in the panel - PSF
-                                              // calibration is not reset in that case
+        // calibration is not reset in that case
         boolean onlyBinChanged = true; // whether binning is the only parameter changed in the panel - diff law is not
-                                       // reset in that case
+        // reset in that case
         String[] newPanelSettings = new String[noSettings]; // an array to temporarily hold the settings from the Panel
         recalculatefits = true;
 
@@ -9320,8 +9387,8 @@ public class Imaging_FCS implements PlugIn {
 
             // check parameter settings
             // check that numbers are not out of bounds and make sense
-            if (firstframe < 1 || firstframe > frames || lastframe < 1 || lastframe > frames
-                    || firstframe >= lastframe) {
+            if (firstframe < 1 || firstframe > frames || lastframe < 1 || lastframe > frames ||
+                    firstframe >= lastframe) {
                 JOptionPane.showMessageDialog(null, "Frames set incorrectly");
                 return false;
             }
@@ -9345,24 +9412,23 @@ public class Imaging_FCS implements PlugIn {
 
             // check that pixel values are within image
             if (checkroi) {
-                if ((cfXDistance < 0 && Math.ceil((double) roi1StartX / pixbinX) * pixbinX < cfXDistance * (-1))
-                        || (cfYDistance < 0
-                                && Math.ceil((double) roi1StartY / pixbinY) * pixbinY < cfYDistance * (-1))) {
+                if ((cfXDistance < 0 && Math.ceil((double) roi1StartX / pixbinX) * pixbinX < cfXDistance * (-1)) ||
+                        (cfYDistance < 0 && Math.ceil((double) roi1StartY / pixbinY) * pixbinY < cfYDistance * (-1))) {
                     JOptionPane.showMessageDialog(null, "Correlation points are not within image.");
                     return false;
                 }
 
-                if ((cfXDistance >= 0 && Math.floor(((double) roi1StartX + roi1WidthX - binningX) / pixbinX) * pixbinX
-                        + cfXDistance > width - binningX)
-                        || (cfYDistance >= 0
-                                && Math.floor(((double) roi1StartY + roi1HeightY - binningY) / pixbinY) * pixbinY
-                                        + cfYDistance > height - binningY)) {
+                if ((cfXDistance >= 0 &&
+                        Math.floor(((double) roi1StartX + roi1WidthX - binningX) / pixbinX) * pixbinX + cfXDistance >
+                                width - binningX) || (cfYDistance >= 0 &&
+                        Math.floor(((double) roi1StartY + roi1HeightY - binningY) / pixbinY) * pixbinY + cfYDistance >
+                                height - binningY)) {
                     JOptionPane.showMessageDialog(null, "Correlation points are not within image.");
                     return false;
                 }
 
                 if (cbFitModel.getSelectedItem() == "DC-FCCS (2D)") { // this applies only for dual-color
-                                                                      // cross-correlations
+                    // cross-correlations
                     // check that the correlation areas don't overlap
                     if (Math.abs(cfXDistance) < roi1WidthX && Math.abs(cfYDistance) < roi1HeightY) {
                         JOptionPane.showMessageDialog(null, "Cross-correlation areas overlap.");
@@ -9373,7 +9439,7 @@ public class Imaging_FCS implements PlugIn {
 
             if (cfXDistance % pixbinX != 0) {
                 IJ.log("Warning: CF distance is not a multiple of pixel bin.");// TODO set conditions how often it is
-                                                                               // shown
+                // shown
             }
 
             // check that background1 value is sensible
@@ -9404,12 +9470,12 @@ public class Imaging_FCS implements PlugIn {
 
             // check whether there are enough frames for the correlation and give a warning
             // if there are less than minFrameReq frames for the last correlation kcf
-            if ((lastframe - firstframe + 1 - Math.pow(2, correlatorq - 1) * correlatorp / 2
-                    - correlatorp / 4 * Math.pow(2, correlatorq)) / Math.pow(2, correlatorq - 1) < 1) {
+            if ((lastframe - firstframe + 1 - Math.pow(2, correlatorq - 1) * correlatorp / 2 -
+                    correlatorp / 4 * Math.pow(2, correlatorq)) / Math.pow(2, correlatorq - 1) < 1) {
                 JOptionPane.showMessageDialog(null, "Not enough frames");
                 return false;
-            } else if ((lastframe - firstframe + 1 - Math.pow(2, correlatorq - 1) * correlatorp / 2
-                    - correlatorp / 4 * Math.pow(2, correlatorq)) / Math.pow(2, correlatorq - 1) < minFrameReq) {
+            } else if ((lastframe - firstframe + 1 - Math.pow(2, correlatorq - 1) * correlatorp / 2 -
+                    correlatorp / 4 * Math.pow(2, correlatorq)) / Math.pow(2, correlatorq - 1) < minFrameReq) {
                 // IJ.log("Warning: Less than " + minFrameReq + " data point for last
                 // correlation channel.");
             }
@@ -9421,11 +9487,11 @@ public class Imaging_FCS implements PlugIn {
             // if sliding window correction is needed then the correlator structure has to
             // be adapted to the smaller number of lagtimes
             int num; // total number of frames to be correlated; sliding window length or
-                     // lastframe-firstframe+1
+            // lastframe-firstframe+1
             String $bcmode = (String) cbBleachCor.getSelectedItem();
             if ("Sliding Window".equals($bcmode)) {
-                lagnum = (int) Math
-                        .floor((Math.log(slidingWindowLength / (swMinFrameReq + correlatorp)) + 1) / Math.log(2));
+                lagnum = (int) Math.floor(
+                        (Math.log(slidingWindowLength / (swMinFrameReq + correlatorp)) + 1) / Math.log(2));
                 if (lagnum < correlatorq) { // allow smaller correlatorq values as minimum but not larger
                     correlatorq = lagnum;
                     tfCorrelatorQ.setText(Integer.toString(lagnum));
@@ -9463,8 +9529,8 @@ public class Imaging_FCS implements PlugIn {
                 }
 
                 if (!onlyBinChanged && !expload) { // if other parameter than binning has been changed, reset diff. law
-                                                   // data and close diff. law window if it exists; but don't do
-                                                   // anything if htis is an experimetn load
+                    // data and close diff. law window if it exists; but don't do
+                    // anything if htis is an experimetn load
                     difflaw = new double[3][1];
                     difflawbin = 1;
                     if (difflawWindow != null && !difflawWindow.isClosed()) {
@@ -9485,7 +9551,7 @@ public class Imaging_FCS implements PlugIn {
                         diffLawFitLim[k] = 0;
                     }
                     if (!onlySigmaOrBinChanged) { // if other parameter than sigma or bin have been changed, reset PSF
-                                                  // data and close PSF window if it exists
+                        // data and close PSF window if it exists
                         psfData = new double[1][3][1];
                         psfmaxbin = 1;
                         numofpsf = 1;
@@ -9506,7 +9572,7 @@ public class Imaging_FCS implements PlugIn {
             lagtime = new double[chanum]; // lagtime = lag*frametime; this is the actual lagtime in seconds for each kcf
 
             for (int x = 0; x <= hbase; x++) { // calculate lag and lagtimes for the 0 lagtime kcf and the first 8
-                                               // channels
+                // channels
                 lag[x] = x;
                 lagtime[x] = lag[x] * frametime;
             }
@@ -9519,7 +9585,7 @@ public class Imaging_FCS implements PlugIn {
             }
 
             for (int x = 0; x <= base; x++) { // calculate sampletimes (bin width) for the 0 lagtime kcf and the first 8
-                                              // channels
+                // channels
                 samp[x] = 1;
             }
 
@@ -9538,8 +9604,8 @@ public class Imaging_FCS implements PlugIn {
 
             // set initial, maximum, and minimum cursor positions possible in the image
             if (cfXDistance >= 0) {
-                maxcposx = pixelWidthX - (int) Math
-                        .ceil(((double) cfXDistance - (width - (pixelWidthX * pixbinX + binningX))) / pixbinX);
+                maxcposx = pixelWidthX - (int) Math.ceil(
+                        ((double) cfXDistance - (width - (pixelWidthX * pixbinX + binningX))) / pixbinX);
                 mincposx = 0;
             } else {
                 maxcposx = pixelWidthX;
@@ -9547,8 +9613,8 @@ public class Imaging_FCS implements PlugIn {
             }
 
             if (cfYDistance >= 0) {
-                maxcposy = pixelHeightY - (int) Math
-                        .ceil(((double) cfYDistance - (height - (pixelHeightY * pixbinY + binningY))) / pixbinY);
+                maxcposy = pixelHeightY - (int) Math.ceil(
+                        ((double) cfYDistance - (height - (pixelHeightY * pixbinY + binningY))) / pixbinY);
                 mincposy = 0;
             } else {
                 maxcposy = pixelHeightY;
@@ -9712,8 +9778,8 @@ public class Imaging_FCS implements PlugIn {
         double c2;
 
         // in DC-FCCS imageType check that cross-correlation areas don't overlap
-        if (cbFitModel.getSelectedItem() == "DC-FCCS (2D)"
-                && (Math.abs(cfXDistance) < binningX && Math.abs(cfYDistance) < binningY)) {
+        if (cbFitModel.getSelectedItem() == "DC-FCCS (2D)" &&
+                (Math.abs(cfXDistance) < binningX && Math.abs(cfYDistance) < binningY)) {
             JOptionPane.showMessageDialog(null, "Cross-correlation areas overlap.");
         } else {
             if (px <= maxcposx && px >= mincposx && py <= maxcposy && py >= mincposy) {
@@ -9739,8 +9805,8 @@ public class Imaging_FCS implements PlugIn {
                     imp.setOverlay(impov);
                 }
 
-                if (cbFitModel.getSelectedItem() == "ITIR-FCS (2D)"
-                        || cbFitModel.getSelectedItem() == "SPIM-FCS (3D)") {
+                if (cbFitModel.getSelectedItem() == "ITIR-FCS (2D)" ||
+                        cbFitModel.getSelectedItem() == "SPIM-FCS (3D)") {
                     // calculate intensities and correlations for the point indicated in the control
                     // panel
                     // note that calcIntensityTrace() has to come before correlate() as this trace
@@ -9819,7 +9885,7 @@ public class Imaging_FCS implements PlugIn {
 
                         // calculate q value
                         if (isNormalizeQwithObsVol) { // normalize N with observation area for accurate q due to
-                                                      // chromatic aberration
+                            // chromatic aberration
                             q1 = (fitres[0][px][py][0] / fitobsvol) / (fitres[2][px][py][0] / fitobsvol3);
                             q2 = (fitres[1][px][py][0] / fitobsvol2) / (fitres[2][px][py][0] / fitobsvol3);
                         } else {
@@ -9937,7 +10003,7 @@ public class Imaging_FCS implements PlugIn {
             // Object to store some of input values for GPU calculations
             GpufitImFCS.ACFParameters GPUparams = new ACFParameters();
             IsGPUCalculationOK = GPU_Initialize_GPUparams(GPUparams, true, null); // TODO: Currently NnB runs on full
-                                                                                  // arrays
+            // arrays
 
             float[] pixels = new float[GPUparams.w_temp * GPUparams.h_temp * GPUparams.framediff];
             if (IsGPUCalculationOK) {
@@ -9975,12 +10041,12 @@ public class Imaging_FCS implements PlugIn {
                     for (int i = 0; i < GPUparams.width; i++) {
                         for (int j = 0; j < GPUparams.height; j++) {
                             if (filterArray[i][j] == filterArray[i][j]) {
-                                NBB[i][j] = (NBcovarianceGPU[j * GPUparams.width + i] - bgrCoVar[i][j])
-                                        / NBmeanGPU[j * GPUparams.width + i]; // B = (var -var0) / (mean - offset)
-                                NBN[i][j] = NBmeanGPU[j * GPUparams.width + i] * NBmeanGPU[j * GPUparams.width + i]
-                                        / (NBcovarianceGPU[j * GPUparams.width + i] - bgrCoVar[i][j]); // N= (mean -
-                                                                                                       // offset)^2/(var
-                                                                                                       // -var0)
+                                NBB[i][j] = (NBcovarianceGPU[j * GPUparams.width + i] - bgrCoVar[i][j]) /
+                                        NBmeanGPU[j * GPUparams.width + i]; // B = (var -var0) / (mean - offset)
+                                NBN[i][j] = NBmeanGPU[j * GPUparams.width + i] * NBmeanGPU[j * GPUparams.width + i] /
+                                        (NBcovarianceGPU[j * GPUparams.width + i] - bgrCoVar[i][j]); // N= (mean -
+                                // offset)^2/(var
+                                // -var0)
                             } else {
                                 NBB[i][j] = Float.NaN;
                                 NBN[i][j] = Float.NaN;
@@ -10005,7 +10071,8 @@ public class Imaging_FCS implements PlugIn {
 
         if (!IsGPUCalculationOK) {
             System.out.println(
-                    "An error was encountered while performing calculations on GPU. Calculations will be done on CPU instead.");
+                    "An error was encountered while performing calculations on GPU. Calculations will be done on CPU " +
+                            "instead.");
         }
 
         // CPU calculations
@@ -10034,7 +10101,7 @@ public class Imaging_FCS implements PlugIn {
                 }
 
                 for (int i = 0; i < x; i++) { // caluclate mean and variance: E(x) = Sum(x)/(n-1), E(x*x') =
-                                              // Sum(x*x')/(n-1) and coVar = E(x*x') - E(x)E(x')
+                    // Sum(x*x')/(n-1) and coVar = E(x*x') - E(x)E(x')
                     for (int j = 0; j < y; j++) {
                         mean[i][j] /= (z - 1);
                         mean2[i][j] /= (z - 1);
@@ -10130,7 +10197,7 @@ public class Imaging_FCS implements PlugIn {
 
         if ($mode.equals("evaluation")) {
             impN.show();
-            IJ.run(impN, "Cyan Hot", ""); // apply LUT
+            ApplyCustomLUT.applyCustomLUT(impN, "Cyan Hot");
             IJ.run(impN, "Enhance Contrast", "saturated=0.35"); // enhance contrast
             impNWin = impN.getWindow();
             impNWin.setLocation(NPosX, NPosY);
@@ -10138,7 +10205,7 @@ public class Imaging_FCS implements PlugIn {
             IJ.run("In [+]", ""); // This needs to be used since ImageJ 1.48v to set the window to the right size;
 
             impB.show();
-            IJ.run(impB, "Yellow Hot", ""); // apply LUT
+            ApplyCustomLUT.applyCustomLUT(impB, "Yellow Hot");
             IJ.run(impB, "Enhance Contrast", "saturated=0.35"); // enhance contrast
             impBWin = impB.getWindow();
             impBWin.setLocation(BPosX, BPosY);
@@ -10159,21 +10226,21 @@ public class Imaging_FCS implements PlugIn {
                 }
 
                 impNum.show();
-                IJ.run(impNum, "Cyan Hot", ""); // apply LUT
+                ApplyCustomLUT.applyCustomLUT(impNum, "Cyan Hot");
                 IJ.run(impNum, "Enhance Contrast", "saturated=0.35"); // enhance contrast
                 impNumWin = impNum.getWindow();
                 impNumWin.setLocation(NumPosX, NumPosY);
                 IJ.run(impNum, "Set... ", "zoom=" + scimp + " x=" + 0 + " y=" + 0); // then zoom to fit within
-                                                                                    // application
+                // application
                 IJ.run("In [+]", ""); // This needs to be used since ImageJ 1.48v to set the window to the right size;
 
                 impEps.show();
-                IJ.run(impEps, "Yellow Hot", ""); // apply LUT
+                ApplyCustomLUT.applyCustomLUT(impEps, "Yellow Hot");
                 IJ.run(impEps, "Enhance Contrast", "saturated=0.35"); // enhance contrast
                 impEpsWin = impEps.getWindow();
                 impEpsWin.setLocation(EpsPosX, EpsPosY);
                 IJ.run(impEps, "Set... ", "zoom=" + scimp + " x=" + 0 + " y=" + 0); // then zoom to fit within
-                                                                                    // application
+                // application
                 IJ.run("In [+]", ""); // This needs to be used since ImageJ 1.48v to set the window to the right size;
             }
         }
@@ -10325,11 +10392,20 @@ public class Imaging_FCS implements PlugIn {
         // minval and maxval are determined inthe calling program
         // numofpsf determines how many theoretical values were assumed for the PSF
         // calcualtion
-        double[] labelPosX = { 0.1, 0.25, 0.4, 0.55, 0.7, 0.1, 0.25, 0.4, 0.55, 0.7 };
-        double[] labelPosY = { 0.8, 0.8, 0.8, 0.8, 0.8, 0.95, 0.95, 0.95, 0.95, 0.95 };
-        java.awt.Color[] colors = { java.awt.Color.BLUE, java.awt.Color.CYAN, java.awt.Color.GREEN,
-                java.awt.Color.ORANGE, java.awt.Color.PINK, java.awt.Color.MAGENTA, java.awt.Color.RED,
-                java.awt.Color.LIGHT_GRAY, java.awt.Color.GRAY, java.awt.Color.BLACK };
+        double[] labelPosX = {0.1, 0.25, 0.4, 0.55, 0.7, 0.1, 0.25, 0.4, 0.55, 0.7};
+        double[] labelPosY = {0.8, 0.8, 0.8, 0.8, 0.8, 0.95, 0.95, 0.95, 0.95, 0.95};
+        java.awt.Color[] colors = {
+                java.awt.Color.BLUE,
+                java.awt.Color.CYAN,
+                java.awt.Color.GREEN,
+                java.awt.Color.ORANGE,
+                java.awt.Color.PINK,
+                java.awt.Color.MAGENTA,
+                java.awt.Color.RED,
+                java.awt.Color.LIGHT_GRAY,
+                java.awt.Color.GRAY,
+                java.awt.Color.BLACK
+        };
         Plot plot = new Plot($PSFWindowTitle, "binning", "D [um2/s]");
         plot.setFrameSize(PSFWindowDimX, PSFWindowDimY);
         plot.setLimits(0, psfData[0][0][psfmaxbin - 1] * 1.1, minval * 0.9, maxval * 1.1);
@@ -10371,8 +10447,8 @@ public class Imaging_FCS implements PlugIn {
             for (int u = 1; u <= difflawbin; u++) { // convert the fitted D into the diffusion law plot
                 difflaw[0][u - 1] = results[0][0][0][u - 1];
                 difflaw[1][u - 1] = results[0][0][0][u - 1] / results[0][0][1][u - 1];
-                difflaw[2][u - 1] = results[0][0][0][u - 1] / Math.pow(results[0][0][1][u - 1], 2)
-                        * Math.sqrt(results[0][0][2][u - 1]);
+                difflaw[2][u - 1] = results[0][0][0][u - 1] / Math.pow(results[0][0][1][u - 1], 2) *
+                        Math.sqrt(results[0][0][2][u - 1]);
                 if (difflaw[1][u - 1] + difflaw[2][u - 1] > maxvalDL) {
                     maxvalDL = difflaw[1][u - 1] + difflaw[2][u - 1];
                 }
@@ -10392,8 +10468,8 @@ public class Imaging_FCS implements PlugIn {
                     for (int u = 1; u <= difflawbin; u++) { // convert the fitted D into the diffusion law plot
                         difflawarray[i][j][0][u - 1] = results[i][j][0][u - 1];
                         difflawarray[i][j][1][u - 1] = results[i][j][0][u - 1] / results[i][j][1][u - 1];
-                        difflawarray[i][j][2][u - 1] = results[i][j][0][u - 1] / Math.pow(results[i][j][1][u - 1], 2)
-                                * Math.sqrt(results[i][j][2][u - 1]);
+                        difflawarray[i][j][2][u - 1] = results[i][j][0][u - 1] / Math.pow(results[i][j][1][u - 1], 2) *
+                                Math.sqrt(results[i][j][2][u - 1]);
                         if (difflawarray[i][j][1][u - 1] + difflawarray[i][j][2][u - 1] > maxvalDL) {
                             maxvalDL = difflawarray[i][j][1][u - 1] + difflawarray[i][j][2][u - 1];
                         }
@@ -10451,8 +10527,9 @@ public class Imaging_FCS implements PlugIn {
         plotDiffLaw(difflaw, difflawbin, minvalDL, maxvalDL);
 
         Plot plot = difflawWindow.getPlot();
-        plot.addLabel(0.3, 0, Math.floor(difflawfit[0] * 100 + 0.5) / 100 + " + "
-                + Math.floor(difflawfit[1] * 100 + 0.5) / 100 + " * Aeff");
+        plot.addLabel(0.3, 0,
+                Math.floor(difflawfit[0] * 100 + 0.5) / 100 + " + " + Math.floor(difflawfit[1] * 100 + 0.5) / 100 +
+                        " * Aeff");
         plot.setColor(java.awt.Color.RED);
         plot.addPoints(fitfunc[0], fitfunc[1], Plot.LINE);
         plot.draw();
@@ -10508,10 +10585,10 @@ public class Imaging_FCS implements PlugIn {
         impDLMap.setSlice(2);
         IJ.run("Set Label...", "label=" + "slope");
 
-        IJ.run(impDLMap, "Red Hot", ""); // apply "Fire" LUT
+        ApplyCustomLUT.applyCustomLUT(impDLMap, "Red Hot");
         IJ.run(impDLMap, "Original Scale", ""); // first set image to original scale
-        IJ.run(impDLMap, "Set... ", "zoom=" + scimp + " x=" + (int) Math.floor(diffLawMapwidth / 2) + " y="
-                + (int) Math.floor(diffLawMapheight / 2)); // then zoom to fit within application
+        IJ.run(impDLMap, "Set... ", "zoom=" + scimp + " x=" + (int) Math.floor(diffLawMapwidth / 2) + " y=" +
+                (int) Math.floor(diffLawMapheight / 2)); // then zoom to fit within application
         IJ.run("In [+]", ""); // This needs to be used since ImageJ 1.48v to set the window to the right size;
         // this might be a bug and is an ad hoc solution for the moment; before only the
         // "Set" command was necessary
@@ -10520,7 +10597,7 @@ public class Imaging_FCS implements PlugIn {
         IJ.run(impDLMap, "Enhance Contrast", "saturated=0.35"); // autoscaling the contrast for slice 1
 
         Component[] impDLMapcomp = impDLMapWin.getComponents(); // check which component is the scrollbar and add an
-                                                                // AdjustmentListener
+        // AdjustmentListener
         ScrollbarWithLabel impDLMapscrollbar;
         for (int i = 0; i < impDLMapcomp.length; i++) {
             if (impDLMapcomp[i] instanceof ScrollbarWithLabel) {
@@ -10586,8 +10663,8 @@ public class Imaging_FCS implements PlugIn {
             plotDiffLaw(difflawarray[cpx][cpy], difflawmapbin, minvalDL, maxvalDL);
 
             Plot plot = difflawWindow.getPlot();
-            plot.addLabel(0.3, 0, Math.floor(diffLawFitMap[cpx][cpy][0] * 100 + 0.5) / 100 + " + "
-                    + Math.floor(diffLawFitMap[cpx][cpy][1] * 100 + 0.5) / 100 + " * Aeff");
+            plot.addLabel(0.3, 0, Math.floor(diffLawFitMap[cpx][cpy][0] * 100 + 0.5) / 100 + " + " +
+                    Math.floor(diffLawFitMap[cpx][cpy][1] * 100 + 0.5) / 100 + " * Aeff");
             plot.setColor(java.awt.Color.RED);
             plot.addPoints(fitfunc[0], fitfunc[1], Plot.LINE);
             plot.draw();
@@ -10628,7 +10705,8 @@ public class Imaging_FCS implements PlugIn {
 
         if (!IsGPUCalculationOK) {
             System.out.println(
-                    "An error was encountered while performing calculations on GPU. Calculations will be done on CPU instead.");
+                    "An error was encountered while performing calculations on GPU. Calculations will be done on CPU " +
+                            "instead.");
         }
 
         // CPU calculations
@@ -11031,8 +11109,8 @@ public class Imaging_FCS implements PlugIn {
                 case "N*(1-F2) vs D":
                     for (x = mincposx; x <= maxcposx; x++) {
                         for (y = mincposy; y <= maxcposy; y++) {
-                            scplot[0][x * (maxcposy - mincposy + 1) + y] = fitres[0][x][y][0]
-                                    * (1 - fitres[0][x][y][5]);
+                            scplot[0][x * (maxcposy - mincposy + 1) + y] =
+                                    fitres[0][x][y][0] * (1 - fitres[0][x][y][5]);
                             scplot[1][x * (maxcposy - mincposy + 1) + y] = fitres[0][x][y][1] * Math.pow(10, 12);
                             $xlabel = "D";
                             $ylabel = "N*(1-F2)";
@@ -11053,9 +11131,9 @@ public class Imaging_FCS implements PlugIn {
                     for (x = mincposx; x <= maxcposx; x++) {
                         for (y = mincposy; y <= maxcposy; y++) {
                             scplot[0][x * (maxcposy - mincposy + 1) + y] = fitres[0][x][y][1] * Math.pow(10, 12);
-                            scplot[1][x * (maxcposy - mincposy + 1) + y] = Math
-                                    .sqrt(Math.pow(fitres[0][x][y][2], 2) + Math.pow(fitres[0][x][y][3], 2))
-                                    * Math.pow(10, 6);
+                            scplot[1][x * (maxcposy - mincposy + 1) + y] =
+                                    Math.sqrt(Math.pow(fitres[0][x][y][2], 2) + Math.pow(fitres[0][x][y][3], 2)) *
+                                            Math.pow(10, 6);
                             $xlabel = "Sqrt(vx^2+vy^2)";
                             $ylabel = "D";
                         }
@@ -11065,9 +11143,9 @@ public class Imaging_FCS implements PlugIn {
                     for (x = mincposx; x <= maxcposx; x++) {
                         for (y = mincposy; y <= maxcposy; y++) {
                             scplot[0][x * (maxcposy - mincposy + 1) + y] = fitres[0][x][y][6] * Math.pow(10, 12);
-                            scplot[1][x * (maxcposy - mincposy + 1) + y] = Math
-                                    .sqrt(Math.pow(fitres[0][x][y][2], 2) + Math.pow(fitres[0][x][y][3], 2))
-                                    * Math.pow(10, 6);
+                            scplot[1][x * (maxcposy - mincposy + 1) + y] =
+                                    Math.sqrt(Math.pow(fitres[0][x][y][2], 2) + Math.pow(fitres[0][x][y][3], 2)) *
+                                            Math.pow(10, 6);
                             $xlabel = "Sqrt(vx^2+vy^2)";
                             $ylabel = "D2";
                         }
@@ -11231,11 +11309,11 @@ public class Imaging_FCS implements PlugIn {
         // dw, dh are width and height for the window to be plotted
         // the strings are the title for the image and histograms
         if (impDCCFWin[mode] != null && !impDCCFWin[mode].isClosed()) { // close DCCF window for the given direction if
-                                                                        // it exists
+            // it exists
             impDCCFWin[mode].close();
         }
         if (histDCCFWin[mode] != null && !histDCCFWin[mode].isClosed()) { // close dCCF historgram window for the given
-                                                                          // direction if it exists
+            // direction if it exists
             histDCCFWin[mode].close();
         }
 
@@ -11253,8 +11331,8 @@ public class Imaging_FCS implements PlugIn {
         IJ.run(impDCCF, "Original Scale", ""); // first set image to original scale
         IJ.run(impDCCF, "Set... ",
                 "zoom=" + scimp + " x=" + (int) Math.floor(dw / 2) + " y=" + (int) Math.floor(dh / 2)); // then zoom to
-                                                                                                        // fit within
-                                                                                                        // application
+        // fit within
+        // application
         IJ.run("In [+]", ""); // This needs to be used since ImageJ 1.48v to set the window to the right size;
         // this might be a bug and is an ad hoc solution for the moment; before only the
         // "Set" command was necessary
@@ -11315,15 +11393,15 @@ public class Imaging_FCS implements PlugIn {
             initiateROIparameters();
             intensityFiltering();
 
-            if ((!JBackgroundSubtractionComponentObj.rbtnIsSubtractionAfterBleachCorrection.isSelected()
-                    && JBackgroundSubtractionComponentObj.selectedMode == modeBGR.modeBGREnum.CONSTANT_BACKGROUND)
-                    || (!JBackgroundSubtractionComponentObj.rbtnIsSubtractionAfterBleachCorrection.isSelected()
-                            && JBackgroundSubtractionComponentObj.selectedMode == modeBGR.modeBGREnum.LOAD_BGR_IMAGE)) {
+            if ((!JBackgroundSubtractionComponentObj.rbtnIsSubtractionAfterBleachCorrection.isSelected() &&
+                    JBackgroundSubtractionComponentObj.selectedMode == modeBGR.modeBGREnum.CONSTANT_BACKGROUND) ||
+                    (!JBackgroundSubtractionComponentObj.rbtnIsSubtractionAfterBleachCorrection.isSelected() &&
+                            JBackgroundSubtractionComponentObj.selectedMode == modeBGR.modeBGREnum.LOAD_BGR_IMAGE)) {
                 // run this version for Constant background subtraction AND subtraction occur
                 // before applying bleach correction (essentially what is implemented in
                 // Imaging_FCS_1_52 and Imaging_FCS_1_61)
                 CPU_Loop_Ver1(); // Current working version; do not alter anything under this imageType; extra
-                                 // changes made for Imaging_FCS (CPU imageType) can be found in CPU_Loop_Ver2().
+                // changes made for Imaging_FCS (CPU imageType) can be found in CPU_Loop_Ver2().
             } else {
                 CPU_Loop_Ver2();
             }
@@ -11359,11 +11437,11 @@ public class Imaging_FCS implements PlugIn {
                             for (int x3 = firstframe; x3 <= lastframe; x3++) {
                                 for (int x4 = 0; x4 < binningX; x4++) {
                                     for (int x5 = 0; x5 < binningY; x5++) {
-                                        if (improi.contains(x1, x2) && improi.contains(x1, x2 + binningY - 1)
-                                                && improi.contains(x1 + binningX - 1, x2)
-                                                && improi.contains(x1 + binningX - 1, x2 + binningY - 1)) {
-                                            filterArray[x1][x2] += imp.getStack().getProcessor(x3).get(x1 + x4,
-                                                    x2 + x5);
+                                        if (improi.contains(x1, x2) && improi.contains(x1, x2 + binningY - 1) &&
+                                                improi.contains(x1 + binningX - 1, x2) &&
+                                                improi.contains(x1 + binningX - 1, x2 + binningY - 1)) {
+                                            filterArray[x1][x2] +=
+                                                    imp.getStack().getProcessor(x3).get(x1 + x4, x2 + x5);
                                             pixcount++;
                                         } else {
                                             filterArray[x1][x2] = Float.NaN;
@@ -11379,11 +11457,11 @@ public class Imaging_FCS implements PlugIn {
                         for (int x2 = startY; x2 <= endY; x2 = x2 + pixbinY) {
                             for (int x3 = 0; x3 < binningX; x3++) {
                                 for (int x4 = 0; x4 < binningY; x4++) {
-                                    if (improi.contains(x1, x2) && improi.contains(x1, x2 + binningY - 1)
-                                            && improi.contains(x1 + binningX - 1, x2)
-                                            && improi.contains(x1 + binningX - 1, x2 + binningY - 1)) {
-                                        filterArray[x1][x2] += imp.getStack().getProcessor(firstframe).get(x1 + x3,
-                                                x2 + x4);
+                                    if (improi.contains(x1, x2) && improi.contains(x1, x2 + binningY - 1) &&
+                                            improi.contains(x1 + binningX - 1, x2) &&
+                                            improi.contains(x1 + binningX - 1, x2 + binningY - 1)) {
+                                        filterArray[x1][x2] +=
+                                                imp.getStack().getProcessor(firstframe).get(x1 + x3, x2 + x4);
                                         pixcount++;
                                     } else {
                                         filterArray[x1][x2] = Float.NaN;
@@ -11398,11 +11476,11 @@ public class Imaging_FCS implements PlugIn {
                     for (int x2 = startY; x2 <= endY; x2 = x2 + pixbinY) {
                         for (int x3 = 0; x3 < binningX; x3++) {
                             for (int x4 = 0; x4 < binningY; x4++) {
-                                if (improi.contains(x1, x2) && improi.contains(x1, x2 + binningY - 1)
-                                        && improi.contains(x1 + binningX - 1, x2)
-                                        && improi.contains(x1 + binningX - 1, x2 + binningY - 1)) {
-                                    filterArray[x1][x2] += imp.getStack().getProcessor(firstframe).get(x1 + x3,
-                                            x2 + x4);
+                                if (improi.contains(x1, x2) && improi.contains(x1, x2 + binningY - 1) &&
+                                        improi.contains(x1 + binningX - 1, x2) &&
+                                        improi.contains(x1 + binningX - 1, x2 + binningY - 1)) {
+                                    filterArray[x1][x2] +=
+                                            imp.getStack().getProcessor(firstframe).get(x1 + x3, x2 + x4);
                                     pixcount++;
                                 } else {
                                     filterArray[x1][x2] = Float.NaN;
@@ -11424,8 +11502,8 @@ public class Imaging_FCS implements PlugIn {
                     for (int x = startXmap; x <= endXmap; x++) {
                         for (int y = startYmap; y <= endYmap; y++) {
                             nofit++;
-                            if (filterArray[x * pixbinX][y * pixbinY] >= filterLL * binningX * binningY
-                                    && filterArray[x * pixbinX][y * pixbinY] <= filterUL * binningX * binningY) {
+                            if (filterArray[x * pixbinX][y * pixbinY] >= filterLL * binningX * binningY &&
+                                    filterArray[x * pixbinX][y * pixbinY] <= filterUL * binningX * binningY) {
                                 calcIntensityTrace(imp, x * pixbinX, y * pixbinY, x * pixbinX + cfXDistance,
                                         y * pixbinY + cfYDistance, firstframe, lastframe, true);
                                 correlate(imp, x * pixbinX, y * pixbinY, x * pixbinX + cfXDistance,
@@ -11457,8 +11535,8 @@ public class Imaging_FCS implements PlugIn {
                     prepareFit();
                     for (int x = startXmap; x <= endXmap; x++) {
                         for (int y = startYmap; y <= endYmap; y++) {
-                            if (filterArray[x * pixbinX][y * pixbinY] >= filterLL * binningX * binningY
-                                    && filterArray[x * pixbinX][y * pixbinY] <= filterUL * binningX * binningY) {
+                            if (filterArray[x * pixbinX][y * pixbinY] >= filterLL * binningX * binningY &&
+                                    filterArray[x * pixbinX][y * pixbinY] <= filterUL * binningX * binningY) {
                                 calcIntensityTrace(imp, x * pixbinX, y * pixbinY, x * pixbinX, y * pixbinY, firstframe,
                                         lastframe, true);
                                 correlate(imp, x * pixbinX, y * pixbinY, x * pixbinX, y * pixbinY, 0, firstframe,
@@ -11485,7 +11563,7 @@ public class Imaging_FCS implements PlugIn {
 
                             // calculate q value
                             if (isNormalizeQwithObsVol) { // normalize N with observation area for accurate q due to
-                                                          // chromatic aberration
+                                // chromatic aberration
                                 q1 = (fitres[0][x][y][0] / fitobsvol) / (fitres[2][x][y][0] / fitobsvol3);
                                 q2 = (fitres[1][x][y][0] / fitobsvol2) / (fitres[2][x][y][0] / fitobsvol3);
                             } else {
@@ -11545,19 +11623,20 @@ public class Imaging_FCS implements PlugIn {
             if (JBackgroundSubtractionComponentObj.rbtnIsSubtractionAfterBleachCorrection.isSelected()) {
                 ImagePlus impbleachcorrected; // 32-bit
                 ImagePlus impbleachcorrectedandsubtracted; // 32-bit //subtracted image imsPVideoNDave applied either
-                                                           // before or after bleach correction.
+                // before or after bleach correction.
 
                 // Create bleach corrected traces
                 // transformStackObj = new BleachCorrectionAndOtherTransformation(maxcposx -
                 // mincposx + 1, maxcposy - mincposy + 1, firstframe, lastframe, improi,
                 // startXmap, endXmap, startYmap, endYmap, true);
-                transformStackObj = new BleachCorrectionAndOtherTransformation(pixelWidthX + 1, pixelHeightY + 1,
-                        firstframe, lastframe, improi, startXmap, endXmap, startYmap, endYmap, true);
+                transformStackObj =
+                        new BleachCorrectionAndOtherTransformation(pixelWidthX + 1, pixelHeightY + 1, firstframe,
+                                lastframe, improi, startXmap, endXmap, startYmap, endYmap, true);
                 if (isTimeProcesses) {
                     timerObj5.tic();
                 }
                 impbleachcorrected = transformStackObj.runTransformation(); // runCPU bleach correction on the specified
-                                                                            // image region
+                // image region
                 if (isTimeProcesses) {
                     timerObj5.toc();
                     IJ.log("time bleach correct traces: " + timerObj5.getTimeMillis() + " ms");
@@ -11573,8 +11652,8 @@ public class Imaging_FCS implements PlugIn {
                 if (isTimeProcesses) {
                     timerObj6.tic();
                 }
-                impbleachcorrectedandsubtracted = backgroundOrOtherSubtractionMethods(impbleachcorrected,
-                        initialframeindex, finalframeindex);
+                impbleachcorrectedandsubtracted =
+                        backgroundOrOtherSubtractionMethods(impbleachcorrected, initialframeindex, finalframeindex);
                 if (isTimeProcesses) {
                     timerObj6.toc();
                     IJ.log("time background subtraction: " + timerObj6.getTimeMillis() + " ms");
@@ -11599,8 +11678,9 @@ public class Imaging_FCS implements PlugIn {
                 // transformStackObj = new BleachCorrectionAndOtherTransformation(maxcposx -
                 // mincposx + 1, maxcposy - mincposy + 1, firstframe, lastframe, improi,
                 // startXmap, endXmap, startYmap, endYmap, false);
-                transformStackObj = new BleachCorrectionAndOtherTransformation(pixelWidthX + 1, pixelHeightY + 1,
-                        firstframe, lastframe, improi, startXmap, endXmap, startYmap, endYmap, false);
+                transformStackObj =
+                        new BleachCorrectionAndOtherTransformation(pixelWidthX + 1, pixelHeightY + 1, firstframe,
+                                lastframe, improi, startXmap, endXmap, startYmap, endYmap, false);
                 if (isTimeProcesses) {
                     timerObj5.tic();
                 }
@@ -11686,8 +11766,8 @@ public class Imaging_FCS implements PlugIn {
                         if (istwocolor) {
                             for (int x = roi2xstart; x < roi2xend; x++) {
                                 for (int y = roi2ystart; y < roi2yend; y++) {
-                                    ip.putPixelValue(x, y, inputImages.getImageStack().getProcessor(z).get(x, y)
-                                            - background_correction2);
+                                    ip.putPixelValue(x, y, inputImages.getImageStack().getProcessor(z).get(x, y) -
+                                            background_correction2);
                                 }
                             }
                         }
@@ -11711,8 +11791,8 @@ public class Imaging_FCS implements PlugIn {
                         if (istwocolor) {
                             for (int x = roi2xstart; x < roi2xend; x++) {
                                 for (int y = roi2ystart; y < roi2yend; y++) {
-                                    ipf.putPixelValue(x, y, inputImages.getImageStack().getProcessor(z).getf(x, y)
-                                            - background_correction2);
+                                    ipf.putPixelValue(x, y, inputImages.getImageStack().getProcessor(z).getf(x, y) -
+                                            background_correction2);
                                 }
                             }
                         }
@@ -11912,7 +11992,7 @@ public class Imaging_FCS implements PlugIn {
         }
 
         private void loopAndCorrelate(ImagePlus inputImp, int initialframeindex, int finalframeindex,
-                boolean isDoBleachCorrection) {
+                                      boolean isDoBleachCorrection) {
             // IJ.log("inside loopAndCorrelate");
 
             // do the FCS or DC-FCCS evaluation
@@ -11922,8 +12002,8 @@ public class Imaging_FCS implements PlugIn {
                     for (int x = startXmap; x <= endXmap; x++) {
                         for (int y = startYmap; y <= endYmap; y++) {
                             nofit++;
-                            if (filterArray[x * pixbinX][y * pixbinY] >= filterLL * binningX * binningY
-                                    && filterArray[x * pixbinX][y * pixbinY] <= filterUL * binningX * binningY) {
+                            if (filterArray[x * pixbinX][y * pixbinY] >= filterLL * binningX * binningY &&
+                                    filterArray[x * pixbinX][y * pixbinY] <= filterUL * binningX * binningY) {
                                 calcIntensityTraceVer2(inputImp, x * pixbinX, y * pixbinY, x * pixbinX + cfXDistance,
                                         y * pixbinY + cfYDistance, initialframeindex, finalframeindex, true);
                                 correlateVer2(inputImp, x * pixbinX, y * pixbinY, x * pixbinX + cfXDistance,
@@ -11957,8 +12037,8 @@ public class Imaging_FCS implements PlugIn {
                     prepareFit();
                     for (int x = startXmap; x <= endXmap; x++) {
                         for (int y = startYmap; y <= endYmap; y++) {
-                            if (filterArray[x * pixbinX][y * pixbinY] >= filterLL * binningX * binningY
-                                    && filterArray[x * pixbinX][y * pixbinY] <= filterUL * binningX * binningY) {
+                            if (filterArray[x * pixbinX][y * pixbinY] >= filterLL * binningX * binningY &&
+                                    filterArray[x * pixbinX][y * pixbinY] <= filterUL * binningX * binningY) {
                                 calcIntensityTraceVer2(inputImp, x * pixbinX, y * pixbinY, x * pixbinX, y * pixbinY,
                                         initialframeindex, finalframeindex, true);
                                 correlateVer2(inputImp, x * pixbinX, y * pixbinY, x * pixbinX, y * pixbinY, 0,
@@ -11987,7 +12067,7 @@ public class Imaging_FCS implements PlugIn {
 
                             // calculate q value
                             if (isNormalizeQwithObsVol) { // normalize N with observation area for accurate q due to
-                                                          // chromatic aberration
+                                // chromatic aberration
                                 q1 = (fitres[0][x][y][0] / fitobsvol) / (fitres[2][x][y][0] / fitobsvol3);
                                 q2 = (fitres[1][x][y][0] / fitobsvol2) / (fitres[2][x][y][0] / fitobsvol3);
                             } else {
@@ -12051,7 +12131,7 @@ public class Imaging_FCS implements PlugIn {
                 }
 
                 if (cfXDistance != 0 || cfYDistance != 0) {// calculate and plot average trace 1 and 2 depending of
-                                                           // spatial CCF, DC-FCCS, or ACFs imageType
+                    // spatial CCF, DC-FCCS, or ACFs imageType
 
                     // Removed plotting: very time consuming
                     if (plotAverageTrace) {
@@ -12090,7 +12170,7 @@ public class Imaging_FCS implements PlugIn {
         // Other background or subtraction methods: CONSTANT_BACKGROUND,
         // MIN_FRAME_BY_FRAME, MIN_PER_IMAGESTACK, MIN_PIXELWISE_PER_IMAGASTACK
         private double getMinAcrossStacks(ImagePlus image, int firstframe, int lastframe, int xs, int xe, int ys,
-                int ye) {
+                                          int ye) {
             double min;
             int xstart, xend, ystart, yend;
 
@@ -12127,7 +12207,7 @@ public class Imaging_FCS implements PlugIn {
         }
 
         private void getMinFrameByFrame(double[] min, ImagePlus image, int firstframe, int lastframe, int xs, int xe,
-                int ys, int ye) {
+                                        int ys, int ye) {
             // double[] min: contains minimum number for each frame be it before (16-bit) or
             // after bleach correction (32-bit)
 
@@ -12203,7 +12283,7 @@ public class Imaging_FCS implements PlugIn {
 
     // correlate one pixel with itself or two pixels with each other
     public void correlate(ImagePlus image, int px1, int py1, int px2, int py2, int kcf, int initialframe,
-            int finalframe) {
+                          int finalframe) {
         // image: the imp to be used
         // px1, py1, px2, py2: pixel cooredinates for pixel 1 and pixel 2 which are to
         // be correalted
@@ -12214,14 +12294,14 @@ public class Imaging_FCS implements PlugIn {
         int num = (finalframe - initialframe + 1); // total number of frames to be correlated
         int numofsw; // number of sliding windows
         int swinitialframe; // if sliding window (bleach) correction is selected these are the initial and
-                            // final frames of the sub-windows
+        // final frames of the sub-windows
         int swfinalframe;
         int pxm1; // pixel coordinates on the binned grid used to store the output and map it to
-                  // the parameter map
+        // the parameter map
         int pym1;
 
         if (kcf == 1 && px1 == px2 && py1 == py2) { // if red kcf in the DC-FCCS imageType, map the output to the
-                                                    // corresponding green-kcf pixels on the binned grid
+            // corresponding green-kcf pixels on the binned grid
             pxm1 = (int) (px1 - cfXDistance) / pixbinX;
             pym1 = (int) (py1 - cfYDistance) / pixbinY;
         } else { // otherwise map to the pixel on the pixel on the binned grid
@@ -12239,7 +12319,7 @@ public class Imaging_FCS implements PlugIn {
                 sdacf[kcf][pxm1][pym1][x] = 0;
             }
             for (int i = 0; i < numofsw; i++) { // loop over the number of sliding windows to calculate the correlations
-                                                // of the sub-intervals of the intensity trace
+                // of the sub-intervals of the intensity trace
                 swinitialframe = i * slidingWindowLength + initialframe;
                 swfinalframe = (i + 1) * slidingWindowLength + initialframe - 1;
 
@@ -12296,11 +12376,12 @@ public class Imaging_FCS implements PlugIn {
         // calculate MSD if switched on
         if (doMSD) {
             if (!MSDmode) { // 2D if MSDmode is false, otherwise 3D
-                msd[kcf][pxm1][pym1] = correlationToMSD(acf[kcf][pxm1][pym1], pixeldimx * Math.pow(10, 6),
-                        psfsize * Math.pow(10, 6));
+                msd[kcf][pxm1][pym1] =
+                        correlationToMSD(acf[kcf][pxm1][pym1], pixeldimx * Math.pow(10, 6), psfsize * Math.pow(10, 6));
             } else {
-                msd[kcf][pxm1][pym1] = correlationToMSD3D(acf[kcf][pxm1][pym1], pixeldimx * Math.pow(10, 6),
-                        psfsize * Math.pow(10, 6), lsthickness * Math.pow(10, 6));
+                msd[kcf][pxm1][pym1] =
+                        correlationToMSD3D(acf[kcf][pxm1][pym1], pixeldimx * Math.pow(10, 6), psfsize * Math.pow(10, 6),
+                                lsthickness * Math.pow(10, 6));
             }
         }
     }
@@ -12308,7 +12389,7 @@ public class Imaging_FCS implements PlugIn {
     // correlate one pixel with itself or two pixels with each other (Version 2:
     // accepts raw imp or bleach corrected imp)
     public void correlateVer2(ImagePlus image, int px1, int py1, int px2, int py2, int kcf, int initialframe,
-            int finalframe, boolean isDoBleachCorrection) {
+                              int finalframe, boolean isDoBleachCorrection) {
         // image: the imp to be used
         // px1, py1, px2, py2: pixel cooredinates for pixel 1 and pixel 2 which are to
         // be correalted
@@ -12319,10 +12400,10 @@ public class Imaging_FCS implements PlugIn {
         int num = (finalframe - initialframe + 1); // total number of frames to be correlated
         int numofsw; // number of sliding windows
         int swinitialframe; // if sliding window (bleach) correction is selected these are the initial and
-                            // final frames of the sub-windows
+        // final frames of the sub-windows
         int swfinalframe;
         int pxm1; // pixel coordinates on the binned grid used to store the output and map it to
-                  // the parameter map
+        // the parameter map
         int pym1;
         int ipx1, ipy1, ipx2, ipy2;
 
@@ -12359,7 +12440,7 @@ public class Imaging_FCS implements PlugIn {
                 sdacf[kcf][pxm1][pym1][x] = 0;
             }
             for (int i = 0; i < numofsw; i++) { // loop over the number of sliding windows to calculate the correlations
-                                                // of the sub-intervals of the intensity trace
+                // of the sub-intervals of the intensity trace
                 swinitialframe = i * slidingWindowLength + initialframe;
                 swfinalframe = (i + 1) * slidingWindowLength + initialframe - 1;
                 // getIntensity for first pixel; performs a bleach correction if indicated in the panel
@@ -12416,11 +12497,12 @@ public class Imaging_FCS implements PlugIn {
         // calculate MSD if switched on
         if (doMSD) {
             if (!MSDmode) { // 2D if MSDmode is false, otherwise 3D
-                msd[kcf][pxm1][pym1] = correlationToMSD(acf[kcf][pxm1][pym1], pixeldimx * Math.pow(10, 6),
-                        psfsize * Math.pow(10, 6));
+                msd[kcf][pxm1][pym1] =
+                        correlationToMSD(acf[kcf][pxm1][pym1], pixeldimx * Math.pow(10, 6), psfsize * Math.pow(10, 6));
             } else {
-                msd[kcf][pxm1][pym1] = correlationToMSD3D(acf[kcf][pxm1][pym1], pixeldimx * Math.pow(10, 6),
-                        psfsize * Math.pow(10, 6), lsthickness * Math.pow(10, 6));
+                msd[kcf][pxm1][pym1] =
+                        correlationToMSD3D(acf[kcf][pxm1][pym1], pixeldimx * Math.pow(10, 6), psfsize * Math.pow(10, 6),
+                                lsthickness * Math.pow(10, 6));
             }
         }
     }
@@ -12434,14 +12516,14 @@ public class Imaging_FCS implements PlugIn {
         // correlation
         int num = (finalframe - initialframe + 1); // total number of frames to be correlated
         int blockIndex; // index at which optimal blocking is reached; if it fails maximal blocking is
-                        // used
+        // used
 
         blockIndex = blockTransform(intcor, num, 1); // perform blocking on the first kcf to determine when intensity
-                                                     // bins are independent
+        // bins are independent
 
         Map result;
         result = calculateCF(intcor, num, blockIndex, 1); // perform optimal blocking and return the CF, SD and
-                                                          // covariance matrix
+        // covariance matrix
 
         return result;
     }
@@ -12460,9 +12542,9 @@ public class Imaging_FCS implements PlugIn {
         int currentIncrement;
         int crwin = 2; // 3 points that fit the error bar overlap criterion
         double sumprod = 0.0; // sum of all intensity products; divide by num to get the average
-                              // <i(n)i(n+del)>
+        // <i(n)i(n+del)>
         double sumprod2 = 0.0; // sum of all intensity products squared; divide by num to get the average
-                               // <(i(n)i(n+del))^2>
+        // <(i(n)i(n+del))^2>
         double directm = 0.0; // direct monitor required for ACF normalization
         double delayedm = 0.0; // delayed monitor required for ACF normalization
         double[][] intblock;
@@ -12474,7 +12556,7 @@ public class Imaging_FCS implements PlugIn {
         double[] blocksd;
         int[] crt;
         int[] cr12; // do neighbouring points have overlapping error bars; together with crwin=2
-                    // this tests for three points that have overlapping erro bars
+        // this tests for three points that have overlapping erro bars
         int[] cr3;
         int[] diffpos;
         int last0 = 0;
@@ -12501,7 +12583,7 @@ public class Imaging_FCS implements PlugIn {
         }
 
         currentIncrement = blocklag; // at the moment we always do blocking for smallest lag which is 1 but in
-                                     // general it can be used freely
+        // general it can be used freely
 
         for (int x = 1; x < chanum; x++) { // runCPU over all channels
             if (currentIncrement != samp[x]) { // check whether the kcf width has changed
@@ -12525,30 +12607,30 @@ public class Imaging_FCS implements PlugIn {
                 delayedm /= prodnum[0]; // i.e. the average intesity <n(0)> and <n(tau)>
 
                 for (int y = 0; y < prodnum[0]; y++) { // calculate the correlation
-                    prod[y] = intblock[0][y] * intblock[1][y + del] - delayedm * intblock[0][y]
-                            - directm * intblock[1][y + del] + delayedm * directm;
+                    prod[y] = intblock[0][y] * intblock[1][y + del] - delayedm * intblock[0][y] -
+                            directm * intblock[1][y + del] + delayedm * directm;
                     sumprod += prod[y]; // calculate the sum of prod, i.e. the raw correlation value ...
                     sumprod2 += Math.pow(prod[y], 2); // ... and the sum of the squares
                 }
 
                 varblock[0][0] = currentIncrement * frametime; // the time of the block curve
-                varblock[1][0] = (sumprod2 / prodnum[0] - Math.pow(sumprod / prodnum[0], 2))
-                        / (prodnum[0] * Math.pow(directm * delayedm, 2)); // value of the block curve
+                varblock[1][0] = (sumprod2 / prodnum[0] - Math.pow(sumprod / prodnum[0], 2)) /
+                        (prodnum[0] * Math.pow(directm * delayedm, 2)); // value of the block curve
 
                 for (int y = 1; y < blocknum; y++) { // perform blocking operations
                     prodnum[y] = (int) Math.floor(prodnum[y - 1] / 2); // the number of samples for the blocking curve
-                                                                       // decreases by a factor 2 with every step
+                    // decreases by a factor 2 with every step
                     sumprod = 0;
                     sumprod2 = 0;
                     for (int z = 0; z < prodnum[y]; z++) { // bin the correlation data and calculate the blocked values
-                                                           // for the SD
+                        // for the SD
                         prod[z] = (prod[2 * z] + prod[2 * z + 1]) / 2;
                         sumprod += prod[z];
                         sumprod2 += Math.pow(prod[z], 2);
                     }
                     varblock[0][y] = (currentIncrement * Math.pow(2, y)) * frametime; // the time of the block curve
-                    varblock[1][y] = (sumprod2 / prodnum[y] - Math.pow(sumprod / prodnum[y], 2))
-                            / (prodnum[y] * Math.pow(directm * delayedm, 2)); // value of the block curve
+                    varblock[1][y] = (sumprod2 / prodnum[y] - Math.pow(sumprod / prodnum[y], 2)) /
+                            (prodnum[y] * Math.pow(directm * delayedm, 2)); // value of the block curve
                 }
             }
         }
@@ -12586,7 +12668,7 @@ public class Imaging_FCS implements PlugIn {
         }
 
         for (int x = 0; x < blocknum - 2; x++) { // find the last triple of points with monotonically increasing
-                                                 // differences and non-overlapping error bars
+            // differences and non-overlapping error bars
             if ((cr3[x] == 1 && cr12[x] == 0)) {
                 last0 = x;
             }
@@ -12600,7 +12682,7 @@ public class Imaging_FCS implements PlugIn {
         cr12[blocknum - 4] = 0;
 
         for (int x = blocknum - 5; x > 0; x--) { // index of triplet with overlapping error bars and after which no
-                                                 // other triplet has a significant monotonic increase
+            // other triplet has a significant monotonic increase
             if (cr12[x] == 1) { // or 4 increasing points
                 ind = x + 1; // take the middle of the three points as the blocking limit
             }
@@ -12610,7 +12692,7 @@ public class Imaging_FCS implements PlugIn {
             blockIndS = 0;
             if (blocknum - 3 > 0) {
                 ind = blocknum - 3; // maximal blocking is performed for the 3rd last point in the blocking curve if
-                                    // that exists
+                // that exists
             } else {
                 ind = blocknum - 1;
             }
@@ -12685,8 +12767,8 @@ public class Imaging_FCS implements PlugIn {
         int binct;
 
         // minimum number of prodcuts given the used correlator structure and the blockIndex ind
-        int pnum = (int) Math
-                .floor(mtab[chanum - 1] / Math.pow(2, Math.max(ind - Math.log(samp[chanum - 1]) / Math.log(2), 0)));
+        int pnum = (int) Math.floor(
+                mtab[chanum - 1] / Math.pow(2, Math.max(ind - Math.log(samp[chanum - 1]) / Math.log(2), 0)));
         int[] prodnum = new int[chanum];
 
         // sum of all intensity products; divide by num to get the average <i(n)i(n+del)>
@@ -12723,7 +12805,7 @@ public class Imaging_FCS implements PlugIn {
 
         currentIncrement = 1; // at the moment we always do blocking for smallest lag
         blocksd[0] = 0; // we do not calcualte the SD for the 0 lagtime as it is not used for fitting
-                        // (shot noise)
+        // (shot noise)
 
         for (int x = 0; x < chanum; x++) { // runCPU over all channels except the 0 lag time
 
@@ -12739,21 +12821,21 @@ public class Imaging_FCS implements PlugIn {
 
             del = lag[x] / currentIncrement; // calculate the delay, i.e. the correlation time ...
             prodnum[x] = numbin - del; // and the number of products for that delay; //(int)
-                                       // (mtab[chanum-1]*(samp[chanum-1]/samp[x]));//IJ.log(Double.toString(prodnum[x]));
+            // (mtab[chanum-1]*(samp[chanum-1]/samp[x]));//IJ.log(Double.toString(prodnum[x]));
             for (int y = 0; y < prodnum[x]; y++) { // calculate the ...
                 directm[x] += intblock[0][y]; // direct and ...
                 delayedm[x] += intblock[1][y + del]; // delayed monitor
             }
             directm[x] /= prodnum[x]; // calculate average of direct and delayed monitor, i.e. the average intensity
-                                      // <n(0)> and <n(tau)>
+            // <n(0)> and <n(tau)>
             delayedm[x] /= prodnum[x];
 
             sumprod = 0;
             sumprod2 = 0;
 
             for (int y = 0; y < prodnum[x]; y++) { // calculate the correlation
-                prod[x][y] = intblock[0][y] * intblock[1][y + del] - delayedm[x] * intblock[0][y]
-                        - directm[x] * intblock[1][y + del] + delayedm[x] * directm[x];
+                prod[x][y] = intblock[0][y] * intblock[1][y + del] - delayedm[x] * intblock[0][y] -
+                        directm[x] * intblock[1][y + del] + delayedm[x] * directm[x];
                 sumprod += prod[x][y]; // calculate the sum of prod, i.e. the raw correlation value ...
                 sumprod2 += Math.pow(prod[x][y], 2); // ... and the sum of the squares
             }
@@ -12769,21 +12851,21 @@ public class Imaging_FCS implements PlugIn {
             for (int y = 1; y <= binct; y++) { // bin the data until block time is reached
                 prodnum[x] = (int) Math.floor(prodnum[x] / 2); // for each binning the number of data points is halfed
                 for (int z = 0; z < prodnum[x]; z++) { // do the binning and divide by 2 so that average value does not
-                                                       // change
+                    // change
                     prod[x][z] = (prod[x][2 * z] + prod[x][2 * z + 1]) / 2;
                 }
             }
 
             prodnum[x] = pnum; // use only the minimal number of products to achieve a symmetric variance
-                               // matrix
+            // matrix
             for (int z = 0; z < prodnum[x]; z++) {
                 sumprod += prod[x][z]; // calculate the sum of prod, i.e. the raw correlation value ...
                 sumprod2 += Math.pow(prod[x][z], 2); // ... and the sum of the squares
             }
 
-            blockvar[x] = (sumprod2 / prodnum[x] - Math.pow(sumprod / prodnum[x], 2))
-                    / ((prodnum[x] - 1) * Math.pow(directm[x] * delayedm[x], 2)); // variance after blocking; extra
-                                                                                  // division by prodnum to obtain SEM
+            blockvar[x] = (sumprod2 / prodnum[x] - Math.pow(sumprod / prodnum[x], 2)) /
+                    ((prodnum[x] - 1) * Math.pow(directm[x] * delayedm[x], 2)); // variance after blocking; extra
+            // division by prodnum to obtain SEM
             blocksd[x] = Math.sqrt(blockvar[x]); // standard deviation after blocking
         }
 
@@ -12801,8 +12883,8 @@ public class Imaging_FCS implements PlugIn {
             for (int x = 1; x < chanum; x++) {
                 for (int y = 1; y <= x; y++) { // calculate only the upper triangular part as the matrix is symmetric
                     for (int z = 0; z < pnum; z++) {
-                        covmat[x][y] += (prod[x][z] / (directm[x] * delayedm[x]) - mcov[x])
-                                * (prod[y][z] / (directm[y] * delayedm[y]) - mcov[y]);
+                        covmat[x][y] += (prod[x][z] / (directm[x] * delayedm[x]) - mcov[x]) *
+                                (prod[y][z] / (directm[y] * delayedm[y]) - mcov[y]);
                     }
                     covmat[x][y] /= (pnum - 1); // normalize by the number of products
                     covmat[y][x] = covmat[x][y]; // lower triangular part is equal to upper triangular part
@@ -12860,7 +12942,7 @@ public class Imaging_FCS implements PlugIn {
                     tmpnum *= (pnum) / Math.pow(pnum - 1, 3);
                     numerator += tmpnum;
                     denominator += Math.pow(cormat[x][y], 2); // sum of squares of off-diagonal elements of correlation
-                                                              // matrix
+                    // matrix
                 }
             }
             lamcov = Math.min(1, numerator / denominator); // shrinkage weight for the covariance
@@ -12905,7 +12987,7 @@ public class Imaging_FCS implements PlugIn {
 
         Map<String, Object> map = new HashMap<>();
         if (tbGLS.isSelected()) { // hand over either the correlation function corav or the actual function used
-                                  // to calcualte the covariance matrix; they differ only slightly
+            // to calcualte the covariance matrix; they differ only slightly
             map.put("corav", mcov);
         } else {
             map.put("corav", corav);
@@ -12961,7 +13043,7 @@ public class Imaging_FCS implements PlugIn {
                     int counter = 0;
                     // Fill CF
                     int kcf = 0; // Currently implemented only to store ACF and spatial ACF //TODO: expand to
-                                 // accomodate DC-FCCS
+                    // accomodate DC-FCCS
                     for (int c = 1; c < chanum; c++) {
                         ipf = new FloatProcessor(wx, hy);
                         for (int x = 0; x < wx; x++) {
@@ -12989,7 +13071,7 @@ public class Imaging_FCS implements PlugIn {
 
             ImagePlus impPVideoN = new ImagePlus($pvname + "N", imsPVideoN);
             impPVideoN.show();
-            IJ.run(impPVideoN, "Red Hot", ""); // apply "Fire" LUT
+            ApplyCustomLUT.applyCustomLUT(impPVideoN, "Red Hot");
             IJ.run(impPVideoN, "Original Scale", ""); // first set image to original scale
             //then zoom to fit within application
             IJ.run(impPVideoN, "Set... ",
@@ -12999,7 +13081,7 @@ public class Imaging_FCS implements PlugIn {
 
             ImagePlus impPVideoD = new ImagePlus($pvname + "D", imsPVideoD);
             impPVideoD.show();
-            IJ.run(impPVideoD, "Red Hot", ""); // apply "Fire" LUT
+            ApplyCustomLUT.applyCustomLUT(impPVideoD, "Red Hot");
             IJ.run(impPVideoD, "Original Scale", ""); // first set image to original scale
             //then zoom to fit within application
             IJ.run(impPVideoD, "Set... ",
@@ -13098,7 +13180,7 @@ public class Imaging_FCS implements PlugIn {
     // note that you should call calcIntensityTrace() before to obtain intTrace1 and
     // 2
     public double[] getIntensity(ImagePlus image, int px, int py, int mode, int initialframe, int finalframe,
-            boolean isDCsubtract) {
+                                 boolean isDCsubtract) {
         // image: imp form which intensity will be taken
         // px, py: coordinates of pixel within image
         // imageType: determines whether intensity for pixel 1 or pixel 2 is read, and
@@ -13123,7 +13205,7 @@ public class Imaging_FCS implements PlugIn {
         }
 
         for (int x = 1; x <= num; x++) { // read data from all relevant pixels, depending on the selected frames and
-                                         // binning
+            // binning
             for (int i = 0; i < binningX; i++) {
                 for (int k = 0; k < binningY; k++) {
                     if (bgrloaded) {
@@ -13136,45 +13218,44 @@ public class Imaging_FCS implements PlugIn {
         }
 
         String $bcmode = (String) cbBleachCor.getSelectedItem(); // perform single or double exponential bleach
-                                                                 // corrections if selected
+        // corrections if selected
 
         if ("Single Exp".equals($bcmode)) {
             SingleExpFit efit = new SingleExpFit();
             if (mode == 1) {
                 res = efit.doFit(intTrace1); // note that the bleach correction is performed on the averaged intensity
-                                             // traces to make it faster
+                // traces to make it faster
             } else { // while you may have 20,000 intensity points, intTrace1 and 2 contain only
-                     // 1,000 points
+                // 1,000 points
                 res = efit.doFit(intTrace2); // see definition in setParameters()
             }
             if (res[0] * res[1] != 0) { // correct the full intensity trace if the fit was succesful
                 for (int x = 1; x <= num; x++) {
-                    intdat[x] = intdat[x]
-                            / Math.sqrt(
-                                    (res[0] * Math.exp(-frametime * (x + 0.5) / res[1]) + res[2]) / (res[0] + res[2]))
-                            + (res[0] + res[2]) * (1 - Math.sqrt(
+                    intdat[x] = intdat[x] / Math.sqrt(
+                            (res[0] * Math.exp(-frametime * (x + 0.5) / res[1]) + res[2]) / (res[0] + res[2])) +
+                            (res[0] + res[2]) * (1 - Math.sqrt(
                                     (res[0] * Math.exp(-frametime * (x + 0.5) / res[1]) + res[2]) / (res[0] + res[2])));
                 }
                 if (mode == 1) {
                     for (int x = 0; x < nopit; x++) {
-                        intTrace1[x] = intTrace1[x]
-                                / Math.sqrt((res[0] * Math.exp(-intTime[x] / res[1]) + res[2]) / (res[0] + res[2]))
-                                + (res[0] + res[2]) * (1 - Math
-                                        .sqrt((res[0] * Math.exp(-intTime[x] / res[1]) + res[2]) / (res[0] + res[2])));
+                        intTrace1[x] = intTrace1[x] /
+                                Math.sqrt((res[0] * Math.exp(-intTime[x] / res[1]) + res[2]) / (res[0] + res[2])) +
+                                (res[0] + res[2]) * (1 - Math.sqrt(
+                                        (res[0] * Math.exp(-intTime[x] / res[1]) + res[2]) / (res[0] + res[2])));
                     }
                 }
                 if (mode == 2) {
                     for (int x = 0; x < nopit; x++) {
-                        intTrace2[x] = intTrace2[x]
-                                / Math.sqrt((res[0] * Math.exp(-intTime[x] / res[1]) + res[2]) / (res[0] + res[2]))
-                                + (res[0] + res[2]) * (1 - Math
-                                        .sqrt((res[0] * Math.exp(-intTime[x] / res[1]) + res[2]) / (res[0] + res[2])));
+                        intTrace2[x] = intTrace2[x] /
+                                Math.sqrt((res[0] * Math.exp(-intTime[x] / res[1]) + res[2]) / (res[0] + res[2])) +
+                                (res[0] + res[2]) * (1 - Math.sqrt(
+                                        (res[0] * Math.exp(-intTime[x] / res[1]) + res[2]) / (res[0] + res[2])));
                     }
                 }
 
                 IJ.log("single exponential fit: " + background);
-                IJ.log("x: " + px + ", y: " + py + ", res[0]: " + res[0] + ", res[1]: " + res[1] + ", res[2]: "
-                        + res[2]);
+                IJ.log("x: " + px + ", y: " + py + ", res[0]: " + res[0] + ", res[1]: " + res[1] + ", res[2]: " +
+                        res[2]);
 
             } else {
                 IJ.log("Exponential Fit not successful for (" + px + ", " + py + ")");
@@ -13190,41 +13271,37 @@ public class Imaging_FCS implements PlugIn {
             }
             if (res[0] * res[1] * res[2] * res[3] != 0) {
                 for (int x = 1; x <= num; x++) {
-                    intdat[x] = intdat[x]
-                            / Math.sqrt((res[0] * Math.exp(-frametime * (x + 0.5) / res[1])
-                                    + res[2] * Math.exp(-frametime * (x + 0.5) / res[3]) + res[4])
-                                    / (res[0] + res[2] + res[4]))
-                            + (res[0] + res[2] + res[4])
-                                    * (1 - Math.sqrt((res[0] * Math.exp(-frametime * (x + 0.5) / res[1])
-                                            + res[2] * Math.exp(-frametime * (x + 0.5) / res[3]) + res[4])
-                                            / (res[0] + res[2] + res[4])));
+                    intdat[x] = intdat[x] / Math.sqrt((res[0] * Math.exp(-frametime * (x + 0.5) / res[1]) +
+                            res[2] * Math.exp(-frametime * (x + 0.5) / res[3]) + res[4]) / (res[0] + res[2] + res[4])) +
+                            (res[0] + res[2] + res[4]) * (1 - Math.sqrt(
+                                    (res[0] * Math.exp(-frametime * (x + 0.5) / res[1]) +
+                                            res[2] * Math.exp(-frametime * (x + 0.5) / res[3]) + res[4]) /
+                                            (res[0] + res[2] + res[4])));
                 }
                 if (mode == 1) {
                     for (int x = 0; x < nopit; x++) {
-                        intTrace1[x] = intTrace1[x]
-                                / Math.sqrt((res[0] * Math.exp(-intTime[x] / res[1])
-                                        + res[2] * Math.exp(-intTime[x] / res[3]) + res[4])
-                                        / (res[0] + res[2] + res[4]))
-                                + (res[0] + res[2] + res[4]) * (1 - Math.sqrt((res[0] * Math.exp(-intTime[x] / res[1])
-                                        + res[2] * Math.exp(-intTime[x] / res[3]) + res[4])
-                                        / (res[0] + res[2] + res[4])));
+                        intTrace1[x] = intTrace1[x] / Math.sqrt(
+                                (res[0] * Math.exp(-intTime[x] / res[1]) + res[2] * Math.exp(-intTime[x] / res[3]) +
+                                        res[4]) / (res[0] + res[2] + res[4])) + (res[0] + res[2] + res[4]) * (1 -
+                                Math.sqrt((res[0] * Math.exp(-intTime[x] / res[1]) +
+                                        res[2] * Math.exp(-intTime[x] / res[3]) + res[4]) /
+                                        (res[0] + res[2] + res[4])));
                     }
                 }
                 if (mode == 2) {
                     for (int x = 0; x < nopit; x++) {
-                        intTrace2[x] = intTrace2[x]
-                                / Math.sqrt((res[0] * Math.exp(-intTime[x] / res[1])
-                                        + res[2] * Math.exp(-intTime[x] / res[3]) + res[4])
-                                        / (res[0] + res[2] + res[4]))
-                                + (res[0] + res[2] + res[4]) * (1 - Math.sqrt((res[0] * Math.exp(-intTime[x] / res[1])
-                                        + res[2] * Math.exp(-intTime[x] / res[3]) + res[4])
-                                        / (res[0] + res[2] + res[4])));
+                        intTrace2[x] = intTrace2[x] / Math.sqrt(
+                                (res[0] * Math.exp(-intTime[x] / res[1]) + res[2] * Math.exp(-intTime[x] / res[3]) +
+                                        res[4]) / (res[0] + res[2] + res[4])) + (res[0] + res[2] + res[4]) * (1 -
+                                Math.sqrt((res[0] * Math.exp(-intTime[x] / res[1]) +
+                                        res[2] * Math.exp(-intTime[x] / res[3]) + res[4]) /
+                                        (res[0] + res[2] + res[4])));
                     }
                 }
 
                 IJ.log("double exponential fit: " + background);
-                IJ.log("x: " + px + ", y: " + py + ", res[0]: " + res[0] + ", res[1]: " + res[1] + ", res[2]: " + res[2]
-                        + ", res[3]: " + res[3] + ", res[4]: " + res[4]);
+                IJ.log("x: " + px + ", y: " + py + ", res[0]: " + res[0] + ", res[1]: " + res[1] + ", res[2]: " +
+                        res[2] + ", res[3]: " + res[3] + ", res[4]: " + res[4]);
             } else {
                 IJ.log("Double Exponential Fit not successful for (" + px + ", " + py + ")");
             }
@@ -13236,9 +13313,9 @@ public class Imaging_FCS implements PlugIn {
             int maxord = polyOrder;
             if (mode == 1) {
                 res = polfit.doFit(intTrace1); // note that the bleach correction is performed on the averaged intensity
-                                               // traces to make it faster
+                // traces to make it faster
             } else { // while you may have 20,000 intensity points, intTrace1 and 2 contain only
-                     // 1,000 points
+                // 1,000 points
                 res = polfit.doFit(intTrace2); // see definition in setParameters()
             }
 
@@ -13255,8 +13332,8 @@ public class Imaging_FCS implements PlugIn {
                     for (int i = 0; i <= maxord; i++) {
                         corfunc += res[i] * Math.pow(intTime[x], i);
                     }
-                    intTrace1[x] = intTrace1[x] / Math.sqrt(corfunc / res[0])
-                            + res[0] * (1 - Math.sqrt(corfunc / res[0]));
+                    intTrace1[x] =
+                            intTrace1[x] / Math.sqrt(corfunc / res[0]) + res[0] * (1 - Math.sqrt(corfunc / res[0]));
                 }
             }
             if (mode == 2) {
@@ -13265,8 +13342,8 @@ public class Imaging_FCS implements PlugIn {
                     for (int i = 0; i <= maxord; i++) {
                         corfunc += res[i] * Math.pow(intTime[x], i);
                     }
-                    intTrace2[x] = intTrace2[x] / Math.sqrt(corfunc / res[0])
-                            + res[0] * (1 - Math.sqrt(corfunc / res[0]));
+                    intTrace2[x] =
+                            intTrace2[x] / Math.sqrt(corfunc / res[0]) + res[0] * (1 - Math.sqrt(corfunc / res[0]));
                 }
             }
 
@@ -13274,7 +13351,7 @@ public class Imaging_FCS implements PlugIn {
 
         if ("Lin Segment".equals($bcmode)) { // approximating bleaching by a partially linear function
             int ave = (int) Math.floor((finalframe - initialframe + 1) / nopit); // number of points averaged in
-                                                                                 // intTrace
+            // intTrace
             int bcNopit = (int) num / slidingWindowLength; // number of linear segments
             int bcAve = (int) Math.floor((finalframe - initialframe + 1) / bcNopit);
             double[] bcTrace = new double[bcNopit];
@@ -13291,34 +13368,32 @@ public class Imaging_FCS implements PlugIn {
             }
 
             bcInt0 = bcTrace[0] + (bcTrace[0] - bcTrace[1]) / 2; // Initial intensity obtained by extrapolating the line
-                                                                 // between average intensities in 1st and second
-                                                                 // segment to 0
+            // between average intensities in 1st and second
+            // segment to 0
 
             for (int x = 1; x < (int) Math.floor(bcAve / 2); x++) {
-                intdat[x] = intdat[x]
-                        / Math.sqrt((bcTrace[0] + (bcTrace[0] - bcTrace[1]) / bcAve * (bcAve / 2 - x)) / bcInt0)
-                        + bcInt0 * (1 - Math
-                                .sqrt((bcTrace[0] + (bcTrace[0] - bcTrace[1]) / bcAve * (bcAve / 2 - x)) / bcInt0));
+                intdat[x] = intdat[x] /
+                        Math.sqrt((bcTrace[0] + (bcTrace[0] - bcTrace[1]) / bcAve * (bcAve / 2 - x)) / bcInt0) +
+                        bcInt0 * (1 -
+                                Math.sqrt((bcTrace[0] + (bcTrace[0] - bcTrace[1]) / bcAve * (bcAve / 2 - x)) / bcInt0));
             }
 
             for (int x = 1; x < bcNopit; x++) {
                 for (int y = 0; y < bcAve; y++) {
                     nf = (x - 1) * bcAve + (int) Math.floor(bcAve / 2) + y;
-                    intdat[nf] = intdat[nf]
-                            / Math.sqrt((bcTrace[x - 1] + (bcTrace[x] - bcTrace[x - 1]) * y / bcAve) / bcInt0)
-                            + bcInt0 * (1
-                                    - Math.sqrt((bcTrace[x - 1] + (bcTrace[x] - bcTrace[x - 1]) * y / bcAve) / bcInt0));
+                    intdat[nf] = intdat[nf] /
+                            Math.sqrt((bcTrace[x - 1] + (bcTrace[x] - bcTrace[x - 1]) * y / bcAve) / bcInt0) + bcInt0 *
+                            (1 - Math.sqrt((bcTrace[x - 1] + (bcTrace[x] - bcTrace[x - 1]) * y / bcAve) / bcInt0));
                 }
             }
 
             for (int x = (bcNopit - 1) * bcAve + (int) Math.floor(bcAve / 2); x <= num; x++) {
                 nf = x - (bcNopit - 1) * bcAve + (int) Math.floor(bcAve / 2) + bcAve;
-                intdat[x] = intdat[x]
-                        / Math.sqrt((bcTrace[bcNopit - 2] + (bcTrace[bcNopit - 1] - bcTrace[bcNopit - 2]) * nf / bcAve)
-                                / bcInt0)
-                        + bcInt0 * (1 - Math.sqrt(
-                                (bcTrace[bcNopit - 2] + (bcTrace[bcNopit - 1] - bcTrace[bcNopit - 2]) * nf / bcAve)
-                                        / bcInt0));
+                intdat[x] = intdat[x] / Math.sqrt(
+                        (bcTrace[bcNopit - 2] + (bcTrace[bcNopit - 1] - bcTrace[bcNopit - 2]) * nf / bcAve) / bcInt0) +
+                        bcInt0 * (1 - Math.sqrt(
+                                (bcTrace[bcNopit - 2] + (bcTrace[bcNopit - 1] - bcTrace[bcNopit - 2]) * nf / bcAve) /
+                                        bcInt0));
             }
 
             if (mode == 1) {
@@ -13340,7 +13415,7 @@ public class Imaging_FCS implements PlugIn {
     // note that you should call calcIntensityTrace() before to obtain intTrace1 and
     // 2 (Version 2: accepts raw imp or bleach corrected imp)
     public double[] getIntensityVer2(ImagePlus image, int px, int py, int mode, int initialframe, int finalframe,
-            boolean isDCsubtract, boolean isDoBleachCorrectio) {
+                                     boolean isDCsubtract, boolean isDoBleachCorrectio) {
         // image: imp form which intensity will be taken
         // px, py: coordinates of pixel within image
         // imageType: determines whether intensity for pixel 1 or pixel 2 is read, and
@@ -13366,10 +13441,10 @@ public class Imaging_FCS implements PlugIn {
             imageType = 2;
         }
 
-        if ((!JBackgroundSubtractionComponentObj.rbtnIsSubtractionAfterBleachCorrection.isSelected()
-                && JBackgroundSubtractionComponentObj.selectedMode == modeBGR.modeBGREnum.CONSTANT_BACKGROUND)
-                || (!JBackgroundSubtractionComponentObj.rbtnIsSubtractionAfterBleachCorrection.isSelected()
-                        && JBackgroundSubtractionComponentObj.selectedMode == modeBGR.modeBGREnum.LOAD_BGR_IMAGE)) {
+        if ((!JBackgroundSubtractionComponentObj.rbtnIsSubtractionAfterBleachCorrection.isSelected() &&
+                JBackgroundSubtractionComponentObj.selectedMode == modeBGR.modeBGREnum.CONSTANT_BACKGROUND) ||
+                (!JBackgroundSubtractionComponentObj.rbtnIsSubtractionAfterBleachCorrection.isSelected() &&
+                        JBackgroundSubtractionComponentObj.selectedMode == modeBGR.modeBGREnum.LOAD_BGR_IMAGE)) {
             if (mode == 2 && cbFitModel.getSelectedItem() == "DC-FCCS (2D)") {
                 bckg = background2;
             } else {
@@ -13385,7 +13460,7 @@ public class Imaging_FCS implements PlugIn {
 
         if (false) {// imageType == 1
             for (int x = 1; x <= num; x++) { // read data from all relevant pixels, depending on the selected frames and
-                                             // binning
+                // binning
                 for (int i = 0; i < binningX; i++) {
                     for (int k = 0; k < binningY; k++) {
                         if (bgrloaded) {
@@ -13403,39 +13478,38 @@ public class Imaging_FCS implements PlugIn {
 
         if (isDoBleachCorrectio) {
             String $bcmode = (String) cbBleachCor.getSelectedItem(); // perform single or double exponential bleach
-                                                                     // corrections if selected
+            // corrections if selected
 
             if ("Single Exp".equals($bcmode)) {
                 SingleExpFit efit = new SingleExpFit();
                 if (mode == 1) {
                     res = efit.doFit(intTrace1); // note that the bleach correction is performed on the averaged
-                                                 // intensity traces to make it faster
+                    // intensity traces to make it faster
                 } else { // while you may have 20,000 intensity points, intTrace1 and 2 contain only
-                         // 1,000 points
+                    // 1,000 points
                     res = efit.doFit(intTrace2); // see definition in setParameters()
                 }
                 if (res[0] * res[1] != 0) { // correct the full intensity trace if the fit was succesful
                     for (int x = 1; x <= num; x++) {
-                        intdat[x] = intdat[x]
-                                / Math.sqrt((res[0] * Math.exp(-frametime * (x + 0.5) / res[1]) + res[2])
-                                        / (res[0] + res[2]))
-                                + (res[0] + res[2])
-                                        * (1 - Math.sqrt((res[0] * Math.exp(-frametime * (x + 0.5) / res[1]) + res[2])
-                                                / (res[0] + res[2])));
+                        intdat[x] = intdat[x] / Math.sqrt(
+                                (res[0] * Math.exp(-frametime * (x + 0.5) / res[1]) + res[2]) / (res[0] + res[2])) +
+                                (res[0] + res[2]) * (1 - Math.sqrt(
+                                        (res[0] * Math.exp(-frametime * (x + 0.5) / res[1]) + res[2]) /
+                                                (res[0] + res[2])));
                     }
                     if (mode == 1) {
                         for (int x = 0; x < nopit; x++) {
-                            intTrace1[x] = intTrace1[x]
-                                    / Math.sqrt((res[0] * Math.exp(-intTime[x] / res[1]) + res[2]) / (res[0] + res[2]))
-                                    + (res[0] + res[2]) * (1 - Math.sqrt(
+                            intTrace1[x] = intTrace1[x] /
+                                    Math.sqrt((res[0] * Math.exp(-intTime[x] / res[1]) + res[2]) / (res[0] + res[2])) +
+                                    (res[0] + res[2]) * (1 - Math.sqrt(
                                             (res[0] * Math.exp(-intTime[x] / res[1]) + res[2]) / (res[0] + res[2])));
                         }
                     }
                     if (mode == 2) {
                         for (int x = 0; x < nopit; x++) {
-                            intTrace2[x] = intTrace2[x]
-                                    / Math.sqrt((res[0] * Math.exp(-intTime[x] / res[1]) + res[2]) / (res[0] + res[2]))
-                                    + (res[0] + res[2]) * (1 - Math.sqrt(
+                            intTrace2[x] = intTrace2[x] /
+                                    Math.sqrt((res[0] * Math.exp(-intTime[x] / res[1]) + res[2]) / (res[0] + res[2])) +
+                                    (res[0] + res[2]) * (1 - Math.sqrt(
                                             (res[0] * Math.exp(-intTime[x] / res[1]) + res[2]) / (res[0] + res[2])));
                         }
                     }
@@ -13453,37 +13527,31 @@ public class Imaging_FCS implements PlugIn {
                 }
                 if (res[0] * res[1] * res[2] * res[3] != 0) {
                     for (int x = 1; x <= num; x++) {
-                        intdat[x] = intdat[x]
-                                / Math.sqrt((res[0] * Math.exp(-frametime * (x + 0.5) / res[1])
-                                        + res[2] * Math.exp(-frametime * (x + 0.5) / res[3]) + res[4])
-                                        / (res[0] + res[2] + res[4]))
-                                + (res[0] + res[2] + res[4])
-                                        * (1 - Math.sqrt((res[0] * Math.exp(-frametime * (x + 0.5) / res[1])
-                                                + res[2] * Math.exp(-frametime * (x + 0.5) / res[3]) + res[4])
-                                                / (res[0] + res[2] + res[4])));
+                        intdat[x] = intdat[x] / Math.sqrt((res[0] * Math.exp(-frametime * (x + 0.5) / res[1]) +
+                                res[2] * Math.exp(-frametime * (x + 0.5) / res[3]) + res[4]) /
+                                (res[0] + res[2] + res[4])) + (res[0] + res[2] + res[4]) * (1 - Math.sqrt(
+                                (res[0] * Math.exp(-frametime * (x + 0.5) / res[1]) +
+                                        res[2] * Math.exp(-frametime * (x + 0.5) / res[3]) + res[4]) /
+                                        (res[0] + res[2] + res[4])));
                     }
                     if (mode == 1) {
                         for (int x = 0; x < nopit; x++) {
-                            intTrace1[x] = intTrace1[x]
-                                    / Math.sqrt((res[0] * Math.exp(-intTime[x] / res[1])
-                                            + res[2] * Math.exp(-intTime[x] / res[3]) + res[4])
-                                            / (res[0] + res[2] + res[4]))
-                                    + (res[0] + res[2] + res[4])
-                                            * (1 - Math.sqrt((res[0] * Math.exp(-intTime[x] / res[1])
-                                                    + res[2] * Math.exp(-intTime[x] / res[3]) + res[4])
-                                                    / (res[0] + res[2] + res[4])));
+                            intTrace1[x] = intTrace1[x] / Math.sqrt(
+                                    (res[0] * Math.exp(-intTime[x] / res[1]) + res[2] * Math.exp(-intTime[x] / res[3]) +
+                                            res[4]) / (res[0] + res[2] + res[4])) + (res[0] + res[2] + res[4]) * (1 -
+                                    Math.sqrt((res[0] * Math.exp(-intTime[x] / res[1]) +
+                                            res[2] * Math.exp(-intTime[x] / res[3]) + res[4]) /
+                                            (res[0] + res[2] + res[4])));
                         }
                     }
                     if (mode == 2) {
                         for (int x = 0; x < nopit; x++) {
-                            intTrace2[x] = intTrace2[x]
-                                    / Math.sqrt((res[0] * Math.exp(-intTime[x] / res[1])
-                                            + res[2] * Math.exp(-intTime[x] / res[3]) + res[4])
-                                            / (res[0] + res[2] + res[4]))
-                                    + (res[0] + res[2] + res[4])
-                                            * (1 - Math.sqrt((res[0] * Math.exp(-intTime[x] / res[1])
-                                                    + res[2] * Math.exp(-intTime[x] / res[3]) + res[4])
-                                                    / (res[0] + res[2] + res[4])));
+                            intTrace2[x] = intTrace2[x] / Math.sqrt(
+                                    (res[0] * Math.exp(-intTime[x] / res[1]) + res[2] * Math.exp(-intTime[x] / res[3]) +
+                                            res[4]) / (res[0] + res[2] + res[4])) + (res[0] + res[2] + res[4]) * (1 -
+                                    Math.sqrt((res[0] * Math.exp(-intTime[x] / res[1]) +
+                                            res[2] * Math.exp(-intTime[x] / res[3]) + res[4]) /
+                                            (res[0] + res[2] + res[4])));
                         }
                     }
                 } else {
@@ -13497,9 +13565,9 @@ public class Imaging_FCS implements PlugIn {
                 int maxord = polyOrder;
                 if (mode == 1) {
                     res = polfit.doFit(intTrace1); // note that the bleach correction is performed on the averaged
-                                                   // intensity traces to make it faster
+                    // intensity traces to make it faster
                 } else { // while you may have 20,000 intensity points, intTrace1 and 2 contain only
-                         // 1,000 points
+                    // 1,000 points
                     res = polfit.doFit(intTrace2); // see definition in setParameters()
                 }
 
@@ -13516,8 +13584,8 @@ public class Imaging_FCS implements PlugIn {
                         for (int i = 0; i <= maxord; i++) {
                             corfunc += res[i] * Math.pow(intTime[x], i);
                         }
-                        intTrace1[x] = intTrace1[x] / Math.sqrt(corfunc / res[0])
-                                + res[0] * (1 - Math.sqrt(corfunc / res[0]));
+                        intTrace1[x] =
+                                intTrace1[x] / Math.sqrt(corfunc / res[0]) + res[0] * (1 - Math.sqrt(corfunc / res[0]));
                     }
                 }
                 if (mode == 2) {
@@ -13526,15 +13594,15 @@ public class Imaging_FCS implements PlugIn {
                         for (int i = 0; i <= maxord; i++) {
                             corfunc += res[i] * Math.pow(intTime[x], i);
                         }
-                        intTrace2[x] = intTrace2[x] / Math.sqrt(corfunc / res[0])
-                                + res[0] * (1 - Math.sqrt(corfunc / res[0]));
+                        intTrace2[x] =
+                                intTrace2[x] / Math.sqrt(corfunc / res[0]) + res[0] * (1 - Math.sqrt(corfunc / res[0]));
                     }
                 }
             }
 
             if ("Lin Segment".equals($bcmode)) { // approximating bleaching by a partially linear function
                 int ave = (int) Math.floor((finalframe - initialframe + 1) / nopit); // number of points averaged in
-                                                                                     // intTrace
+                // intTrace
                 int bcNopit = (int) num / slidingWindowLength; // number of linear segments
                 int bcAve = (int) Math.floor((finalframe - initialframe + 1) / bcNopit);
                 double[] bcTrace = new double[bcNopit];
@@ -13555,31 +13623,29 @@ public class Imaging_FCS implements PlugIn {
                 bcInt0 = bcTrace[0] + (bcTrace[0] - bcTrace[1]) / 2;
 
                 for (int x = 1; x < (int) Math.floor(bcAve / 2); x++) {
-                    intdat[x] = intdat[x]
-                            / Math.sqrt((bcTrace[0] + (bcTrace[0] - bcTrace[1]) / bcAve * (bcAve / 2 - x)) / bcInt0)
-                            + bcInt0 * (1 - Math
-                                    .sqrt((bcTrace[0] + (bcTrace[0] - bcTrace[1]) / bcAve * (bcAve / 2 - x)) / bcInt0));
+                    intdat[x] = intdat[x] /
+                            Math.sqrt((bcTrace[0] + (bcTrace[0] - bcTrace[1]) / bcAve * (bcAve / 2 - x)) / bcInt0) +
+                            bcInt0 * (1 - Math.sqrt(
+                                    (bcTrace[0] + (bcTrace[0] - bcTrace[1]) / bcAve * (bcAve / 2 - x)) / bcInt0));
                 }
 
                 for (int x = 1; x < bcNopit; x++) {
                     for (int y = 0; y < bcAve; y++) {
                         nf = (x - 1) * bcAve + (int) Math.floor(bcAve / 2) + y;
-                        intdat[nf] = intdat[nf]
-                                / Math.sqrt((bcTrace[x - 1] + (bcTrace[x] - bcTrace[x - 1]) * y / bcAve) / bcInt0)
-                                + bcInt0 * (1 - Math
-                                        .sqrt((bcTrace[x - 1] + (bcTrace[x] - bcTrace[x - 1]) * y / bcAve) / bcInt0));
+                        intdat[nf] = intdat[nf] /
+                                Math.sqrt((bcTrace[x - 1] + (bcTrace[x] - bcTrace[x - 1]) * y / bcAve) / bcInt0) +
+                                bcInt0 * (1 - Math.sqrt(
+                                        (bcTrace[x - 1] + (bcTrace[x] - bcTrace[x - 1]) * y / bcAve) / bcInt0));
                     }
                 }
 
                 for (int x = (bcNopit - 1) * bcAve + (int) Math.floor(bcAve / 2); x <= num; x++) {
                     nf = x - (bcNopit - 1) * bcAve + (int) Math.floor(bcAve / 2) + bcAve;
-                    intdat[x] = intdat[x]
-                            / Math.sqrt(
-                                    (bcTrace[bcNopit - 2] + (bcTrace[bcNopit - 1] - bcTrace[bcNopit - 2]) * nf / bcAve)
-                                            / bcInt0)
-                            + bcInt0 * (1 - Math.sqrt(
-                                    (bcTrace[bcNopit - 2] + (bcTrace[bcNopit - 1] - bcTrace[bcNopit - 2]) * nf / bcAve)
-                                            / bcInt0));
+                    intdat[x] = intdat[x] / Math.sqrt(
+                            (bcTrace[bcNopit - 2] + (bcTrace[bcNopit - 1] - bcTrace[bcNopit - 2]) * nf / bcAve) /
+                                    bcInt0) + bcInt0 * (1 - Math.sqrt(
+                            (bcTrace[bcNopit - 2] + (bcTrace[bcNopit - 1] - bcTrace[bcNopit - 2]) * nf / bcAve) /
+                                    bcInt0));
                 }
 
                 if (mode == 1) {
@@ -13602,13 +13668,13 @@ public class Imaging_FCS implements PlugIn {
     // calculate reduced intensity traces for plotting average and use not more than
     // 'nopit' (defined in setParameters()) points for a trace
     public void calcIntensityTrace(ImagePlus image, int ipx1, int ipy1, int ipx2, int ipy2, int initialframe,
-            int finalframe, boolean isDCsubtract) {
+                                   int finalframe, boolean isDCsubtract) {
         // image: imp form which intensity will be taken
         // px1, py1, px2, py2: coordinates of pixels to be correlated
         // initialframe and finalframe provide the range of frames to be used
         // isDCsubtract: whether to perform constant value subtraction
         int ave = (int) Math.floor((finalframe - initialframe + 1) / nopit); // calculate number of data points which
-                                                                             // are averaged
+        // are averaged
         double sum1;
         double sum2;
         int bckg1 = background;
@@ -13630,7 +13696,7 @@ public class Imaging_FCS implements PlugIn {
                 for (int k = 0; k < binningY; k++) {
                     for (int y = initialframe + x * ave; y <= initialframe + (x + 1) * ave - 1; y++) {
                         if (bgrloaded) { // if a background image is loaded, then subtract the mean of the background
-                                         // image for each pixel
+                            // image for each pixel
                             bckg1 = (int) Math.round(bgrmean[ipx1 + i][ipy1 + k]);
                             bckg2 = (int) Math.round(bgrmean[ipx1 + i][ipy1 + k]);
                         }
@@ -13649,7 +13715,7 @@ public class Imaging_FCS implements PlugIn {
     // 'nopit' (defined in setParameters()) points for a trace (Version 2: accepts
     // raw imp or bleach corrected imp)
     public void calcIntensityTraceVer2(ImagePlus image, int intpx1, int intpy1, int intpx2, int intpy2,
-            int initialframe, int finalframe, boolean isDCsubtract) {
+                                       int initialframe, int finalframe, boolean isDCsubtract) {
         // image: imp form which intensity will be taken
         // px1, py1, px2, py2: coordinates of pixels to be correlated
         // initialframe and finalframe provide the range of frames to be used
@@ -13659,7 +13725,7 @@ public class Imaging_FCS implements PlugIn {
         // parameter maps
 
         int ave = (int) Math.floor((finalframe - initialframe + 1) / nopit); // calculate number of data points which
-                                                                             // are averaged
+        // are averaged
         double sum1;
         double sum2;
         int bckg1 = background;
@@ -13688,10 +13754,10 @@ public class Imaging_FCS implements PlugIn {
             bckg2 = background2;
         }
 
-        if (!((!JBackgroundSubtractionComponentObj.rbtnIsSubtractionAfterBleachCorrection.isSelected()
-                && JBackgroundSubtractionComponentObj.selectedMode == modeBGR.modeBGREnum.CONSTANT_BACKGROUND)
-                || (!JBackgroundSubtractionComponentObj.rbtnIsSubtractionAfterBleachCorrection.isSelected()
-                        && JBackgroundSubtractionComponentObj.selectedMode == modeBGR.modeBGREnum.LOAD_BGR_IMAGE))) {
+        if (!((!JBackgroundSubtractionComponentObj.rbtnIsSubtractionAfterBleachCorrection.isSelected() &&
+                JBackgroundSubtractionComponentObj.selectedMode == modeBGR.modeBGREnum.CONSTANT_BACKGROUND) ||
+                (!JBackgroundSubtractionComponentObj.rbtnIsSubtractionAfterBleachCorrection.isSelected() &&
+                        JBackgroundSubtractionComponentObj.selectedMode == modeBGR.modeBGREnum.LOAD_BGR_IMAGE))) {
             bckg1 = 0;
             bckg2 = 0;
         }
@@ -13710,7 +13776,7 @@ public class Imaging_FCS implements PlugIn {
                     for (int k = 0; k < binningY; k++) {
                         for (int y = initialframe + x * ave; y <= initialframe + (x + 1) * ave - 1; y++) {
                             if (bgrloaded) { // if a background image is loaded, then subtract the mean of the
-                                             // background image for each pixel
+                                // background image for each pixel
                                 bckg1 = (int) Math.round(bgrmean[ipx1 + i][ipy1 + k]);
                                 bckg2 = (int) Math.round(bgrmean[ipx1 + i][ipy1 + k]);
                             }
@@ -13734,7 +13800,7 @@ public class Imaging_FCS implements PlugIn {
 
     // calcualte the average intensity for the image
     public void calcAverageIntensityTrace(float[][] filterArray, int startX, int startY, int endX, int endY,
-            int initialframe, int finalframe, boolean bothTrace) {
+                                          int initialframe, int finalframe, boolean bothTrace) {
         // introi: roi over which average is to be determined
         // initialframe and finalframe provide the range of frames to be used
         // bothTrace: calculate average non-bleach corrected intensity counts after bg
@@ -13769,7 +13835,7 @@ public class Imaging_FCS implements PlugIn {
         }
 
         if (bothTrace) { // Calculate average of non-bleach corrected intensity trace after bg
-                         // subtraction of matching pixel
+            // subtraction of matching pixel
             intTrace2 = new double[nopit]; // reset before updating.
 
             for (int i = 0; i < nopit; i++) {
@@ -13780,8 +13846,8 @@ public class Imaging_FCS implements PlugIn {
                             for (int x4 = 0; x4 < binningX; x4++) {
                                 for (int x5 = 0; x5 < binningY; x5++) {
                                     if (!Float.isNaN(filterArray[x1][x2])) {
-                                        intTrace2[i] += imp.getStack().getProcessor(j).get(x1 + x4, x2 + x5)
-                                                - background2;
+                                        intTrace2[i] +=
+                                                imp.getStack().getProcessor(j).get(x1 + x4, x2 + x5) - background2;
                                         pixcount++;
                                         intTime[i] = frametime * (i + 0.5) * ave;
                                     }
@@ -13857,8 +13923,8 @@ public class Imaging_FCS implements PlugIn {
                             for (int j = cpy1; j <= cpyf; j++) {// for (int j = 0; j < (correlatedheight); j++)
 
                                 if (doFiltering) {
-                                    if (acf[kcf][i][j][k] != 0 && !Double.isNaN(acf[kcf][i][j][k])
-                                            && pixvalid[kcf][i][j] == 1.0) {
+                                    if (acf[kcf][i][j][k] != 0 && !Double.isNaN(acf[kcf][i][j][k]) &&
+                                            pixvalid[kcf][i][j] == 1.0) {
                                         aveacf[kcf][k] += acf[kcf][i][j][k];
                                         varaveacf[kcf][k] += Math.pow(acf[kcf][i][j][k], 2.0);
                                         count++;
@@ -13924,8 +13990,8 @@ public class Imaging_FCS implements PlugIn {
                 for (int kcf = 0; kcf < numcf; kcf++) {
                     averageFit afit = new averageFit(kcf);
                     if (isSaveAveragePVideo && mvideo) {
-                        double[] aveFitRes = (double[]) afit.doFit(cbFitModel.getSelectedItem().toString())
-                                .get("results");
+                        double[] aveFitRes =
+                                (double[]) afit.doFit(cbFitModel.getSelectedItem().toString()).get("results");
                         // store average fit values
                         averageFitParamList.get(0).add(aveFitRes[0]);
                         averageFitParamList.get(1).add(aveFitRes[1]);
@@ -14149,7 +14215,7 @@ public class Imaging_FCS implements PlugIn {
 
     // fit procedure for Bayes Hypothesis testing
     public void bayesFit(int cpx, int cpy, int kcf, String model) { // at the moment we will allow onle one and
-                                                                    // two-component fits
+        // two-component fits
         // cpx, cpy: pixel coordinates
         // kcf (0, 1, 2): ACF1, ACF2, CCF
         // model: which fit model to be used; the models are defined below
@@ -14255,8 +14321,8 @@ public class Imaging_FCS implements PlugIn {
             prodsigma *= v;
         }
 
-        modprob[0] = Math.exp(0.5 * numel * Math.log(2 * pi) + 0.5 * Math.log(det) + logresid
-                - Math.log(prodsigma * Math.pow(2 * boxsize, numel)));
+        modprob[0] = Math.exp(0.5 * numel * Math.log(2 * pi) + 0.5 * Math.log(det) + logresid -
+                Math.log(prodsigma * Math.pow(2 * boxsize, numel)));
 
         // set initial values for two-component fit
         paramfit[0] = true;
@@ -14331,8 +14397,8 @@ public class Imaging_FCS implements PlugIn {
             prodsigma *= v;
         }
 
-        modprob[1] = Math.exp(0.5 * numel * Math.log(2 * pi) + 0.5 * Math.log(det) + logresid
-                - Math.log(prodsigma * Math.pow(2 * boxsize, numel)));
+        modprob[1] = Math.exp(0.5 * numel * Math.log(2 * pi) + 0.5 * Math.log(det) + logresid -
+                Math.log(prodsigma * Math.pow(2 * boxsize, numel)));
 
         normprob = 0;
         // calculate the normalization for the modle probabilities
@@ -14396,12 +14462,16 @@ public class Imaging_FCS implements PlugIn {
                     break;
             }
 
-            final AbstractCurveFitter.TheoreticalValuesFunction model = new AbstractCurveFitter.TheoreticalValuesFunction(
-                    fitfunction, points);
+            final AbstractCurveFitter.TheoreticalValuesFunction model =
+                    new AbstractCurveFitter.TheoreticalValuesFunction(fitfunction, points);
 
-            return new LeastSquaresBuilder().maxEvaluations(fitMaxIterations).maxIterations(fitMaxEvaluations)
-                    .start(initialGuess).target(target).weight(new DiagonalMatrix(weights))
-                    .model(model.getModelFunction(), model.getModelFunctionJacobian()).build();
+            return new LeastSquaresBuilder().maxEvaluations(fitMaxIterations)
+                    .maxIterations(fitMaxEvaluations)
+                    .start(initialGuess)
+                    .target(target)
+                    .weight(new DiagonalMatrix(weights))
+                    .model(model.getModelFunction(), model.getModelFunctionJacobian())
+                    .build();
         }
 
         public Map doFit(int cpx, int cpy, int kcf, String model) {
@@ -14441,8 +14511,8 @@ public class Imaging_FCS implements PlugIn {
 
             // Add points here
             for (int i = fitstart; i <= fitend; i++) {
-                WeightedObservedPoint point = new WeightedObservedPoint(1 / varacf[kcf][cpx][cpy][i], lagtime[i],
-                        acf[kcf][cpx][cpy][i]);
+                WeightedObservedPoint point =
+                        new WeightedObservedPoint(1 / varacf[kcf][cpx][cpy][i], lagtime[i], acf[kcf][cpx][cpy][i]);
                 points.add(point);
             }
 
@@ -14485,8 +14555,8 @@ public class Imaging_FCS implements PlugIn {
                 chi2[kcf][cpx][cpy] = 0; // initialize chi2 value for this pixel
                 for (int i = fitstart; i <= fitend; i++) {
                     // calculate chi2 value; do not include the 0 lagtime kcf which contains shot noise
-                    chi2[kcf][cpx][cpy] += Math.pow(res[kcf][cpx][cpy][i], 2)
-                            / ((fitend - fitstart) - numfreefitpar - 1);
+                    chi2[kcf][cpx][cpy] +=
+                            Math.pow(res[kcf][cpx][cpy][i], 2) / ((fitend - fitstart) - numfreefitpar - 1);
                 }
 
                 int num = 0; // store the fit results
@@ -14611,12 +14681,16 @@ public class Imaging_FCS implements PlugIn {
                     break;
             }
 
-            final AbstractCurveFitter.TheoreticalValuesFunction model = new AbstractCurveFitter.TheoreticalValuesFunction(
-                    fitfunction, points);
+            final AbstractCurveFitter.TheoreticalValuesFunction model =
+                    new AbstractCurveFitter.TheoreticalValuesFunction(fitfunction, points);
 
-            return new LeastSquaresBuilder().maxEvaluations(fitMaxIterations).maxIterations(fitMaxEvaluations)
-                    .start(initialGuess).target(target).weight(new DiagonalMatrix(weights))
-                    .model(model.getModelFunction(), model.getModelFunctionJacobian()).build();
+            return new LeastSquaresBuilder().maxEvaluations(fitMaxIterations)
+                    .maxIterations(fitMaxEvaluations)
+                    .start(initialGuess)
+                    .target(target)
+                    .weight(new DiagonalMatrix(weights))
+                    .model(model.getModelFunction(), model.getModelFunctionJacobian())
+                    .build();
         }
 
         public Map doFit(String model) {
@@ -14659,8 +14733,8 @@ public class Imaging_FCS implements PlugIn {
 
             // Add points here
             for (int i = fitstart; i <= fitend; i++) {
-                WeightedObservedPoint point = new WeightedObservedPoint(1 / varaveacf[kcf][i], lagtime[i],
-                        aveacf[kcf][i]);
+                WeightedObservedPoint point =
+                        new WeightedObservedPoint(1 / varaveacf[kcf][i], lagtime[i], aveacf[kcf][i]);
                 points.add(point);
             }
 
@@ -14716,9 +14790,9 @@ public class Imaging_FCS implements PlugIn {
                 tfParamFtrip.setText(IJ.d2s(avefitres[9], decformat));
                 tfParamTtrip.setText(IJ.d2s(avefitres[10] * Math.pow(10, 6), decformat));
 
-                IJ.log("average fit value cf: " + kcf + "- D: " + IJ.d2s(avefitres[1] * Math.pow(10, 12), 3) + ", N: "
-                        + IJ.d2s(avefitres[0], 3) + ", F2: " + IJ.d2s(avefitres[5], 3) + ", D2: "
-                        + IJ.d2s(avefitres[6] * Math.pow(10, 12), 3));
+                IJ.log("average fit value cf: " + kcf + "- D: " + IJ.d2s(avefitres[1] * Math.pow(10, 12), 3) + ", N: " +
+                        IJ.d2s(avefitres[0], 3) + ", F2: " + IJ.d2s(avefitres[5], 3) + ", D2: " +
+                        IJ.d2s(avefitres[6] * Math.pow(10, 12), 3));
 
                 map.put("results", result);
                 map.put("covariance", topt.getCovariances(1).getData());
@@ -14788,12 +14862,16 @@ public class Imaging_FCS implements PlugIn {
             ParametricUnivariateFunction glsfitfunction;
             glsfitfunction = new GLS_fitFunction(kcf);
 
-            final AbstractCurveFitter.TheoreticalValuesFunction model = new AbstractCurveFitter.TheoreticalValuesFunction(
-                    glsfitfunction, points);
+            final AbstractCurveFitter.TheoreticalValuesFunction model =
+                    new AbstractCurveFitter.TheoreticalValuesFunction(glsfitfunction, points);
 
-            return new LeastSquaresBuilder().maxEvaluations(fitMaxIterations).maxIterations(fitMaxEvaluations)
-                    .start(initialGuess).target(target).weight(new DiagonalMatrix(weights))
-                    .model(model.getModelFunction(), model.getModelFunctionJacobian()).build();
+            return new LeastSquaresBuilder().maxEvaluations(fitMaxIterations)
+                    .maxIterations(fitMaxEvaluations)
+                    .start(initialGuess)
+                    .target(target)
+                    .weight(new DiagonalMatrix(weights))
+                    .model(model.getModelFunction(), model.getModelFunctionJacobian())
+                    .build();
         }
 
         public Map doFit(int cpx, int cpy, int kcf, String model) {
@@ -14938,17 +15016,21 @@ public class Imaging_FCS implements PlugIn {
             // initial guesses
             initialGuess[0] = target[0]; // use first point as intercept estimate
             initialGuess[1] = (target[1] - target[0]) / (xtarget[1] - xtarget[0]); // use slope calculated from first
-                                                                                   // two points as slope estimate
+            // two points as slope estimate
 
             ParametricUnivariateFunction function;
             function = new Line();
 
-            final AbstractCurveFitter.TheoreticalValuesFunction model = new AbstractCurveFitter.TheoreticalValuesFunction(
-                    function, points);
+            final AbstractCurveFitter.TheoreticalValuesFunction model =
+                    new AbstractCurveFitter.TheoreticalValuesFunction(function, points);
 
-            return new LeastSquaresBuilder().maxEvaluations(Integer.MAX_VALUE).maxIterations(Integer.MAX_VALUE)
-                    .start(initialGuess).target(target).weight(new DiagonalMatrix(weights))
-                    .model(model.getModelFunction(), model.getModelFunctionJacobian()).build();
+            return new LeastSquaresBuilder().maxEvaluations(Integer.MAX_VALUE)
+                    .maxIterations(Integer.MAX_VALUE)
+                    .start(initialGuess)
+                    .target(target)
+                    .weight(new DiagonalMatrix(weights))
+                    .model(model.getModelFunction(), model.getModelFunctionJacobian())
+                    .build();
         }
 
         public double[] doFit(double[] xtrace, double[] trace, double[] sdtrace, int num) {
@@ -14957,8 +15039,8 @@ public class Imaging_FCS implements PlugIn {
 
             // Add points here
             for (int i = 0; i < num; i++) {
-                WeightedObservedPoint point = new WeightedObservedPoint(1 / sdtrace[i] / sdtrace[i], xtrace[i],
-                        trace[i]);
+                WeightedObservedPoint point =
+                        new WeightedObservedPoint(1 / sdtrace[i] / sdtrace[i], xtrace[i], trace[i]);
                 points.add(point);
             }
 
@@ -14987,18 +15069,22 @@ public class Imaging_FCS implements PlugIn {
             // initial guesses
             initialGuess[0] = target[1]; // use first point as intercept estimate
             initialGuess[1] = intTime[(int) Math.floor(len / 2)]; // use half the intensity trace time as first estimate
-                                                                  // for the exponential decay
+            // for the exponential decay
             initialGuess[2] = 0;
 
             ParametricUnivariateFunction function;
             function = new SingleExp();
 
-            final AbstractCurveFitter.TheoreticalValuesFunction model = new AbstractCurveFitter.TheoreticalValuesFunction(
-                    function, points);
+            final AbstractCurveFitter.TheoreticalValuesFunction model =
+                    new AbstractCurveFitter.TheoreticalValuesFunction(function, points);
 
-            return new LeastSquaresBuilder().maxEvaluations(Integer.MAX_VALUE).maxIterations(Integer.MAX_VALUE)
-                    .start(initialGuess).target(target).weight(new DiagonalMatrix(weights))
-                    .model(model.getModelFunction(), model.getModelFunctionJacobian()).build();
+            return new LeastSquaresBuilder().maxEvaluations(Integer.MAX_VALUE)
+                    .maxIterations(Integer.MAX_VALUE)
+                    .start(initialGuess)
+                    .target(target)
+                    .weight(new DiagonalMatrix(weights))
+                    .model(model.getModelFunction(), model.getModelFunctionJacobian())
+                    .build();
         }
 
         public double[] doFit(double[] itrace) {
@@ -15036,23 +15122,27 @@ public class Imaging_FCS implements PlugIn {
 
             // initial guesses
             initialGuess[0] = target[1] / 2; // amplitude for first and second decay are set equal; estimated from half
-                                             // of the first point
+            // of the first point
             initialGuess[1] = intTime[(int) Math.floor(len / 10)]; // use a tenth of the intensity trace time as first
-                                                                   // estimate for the first exponential decay
+            // estimate for the first exponential decay
             initialGuess[2] = target[1] / 2; // amplitude estimated from half of the first point
             initialGuess[3] = intTime[(int) Math.floor(len / 2)]; // use half the intensity trace time as first estimate
-                                                                  // for the second exponential decay
+            // for the second exponential decay
             initialGuess[4] = 0;
 
             ParametricUnivariateFunction function;
             function = new DoubleExp();
 
-            final AbstractCurveFitter.TheoreticalValuesFunction model = new AbstractCurveFitter.TheoreticalValuesFunction(
-                    function, points);
+            final AbstractCurveFitter.TheoreticalValuesFunction model =
+                    new AbstractCurveFitter.TheoreticalValuesFunction(function, points);
 
-            return new LeastSquaresBuilder().maxEvaluations(Integer.MAX_VALUE).maxIterations(Integer.MAX_VALUE)
-                    .start(initialGuess).target(target).weight(new DiagonalMatrix(weights))
-                    .model(model.getModelFunction(), model.getModelFunctionJacobian()).build();
+            return new LeastSquaresBuilder().maxEvaluations(Integer.MAX_VALUE)
+                    .maxIterations(Integer.MAX_VALUE)
+                    .start(initialGuess)
+                    .target(target)
+                    .weight(new DiagonalMatrix(weights))
+                    .model(model.getModelFunction(), model.getModelFunctionJacobian())
+                    .build();
         }
 
         public double[] doFit(double[] itrace) {
@@ -15097,12 +15187,16 @@ public class Imaging_FCS implements PlugIn {
             ParametricUnivariateFunction function;
             function = new Polynomial();
 
-            final AbstractCurveFitter.TheoreticalValuesFunction model = new AbstractCurveFitter.TheoreticalValuesFunction(
-                    function, points);
+            final AbstractCurveFitter.TheoreticalValuesFunction model =
+                    new AbstractCurveFitter.TheoreticalValuesFunction(function, points);
 
-            return new LeastSquaresBuilder().maxEvaluations(Integer.MAX_VALUE).maxIterations(Integer.MAX_VALUE)
-                    .start(initialGuess).target(target).weight(new DiagonalMatrix(weights))
-                    .model(model.getModelFunction(), model.getModelFunctionJacobian()).build();
+            return new LeastSquaresBuilder().maxEvaluations(Integer.MAX_VALUE)
+                    .maxIterations(Integer.MAX_VALUE)
+                    .start(initialGuess)
+                    .target(target)
+                    .weight(new DiagonalMatrix(weights))
+                    .model(model.getModelFunction(), model.getModelFunctionJacobian())
+                    .build();
         }
 
         public double[] doFit(double[] itrace) {
@@ -15123,7 +15217,7 @@ public class Imaging_FCS implements PlugIn {
 
     // Diffusion law fit
     public double[][][][] dlfit(int numbin, int numpsf) { // perform calculations of average diffusion coefficients for
-                                                          // different binning
+        // different binning
         double[][][][] results; // this is used by the PSF and the Diffusion Law calculations by using a range
         // an array to remember the values in fitres[0][x][y][q], Chi2, blocking success and filtering mask and return
         // them there after the calculation is finished
@@ -15173,7 +15267,7 @@ public class Imaging_FCS implements PlugIn {
             ith = 1;
             results = new double[1][1][3][numbin];
             if (overlap) { // counting in overlap imageType is different from non-overlap imageType as
-                           // different number of pixels will be calculated
+                // different number of pixels will be calculated
                 for (int x = 1; x <= numbin; x++) {
                     maxs += width - (x - 1);
                 }
@@ -15206,14 +15300,14 @@ public class Imaging_FCS implements PlugIn {
         int u_counter = 1; // for updating progress bar when in GPU imageType
         for (int u = numbin; u >= 1; u--) { // runCPU for different bin sizes
             binning = u; // the value of binning (global variable) influences also calcIntensity and
-                         // correlate; so it has to be correctly set here
+            // correlate; so it has to be correctly set here
             binningX = binning;
             binningY = binning;
             pixeldimx = (pixelsize * 1000 / objmag * binning) / Math.pow(10, 9);
             pixeldimy = (pixelsize * 1000 / objmag * binning) / Math.pow(10, 9);
 
             if (overlap || "ROI".equals(tbDLROI.getText())) { // set pixel number according to whether overlap is
-                                                              // allowed; in the case of diffusion law calcualtions
+                // allowed; in the case of diffusion law calcualtions
                 pixelWidthX = width - binning; // for sub-areas overalp is automatically allowed
                 pixelHeightY = height - binning;
                 pixbin = 1;
@@ -15285,13 +15379,13 @@ public class Imaging_FCS implements PlugIn {
                     for (int x = mincposx; x <= maxcposx; x++) {
                         for (int y = mincposy; y <= maxcposy; y++) {
                             if (!useGpu || !IsGPUCalculationOK) { // TODO: Currently implements constant background
-                                                                  // subtraction before bleach correction
+                                // subtraction before bleach correction
                                 calcIntensityTrace(imp, x * pixbin, y * pixbin, x * pixbin, y * pixbin, firstframe,
                                         lastframe, true);
                                 correlate(imp, x * pixbin, y * pixbin, x * pixbin, y * pixbin, 0, firstframe,
                                         lastframe); // correlate the pixel
                                 fit(x, y, 0, "ITIR-FCS (2D)"); // fit the correlation function with a simple 1 component
-                                                               // fit 2D FCS
+                                // fit 2D FCS
                             }
                             if (pixfitted[0][x][y]) { // take only data that has been fitted
                                 results[r][s][1][u - 1] += fitres[0][x][y][1]; // sum all results
@@ -15307,7 +15401,7 @@ public class Imaging_FCS implements PlugIn {
 
                     results[r][s][1][u - 1] *= Math.pow(10, 12) / count_dlaw[r][s]; // average D in um2/s
                     results[r][s][2][u - 1] *= Math.pow(10, 24) / count_dlaw[r][s]; // normalize the average of the
-                                                                                    // square
+                    // square
                     results[r][s][2][u - 1] = results[r][s][2][u - 1] - Math.pow(results[r][s][1][u - 1], 2);
                 }
             }
@@ -15372,8 +15466,8 @@ public class Imaging_FCS implements PlugIn {
         }
 
         for (int i = 1; i < cutoffInd; i++) {
-            d = pi * corrfunc[i] / corrfunc[1] / (getObsvolFCS(2, 0) * Math.pow(10, 12)) * Math.pow(psize, 2) * 1260.0
-                    / 29.0;
+            d = pi * corrfunc[i] / corrfunc[1] / (getObsvolFCS(2, 0) * Math.pow(10, 12)) * Math.pow(psize, 2) * 1260.0 /
+                    29.0;
             double[] g = quarticFunction(a, b, c, d);
             msdarray[i] = (psize * psize / (g[1]) - psfwidth * psfwidth);
         }
@@ -15424,17 +15518,17 @@ public class Imaging_FCS implements PlugIn {
                 double coef_0 = -1.0;
                 double coef_2 = 1 / 63.0 / q * (p2 - 420.0 * p * Math.pow(q, 2.0) - 64.0 * Math.pow(q, 3.0)) / p1;
                 double coef_3 = -1 / pi / Math.sqrt(q);
-                double coef_4 = 1 / 7560.0 / Math.pow(q, 2.0) / p1
-                        * (14175.0 * Math.pow(p, 4.0) + 37800.0 * Math.pow(p, 3.0) * q
-                                - 30240.0 * Math.pow(p, 2.0) * Math.pow(q, 2.0) - 3840.0 * p * Math.pow(q, 3.0)
-                                - 1132.0 * Math.pow(q, 4.0));
-                double coef_5 = 1 / 126.0 / pi / Math.pow(q, 1.5)
-                        * (p2 + 126.0 * p * Math.pow(q, 2.0) - 44.0 * Math.pow(q, 3.0)) / p1;
+                double coef_4 = 1 / 7560.0 / Math.pow(q, 2.0) / p1 *
+                        (14175.0 * Math.pow(p, 4.0) + 37800.0 * Math.pow(p, 3.0) * q -
+                                30240.0 * Math.pow(p, 2.0) * Math.pow(q, 2.0) - 3840.0 * p * Math.pow(q, 3.0) -
+                                1132.0 * Math.pow(q, 4.0));
+                double coef_5 = 1 / 126.0 / pi / Math.pow(q, 1.5) *
+                        (p2 + 126.0 * p * Math.pow(q, 2.0) - 44.0 * Math.pow(q, 3.0)) / p1;
 
-                double corrp = temp_msd_3d * sqrpi * temp_psize * temp_psize * temp_psfwidthz
-                        / (getObsvolFCS(3, 0) * Math.sqrt(pi) * temp_psfwidthz * Math.pow(10, 12)) / temp1_msd_3d;
-                return coef_5 * Math.pow(x, 5.0) - coef_4 * corrp * Math.pow(x, 4.0) + coef_3 * Math.pow(x, 3.0)
-                        - coef_2 * corrp * Math.pow(x, 2.0) - coef_0 * corrp;
+                double corrp = temp_msd_3d * sqrpi * temp_psize * temp_psize * temp_psfwidthz /
+                        (getObsvolFCS(3, 0) * Math.sqrt(pi) * temp_psfwidthz * Math.pow(10, 12)) / temp1_msd_3d;
+                return coef_5 * Math.pow(x, 5.0) - coef_4 * corrp * Math.pow(x, 4.0) + coef_3 * Math.pow(x, 3.0) -
+                        coef_2 * corrp * Math.pow(x, 2.0) - coef_0 * corrp;
             };
 
             try {
@@ -15523,7 +15617,7 @@ public class Imaging_FCS implements PlugIn {
         EE = EE / 2.0;
         x3 = -a - RR + EE;
         x4 = -a - RR - EE;
-        double[] returningarray = { x1, x2, x3, x4 };
+        double[] returningarray = {x1, x2, x3, x4};
         return returningarray;
     }
 
@@ -15589,7 +15683,7 @@ public class Imaging_FCS implements PlugIn {
         int cpy2;
 
         if (cbFitModel.getSelectedItem() == "DC-FCCS (2D)" && cormode == 1) { // index ct ensures that in cormode 1 when
-                                                                              // DC-FCCS is selected the CCF is plotted
+            // DC-FCCS is selected the CCF is plotted
             ct = 2;
         }
 
@@ -15631,14 +15725,17 @@ public class Imaging_FCS implements PlugIn {
 
             // create plot label for ACF of CCF
             if (cfXDistance + cfYDistance != 0) {
-                plot.addLabel(0.5, 0, " CCF of (" + cpx1 * pixbinX + ", " + cpy1 * pixbinY + ")" + " and (" + cpx2
-                        + ", " + cpy2 + ")" + " at (" + binningX + "x" + binningY + "binning");
+                plot.addLabel(0.5, 0,
+                        " CCF of (" + cpx1 * pixbinX + ", " + cpy1 * pixbinY + ")" + " and (" + cpx2 + ", " + cpy2 +
+                                ")" + " at (" + binningX + "x" + binningY + "binning");
             } else if (cfXDistance + cfYDistance != 0 && cbFitModel.getSelectedItem() == "DC-FCCS (2D)") {
-                plot.addLabel(0.5, 0, " CCF of (" + cpx1 * pixbinX + ", " + cpy1 * pixbinY + ")" + " and (" + cpx2
-                        + ", " + cpy2 + ")" + " at " + binningX + "x" + binningY + "binning");
+                plot.addLabel(0.5, 0,
+                        " CCF of (" + cpx1 * pixbinX + ", " + cpy1 * pixbinY + ")" + " and (" + cpx2 + ", " + cpy2 +
+                                ")" + " at " + binningX + "x" + binningY + "binning");
             } else {
-                plot.addLabel(0.5, 0, " ACF of (" + cpx1 * pixbinX + ", " + cpy1 * pixbinY + ") at " + binningX + "x"
-                        + binningY + "binning");
+                plot.addLabel(0.5, 0,
+                        " ACF of (" + cpx1 * pixbinX + ", " + cpy1 * pixbinY + ") at " + binningX + "x" + binningY +
+                                "binning");
             }
 
             // either create a new plot window or plot within the existing window
@@ -15653,7 +15750,7 @@ public class Imaging_FCS implements PlugIn {
 
         if (cormode == 1) { // if single ACF or CCF
             for (int z = 1; z <= (chanum - 1); z++) { // find minimum and maximum values in correlation functions that
-                                                      // will be plotted
+                // will be plotted
                 if (maxsc < acf[ct][cpx1][cpy1][z]) {
                     maxsc = acf[ct][cpx1][cpy1][z];
                 }
@@ -15677,14 +15774,17 @@ public class Imaging_FCS implements PlugIn {
 
             // create plot label for ACF of CCF
             if (cfXDistance + cfYDistance != 0) {
-                plot.addLabel(0.5, 0, " CCF of (" + cpx1 * pixbinX + ", " + cpy1 * pixbinY + ")" + " and (" + cpx2
-                        + ", " + cpy2 + ")" + " at (" + binningX + "x" + binningY + "binning");
+                plot.addLabel(0.5, 0,
+                        " CCF of (" + cpx1 * pixbinX + ", " + cpy1 * pixbinY + ")" + " and (" + cpx2 + ", " + cpy2 +
+                                ")" + " at (" + binningX + "x" + binningY + "binning");
             } else if (cfXDistance + cfYDistance != 0 && cbFitModel.getSelectedItem() == "DC-FCCS (2D)") {
-                plot.addLabel(0.5, 0, " CCF of (" + cpx1 * pixbinX + ", " + cpy1 * pixbinY + ")" + " and (" + cpx2
-                        + ", " + cpy2 + ")" + " at " + binningX + "x" + binningY + "binning");
+                plot.addLabel(0.5, 0,
+                        " CCF of (" + cpx1 * pixbinX + ", " + cpy1 * pixbinY + ")" + " and (" + cpx2 + ", " + cpy2 +
+                                ")" + " at " + binningX + "x" + binningY + "binning");
             } else {
-                plot.addLabel(0.5, 0, " ACF of (" + cpx1 * pixbinX + ", " + cpy1 * pixbinY + ") at " + binningX + "x"
-                        + binningY + "binning");
+                plot.addLabel(0.5, 0,
+                        " ACF of (" + cpx1 * pixbinX + ", " + cpy1 * pixbinY + ") at " + binningX + "x" + binningY +
+                                "binning");
             }
             plot.draw();
 
@@ -15752,10 +15852,10 @@ public class Imaging_FCS implements PlugIn {
 
         if (cormode == 2) {
             int submode; // 0-DC-FCCS off, 1-DC-FCCS on & FCCS display on, 2-DC-FFCS on & FCCS display
-                         // off
+            // off
             Map<Integer, ArrayList<Integer>> indexPair = new HashMap<>();// 0,1-DC-FCCS off, 0,3-DC-FCCS on & FCCS
-                                                                         // display on, 2,3-DC-FFCS on & FCCS display
-                                                                         // off
+            // display on, 2,3-DC-FFCS on & FCCS display
+            // off
 
             if (cbFitModel.getSelectedItem() != "DC-FCCS (2D)") {
                 submode = 0;
@@ -15788,16 +15888,16 @@ public class Imaging_FCS implements PlugIn {
                 for (int x = cpx1; x <= cpxf; x++) {
                     for (int y = cpy1; y <= cpyf; y++) {
                         for (int z = 1; z <= (chanum - 1); z++) {
-                            if ((!map && plotroi.contains(x * pixbinX, y * pixbinY)
-                                    && plotroi.contains(x * pixbinX, y * pixbinY + binningY - 1)
-                                    && plotroi.contains(x * pixbinX + binningX - 1, y * pixbinY)
-                                    && plotroi.contains(x * pixbinX + binningX - 1, y * pixbinY + binningY - 1))
-                                    || (map && plotroi.contains(x, y))) {
+                            if ((!map && plotroi.contains(x * pixbinX, y * pixbinY) &&
+                                    plotroi.contains(x * pixbinX, y * pixbinY + binningY - 1) &&
+                                    plotroi.contains(x * pixbinX + binningX - 1, y * pixbinY) &&
+                                    plotroi.contains(x * pixbinX + binningX - 1, y * pixbinY + binningY - 1)) ||
+                                    (map && plotroi.contains(x, y))) {
                                 if (maxsc < acf[i][x][y][z]) {
                                     maxsc = acf[i][x][y][z];
                                 }
                                 if (acf[i][x][y][z] != 0 && minsc > acf[i][x][y][z]) { // make sure minsc is not set to
-                                                                                       // 0 because of a missing CF
+                                    // 0 because of a missing CF
                                     minsc = acf[i][x][y][z];
                                 }
                             }
@@ -15823,16 +15923,18 @@ public class Imaging_FCS implements PlugIn {
             switch (submode) {
                 case 0:
                     if (cfXDistance != 0 || cfYDistance != 0) { // If this is a spatial CCF plot then plot CCF only
-                        plot.addLabel(0.5, 0, " spatial CCFs of pixels in the ROIs at " + binningX + "x" + binningY
-                                + "binning" + " and " + cfXDistance + "x" + cfYDistance + " separation");
+                        plot.addLabel(0.5, 0,
+                                " spatial CCFs of pixels in the ROIs at " + binningX + "x" + binningY + "binning" +
+                                        " and " + cfXDistance + "x" + cfYDistance + " separation");
                     } else {
                         plot.addLabel(0.5, 0, " ACFs from the ROI at " + binningX + "x" + binningY + "binning");
                     }
                     break;
                 case 1:// If this is a DC-FCCS plot where all functions are supposed to be plotted then
-                       // plot ACF green, ACF red, and CCF
-                    plot.addLabel(0.5, 0, " ACFs(green), ACFs(red) and CCFs of pixels in the ROIs at " + binningX + "x"
-                            + binningY + "binning");
+                    // plot ACF green, ACF red, and CCF
+                    plot.addLabel(0.5, 0,
+                            " ACFs(green), ACFs(red) and CCFs of pixels in the ROIs at " + binningX + "x" + binningY +
+                                    "binning");
                     break;
                 default: // If this is a DC-FCCS plot where CCF to be plotted
                     plot.addLabel(0.5, 0, " CCFs of pixels in the ROIs at " + binningX + "x" + binningY + "binning");
@@ -15841,14 +15943,14 @@ public class Imaging_FCS implements PlugIn {
 
             // if multiple ACF or CCF
             if (doFit) {// Fit has been performed; plot fitted CFs or CFs or both depending on the
-                        // imageType
+                // imageType
                 for (int y = cpy1; y <= cpyf; y++) {
                     for (int x = cpx1; x <= cpxf; x++) {
-                        if ((!map && plotroi.contains(x * pixbinX, y * pixbinY)
-                                && plotroi.contains(x * pixbinX, y * pixbinY + binningY - 1)
-                                && plotroi.contains(x * pixbinX + binningX - 1, y * pixbinY)
-                                && plotroi.contains(x * pixbinX + binningX - 1, y * pixbinY + binningY - 1))
-                                || (map && plotroi.contains(x, y))) {
+                        if ((!map && plotroi.contains(x * pixbinX, y * pixbinY) &&
+                                plotroi.contains(x * pixbinX, y * pixbinY + binningY - 1) &&
+                                plotroi.contains(x * pixbinX + binningX - 1, y * pixbinY) &&
+                                plotroi.contains(x * pixbinX + binningX - 1, y * pixbinY + binningY - 1)) ||
+                                (map && plotroi.contains(x, y))) {
                             for (int i = indexPair.get(submode).get(0); i < indexPair.get(submode).get(1); i++) {
                                 if (submode == 1) {
                                     switch (i) {
@@ -15921,11 +16023,11 @@ public class Imaging_FCS implements PlugIn {
             } else {
                 for (int y = cpy1; y <= cpyf; y++) {// plot all CFs depending on the imageType
                     for (int x = cpx1; x <= cpxf; x++) {
-                        if ((!map && plotroi.contains(x * pixbinX, y * pixbinY)
-                                && plotroi.contains(x * pixbinX, y * pixbinY + binningY - 1)
-                                && plotroi.contains(x * pixbinX + binningX - 1, y * pixbinY)
-                                && plotroi.contains(x * pixbinX + binningX - 1, y * pixbinY + binningY - 1))
-                                || (map && plotroi.contains(x, y))) {
+                        if ((!map && plotroi.contains(x * pixbinX, y * pixbinY) &&
+                                plotroi.contains(x * pixbinX, y * pixbinY + binningY - 1) &&
+                                plotroi.contains(x * pixbinX + binningX - 1, y * pixbinY) &&
+                                plotroi.contains(x * pixbinX + binningX - 1, y * pixbinY + binningY - 1)) ||
+                                (map && plotroi.contains(x, y))) {
                             for (int i = indexPair.get(submode).get(0); i < indexPair.get(submode).get(1); i++) {
                                 if (submode == 1) {
                                     switch (i) {
@@ -15964,7 +16066,7 @@ public class Imaging_FCS implements PlugIn {
         if (cormode == 3) { // if FCCS plot with ACF1, ACF2 and CCF
 
             for (int z = 1; z <= (chanum - 1); z++) { // find minimum and maximum values in correlation functions that
-                                                      // will be plotted
+                // will be plotted
                 if (maxsc < acf[0][cpx1][cpy1][z]) {
                     maxsc = acf[0][cpx1][cpy1][z];
                 }
@@ -16002,8 +16104,9 @@ public class Imaging_FCS implements PlugIn {
             plot.addPoints(lagtime, acf[1][cpx1][cpy1], Plot.LINE);
             plot.setColor(java.awt.Color.BLUE);
             plot.addPoints(lagtime, acf[2][cpx1][cpy1], Plot.LINE);
-            plot.addLabel(0.5, 0, " ACF1, ACF2, CCF of (" + cpx1 * pixbinX + ", " + cpy1 * pixbinY + ")" + " and ("
-                    + cpx2 * pixbinX + ", " + cpy2 * pixbinY + ")" + " at (" + binningX + "x" + binningY + "binning");
+            plot.addLabel(0.5, 0,
+                    " ACF1, ACF2, CCF of (" + cpx1 * pixbinX + ", " + cpy1 * pixbinY + ")" + " and (" + cpx2 * pixbinX +
+                            ", " + cpy2 * pixbinY + ")" + " at (" + binningX + "x" + binningY + "binning");
             plot.draw();
 
             // if fit has been performed add the fit to the plot
@@ -16040,10 +16143,10 @@ public class Imaging_FCS implements PlugIn {
         if (cormode == 4) { // if average ACF
 
             int submode; // 0-DC-FCCS off, 1-DC-FCCS on & FCCS display on, 2-DC-FFCS on & FCCS display
-                         // off
+            // off
             Map<Integer, ArrayList<Integer>> indexPair = new HashMap<>();// 0,1-DC-FCCS off, 0,3-DC-FCCS on & FCCS
-                                                                         // display on, 2,3-DC-FFCS on & FCCS display
-                                                                         // off
+            // display on, 2,3-DC-FFCS on & FCCS display
+            // off
 
             if (cbFitModel.getSelectedItem() != "DC-FCCS (2D)") {
                 submode = 0;
@@ -16144,20 +16247,20 @@ public class Imaging_FCS implements PlugIn {
             int cftype;
             if (cbFitModel.getSelectedItem() == "DC-FCCS (2D)") {
                 cftype = 2; // cross-correlations are stored in acf[2]; the autocorrelations in acf[0] and
-                            // acf[1] are not shown in this view
+                // acf[1] are not shown in this view
             } else {
                 cftype = 0; // autocorrelations are stored in acf[0];
             }
 
             for (int x = cpx1; x <= cpxf; x++) { // find minimum and maximum values in correlation functions that will
-                                                 // be plotted
+                // be plotted
                 for (int y = cpy1; y <= cpyf; y++) {
                     for (int z = 1; z <= (chanum - 1); z++) {
-                        if ((!map && plotroi.contains(x * pixbinX, y * pixbinY)
-                                && plotroi.contains(x * pixbinX, y * pixbinY + binningY - 1)
-                                && plotroi.contains(x * pixbinX + binningX - 1, y * pixbinY)
-                                && plotroi.contains(x * pixbinX + binningX - 1, y * pixbinY + binningY - 1))
-                                || (map && plotroi.contains(x, y))) {
+                        if ((!map && plotroi.contains(x * pixbinX, y * pixbinY) &&
+                                plotroi.contains(x * pixbinX, y * pixbinY + binningY - 1) &&
+                                plotroi.contains(x * pixbinX + binningX - 1, y * pixbinY) &&
+                                plotroi.contains(x * pixbinX + binningX - 1, y * pixbinY + binningY - 1)) ||
+                                (map && plotroi.contains(x, y))) {
                             if (pixvalid[cftype][x][y] == 1.0) {
                                 if (maxsc < acf[cftype][x][y][z]) {
                                     maxsc = acf[cftype][x][y][z];
@@ -16198,11 +16301,11 @@ public class Imaging_FCS implements PlugIn {
             if (doFit) {
                 for (int y = cpy1; y <= cpyf; y++) {
                     for (int x = cpx1; x <= cpxf; x++) {
-                        if ((!map && plotroi.contains(x * pixbinX, y * pixbinY)
-                                && plotroi.contains(x * pixbinX, y * pixbinY + binningY - 1)
-                                && plotroi.contains(x * pixbinX + binningX - 1, y * pixbinY)
-                                && plotroi.contains(x * pixbinX + binningX - 1, y * pixbinY + binningY - 1))
-                                || (map && plotroi.contains(x, y))) {
+                        if ((!map && plotroi.contains(x * pixbinX, y * pixbinY) &&
+                                plotroi.contains(x * pixbinX, y * pixbinY + binningY - 1) &&
+                                plotroi.contains(x * pixbinX + binningX - 1, y * pixbinY) &&
+                                plotroi.contains(x * pixbinX + binningX - 1, y * pixbinY + binningY - 1)) ||
+                                (map && plotroi.contains(x, y))) {
 
                             if (pixvalid[cftype][x][y] == 1.0) {
                                 plot.setColor(java.awt.Color.BLUE);
@@ -16250,11 +16353,11 @@ public class Imaging_FCS implements PlugIn {
             } else {
                 for (int y = cpy1; y <= cpyf; y++) {
                     for (int x = cpx1; x <= cpxf; x++) {
-                        if ((!map && plotroi.contains(x * pixbinX, y * pixbinY)
-                                && plotroi.contains(x * pixbinX, y * pixbinY + binningY - 1)
-                                && plotroi.contains(x * pixbinX + binningX - 1, y * pixbinY)
-                                && plotroi.contains(x * pixbinX + binningX - 1, y * pixbinY + binningY - 1))
-                                || (map && plotroi.contains(x, y))) {
+                        if ((!map && plotroi.contains(x * pixbinX, y * pixbinY) &&
+                                plotroi.contains(x * pixbinX, y * pixbinY + binningY - 1) &&
+                                plotroi.contains(x * pixbinX + binningX - 1, y * pixbinY) &&
+                                plotroi.contains(x * pixbinX + binningX - 1, y * pixbinY + binningY - 1)) ||
+                                (map && plotroi.contains(x, y))) {
                             plot.setColor(java.awt.Color.BLUE);
                             plot.addPoints(lagtime, acf[cftype][x][y], Plot.LINE);
                         }
@@ -16308,13 +16411,13 @@ public class Imaging_FCS implements PlugIn {
                                     proceed = pixvalid[0][x][y] == 1.0; // for spatial ACF and ACF
                                     break;
                                 case 1:
-                                    proceed = (pixvalid[0][x][y] == 1.0) && (pixvalid[1][x][y] == 1.0)
-                                            && (pixvalid[2][x][y] == 1.0); // For DC-FCCS only plot valid pixel when all
-                                                                           // ACF1, ACF2 and CCF are valid
+                                    proceed = (pixvalid[0][x][y] == 1.0) && (pixvalid[1][x][y] == 1.0) &&
+                                            (pixvalid[2][x][y] == 1.0); // For DC-FCCS only plot valid pixel when all
+                                    // ACF1, ACF2 and CCF are valid
                                     break;
                                 case 2:
                                     proceed = pixvalid[2][x][y] == 1.0; // For DC-FCCS (FCCS display toggle off )only
-                                                                        // plot valid pixel when CCF is valid
+                                    // plot valid pixel when CCF is valid
                                     break;
                             }
                         }
@@ -16333,11 +16436,11 @@ public class Imaging_FCS implements PlugIn {
                 for (int x = cpx1; x <= cpxf; x++) {
                     for (int y = cpy1; y <= cpyf; y++) {
                         for (int z = 1; z <= (chanum - 1); z++) {
-                            if ((!map && plotroi.contains(x * pixbinX, y * pixbinY)
-                                    && plotroi.contains(x * pixbinX, y * pixbinY + binningY - 1)
-                                    && plotroi.contains(x * pixbinX + binningX - 1, y * pixbinY)
-                                    && plotroi.contains(x * pixbinX + binningX - 1, y * pixbinY + binningY - 1))
-                                    || (map && plotroi.contains(x, y))) {
+                            if ((!map && plotroi.contains(x * pixbinX, y * pixbinY) &&
+                                    plotroi.contains(x * pixbinX, y * pixbinY + binningY - 1) &&
+                                    plotroi.contains(x * pixbinX + binningX - 1, y * pixbinY) &&
+                                    plotroi.contains(x * pixbinX + binningX - 1, y * pixbinY + binningY - 1)) ||
+                                    (map && plotroi.contains(x, y))) {
 
                                 // check for pixel validity before plotting. Only plot valid pixels depedning on
                                 // the settings
@@ -16348,9 +16451,9 @@ public class Imaging_FCS implements PlugIn {
                                             proceed = pixvalid[0][x][y] == 1.0; // for spatial ACF and ACF
                                             break;
                                         case 1:
-                                             // For DC-FCCS only plot valid pixel when all ACF1, ACF2 and CCF are valid
-                                            proceed = (pixvalid[0][x][y] == 1.0) && (pixvalid[1][x][y] == 1.0)
-                                                    && (pixvalid[2][x][y] == 1.0);
+                                            // For DC-FCCS only plot valid pixel when all ACF1, ACF2 and CCF are valid
+                                            proceed = (pixvalid[0][x][y] == 1.0) && (pixvalid[1][x][y] == 1.0) &&
+                                                    (pixvalid[2][x][y] == 1.0);
                                             break;
                                         case 2:
                                             // For DC-FCCS (FCCS display toggle off )only plot valid pixel when CCF is
@@ -16393,16 +16496,18 @@ public class Imaging_FCS implements PlugIn {
             switch (submode) {
                 case 0:
                     if (cfXDistance != 0 || cfYDistance != 0) { // If this is a spatial CCF plot then plot CCF only
-                        plot.addLabel(0.5, 0, " spatial CCFs of pixels in the ROIs at " + binningX + "x" + binningY
-                                + "binning" + " and " + cfXDistance + "x" + cfYDistance + " separation");
+                        plot.addLabel(0.5, 0,
+                                " spatial CCFs of pixels in the ROIs at " + binningX + "x" + binningY + "binning" +
+                                        " and " + cfXDistance + "x" + cfYDistance + " separation");
                     } else {
                         plot.addLabel(0.5, 0, " ACFs from the ROI at " + binningX + "x" + binningY + "binning");
                     }
                     break;
                 case 1:// If this is a DC-FCCS plot where all functions are supposed to be plotted then
-                       // plot ACF green, ACF red, and CCF
-                    plot.addLabel(0.5, 0, " ACFs(green), ACFs(red) and CCFs of pixels in the ROIs at " + binningX + "x"
-                            + binningY + "binning");
+                    // plot ACF green, ACF red, and CCF
+                    plot.addLabel(0.5, 0,
+                            " ACFs(green), ACFs(red) and CCFs of pixels in the ROIs at " + binningX + "x" + binningY +
+                                    "binning");
                     break;
                 default: // If this is a DC-FCCS plot where CCF to be plotted
                     plot.addLabel(0.5, 0, " CCFs of pixels in the ROIs at " + binningX + "x" + binningY + "binning");
@@ -16411,14 +16516,14 @@ public class Imaging_FCS implements PlugIn {
 
             // if multiple ACF or CCF
             if (doFit) {// Fit has been performed; plot fitted CFs or CFs or both depending on the
-                        // imageType
+                // imageType
                 for (int y = cpy1; y <= cpyf; y++) {
                     for (int x = cpx1; x <= cpxf; x++) {
-                        if ((!map && plotroi.contains(x * pixbinX, y * pixbinY)
-                                && plotroi.contains(x * pixbinX, y * pixbinY + binningY - 1)
-                                && plotroi.contains(x * pixbinX + binningX - 1, y * pixbinY)
-                                && plotroi.contains(x * pixbinX + binningX - 1, y * pixbinY + binningY - 1))
-                                || (map && plotroi.contains(x, y))) {
+                        if ((!map && plotroi.contains(x * pixbinX, y * pixbinY) &&
+                                plotroi.contains(x * pixbinX, y * pixbinY + binningY - 1) &&
+                                plotroi.contains(x * pixbinX + binningX - 1, y * pixbinY) &&
+                                plotroi.contains(x * pixbinX + binningX - 1, y * pixbinY + binningY - 1)) ||
+                                (map && plotroi.contains(x, y))) {
                             for (int i = indexPair.get(submode).get(0); i < indexPair.get(submode).get(1); i++) {
                                 if (submode == 1) {
                                     switch (i) {
@@ -16446,8 +16551,8 @@ public class Imaging_FCS implements PlugIn {
                                             break;
                                         case 1:
                                             // For DC-FCCS only plot valid pixel when all ACF1, ACF2 and CCF are valid
-                                            proceed = (pixvalid[0][x][y] == 1.0) && (pixvalid[1][x][y] == 1.0)
-                                                    && (pixvalid[2][x][y] == 1.0);
+                                            proceed = (pixvalid[0][x][y] == 1.0) && (pixvalid[1][x][y] == 1.0) &&
+                                                    (pixvalid[2][x][y] == 1.0);
                                             break;
                                         case 2:
                                             // For DC-FCCS (FCCS display toggle off )only plot valid pixel when CCF is
@@ -16517,15 +16622,15 @@ public class Imaging_FCS implements PlugIn {
                                             proceed = pixvalid[0][x][y] == 1.0; // for spatial ACF and ACF
                                             break;
                                         case 1:
-                                            proceed = (pixvalid[0][x][y] == 1.0) && (pixvalid[1][x][y] == 1.0)
-                                                    && (pixvalid[2][x][y] == 1.0); // For DC-FCCS only plot valid pixel
-                                                                                   // when all ACF1, ACF2 and CCF are
-                                                                                   // valid
+                                            proceed = (pixvalid[0][x][y] == 1.0) && (pixvalid[1][x][y] == 1.0) &&
+                                                    (pixvalid[2][x][y] == 1.0); // For DC-FCCS only plot valid pixel
+                                            // when all ACF1, ACF2 and CCF are
+                                            // valid
                                             break;
                                         case 2:
                                             proceed = pixvalid[2][x][y] == 1.0; // For DC-FCCS (FCCS display toggle off
-                                                                                // )only plot valid pixel when CCF is
-                                                                                // valid
+                                            // )only plot valid pixel when CCF is
+                                            // valid
                                             break;
                                     }
                                 }
@@ -16541,11 +16646,11 @@ public class Imaging_FCS implements PlugIn {
             } else {
                 for (int y = cpy1; y <= cpyf; y++) {// plot all CFs depending on the imageType
                     for (int x = cpx1; x <= cpxf; x++) {
-                        if ((!map && plotroi.contains(x * pixbinX, y * pixbinY)
-                                && plotroi.contains(x * pixbinX, y * pixbinY + binningY - 1)
-                                && plotroi.contains(x * pixbinX + binningX - 1, y * pixbinY)
-                                && plotroi.contains(x * pixbinX + binningX - 1, y * pixbinY + binningY - 1))
-                                || (map && plotroi.contains(x, y))) {
+                        if ((!map && plotroi.contains(x * pixbinX, y * pixbinY) &&
+                                plotroi.contains(x * pixbinX, y * pixbinY + binningY - 1) &&
+                                plotroi.contains(x * pixbinX + binningX - 1, y * pixbinY) &&
+                                plotroi.contains(x * pixbinX + binningX - 1, y * pixbinY + binningY - 1)) ||
+                                (map && plotroi.contains(x, y))) {
                             for (int i = indexPair.get(submode).get(0); i < indexPair.get(submode).get(1); i++) {
                                 if (submode == 1) {
                                     switch (i) {
@@ -16572,15 +16677,15 @@ public class Imaging_FCS implements PlugIn {
                                             proceed = pixvalid[0][x][y] == 1.0; // for spatial ACF and ACF
                                             break;
                                         case 1:
-                                            proceed = (pixvalid[0][x][y] == 1.0) && (pixvalid[1][x][y] == 1.0)
-                                                    && (pixvalid[2][x][y] == 1.0); // For DC-FCCS only plot valid pixel
-                                                                                   // when all ACF1, ACF2 and CCF are
-                                                                                   // valid
+                                            proceed = (pixvalid[0][x][y] == 1.0) && (pixvalid[1][x][y] == 1.0) &&
+                                                    (pixvalid[2][x][y] == 1.0); // For DC-FCCS only plot valid pixel
+                                            // when all ACF1, ACF2 and CCF are
+                                            // valid
                                             break;
                                         case 2:
                                             proceed = pixvalid[2][x][y] == 1.0; // For DC-FCCS (FCCS display toggle off
-                                                                                // )only plot valid pixel when CCF is
-                                                                                // valid
+                                            // )only plot valid pixel when CCF is
+                                            // valid
                                             break;
                                     }
                                 }
@@ -16622,7 +16727,7 @@ public class Imaging_FCS implements PlugIn {
         int cpx2 = cpx1 * pixbinX + cfXDistance;
         int cpy2 = cpy1 * pixbinY + cfYDistance;
         if (tfFitModel.getText().equals("ITIR-FCS (2D)")) { // select the fit model to be used; extra fit models can be
-                                                            // added here
+            // added here
             theofunction = new FCS_3p(0);
             if (paramfit[0]) {
                 paralist.add(Double.parseDouble(tfParamN.getText()));
@@ -16737,7 +16842,7 @@ public class Imaging_FCS implements PlugIn {
         int ct = 0;
 
         if (cbFitModel.getSelectedItem() == "DC-FCCS (2D)") { // index ct ensures that in cormode 1 when DC-FCCS is
-                                                              // selected the CCF is plotted
+            // selected the CCF is plotted
             ct = 2;
         }
 
@@ -16745,7 +16850,7 @@ public class Imaging_FCS implements PlugIn {
         minsc = 1000; // set minsc to a high value to make sure it is not 0
 
         for (int z = 1; z <= (chanum - 1); z++) { // find minimum and maximum values in correlation functions that will
-                                                  // be plotted
+            // be plotted
             if (maxsc < acf[ct][cpx1][cpy1][z]) {
                 maxsc = acf[ct][cpx1][cpy1][z];
             }
@@ -16776,14 +16881,17 @@ public class Imaging_FCS implements PlugIn {
 
         // create plot label for ACF of CCF
         if (cfXDistance + cfYDistance != 0) {
-            plot.addLabel(0.5, 0, " CCF of (" + cpx1 * pixbinX + ", " + cpy1 * pixbinY + ")" + " and (" + cpx2 + ", "
-                    + cpy2 + ")" + " at (" + binningX + "x" + binningY + "binning");
+            plot.addLabel(0.5, 0,
+                    " CCF of (" + cpx1 * pixbinX + ", " + cpy1 * pixbinY + ")" + " and (" + cpx2 + ", " + cpy2 + ")" +
+                            " at (" + binningX + "x" + binningY + "binning");
         } else if (cfXDistance + cfYDistance != 0 && cbFitModel.getSelectedItem() == "DC-FCCS (2D)") {
-            plot.addLabel(0.5, 0, " CCF of (" + cpx1 * pixbinX + ", " + cpy1 * pixbinY + ")" + " and (" + cpx2 + ", "
-                    + cpy2 + ")" + " at " + binningX + "x" + binningY + "binning");
+            plot.addLabel(0.5, 0,
+                    " CCF of (" + cpx1 * pixbinX + ", " + cpy1 * pixbinY + ")" + " and (" + cpx2 + ", " + cpy2 + ")" +
+                            " at " + binningX + "x" + binningY + "binning");
         } else {
-            plot.addLabel(0.5, 0, " ACF of (" + cpx1 * pixbinX + ", " + cpy1 * pixbinY + ") at " + binningX + "x"
-                    + binningY + "binning");
+            plot.addLabel(0.5, 0,
+                    " ACF of (" + cpx1 * pixbinX + ", " + cpy1 * pixbinY + ") at " + binningX + "x" + binningY +
+                            "binning");
         }
 
         plot.setColor(java.awt.Color.RED);
@@ -16820,7 +16928,7 @@ public class Imaging_FCS implements PlugIn {
 
         if (cormode == 1) {
             for (int x = 0; x < nopit; x++) { // find minimum and maximum values in intensity trace 1 that will be
-                                              // plotted
+                // plotted
                 if (imaxsc < intTrace1[x]) {
                     imaxsc = intTrace1[x];
                 }
@@ -16830,9 +16938,9 @@ public class Imaging_FCS implements PlugIn {
             }
 
             if ((ipx1 - ipx2) != 0 || (ipy1 - ipy2) != 0) { // in the case of a CCF find also the max and min value in
-                                                            // the intensity trace 2
+                // the intensity trace 2
                 for (int x = 0; x < nopit; x++) { // find minimum and maximum values in intensity trace 1 that will be
-                                                  // plotted
+                    // plotted
                     if (imaxsc < intTrace2[x]) {
                         imaxsc = intTrace2[x];
                     }
@@ -16843,7 +16951,7 @@ public class Imaging_FCS implements PlugIn {
             }
 
             iminsc -= iminsc * 0.1; // maximum scales are to be 10% larger than maximum value and 10% smaller than
-                                    // minimum value
+            // minimum value
             imaxsc += imaxsc * 0.1;
 
             // plot intensity traces
@@ -16875,7 +16983,7 @@ public class Imaging_FCS implements PlugIn {
             }
 
             if (intWindow == null || intWindow.isClosed()) { // create new plot if window doesn't exist, or reuse
-                                                             // existing window
+                // existing window
                 intWindow = iplot.show();
                 intWindow.setLocation(intWindowPosX, intWindowPosY);
             } else {
@@ -16886,7 +16994,7 @@ public class Imaging_FCS implements PlugIn {
 
         if (cormode == 2) {
             for (int x = 0; x < nopit; x++) { // find minimum and maximum values in intensity trace 1 that will be
-                                              // plotted
+                // plotted
                 if (imaxsc < intTrace1[x]) {
                     imaxsc = intTrace1[x];
                 }
@@ -16896,7 +17004,7 @@ public class Imaging_FCS implements PlugIn {
             }
 
             iminsc -= iminsc * 0.1; // maximum scales are to be 10% larger than maximum value and 10% smaller than
-                                    // minimum value
+            // minimum value
             imaxsc += imaxsc * 0.1;
 
             // plot intensity traces
@@ -16909,7 +17017,7 @@ public class Imaging_FCS implements PlugIn {
             iplot.draw();
 
             if (intWindow == null || intWindow.isClosed()) { // create new plot if window doesn't exist, or reuse
-                                                             // existing window
+                // existing window
                 intWindow = iplot.show();
                 intWindow.setLocation(intWindowPosX, intWindowPosY);
             } else {
@@ -16920,7 +17028,7 @@ public class Imaging_FCS implements PlugIn {
 
         if (cormode == 3) {
             for (int x = 0; x < nopit; x++) { // find minimum and maximum values in intensity trace 1 that will be
-                                              // plotted
+                // plotted
                 if (imaxsc < intTrace1[x]) {
                     imaxsc = intTrace1[x];
                 }
@@ -16929,7 +17037,7 @@ public class Imaging_FCS implements PlugIn {
                 }
             }
             for (int x = 0; x < nopit; x++) { // find minimum and maximum values in intensity trace 1 that will be
-                                              // plotted
+                // plotted
                 if (imaxsc < intTrace2[x]) {
                     imaxsc = intTrace2[x];
                 }
@@ -16939,7 +17047,7 @@ public class Imaging_FCS implements PlugIn {
             }
 
             iminsc -= iminsc * 0.1; // maximum scales are to be 10% larger than maximum value and 10% smaller than
-                                    // minimum value
+            // minimum value
             imaxsc += imaxsc * 0.1;
 
             // plot intensity traces
@@ -16956,7 +17064,7 @@ public class Imaging_FCS implements PlugIn {
             iplot.draw();
 
             if (intWindow == null || intWindow.isClosed()) { // create new plot if window doesn't exist, or reuse
-                                                             // existing window
+                // existing window
                 intWindow = iplot.show();
                 intWindow.setLocation(intWindowPosX, intWindowPosY);
             } else {
@@ -17001,7 +17109,7 @@ public class Imaging_FCS implements PlugIn {
 
         if (cbFitModel.getSelectedItem() == "DC-FCCS (2D)" && tbFCCSDisplay.isSelected()) {
             for (int z = 1; z <= (chanum - 1); z++) { // find minimum and maximum values in residuals that will be
-                                                      // plotted
+                // plotted
                 if (rmaxsc < res[0][rpx1][rpy1][z]) {
                     rmaxsc = res[0][rpx1][rpy1][z];
                 }
@@ -17024,7 +17132,7 @@ public class Imaging_FCS implements PlugIn {
         }
 
         rminsc -= rminsc * 0.1; // maximum scales are to be 10% larger than maximum value and 10% smaller than
-                                // minimum value
+        // minimum value
         rmaxsc += rmaxsc * 0.1;
 
         // plot residuals
@@ -17047,7 +17155,7 @@ public class Imaging_FCS implements PlugIn {
         }
 
         if (resWindow == null || resWindow.isClosed()) { // create new plot if window doesn't exist, or reuse existing
-                                                         // window
+            // window
             resWindow = rplot.show();
             resWindow.setLocation(resWindowPosX, resWindowPosY);
         } else {
@@ -17065,7 +17173,7 @@ public class Imaging_FCS implements PlugIn {
 
         if (cbFitModel.getSelectedItem() == "DC-FCCS (2D)" && tbFCCSDisplay.isSelected()) {
             for (int z = 1; z <= (chanum - 1); z++) { // find minimum and maximum values in residuals that will be
-                                                      // plotted
+                // plotted
                 if (sdmaxsc < sdacf[0][sdpx1][sdpy1][z]) {
                     sdmaxsc = sdacf[0][sdpx1][sdpy1][z];
                 }
@@ -17097,7 +17205,7 @@ public class Imaging_FCS implements PlugIn {
         }
 
         sdminsc -= sdminsc * 0.1; // maximum scales are to be 10% larger than maximum value and 10% smaller than
-                                  // minimum value
+        // minimum value
         sdmaxsc += sdmaxsc * 0.1;
 
         // plot standard deviation
@@ -17118,7 +17226,7 @@ public class Imaging_FCS implements PlugIn {
         }
 
         if (sdWindow == null || sdWindow.isClosed()) { // create new plot if window doesn't exist, or reuse existing
-                                                       // window
+            // window
             sdWindow = sdplot.show();
             sdWindow.setLocation(sdWindowPosX, sdWindowPosY);
         } else {
@@ -17139,7 +17247,7 @@ public class Imaging_FCS implements PlugIn {
 
         if (cbFitModel.getSelectedItem() == "DC-FCCS (2D)") {
             ct = 2; // in cormode 1, when DC-FCCS is selected, MSD of the cross-correlation is
-                    // ploted
+            // ploted
         }
         Rectangle MSDrect = MSDroi.getBounds();
 
@@ -17185,7 +17293,7 @@ public class Imaging_FCS implements PlugIn {
             }
 
             msdminsc -= msdminsc * 0.1; // maximum scales are to be 10% larger than maximum value and 10% smaller than
-                                        // minimum value
+            // minimum value
             msdmaxsc += msdmaxsc * 0.1;
 
             // plot MSD
@@ -17198,7 +17306,7 @@ public class Imaging_FCS implements PlugIn {
             msdplot.draw();
 
             if (msdWindow == null || msdWindow.isClosed()) { // create new plot if window doesn't exist, or reuse
-                                                             // existing window
+                // existing window
                 msdWindow = msdplot.show();
                 msdWindow.setLocation(msdWindowPosX, msdWindowPosY);
             } else {
@@ -17216,11 +17324,11 @@ public class Imaging_FCS implements PlugIn {
                 zerofound = false;
                 for (int x = msdpx1; x <= msdpxf; x++) {
                     for (int y = msdpy1; y <= msdpyf; y++) {
-                        if (((!map && MSDroi.contains(x * pixbinX, y * pixbinY)
-                                && MSDroi.contains(x * pixbinX, y * pixbinY + binningX - 1)
-                                && MSDroi.contains(x * pixbinX + binningX - 1, y * pixbinY)
-                                && MSDroi.contains(x * pixbinX + binningX - 1, y * pixbinY + binningY - 1))
-                                || (map && MSDroi.contains(x, y))) && (msd[ct][x][y][i] == 0.0)) {
+                        if (((!map && MSDroi.contains(x * pixbinX, y * pixbinY) &&
+                                MSDroi.contains(x * pixbinX, y * pixbinY + binningX - 1) &&
+                                MSDroi.contains(x * pixbinX + binningX - 1, y * pixbinY) &&
+                                MSDroi.contains(x * pixbinX + binningX - 1, y * pixbinY + binningY - 1)) ||
+                                (map && MSDroi.contains(x, y))) && (msd[ct][x][y][i] == 0.0)) {
                             zerofound = true;
                         }
                     }
@@ -17233,14 +17341,14 @@ public class Imaging_FCS implements PlugIn {
             double[] msdvalue = new double[cutoff];
 
             for (int x = msdpx1; x <= msdpxf; x++) { // find minimum and maximum values in MSD plots that will be
-                                                     // plotted
+                // plotted
                 for (int y = msdpy1; y <= msdpyf; y++) {
                     for (int z = 1; z < cutoff; z++) {
-                        if ((!map && MSDroi.contains(x * pixbinX, y * pixbinY)
-                                && MSDroi.contains(x * pixbinX, y * pixbinY + binningY - 1)
-                                && MSDroi.contains(x * pixbinX + binningX - 1, y * pixbinY)
-                                && MSDroi.contains(x * pixbinX + binningX - 1, y * pixbinY + binningY - 1))
-                                || (map && MSDroi.contains(x, y))) {
+                        if ((!map && MSDroi.contains(x * pixbinX, y * pixbinY) &&
+                                MSDroi.contains(x * pixbinX, y * pixbinY + binningY - 1) &&
+                                MSDroi.contains(x * pixbinX + binningX - 1, y * pixbinY) &&
+                                MSDroi.contains(x * pixbinX + binningX - 1, y * pixbinY + binningY - 1)) ||
+                                (map && MSDroi.contains(x, y))) {
                             if (msdmaxsc < msd[ct][x][y][z]) {
                                 msdmaxsc = msd[ct][x][y][z];
                             }
@@ -17253,7 +17361,7 @@ public class Imaging_FCS implements PlugIn {
             }
 
             msdminsc -= msdminsc * 0.1; // maximum scales are to be 10% larger than maximum value and 10% smaller than
-                                        // minimum value
+            // minimum value
             msdmaxsc += msdmaxsc * 0.1;
 
             // plot MSD
@@ -17266,7 +17374,7 @@ public class Imaging_FCS implements PlugIn {
             msdplot.draw();
 
             if (msdWindow == null || msdWindow.isClosed()) { // create new plot if window doesn't exist, or reuse
-                                                             // existing window
+                // existing window
                 msdWindow = msdplot.show();
                 msdWindow.setLocation(msdWindowPosX, msdWindowPosY);
             } else {
@@ -17276,11 +17384,11 @@ public class Imaging_FCS implements PlugIn {
 
             for (int y = msdpy1; y <= msdpyf; y++) {
                 for (int x = msdpx1; x <= msdpxf; x++) {
-                    if ((!map && MSDroi.contains(x * pixbinX, y * pixbinY)
-                            && MSDroi.contains(x * pixbinX, y * pixbinY + binningY - 1)
-                            && MSDroi.contains(x * pixbinX + binningX - 1, y * pixbinY)
-                            && MSDroi.contains(x * pixbinX + binningX - 1, y * pixbinY + binningY - 1))
-                            || (map && MSDroi.contains(x, y))) {
+                    if ((!map && MSDroi.contains(x * pixbinX, y * pixbinY) &&
+                            MSDroi.contains(x * pixbinX, y * pixbinY + binningY - 1) &&
+                            MSDroi.contains(x * pixbinX + binningX - 1, y * pixbinY) &&
+                            MSDroi.contains(x * pixbinX + binningX - 1, y * pixbinY + binningY - 1)) ||
+                            (map && MSDroi.contains(x, y))) {
                         msdvalue = Arrays.copyOfRange(msd[ct][x][y], 0, cutoff);
                         msdplot.setColor(java.awt.Color.BLUE);
                         msdplot.addPoints(msdtime, msdvalue, Plot.LINE);
@@ -17293,8 +17401,8 @@ public class Imaging_FCS implements PlugIn {
         if (cormode == 3) {
 
             int i = chanum - 1;
-            while ((msd[0][msdpx1][msdpy1][i] == 0 || msd[1][msdpx1][msdpy1][i] == 0 || msd[2][msdpx1][msdpy1][i] == 0)
-                    && (i > 2)) {
+            while ((msd[0][msdpx1][msdpy1][i] == 0 || msd[1][msdpx1][msdpy1][i] == 0 ||
+                    msd[2][msdpx1][msdpy1][i] == 0) && (i > 2)) {
                 i--;
             }
             cutoff = i + 1;
@@ -17328,7 +17436,7 @@ public class Imaging_FCS implements PlugIn {
             }
 
             msdminsc -= msdminsc * 0.1; // maximum scales are to be 10% larger than maximum value and 10% smaller than
-                                        // minimum value
+            // minimum value
             msdmaxsc += msdmaxsc * 0.1;
 
             // plot MSD
@@ -17347,7 +17455,7 @@ public class Imaging_FCS implements PlugIn {
             msdplot.addPoints(msdtime, msdvalue[2], Plot.LINE);
 
             if (msdWindow == null || msdWindow.isClosed()) { // create new plot if window doesn't exist, or reuse
-                                                             // existing window
+                // existing window
                 msdWindow = msdplot.show();
                 msdWindow.setLocation(msdWindowPosX, msdWindowPosY);
             } else {
@@ -17379,7 +17487,7 @@ public class Imaging_FCS implements PlugIn {
             }
 
             msdminsc -= msdminsc * 0.1; // maximum scales are to be 10% larger than maximum value and 10% smaller than
-                                        // minimum value
+            // minimum value
             msdmaxsc += msdmaxsc * 0.1;
 
             // plot MSD
@@ -17392,7 +17500,7 @@ public class Imaging_FCS implements PlugIn {
             msdplot.draw();
 
             if (msdWindow == null || msdWindow.isClosed()) { // create new plot if window doesn't exist, or reuse
-                                                             // existing window
+                // existing window
                 msdWindow = msdplot.show();
                 msdWindow.setLocation(msdWindowPosX, msdWindowPosY);
             } else {
@@ -17406,12 +17514,12 @@ public class Imaging_FCS implements PlugIn {
     public void createParaImp(int wx, int hy) {
         // wx, hy: image width and height
         int nochannels = 1; // number of correlation channels; 1 for FCS, 3 for DC-FCCS (for
-                            // cross-correlation and autocorrelation in the 2 channels respectively)
+        // cross-correlation and autocorrelation in the 2 channels respectively)
         int xm = mincposx; // introducing pixel shifts in order to align all channels
         int ym = mincposy;
         int cshift = 0; // index shift for renumbering the correlation channels so that
-                        // cross-correlation parameter maps are in the upper slices of the
-                        // imsPVideoNDave
+        // cross-correlation parameter maps are in the upper slices of the
+        // imsPVideoNDave
         int cm; // index of the correlation kcf in the loop
         int cq = 0; // additional one frame for q map in DC-FCCS imageType
 
@@ -17468,11 +17576,12 @@ public class Imaging_FCS implements PlugIn {
             ImageProcessor ipPara1 = impPara1.getStack().getProcessor(nochannels * (noparam + 3) + cq);
             for (int x = 0; x < wx; x++) { // fill the frame with q map
                 for (int y = 0; y < hy; y++) {
-                    ipPara1.putPixelValue(x, y, CCFq[x + xm][y + ym] * pixvalid[0][x + xm][y + ym]
-                            * pixvalid[1][x + xm][y + ym] * pixvalid[2][x + xm][y + ym]);
+                    ipPara1.putPixelValue(x, y,
+                            CCFq[x + xm][y + ym] * pixvalid[0][x + xm][y + ym] * pixvalid[1][x + xm][y + ym] *
+                                    pixvalid[2][x + xm][y + ym]);
                     if (userThreshold[4]) {
-                        if ((pixvalid[2][x + xm][y + ym] != 1.0)
-                                && (pixvalid[0][x + xm][y + ym] * pixvalid[1][x + xm][y + ym] == 1)) {
+                        if ((pixvalid[2][x + xm][y + ym] != 1.0) &&
+                                (pixvalid[0][x + xm][y + ym] * pixvalid[1][x + xm][y + ym] == 1)) {
                             ipPara1.putPixelValue(x, y, 0.0);
                         }
                     }
@@ -17538,7 +17647,7 @@ public class Imaging_FCS implements PlugIn {
             IJ.run("Set Label...", "label=" + $param[noparam + 2] + $channel[m]);
         }
 
-        IJ.run(impPara1, "Red Hot", ""); // apply "Fire" LUT
+        ApplyCustomLUT.applyCustomLUT(impPara1, "Red Hot");
         IJ.run(impPara1, "Original Scale", ""); // first set image to original scale
         //then zoom to fit within application
         IJ.run(impPara1, "Set... ",
@@ -17550,7 +17659,7 @@ public class Imaging_FCS implements PlugIn {
         impPara1.setSlice(1); // set back to slice 1 for viewing
         IJ.run(impPara1, "Enhance Contrast", "saturated=0.35"); // autoscaling the contrast for slice 1
         Component[] impPara1comp = impPara1Win.getComponents(); // check which component is the scrollbar and add an
-                                                                // AdjustmentListener
+        // AdjustmentListener
         ScrollbarWithLabel impPara1scrollbar;
         for (int i = 0; i < impPara1comp.length; i++) {
             if (impPara1comp[i] instanceof ScrollbarWithLabel) {
@@ -17731,8 +17840,9 @@ public class Imaging_FCS implements PlugIn {
 
             // plot the correlation function of the pixel (added invalid/thresholded pixel
             // check)
-            if ((cbFitModel.getSelectedItem() == "ITIR-FCS (2D)") || (cbFitModel.getSelectedItem() == "SPIM-FCS (3D)")
-                    || (cbFitModel.getSelectedItem() == "DC-FCCS (2D)" && !tbFCCSDisplay.isSelected())) {
+            if ((cbFitModel.getSelectedItem() == "ITIR-FCS (2D)") ||
+                    (cbFitModel.getSelectedItem() == "SPIM-FCS (3D)") ||
+                    (cbFitModel.getSelectedItem() == "DC-FCCS (2D)" && !tbFCCSDisplay.isSelected())) {
 
                 int nochannels = 1;
                 // index shift for renumbering the correlation channels so that cross-correlation parameter maps are in
@@ -17815,12 +17925,12 @@ public class Imaging_FCS implements PlugIn {
         int hy = maxcposy - mincposy + 1;
         int slice = impPara1.getSlice(); // current slice position
         int nochannels = 1; // number of correlation channels; 1 for FCS, 3 for DC-FCCS (for
-                            // cross-correlation and autocorrelation in the 2 channels respectively)
+        // cross-correlation and autocorrelation in the 2 channels respectively)
         int xm = mincposx; // introducing pixel shifts in order to align all channels
         int ym = mincposy;
         int cshift = 0; // index shift for renumbering the correlation channels so that
-                        // cross-correlation parameter maps are in the upper slices of the
-                        // imsPVideoNDave
+        // cross-correlation parameter maps are in the upper slices of the
+        // imsPVideoNDave
         int cm; // index of the correlation kcf in the loop
         int chan;
         int par;
@@ -17922,11 +18032,12 @@ public class Imaging_FCS implements PlugIn {
             ImageProcessor ipPara1 = impPara1.getStack().getProcessor(nochannels * (noparam + 3) + cq);
             for (int x = 0; x < wx; x++) { // fill the frame with q map
                 for (int y = 0; y < hy; y++) {
-                    ipPara1.putPixelValue(x, y, CCFq[x + xm][y + ym] * pixvalid[0][x + xm][y + ym]
-                            * pixvalid[1][x + xm][y + ym] * pixvalid[2][x + xm][y + ym]);
+                    ipPara1.putPixelValue(x, y,
+                            CCFq[x + xm][y + ym] * pixvalid[0][x + xm][y + ym] * pixvalid[1][x + xm][y + ym] *
+                                    pixvalid[2][x + xm][y + ym]);
                     if (userThreshold[4]) {
-                        if ((pixvalid[2][x + xm][y + ym] != 1.0)
-                                && (pixvalid[0][x + xm][y + ym] * pixvalid[1][x + xm][y + ym] == 1)) {
+                        if ((pixvalid[2][x + xm][y + ym] != 1.0) &&
+                                (pixvalid[0][x + xm][y + ym] * pixvalid[1][x + xm][y + ym] == 1)) {
                             ipPara1.putPixelValue(x, y, 0.0);
                         }
                     }
@@ -18002,7 +18113,7 @@ public class Imaging_FCS implements PlugIn {
 
         if (userThreshold[3]) {
             cm = 0; // use the thresholds for 1st kcf for all channels if the same thresholds for
-                    // ACF and CCF are used
+            // ACF and CCF are used
         }
         for (int p = 0; p < noparam + 1; p++) {
             System.arraycopy(filterThresholds[cm][p], 0, thresholds[p], 0, 2);
@@ -18014,7 +18125,7 @@ public class Imaging_FCS implements PlugIn {
         }
 
         for (int p = 0; p < noparam; p++) { // loop over all parameters and if they have been fitted and selected for
-                                            // filtering, apply thresholds
+            // filtering, apply thresholds
             if (paramfilter[p]) {
                 if (fitres[m][x][y][p] < thresholds[p][0] || fitres[m][x][y][p] > thresholds[p][1]) {
                     valid = false;
@@ -18050,9 +18161,8 @@ public class Imaging_FCS implements PlugIn {
         @Override
         public double[] gradient(double x, double[] params) {
 
-            double[] grad = new double[] {
-                    1,
-                    x
+            double[] grad = new double[]{
+                    1, x
             };
 
             return grad;
@@ -18074,10 +18184,8 @@ public class Imaging_FCS implements PlugIn {
             double A = params[0];
             double t1 = params[1];
 
-            double[] grad = new double[] {
-                    Math.exp(-x / t1),
-                    A * x * Math.exp(-x / t1) / (Math.pow(t1, 2)),
-                    1
+            double[] grad = new double[]{
+                    Math.exp(-x / t1), A * x * Math.exp(-x / t1) / (Math.pow(t1, 2)), 1
             };
 
             return grad;
@@ -18102,7 +18210,7 @@ public class Imaging_FCS implements PlugIn {
             double B = params[2];
             double t2 = params[3];
 
-            double[] grad = new double[] {
+            double[] grad = new double[]{
                     Math.exp(-x / t1),
                     A * x * Math.exp(-x / t1) / (Math.pow(t1, 2)),
                     Math.exp(-x / t2),
@@ -18229,43 +18337,45 @@ public class Imaging_FCS implements PlugIn {
             double p1xt = ax + rx - pareq[2] * x;
             double p2xt = ax - rx + pareq[2] * x;
             double p3xt = rx - pareq[2] * x;
-            double p4xt = 2 * Math.pow(ax, 2) + 3 * Math.pow(rx, 2) - 6 * x * rx * pareq[2]
-                    + 3 * Math.pow(x * pareq[2], 2);
+            double p4xt =
+                    2 * Math.pow(ax, 2) + 3 * Math.pow(rx, 2) - 6 * x * rx * pareq[2] + 3 * Math.pow(x * pareq[2], 2);
             double p5xt = Math.pow(p3xt, 2) + Math.pow(p1xt, 2);
             double p6xt = Math.pow(p3xt, 2) + Math.pow(p2xt, 2);
             double p7xt = 2 * (Math.pow(ax, 2) + Math.pow(rx, 2) - 2 * x * rx * pareq[2] + Math.pow(x * pareq[2], 2));
             double p1yt = ay + ry - pareq[3] * x;
             double p2yt = ay - ry + pareq[3] * x;
             double p3yt = ry - pareq[3] * x;
-            double p4yt = 2 * Math.pow(ay, 2) + 3 * Math.pow(ry, 2) - 6 * x * ry * pareq[3]
-                    + 3 * Math.pow(x * pareq[3], 2);
+            double p4yt =
+                    2 * Math.pow(ay, 2) + 3 * Math.pow(ry, 2) - 6 * x * ry * pareq[3] + 3 * Math.pow(x * pareq[3], 2);
             double p5yt = Math.pow(p3yt, 2) + Math.pow(p1yt, 2);
             double p6yt = Math.pow(p3yt, 2) + Math.pow(p2yt, 2);
             double p7yt = 2 * (Math.pow(ay, 2) + Math.pow(ry, 2) - 2 * x * ry * pareq[3] + Math.pow(x * pareq[3], 2));
-            double pexpxt = Math.exp(-Math.pow(p1xt / p0t, 2)) + Math.exp(-Math.pow(p2xt / p0t, 2))
-                    - 2 * Math.exp(-Math.pow(p3xt / p0t, 2));
+            double pexpxt = Math.exp(-Math.pow(p1xt / p0t, 2)) + Math.exp(-Math.pow(p2xt / p0t, 2)) -
+                    2 * Math.exp(-Math.pow(p3xt / p0t, 2));
             double perfxt = p1xt * Erf.erf(p1xt / p0t) + p2xt * Erf.erf(p2xt / p0t) - 2 * p3xt * Erf.erf(p3xt / p0t);
-            double dDpexpxt = 2 * Math.exp(-p4xt / Math.pow(p0t, 2)) * (Math.exp(p5xt / Math.pow(p0t, 2))
-                    + Math.exp(p6xt / Math.pow(p0t, 2)) - 2 * Math.exp(p7xt / Math.pow(p0t, 2)));
+            double dDpexpxt = 2 * Math.exp(-p4xt / Math.pow(p0t, 2)) *
+                    (Math.exp(p5xt / Math.pow(p0t, 2)) + Math.exp(p6xt / Math.pow(p0t, 2)) -
+                            2 * Math.exp(p7xt / Math.pow(p0t, 2)));
             double dvxperfxt = (Erf.erf(p2xt / p0t) + 2 * Erf.erf(p3xt / p0t) - Erf.erf(p1xt / p0t)) * x;
-            double pexpyt = Math.exp(-Math.pow(p1yt / p0t, 2)) + Math.exp(-Math.pow(p2yt / p0t, 2))
-                    - 2 * Math.exp(-Math.pow(p3yt / p0t, 2));
-            double dDpexpyt = 2 * Math.exp(-p4yt / Math.pow(p0t, 2)) * (Math.exp(p5yt / Math.pow(p0t, 2))
-                    + Math.exp(p6yt / Math.pow(p0t, 2)) - 2 * Math.exp(p7yt / Math.pow(p0t, 2)));
+            double pexpyt = Math.exp(-Math.pow(p1yt / p0t, 2)) + Math.exp(-Math.pow(p2yt / p0t, 2)) -
+                    2 * Math.exp(-Math.pow(p3yt / p0t, 2));
+            double dDpexpyt = 2 * Math.exp(-p4yt / Math.pow(p0t, 2)) *
+                    (Math.exp(p5yt / Math.pow(p0t, 2)) + Math.exp(p6yt / Math.pow(p0t, 2)) -
+                            2 * Math.exp(p7yt / Math.pow(p0t, 2)));
             double dvyperfyt = (Erf.erf(p2yt / p0t) + 2 * Erf.erf(p3yt / p0t) - Erf.erf(p1yt / p0t)) * x;
             double perfyt = p1yt * Erf.erf(p1yt / p0t) + p2yt * Erf.erf(p2yt / p0t) - 2 * p3yt * Erf.erf(p3yt / p0t);
 
             // CF for the lateral dimension (x, y) and its derivative for D
-            double plat = (p0t / sqrpi * pexpxt + perfxt) * (p0t / sqrpi * pexpyt + perfyt)
-                    / (4 * Math.pow(ax * ay, 2) / fobsvol);
-            double dDplat = (1 / (sqrpi * p0t))
-                    * (dDpexpyt * x * (p0t / sqrpi * pexpxt + perfxt) + dDpexpxt * x * (p0t / sqrpi * pexpyt + perfyt))
-                    / (4 * Math.pow(ax * ay, 2) / fobsvol);
+            double plat = (p0t / sqrpi * pexpxt + perfxt) * (p0t / sqrpi * pexpyt + perfyt) /
+                    (4 * Math.pow(ax * ay, 2) / fobsvol);
+            double dDplat = (1 / (sqrpi * p0t)) *
+                    (dDpexpyt * x * (p0t / sqrpi * pexpxt + perfxt) + dDpexpxt * x * (p0t / sqrpi * pexpyt + perfyt)) /
+                    (4 * Math.pow(ax * ay, 2) / fobsvol);
 
             // CF for the axial dimension (z) and its derivative for D
             double pspim = 1 / Math.sqrt(1 + (4 * pareq[1] * x) / Math.pow(szeff, 2));
-            double dDpspim = -4 * x
-                    / (2 * Math.pow(szeff, 2) * Math.pow(Math.sqrt(1 + (4 * pareq[1] * x) / Math.pow(szeff, 2)), 3));
+            double dDpspim = -4 * x /
+                    (2 * Math.pow(szeff, 2) * Math.pow(Math.sqrt(1 + (4 * pareq[1] * x) / Math.pow(szeff, 2)), 3));
 
             double acf1 = plat * pspim;
 
@@ -18275,46 +18385,46 @@ public class Imaging_FCS implements PlugIn {
             double p1xt2 = ax + rx - pareq[2] * x;
             double p2xt2 = ax - rx + pareq[2] * x;
             double p3xt2 = rx - pareq[2] * x;
-            double p4xt2 = 2 * Math.pow(ax, 2) + 3 * Math.pow(rx, 2) - 6 * x * rx * pareq[2]
-                    + 3 * Math.pow(x * pareq[2], 2);
+            double p4xt2 =
+                    2 * Math.pow(ax, 2) + 3 * Math.pow(rx, 2) - 6 * x * rx * pareq[2] + 3 * Math.pow(x * pareq[2], 2);
             double p5xt2 = Math.pow(p3xt2, 2) + Math.pow(p1xt2, 2);
             double p6xt2 = Math.pow(p3xt2, 2) + Math.pow(p2xt2, 2);
             double p7xt2 = 2 * (Math.pow(ax, 2) + Math.pow(rx, 2) - 2 * x * rx * pareq[2] + Math.pow(x * pareq[2], 2));
             double p1yt2 = ay + ry - pareq[3] * x;
             double p2yt2 = ay - ry + pareq[3] * x;
             double p3yt2 = ry - pareq[3] * x;
-            double p4yt2 = 2 * Math.pow(ay, 2) + 3 * Math.pow(ry, 2) - 6 * x * ry * pareq[3]
-                    + 3 * Math.pow(x * pareq[3], 2);
+            double p4yt2 =
+                    2 * Math.pow(ay, 2) + 3 * Math.pow(ry, 2) - 6 * x * ry * pareq[3] + 3 * Math.pow(x * pareq[3], 2);
             double p5yt2 = Math.pow(p3yt2, 2) + Math.pow(p1yt2, 2);
             double p6yt2 = Math.pow(p3yt2, 2) + Math.pow(p2yt2, 2);
             double p7yt2 = 2 * (Math.pow(ay, 2) + Math.pow(ry, 2) - 2 * x * ry * pareq[3] + Math.pow(x * pareq[3], 2));
-            double pexpxt2 = Math.exp(-Math.pow(p1xt2 / p0t2, 2)) + Math.exp(-Math.pow(p2xt2 / p0t2, 2))
-                    - 2 * Math.exp(-Math.pow(p3xt2 / p0t2, 2));
-            double perfxt2 = p1xt2 * Erf.erf(p1xt2 / p0t2) + p2xt2 * Erf.erf(p2xt2 / p0t2)
-                    - 2 * p3xt2 * Erf.erf(p3xt2 / p0t2);
-            double dDpexpxt2 = 2 * Math.exp(-p4xt2 / Math.pow(p0t2, 2)) * (Math.exp(p5xt2 / Math.pow(p0t2, 2))
-                    + Math.exp(p6xt2 / Math.pow(p0t2, 2)) - 2 * Math.exp(p7xt2 / Math.pow(p0t2, 2)));
+            double pexpxt2 = Math.exp(-Math.pow(p1xt2 / p0t2, 2)) + Math.exp(-Math.pow(p2xt2 / p0t2, 2)) -
+                    2 * Math.exp(-Math.pow(p3xt2 / p0t2, 2));
+            double perfxt2 =
+                    p1xt2 * Erf.erf(p1xt2 / p0t2) + p2xt2 * Erf.erf(p2xt2 / p0t2) - 2 * p3xt2 * Erf.erf(p3xt2 / p0t2);
+            double dDpexpxt2 = 2 * Math.exp(-p4xt2 / Math.pow(p0t2, 2)) *
+                    (Math.exp(p5xt2 / Math.pow(p0t2, 2)) + Math.exp(p6xt2 / Math.pow(p0t2, 2)) -
+                            2 * Math.exp(p7xt2 / Math.pow(p0t2, 2)));
             double dvxperfxt2 = (Erf.erf(p2xt2 / p0t2) + 2 * Erf.erf(p3xt2 / p0t2) - Erf.erf(p1xt2 / p0t2)) * x;
-            double pexpyt2 = Math.exp(-Math.pow(p1yt2 / p0t2, 2)) + Math.exp(-Math.pow(p2yt2 / p0t2, 2))
-                    - 2 * Math.exp(-Math.pow(p3yt2 / p0t2, 2));
-            double dDpexpyt2 = 2 * Math.exp(-p4yt2 / Math.pow(p0t2, 2)) * (Math.exp(p5yt2 / Math.pow(p0t2, 2))
-                    + Math.exp(p6yt2 / Math.pow(p0t2, 2)) - 2 * Math.exp(p7yt2 / Math.pow(p0t2, 2)));
+            double pexpyt2 = Math.exp(-Math.pow(p1yt2 / p0t2, 2)) + Math.exp(-Math.pow(p2yt2 / p0t2, 2)) -
+                    2 * Math.exp(-Math.pow(p3yt2 / p0t2, 2));
+            double dDpexpyt2 = 2 * Math.exp(-p4yt2 / Math.pow(p0t2, 2)) *
+                    (Math.exp(p5yt2 / Math.pow(p0t2, 2)) + Math.exp(p6yt2 / Math.pow(p0t2, 2)) -
+                            2 * Math.exp(p7yt2 / Math.pow(p0t2, 2)));
             double dvyperfyt2 = (Erf.erf(p2yt2 / p0t2) + 2 * Erf.erf(p3yt2 / p0t2) - Erf.erf(p1yt2 / p0t2)) * x;
-            double perfyt2 = p1yt2 * Erf.erf(p1yt2 / p0t2) + p2yt2 * Erf.erf(p2yt2 / p0t2)
-                    - 2 * p3yt2 * Erf.erf(p3yt2 / p0t2);
+            double perfyt2 =
+                    p1yt2 * Erf.erf(p1yt2 / p0t2) + p2yt2 * Erf.erf(p2yt2 / p0t2) - 2 * p3yt2 * Erf.erf(p3yt2 / p0t2);
 
             // CF for the lateral dimension (x, y) and its derivative for D
-            double plat2 = (p0t2 / sqrpi * pexpxt2 + perfxt2) * (p0t2 / sqrpi * pexpyt2 + perfyt2)
-                    / (4 * Math.pow(ax * ay, 2) / fobsvol);
-            double dDplat2 = (1 / (sqrpi * p0t2))
-                    * (dDpexpyt2 * x * (p0t2 / sqrpi * pexpxt2 + perfxt2)
-                            + dDpexpxt2 * x * (p0t2 / sqrpi * pexpyt2 + perfyt2))
-                    / (4 * Math.pow(ax * ay, 2) / fobsvol);
+            double plat2 = (p0t2 / sqrpi * pexpxt2 + perfxt2) * (p0t2 / sqrpi * pexpyt2 + perfyt2) /
+                    (4 * Math.pow(ax * ay, 2) / fobsvol);
+            double dDplat2 = (1 / (sqrpi * p0t2)) * (dDpexpyt2 * x * (p0t2 / sqrpi * pexpxt2 + perfxt2) +
+                    dDpexpxt2 * x * (p0t2 / sqrpi * pexpyt2 + perfyt2)) / (4 * Math.pow(ax * ay, 2) / fobsvol);
 
             // CF for the axial dimension (z) and its derivative for D
             double pspim2 = 1 / Math.sqrt(1 + (4 * pareq[6] * x) / Math.pow(szeff, 2));
-            double dDpspim2 = -4 * x
-                    / (2 * Math.pow(szeff, 2) * Math.pow(Math.sqrt(1 + (4 * pareq[6] * x) / Math.pow(szeff, 2)), 3));
+            double dDpspim2 = -4 * x /
+                    (2 * Math.pow(szeff, 2) * Math.pow(Math.sqrt(1 + (4 * pareq[6] * x) / Math.pow(szeff, 2)), 3));
 
             double acf2 = plat2 * pspim2;
 
@@ -18324,53 +18434,53 @@ public class Imaging_FCS implements PlugIn {
             double p1xt3 = ax + rx - pareq[2] * x;
             double p2xt3 = ax - rx + pareq[2] * x;
             double p3xt3 = rx - pareq[2] * x;
-            double p4xt3 = 2 * Math.pow(ax, 2) + 3 * Math.pow(rx, 2) - 6 * x * rx * pareq[2]
-                    + 3 * Math.pow(x * pareq[2], 2);
+            double p4xt3 =
+                    2 * Math.pow(ax, 2) + 3 * Math.pow(rx, 2) - 6 * x * rx * pareq[2] + 3 * Math.pow(x * pareq[2], 2);
             double p5xt3 = Math.pow(p3xt2, 2) + Math.pow(p1xt2, 2);
             double p6xt3 = Math.pow(p3xt2, 2) + Math.pow(p2xt2, 2);
             double p7xt3 = 2 * (Math.pow(ax, 2) + Math.pow(rx, 2) - 2 * x * rx * pareq[2] + Math.pow(x * pareq[2], 2));
             double p1yt3 = ay + ry - pareq[3] * x;
             double p2yt3 = ay - ry + pareq[3] * x;
             double p3yt3 = ry - pareq[3] * x;
-            double p4yt3 = 2 * Math.pow(ay, 2) + 3 * Math.pow(ry, 2) - 6 * x * ry * pareq[3]
-                    + 3 * Math.pow(x * pareq[3], 2);
+            double p4yt3 =
+                    2 * Math.pow(ay, 2) + 3 * Math.pow(ry, 2) - 6 * x * ry * pareq[3] + 3 * Math.pow(x * pareq[3], 2);
             double p5yt3 = Math.pow(p3yt3, 2) + Math.pow(p1yt3, 2);
             double p6yt3 = Math.pow(p3yt3, 2) + Math.pow(p2yt3, 2);
             double p7yt3 = 2 * (Math.pow(ay, 2) + Math.pow(ry, 2) - 2 * x * ry * pareq[3] + Math.pow(x * pareq[3], 2));
-            double pexpxt3 = Math.exp(-Math.pow(p1xt3 / p0t3, 2)) + Math.exp(-Math.pow(p2xt3 / p0t3, 2))
-                    - 2 * Math.exp(-Math.pow(p3xt3 / p0t3, 2));
-            double perfxt3 = p1xt3 * Erf.erf(p1xt3 / p0t3) + p2xt3 * Erf.erf(p2xt3 / p0t3)
-                    - 2 * p3xt3 * Erf.erf(p3xt3 / p0t3);
-            double dDpexpxt3 = 2 * Math.exp(-p4xt3 / Math.pow(p0t3, 2)) * (Math.exp(p5xt3 / Math.pow(p0t3, 2))
-                    + Math.exp(p6xt3 / Math.pow(p0t3, 2)) - 2 * Math.exp(p7xt3 / Math.pow(p0t3, 2)));
+            double pexpxt3 = Math.exp(-Math.pow(p1xt3 / p0t3, 2)) + Math.exp(-Math.pow(p2xt3 / p0t3, 2)) -
+                    2 * Math.exp(-Math.pow(p3xt3 / p0t3, 2));
+            double perfxt3 =
+                    p1xt3 * Erf.erf(p1xt3 / p0t3) + p2xt3 * Erf.erf(p2xt3 / p0t3) - 2 * p3xt3 * Erf.erf(p3xt3 / p0t3);
+            double dDpexpxt3 = 2 * Math.exp(-p4xt3 / Math.pow(p0t3, 2)) *
+                    (Math.exp(p5xt3 / Math.pow(p0t3, 2)) + Math.exp(p6xt3 / Math.pow(p0t3, 2)) -
+                            2 * Math.exp(p7xt3 / Math.pow(p0t3, 2)));
             double dvxperfxt3 = (Erf.erf(p2xt3 / p0t3) + 2 * Erf.erf(p3xt3 / p0t3) - Erf.erf(p1xt3 / p0t3)) * x;
-            double pexpyt3 = Math.exp(-Math.pow(p1yt3 / p0t3, 2)) + Math.exp(-Math.pow(p2yt3 / p0t3, 2))
-                    - 2 * Math.exp(-Math.pow(p3yt3 / p0t3, 2));
-            double dDpexpyt3 = 2 * Math.exp(-p4yt3 / Math.pow(p0t3, 2)) * (Math.exp(p5yt3 / Math.pow(p0t3, 2))
-                    + Math.exp(p6yt3 / Math.pow(p0t3, 2)) - 2 * Math.exp(p7yt3 / Math.pow(p0t3, 2)));
+            double pexpyt3 = Math.exp(-Math.pow(p1yt3 / p0t3, 2)) + Math.exp(-Math.pow(p2yt3 / p0t3, 2)) -
+                    2 * Math.exp(-Math.pow(p3yt3 / p0t3, 2));
+            double dDpexpyt3 = 2 * Math.exp(-p4yt3 / Math.pow(p0t3, 2)) *
+                    (Math.exp(p5yt3 / Math.pow(p0t3, 2)) + Math.exp(p6yt3 / Math.pow(p0t3, 2)) -
+                            2 * Math.exp(p7yt3 / Math.pow(p0t3, 2)));
             double dvyperfyt3 = (Erf.erf(p2yt3 / p0t3) + 2 * Erf.erf(p3yt3 / p0t3) - Erf.erf(p1yt3 / p0t3)) * x;
-            double perfyt3 = p1yt3 * Erf.erf(p1yt3 / p0t3) + p2yt3 * Erf.erf(p2yt3 / p0t3)
-                    - 2 * p3yt3 * Erf.erf(p3yt3 / p0t3);
+            double perfyt3 =
+                    p1yt3 * Erf.erf(p1yt3 / p0t3) + p2yt3 * Erf.erf(p2yt3 / p0t3) - 2 * p3yt3 * Erf.erf(p3yt3 / p0t3);
 
             // TRIPLET
             double triplet = 1 + pareq[9] / (1 - pareq[9]) * Math.exp(-x / pareq[10]);
-            double dtripletFtrip = Math.exp(-x / pareq[10])
-                    * (1 / (1 - pareq[9]) + pareq[9] / Math.pow(1 - pareq[9], 2));
-            double dtripletTtrip = Math.exp(-x / pareq[10]) * (pareq[9] * x)
-                    / ((1 - pareq[9]) * Math.pow(pareq[10], 2));
+            double dtripletFtrip =
+                    Math.exp(-x / pareq[10]) * (1 / (1 - pareq[9]) + pareq[9] / Math.pow(1 - pareq[9], 2));
+            double dtripletTtrip =
+                    Math.exp(-x / pareq[10]) * (pareq[9] * x) / ((1 - pareq[9]) * Math.pow(pareq[10], 2));
 
             // CF for the lateral dimension (x, y) and its derivative for D
-            double plat3 = (p0t3 / sqrpi * pexpxt3 + perfxt3) * (p0t3 / sqrpi * pexpyt3 + perfyt3)
-                    / (4 * Math.pow(ax * ay, 2) / fobsvol);
-            double dDplat3 = (1 / (sqrpi * p0t3))
-                    * (dDpexpyt3 * x * (p0t3 / sqrpi * pexpxt3 + perfxt3)
-                            + dDpexpxt3 * x * (p0t3 / sqrpi * pexpyt3 + perfyt3))
-                    / (4 * Math.pow(ax * ay, 2) / fobsvol);
+            double plat3 = (p0t3 / sqrpi * pexpxt3 + perfxt3) * (p0t3 / sqrpi * pexpyt3 + perfyt3) /
+                    (4 * Math.pow(ax * ay, 2) / fobsvol);
+            double dDplat3 = (1 / (sqrpi * p0t3)) * (dDpexpyt3 * x * (p0t3 / sqrpi * pexpxt3 + perfxt3) +
+                    dDpexpxt3 * x * (p0t3 / sqrpi * pexpyt3 + perfyt3)) / (4 * Math.pow(ax * ay, 2) / fobsvol);
 
             // CF for the axial dimension (z) and its derivative for D
             double pspim3 = 1 / Math.sqrt(1 + (4 * pareq[8] * x) / Math.pow(szeff, 2));
-            double dDpspim3 = -4 * x
-                    / (2 * Math.pow(szeff, 2) * Math.pow(Math.sqrt(1 + (4 * pareq[8] * x) / Math.pow(szeff, 2)), 3));
+            double dDpspim3 = -4 * x /
+                    (2 * Math.pow(szeff, 2) * Math.pow(Math.sqrt(1 + (4 * pareq[8] * x) / Math.pow(szeff, 2)), 3));
 
             double acf3 = plat3 * pspim3;
 
@@ -18385,28 +18495,25 @@ public class Imaging_FCS implements PlugIn {
             double df32 = 2 * pareq[5] * Math.pow(q2, 2) * (1 - q3);
             double df33 = Math.pow(q3, 2) * (1 - pareq[5] + pareq[7] + q2 * pareq[5] - q3 * pareq[7]);
 
-            double pacf = (1 / pareq[0])
-                    * ((1 - pareq[5] - pareq[7]) * acf1 + Math.pow(q2, 2) * pareq[5] * acf2
-                            + Math.pow(q3, 2) * pareq[7] * acf3)
-                    / Math.pow(1 - pareq[5] - pareq[7] + q2 * pareq[5] + q3 * pareq[7], 2) * triplet + pareq[4];
+            double pacf = (1 / pareq[0]) * ((1 - pareq[5] - pareq[7]) * acf1 + Math.pow(q2, 2) * pareq[5] * acf2 +
+                    Math.pow(q3, 2) * pareq[7] * acf3) /
+                    Math.pow(1 - pareq[5] - pareq[7] + q2 * pareq[5] + q3 * pareq[7], 2) * triplet + pareq[4];
 
-            double[] grad = new double[] {
+            double[] grad = new double[]{
                     (-1 / Math.pow(pareq[0], 2)) * (pf1 * acf1 + pf2 * acf2 + pf3 * acf3) * triplet,
                     (1 / pareq[0]) * pf1 * (plat * dDpspim + pspim * dDplat),
-                    (1 / pareq[0]) * (pf1 * ((p0t / sqrpi * pexpyt + perfyt) * dvxperfxt) * pspim
-                            / (4 * Math.pow(ax * ay, 2) / fobsvol)
-                            + pf2 * ((p0t2 / sqrpi * pexpyt2 + perfyt2) * dvxperfxt2) * pspim2
-                                    / (4 * Math.pow(ax * ay, 2) / fobsvol)
-                            + pf3 * ((p0t3 / sqrpi * pexpyt3 + perfyt3) * dvxperfxt3) * pspim3
-                                    / (4 * Math.pow(ax * ay, 2) / fobsvol))
-                            * triplet,
-                    (1 / pareq[0]) * (pf1 * ((p0t / sqrpi * pexpxt + perfxt) * dvyperfyt) * pspim
-                            / (4 * Math.pow(ax * ay, 2) / fobsvol)
-                            + pf2 * ((p0t2 / sqrpi * pexpxt2 + perfxt2) * dvyperfyt2) * pspim2
-                                    / (4 * Math.pow(ax * ay, 2) / fobsvol)
-                            + pf3 * ((p0t3 / sqrpi * pexpxt3 + perfxt3) * dvyperfyt3) * pspim3
-                                    / (4 * Math.pow(ax * ay, 2) / fobsvol))
-                            * triplet,
+                    (1 / pareq[0]) * (pf1 * ((p0t / sqrpi * pexpyt + perfyt) * dvxperfxt) * pspim /
+                            (4 * Math.pow(ax * ay, 2) / fobsvol) +
+                            pf2 * ((p0t2 / sqrpi * pexpyt2 + perfyt2) * dvxperfxt2) * pspim2 /
+                                    (4 * Math.pow(ax * ay, 2) / fobsvol) +
+                            pf3 * ((p0t3 / sqrpi * pexpyt3 + perfyt3) * dvxperfxt3) * pspim3 /
+                                    (4 * Math.pow(ax * ay, 2) / fobsvol)) * triplet,
+                    (1 / pareq[0]) * (pf1 * ((p0t / sqrpi * pexpxt + perfxt) * dvyperfyt) * pspim /
+                            (4 * Math.pow(ax * ay, 2) / fobsvol) +
+                            pf2 * ((p0t2 / sqrpi * pexpxt2 + perfxt2) * dvyperfyt2) * pspim2 /
+                                    (4 * Math.pow(ax * ay, 2) / fobsvol) +
+                            pf3 * ((p0t3 / sqrpi * pexpxt3 + perfxt3) * dvyperfyt3) * pspim3 /
+                                    (4 * Math.pow(ax * ay, 2) / fobsvol)) * triplet,
                     1,
                     (1 / pareq[0]) * (1 / dfnom) * (df21 * acf1 + df22 * acf2 + df23 * acf3) * triplet,
                     (1 / pareq[0]) * pf2 * (plat2 * dDpspim2 + pspim2 * dDplat2) * triplet,
@@ -18417,7 +18524,7 @@ public class Imaging_FCS implements PlugIn {
             };
 
             double[] gradret = new double[num]; // return the gradients of the fit model in respect to the fit
-                                                // parameters
+            // parameters
             num = 0;
             for (int i = 0; i < noparam; i++) {
                 if (paramfit[i]) {
@@ -18453,15 +18560,15 @@ public class Imaging_FCS implements PlugIn {
             double p1yt = ay + ry - pareq[3] * x;
             double p2yt = ay - ry + pareq[3] * x;
             double p3yt = ry - pareq[3] * x;
-            double pexpxt = Math.exp(-Math.pow(p1xt / p0t, 2)) + Math.exp(-Math.pow(p2xt / p0t, 2))
-                    - 2 * Math.exp(-Math.pow(p3xt / p0t, 2));
+            double pexpxt = Math.exp(-Math.pow(p1xt / p0t, 2)) + Math.exp(-Math.pow(p2xt / p0t, 2)) -
+                    2 * Math.exp(-Math.pow(p3xt / p0t, 2));
             double perfxt = p1xt * Erf.erf(p1xt / p0t) + p2xt * Erf.erf(p2xt / p0t) - 2 * p3xt * Erf.erf(p3xt / p0t);
-            double pexpyt = Math.exp(-Math.pow(p1yt / p0t, 2)) + Math.exp(-Math.pow(p2yt / p0t, 2))
-                    - 2 * Math.exp(-Math.pow(p3yt / p0t, 2));
+            double pexpyt = Math.exp(-Math.pow(p1yt / p0t, 2)) + Math.exp(-Math.pow(p2yt / p0t, 2)) -
+                    2 * Math.exp(-Math.pow(p3yt / p0t, 2));
             double perfyt = p1yt * Erf.erf(p1yt / p0t) + p2yt * Erf.erf(p2yt / p0t) - 2 * p3yt * Erf.erf(p3yt / p0t);
 
-            double pplane1 = (p0t / sqrpi * pexpxt + perfxt) * (p0t / sqrpi * pexpyt + perfyt)
-                    / (4 * Math.pow(ax * ay, 2) / fobsvol);
+            double pplane1 = (p0t / sqrpi * pexpxt + perfxt) * (p0t / sqrpi * pexpyt + perfyt) /
+                    (4 * Math.pow(ax * ay, 2) / fobsvol);
             double pspim1 = 1 / Math.sqrt(1 + (4 * pareq[1] * x) / Math.pow(szeff, 2));
             double acf1 = pplane1 * pspim1;
 
@@ -18474,17 +18581,17 @@ public class Imaging_FCS implements PlugIn {
             double p1yt2 = ay + ry - pareq[3] * x;
             double p2yt2 = ay - ry + pareq[3] * x;
             double p3yt2 = ry - pareq[3] * x;
-            double pexpxt2 = Math.exp(-Math.pow(p1xt2 / p0t2, 2)) + Math.exp(-Math.pow(p2xt2 / p0t2, 2))
-                    - 2 * Math.exp(-Math.pow(p3xt2 / p0t2, 2));
-            double perfxt2 = p1xt * Erf.erf(p1xt2 / p0t2) + p2xt2 * Erf.erf(p2xt2 / p0t2)
-                    - 2 * p3xt2 * Erf.erf(p3xt2 / p0t2);
-            double pexpyt2 = Math.exp(-Math.pow(p1yt2 / p0t2, 2)) + Math.exp(-Math.pow(p2yt2 / p0t2, 2))
-                    - 2 * Math.exp(-Math.pow(p3yt2 / p0t2, 2));
-            double perfyt2 = p1yt2 * Erf.erf(p1yt2 / p0t2) + p2yt2 * Erf.erf(p2yt2 / p0t2)
-                    - 2 * p3yt2 * Erf.erf(p3yt2 / p0t2);
+            double pexpxt2 = Math.exp(-Math.pow(p1xt2 / p0t2, 2)) + Math.exp(-Math.pow(p2xt2 / p0t2, 2)) -
+                    2 * Math.exp(-Math.pow(p3xt2 / p0t2, 2));
+            double perfxt2 =
+                    p1xt * Erf.erf(p1xt2 / p0t2) + p2xt2 * Erf.erf(p2xt2 / p0t2) - 2 * p3xt2 * Erf.erf(p3xt2 / p0t2);
+            double pexpyt2 = Math.exp(-Math.pow(p1yt2 / p0t2, 2)) + Math.exp(-Math.pow(p2yt2 / p0t2, 2)) -
+                    2 * Math.exp(-Math.pow(p3yt2 / p0t2, 2));
+            double perfyt2 =
+                    p1yt2 * Erf.erf(p1yt2 / p0t2) + p2yt2 * Erf.erf(p2yt2 / p0t2) - 2 * p3yt2 * Erf.erf(p3yt2 / p0t2);
 
-            double pplane2 = (p0t2 / sqrpi * pexpxt2 + perfxt2) * (p0t2 / sqrpi * pexpyt2 + perfyt2)
-                    / (4 * Math.pow(ax * ay, 2) / fobsvol);
+            double pplane2 = (p0t2 / sqrpi * pexpxt2 + perfxt2) * (p0t2 / sqrpi * pexpyt2 + perfyt2) /
+                    (4 * Math.pow(ax * ay, 2) / fobsvol);
             double pspim2 = 1 / Math.sqrt(1 + (4 * pareq[6] * x) / Math.pow(szeff, 2));
             double acf2 = pplane2 * pspim2;
 
@@ -18497,27 +18604,26 @@ public class Imaging_FCS implements PlugIn {
             double p1yt3 = ay + ry - pareq[3] * x;
             double p2yt3 = ay - ry + pareq[3] * x;
             double p3yt3 = ry - pareq[3] * x;
-            double pexpxt3 = Math.exp(-Math.pow(p1xt3 / p0t3, 2)) + Math.exp(-Math.pow(p2xt3 / p0t3, 2))
-                    - 2 * Math.exp(-Math.pow(p3xt3 / p0t3, 2));
-            double perfxt3 = p1xt * Erf.erf(p1xt3 / p0t3) + p2xt3 * Erf.erf(p2xt3 / p0t3)
-                    - 2 * p3xt3 * Erf.erf(p3xt3 / p0t3);
-            double pexpyt3 = Math.exp(-Math.pow(p1yt3 / p0t3, 2)) + Math.exp(-Math.pow(p2yt3 / p0t3, 2))
-                    - 2 * Math.exp(-Math.pow(p3yt3 / p0t3, 2));
-            double perfyt3 = p1yt3 * Erf.erf(p1yt3 / p0t3) + p2yt3 * Erf.erf(p2yt3 / p0t3)
-                    - 2 * p3yt3 * Erf.erf(p3yt3 / p0t3);
+            double pexpxt3 = Math.exp(-Math.pow(p1xt3 / p0t3, 2)) + Math.exp(-Math.pow(p2xt3 / p0t3, 2)) -
+                    2 * Math.exp(-Math.pow(p3xt3 / p0t3, 2));
+            double perfxt3 =
+                    p1xt * Erf.erf(p1xt3 / p0t3) + p2xt3 * Erf.erf(p2xt3 / p0t3) - 2 * p3xt3 * Erf.erf(p3xt3 / p0t3);
+            double pexpyt3 = Math.exp(-Math.pow(p1yt3 / p0t3, 2)) + Math.exp(-Math.pow(p2yt3 / p0t3, 2)) -
+                    2 * Math.exp(-Math.pow(p3yt3 / p0t3, 2));
+            double perfyt3 =
+                    p1yt3 * Erf.erf(p1yt3 / p0t3) + p2yt3 * Erf.erf(p2yt3 / p0t3) - 2 * p3yt3 * Erf.erf(p3yt3 / p0t3);
 
-            double pplane3 = (p0t3 / sqrpi * pexpxt3 + perfxt3) * (p0t3 / sqrpi * pexpyt3 + perfyt3)
-                    / (4 * Math.pow(ax * ay, 2) / fobsvol);
+            double pplane3 = (p0t3 / sqrpi * pexpxt3 + perfxt3) * (p0t3 / sqrpi * pexpyt3 + perfyt3) /
+                    (4 * Math.pow(ax * ay, 2) / fobsvol);
             double pspim3 = 1 / Math.sqrt(1 + (4 * pareq[8] * x) / Math.pow(szeff, 2));
             double acf3 = pplane3 * pspim3;
 
             // TRIPLET
             double triplet = 1 + pareq[9] / (1 - pareq[9]) * Math.exp(-x / pareq[10]);
 
-            return (1 / pareq[0])
-                    * ((1 - pareq[5] - pareq[7]) * acf1 + Math.pow(q2, 2) * pareq[5] * acf2
-                            + Math.pow(q3, 2) * pareq[7] * acf3)
-                    / Math.pow(1 - pareq[5] - pareq[7] + q2 * pareq[5] + q3 * pareq[7], 2) * triplet + pareq[4];
+            return (1 / pareq[0]) * ((1 - pareq[5] - pareq[7]) * acf1 + Math.pow(q2, 2) * pareq[5] * acf2 +
+                    Math.pow(q3, 2) * pareq[7] * acf3) /
+                    Math.pow(1 - pareq[5] - pareq[7] + q2 * pareq[5] + q3 * pareq[7], 2) * triplet + pareq[4];
         }
     }
 
@@ -18562,8 +18668,8 @@ public class Imaging_FCS implements PlugIn {
             double perfx0 = 2 * p1x0 * Erf.erf(p1x0 / p00);
             double pexpy0 = 2 * Math.exp(-Math.pow(p1y0 / p00, 2)) - 2;
             double perfy0 = 2 * p1y0 * Erf.erf(p1y0 / p00);
-            double volume3d = sqrpi * szeff * 4 * Math.pow(ax * ay, 2)
-                    / ((p00 / sqrpi * pexpx0 + perfx0) * (p00 / sqrpi * pexpy0 + perfy0));
+            double volume3d = sqrpi * szeff * 4 * Math.pow(ax * ay, 2) /
+                    ((p00 / sqrpi * pexpx0 + perfx0) * (p00 / sqrpi * pexpy0 + perfy0));
             double modfitobvol = (volume3d / (sqrpi * sz));
 
             double z1;
@@ -18626,8 +18732,8 @@ public class Imaging_FCS implements PlugIn {
                 double d0expx = 2 * x * (pexpxt);
                 double dexpx = d1expx + d2expx - (2 * d3expx);
                 double xpart = ((pexpxt * sp0t) / sqrpi) + perfxt;
-                double xder = (1 / sdt)
-                        * (const1 * ((d0expx / sp0t) - (dexpx / tsp0t)) + (dexpx / sqrpi) * (sp0t / qp0t));
+                double xder =
+                        (1 / sdt) * (const1 * ((d0expx / sp0t) - (dexpx / tsp0t)) + (dexpx / sqrpi) * (sp0t / qp0t));
 
                 double p10yt = p1yt / sp0t;
                 double p20yt = p2yt / sp0t;
@@ -18643,8 +18749,8 @@ public class Imaging_FCS implements PlugIn {
                 double d0expy = 2 * x * (pexpyt);
                 double dexpy = d1expy + d2expy - (2 * d3expy);
                 double ypart = ((pexpyt * sp0t) / sqrpi) + perfyt;
-                double yder = (1 / sdt)
-                        * (const1 * ((d0expy / sp0t) - (dexpy / tsp0t)) + (dexpy / sqrpi) * (sp0t / qp0t));
+                double yder =
+                        (1 / sdt) * (const1 * ((d0expy / sp0t) - (dexpy / tsp0t)) + (dexpy / sqrpi) * (sp0t / qp0t));
 
                 double zdiff = (z1 - z2);
                 double z1exp = (2 / Math.pow(sz, 2)) * (Math.pow(z1, 2) + Math.pow(z2, 2));
@@ -18665,16 +18771,16 @@ public class Imaging_FCS implements PlugIn {
             double Dpspim = (sumd1 * 1000000) / (4 * Math.pow(ax * ay, 2) / (modfitobvol));
             // TRIPLET
             double triplet = 1 + pareq[9] / (1 - pareq[9]) * Math.exp(-x / pareq[10]);
-            double dtripletFtrip = Math.exp(-x / pareq[10])
-                    * (1 / (1 - pareq[9]) + pareq[9] / Math.pow(1 - pareq[9], 2));
-            double dtripletTtrip = Math.exp(-x / pareq[10]) * (pareq[9] * x)
-                    / ((1 - pareq[9]) * Math.pow(pareq[10], 2));
+            double dtripletFtrip =
+                    Math.exp(-x / pareq[10]) * (1 / (1 - pareq[9]) + pareq[9] / Math.pow(1 - pareq[9], 2));
+            double dtripletTtrip =
+                    Math.exp(-x / pareq[10]) * (pareq[9] * x) / ((1 - pareq[9]) * Math.pow(pareq[10], 2));
 
             // double pf1 = (1 - pareq[5] - pareq[7]) / (1 - pareq[5] - pareq[7] + q2 *
             // pareq[5] + q3 * pareq[7]);
             double pacf = ((1 / pareq[0]) * acf1) * triplet + pareq[4];
 
-            double[] grad = new double[] {
+            double[] grad = new double[]{
                     (-1 / Math.pow(pareq[0], 2)) * acf1 * triplet,
                     (1 / pareq[0]) * (Dpspim),
                     0,
@@ -18689,7 +18795,7 @@ public class Imaging_FCS implements PlugIn {
             };
 
             double[] gradret = new double[num]; // return the gradients of the fit model in respect to the fit
-                                                // parameters
+            // parameters
             num = 0;
             for (int i = 0; i < noparam; i++) {
                 if (paramfit[i]) {
@@ -18839,8 +18945,8 @@ public class Imaging_FCS implements PlugIn {
             double perfx0 = 2 * p1x0 * Erf.erf(p1x0 / p00);
             double pexpy0 = 2 * Math.exp(-Math.pow(p1y0 / p00, 2)) - 2;
             double perfy0 = 2 * p1y0 * Erf.erf(p1y0 / p00);
-            double volume3d = sqrpi * szeff * 4 * Math.pow(ax * ay, 2)
-                    / ((p00 / sqrpi * pexpx0 + perfx0) * (p00 / sqrpi * pexpy0 + perfy0));
+            double volume3d = sqrpi * szeff * 4 * Math.pow(ax * ay, 2) /
+                    ((p00 / sqrpi * pexpx0 + perfx0) * (p00 / sqrpi * pexpy0 + perfy0));
             double modfitobvol = (volume3d / (sqrpi * sz));
             // obtain fit parameters
 
@@ -18976,36 +19082,28 @@ public class Imaging_FCS implements PlugIn {
             double acfden2 = Math.pow(p102 / sqrpi * p302 + p402, 2) * p2t2;
             double acf2 = acfnum2 / acfden2;
 
-            double acfc = ((1 - pareq[5]) * acf1 + Math.pow(q2, 2) * pareq[5] * acf2)
-                    / Math.pow(1 - pareq[5] + q2 * pareq[5], 2);
+            double acfc = ((1 - pareq[5]) * acf1 + Math.pow(q2, 2) * pareq[5] * acf2) /
+                    Math.pow(1 - pareq[5] + q2 * pareq[5], 2);
             double dDacfa1 = 4 * x / pareq[0] * (p4t + p3t * p1t / sqrpi) / Math.pow(p40 + p30 * p10 / sqrpi, 2) / p2t;
-            double dDacfb1 = p3t / Math.pow(a, 2) / sqrpi / p1t
-                    - (p4t + p3t * p1t / sqrpi) / (Math.pow(szeff1, 2) + Math.pow(szeff2, 2)) / Math.pow(p2t, 2);
+            double dDacfb1 = p3t / Math.pow(a, 2) / sqrpi / p1t -
+                    (p4t + p3t * p1t / sqrpi) / (Math.pow(szeff1, 2) + Math.pow(szeff2, 2)) / Math.pow(p2t, 2);
             double dDacf1 = dDacfa1 * dDacfb1;
-            double dDacfa2 = 4 * x / pareq[0] * (p4t2 + p3t2 * p1t2 / sqrpi) / Math.pow(p402 + p302 * p102 / sqrpi, 2)
-                    / p2t2;
-            double dDacfb2 = p3t2 / Math.pow(a, 2) / sqrpi / p1t2
-                    - (p4t2 + p3t2 * p1t2 / sqrpi) / (Math.pow(szeff1, 2) + Math.pow(szeff2, 2)) / Math.pow(p2t2, 2);
+            double dDacfa2 =
+                    4 * x / pareq[0] * (p4t2 + p3t2 * p1t2 / sqrpi) / Math.pow(p402 + p302 * p102 / sqrpi, 2) / p2t2;
+            double dDacfb2 = p3t2 / Math.pow(a, 2) / sqrpi / p1t2 -
+                    (p4t2 + p3t2 * p1t2 / sqrpi) / (Math.pow(szeff1, 2) + Math.pow(szeff2, 2)) / Math.pow(p2t2, 2);
             double dDacf2 = dDacfa2 * dDacfb2;
 
-            double dF2acf = (1 / pareq[0]) * ((Math.pow(q2, 2) * acf2 - acf1) / (1 - pareq[5] + q2 * pareq[5])
-                    - 2 * (q2 - 1) * ((1 - pareq[5]) * acf1 + Math.pow(q2, 2) * pareq[5] * acf2)
-                            / Math.pow(1 - pareq[5] + q2 * pareq[5], 3));
+            double dF2acf = (1 / pareq[0]) * ((Math.pow(q2, 2) * acf2 - acf1) / (1 - pareq[5] + q2 * pareq[5]) -
+                    2 * (q2 - 1) * ((1 - pareq[5]) * acf1 + Math.pow(q2, 2) * pareq[5] * acf2) /
+                            Math.pow(1 - pareq[5] + q2 * pareq[5], 3));
 
-            double[] grad = new double[] {
-                    (-1 / Math.pow(pareq[0], 2)) * acfc,
-                    dDacf1,
-                    0,
-                    0,
-                    1,
-                    dF2acf,
-                    dDacf2,
-                    0,
-                    0
+            double[] grad = new double[]{
+                    (-1 / Math.pow(pareq[0], 2)) * acfc, dDacf1, 0, 0, 1, dF2acf, dDacf2, 0, 0
             };
 
             double[] gradret = new double[num]; // return the gradients of the fit model in respect to the fit
-                                                // parameters
+            // parameters
             num = 0;
             for (int i = 0; i < noparam; i++) {
                 if (paramfit[i]) {
@@ -19070,8 +19168,8 @@ public class Imaging_FCS implements PlugIn {
             double acfden2 = Math.pow(p102 / sqrpi * p302 + p402, 2) * p2t2;
             double acf2 = acfnum2 / acfden2;
 
-            return (1 / pareq[0]) * ((1 - pareq[5]) * acf1 + Math.pow(q2, 2) * pareq[5] * acf2)
-                    / Math.pow(1 - pareq[5] + q2 * pareq[5], 2) + pareq[4];
+            return (1 / pareq[0]) * ((1 - pareq[5]) * acf1 + Math.pow(q2, 2) * pareq[5] * acf2) /
+                    Math.pow(1 - pareq[5] + q2 * pareq[5], 2) + pareq[4];
         }
     }
 
@@ -19109,43 +19207,45 @@ public class Imaging_FCS implements PlugIn {
             double p1xt = ax + rx - pareq[2] * x;
             double p2xt = ax - rx + pareq[2] * x;
             double p3xt = rx - pareq[2] * x;
-            double p4xt = 2 * Math.pow(ax, 2) + 3 * Math.pow(rx, 2) - 6 * x * rx * pareq[2]
-                    + 3 * Math.pow(x * pareq[2], 2);
+            double p4xt =
+                    2 * Math.pow(ax, 2) + 3 * Math.pow(rx, 2) - 6 * x * rx * pareq[2] + 3 * Math.pow(x * pareq[2], 2);
             double p5xt = Math.pow(p3xt, 2) + Math.pow(p1xt, 2);
             double p6xt = Math.pow(p3xt, 2) + Math.pow(p2xt, 2);
             double p7xt = 2 * (Math.pow(ax, 2) + Math.pow(rx, 2) - 2 * x * rx * pareq[2] + Math.pow(x * pareq[2], 2));
             double p1yt = ay + ry - pareq[3] * x;
             double p2yt = ay - ry + pareq[3] * x;
             double p3yt = ry - pareq[3] * x;
-            double p4yt = 2 * Math.pow(ay, 2) + 3 * Math.pow(ry, 2) - 6 * x * ry * pareq[3]
-                    + 3 * Math.pow(x * pareq[3], 2);
+            double p4yt =
+                    2 * Math.pow(ay, 2) + 3 * Math.pow(ry, 2) - 6 * x * ry * pareq[3] + 3 * Math.pow(x * pareq[3], 2);
             double p5yt = Math.pow(p3yt, 2) + Math.pow(p1yt, 2);
             double p6yt = Math.pow(p3yt, 2) + Math.pow(p2yt, 2);
             double p7yt = 2 * (Math.pow(ay, 2) + Math.pow(ry, 2) - 2 * x * ry * pareq[3] + Math.pow(x * pareq[3], 2));
-            double pexpxt = Math.exp(-Math.pow(p1xt / p0t, 2)) + Math.exp(-Math.pow(p2xt / p0t, 2))
-                    - 2 * Math.exp(-Math.pow(p3xt / p0t, 2));
+            double pexpxt = Math.exp(-Math.pow(p1xt / p0t, 2)) + Math.exp(-Math.pow(p2xt / p0t, 2)) -
+                    2 * Math.exp(-Math.pow(p3xt / p0t, 2));
             double perfxt = p1xt * Erf.erf(p1xt / p0t) + p2xt * Erf.erf(p2xt / p0t) - 2 * p3xt * Erf.erf(p3xt / p0t);
-            double dDpexpxt = 2 * Math.exp(-p4xt / Math.pow(p0t, 2)) * (Math.exp(p5xt / Math.pow(p0t, 2))
-                    + Math.exp(p6xt / Math.pow(p0t, 2)) - 2 * Math.exp(p7xt / Math.pow(p0t, 2)));
+            double dDpexpxt = 2 * Math.exp(-p4xt / Math.pow(p0t, 2)) *
+                    (Math.exp(p5xt / Math.pow(p0t, 2)) + Math.exp(p6xt / Math.pow(p0t, 2)) -
+                            2 * Math.exp(p7xt / Math.pow(p0t, 2)));
             double dvxperfxt = (Erf.erf(p2xt / p0t) + 2 * Erf.erf(p3xt / p0t) - Erf.erf(p1xt / p0t)) * x;
-            double pexpyt = Math.exp(-Math.pow(p1yt / p0t, 2)) + Math.exp(-Math.pow(p2yt / p0t, 2))
-                    - 2 * Math.exp(-Math.pow(p3yt / p0t, 2));
-            double dDpexpyt = 2 * Math.exp(-p4yt / Math.pow(p0t, 2)) * (Math.exp(p5yt / Math.pow(p0t, 2))
-                    + Math.exp(p6yt / Math.pow(p0t, 2)) - 2 * Math.exp(p7yt / Math.pow(p0t, 2)));
+            double pexpyt = Math.exp(-Math.pow(p1yt / p0t, 2)) + Math.exp(-Math.pow(p2yt / p0t, 2)) -
+                    2 * Math.exp(-Math.pow(p3yt / p0t, 2));
+            double dDpexpyt = 2 * Math.exp(-p4yt / Math.pow(p0t, 2)) *
+                    (Math.exp(p5yt / Math.pow(p0t, 2)) + Math.exp(p6yt / Math.pow(p0t, 2)) -
+                            2 * Math.exp(p7yt / Math.pow(p0t, 2)));
             double dvyperfyt = (Erf.erf(p2yt / p0t) + 2 * Erf.erf(p3yt / p0t) - Erf.erf(p1yt / p0t)) * x;
             double perfyt = p1yt * Erf.erf(p1yt / p0t) + p2yt * Erf.erf(p2yt / p0t) - 2 * p3yt * Erf.erf(p3yt / p0t);
 
             // CF for the lateral dimension (x, y) and its derivative for D
-            double plat = (p0t / sqrpi * pexpxt + perfxt) * (p0t / sqrpi * pexpyt + perfyt)
-                    / (4 * Math.pow(ax * ay, 2) / fobsvol);
-            double dDplat = (1 / (sqrpi * p0t))
-                    * (dDpexpyt * x * (p0t / sqrpi * pexpxt + perfxt) + dDpexpxt * x * (p0t / sqrpi * pexpyt + perfyt))
-                    / (4 * Math.pow(ax * ay, 2) / fobsvol);
+            double plat = (p0t / sqrpi * pexpxt + perfxt) * (p0t / sqrpi * pexpyt + perfyt) /
+                    (4 * Math.pow(ax * ay, 2) / fobsvol);
+            double dDplat = (1 / (sqrpi * p0t)) *
+                    (dDpexpyt * x * (p0t / sqrpi * pexpxt + perfxt) + dDpexpxt * x * (p0t / sqrpi * pexpyt + perfyt)) /
+                    (4 * Math.pow(ax * ay, 2) / fobsvol);
 
             // CF for the axial dimension (z) and its derivative for D
             double pspim = 1 / Math.sqrt(1 + (4 * pareq[1] * x) / Math.pow(szeff, 2));
-            double dDpspim = -4 * x
-                    / (2 * Math.pow(szeff, 2) * Math.pow(Math.sqrt(1 + (4 * pareq[1] * x) / Math.pow(szeff, 2)), 3));
+            double dDpspim = -4 * x /
+                    (2 * Math.pow(szeff, 2) * Math.pow(Math.sqrt(1 + (4 * pareq[1] * x) / Math.pow(szeff, 2)), 3));
 
             double acf1 = plat * pspim;
 
@@ -19155,46 +19255,46 @@ public class Imaging_FCS implements PlugIn {
             double p1xt2 = ax + rx - pareq[2] * x;
             double p2xt2 = ax - rx + pareq[2] * x;
             double p3xt2 = rx - pareq[2] * x;
-            double p4xt2 = 2 * Math.pow(ax, 2) + 3 * Math.pow(rx, 2) - 6 * x * rx * pareq[2]
-                    + 3 * Math.pow(x * pareq[2], 2);
+            double p4xt2 =
+                    2 * Math.pow(ax, 2) + 3 * Math.pow(rx, 2) - 6 * x * rx * pareq[2] + 3 * Math.pow(x * pareq[2], 2);
             double p5xt2 = Math.pow(p3xt2, 2) + Math.pow(p1xt2, 2);
             double p6xt2 = Math.pow(p3xt2, 2) + Math.pow(p2xt2, 2);
             double p7xt2 = 2 * (Math.pow(ax, 2) + Math.pow(rx, 2) - 2 * x * rx * pareq[2] + Math.pow(x * pareq[2], 2));
             double p1yt2 = ay + ry - pareq[3] * x;
             double p2yt2 = ay - ry + pareq[3] * x;
             double p3yt2 = ry - pareq[3] * x;
-            double p4yt2 = 2 * Math.pow(ay, 2) + 3 * Math.pow(ry, 2) - 6 * x * ry * pareq[3]
-                    + 3 * Math.pow(x * pareq[3], 2);
+            double p4yt2 =
+                    2 * Math.pow(ay, 2) + 3 * Math.pow(ry, 2) - 6 * x * ry * pareq[3] + 3 * Math.pow(x * pareq[3], 2);
             double p5yt2 = Math.pow(p3yt2, 2) + Math.pow(p1yt2, 2);
             double p6yt2 = Math.pow(p3yt2, 2) + Math.pow(p2yt2, 2);
             double p7yt2 = 2 * (Math.pow(ay, 2) + Math.pow(ry, 2) - 2 * x * ry * pareq[3] + Math.pow(x * pareq[3], 2));
-            double pexpxt2 = Math.exp(-Math.pow(p1xt2 / p0t2, 2)) + Math.exp(-Math.pow(p2xt2 / p0t2, 2))
-                    - 2 * Math.exp(-Math.pow(p3xt2 / p0t2, 2));
-            double perfxt2 = p1xt2 * Erf.erf(p1xt2 / p0t2) + p2xt2 * Erf.erf(p2xt2 / p0t2)
-                    - 2 * p3xt2 * Erf.erf(p3xt2 / p0t2);
-            double dDpexpxt2 = 2 * Math.exp(-p4xt2 / Math.pow(p0t2, 2)) * (Math.exp(p5xt2 / Math.pow(p0t2, 2))
-                    + Math.exp(p6xt2 / Math.pow(p0t2, 2)) - 2 * Math.exp(p7xt2 / Math.pow(p0t2, 2)));
+            double pexpxt2 = Math.exp(-Math.pow(p1xt2 / p0t2, 2)) + Math.exp(-Math.pow(p2xt2 / p0t2, 2)) -
+                    2 * Math.exp(-Math.pow(p3xt2 / p0t2, 2));
+            double perfxt2 =
+                    p1xt2 * Erf.erf(p1xt2 / p0t2) + p2xt2 * Erf.erf(p2xt2 / p0t2) - 2 * p3xt2 * Erf.erf(p3xt2 / p0t2);
+            double dDpexpxt2 = 2 * Math.exp(-p4xt2 / Math.pow(p0t2, 2)) *
+                    (Math.exp(p5xt2 / Math.pow(p0t2, 2)) + Math.exp(p6xt2 / Math.pow(p0t2, 2)) -
+                            2 * Math.exp(p7xt2 / Math.pow(p0t2, 2)));
             double dvxperfxt2 = (Erf.erf(p2xt2 / p0t2) + 2 * Erf.erf(p3xt2 / p0t2) - Erf.erf(p1xt2 / p0t2)) * x;
-            double pexpyt2 = Math.exp(-Math.pow(p1yt2 / p0t2, 2)) + Math.exp(-Math.pow(p2yt2 / p0t2, 2))
-                    - 2 * Math.exp(-Math.pow(p3yt2 / p0t2, 2));
-            double dDpexpyt2 = 2 * Math.exp(-p4yt2 / Math.pow(p0t2, 2)) * (Math.exp(p5yt2 / Math.pow(p0t2, 2))
-                    + Math.exp(p6yt2 / Math.pow(p0t2, 2)) - 2 * Math.exp(p7yt2 / Math.pow(p0t2, 2)));
+            double pexpyt2 = Math.exp(-Math.pow(p1yt2 / p0t2, 2)) + Math.exp(-Math.pow(p2yt2 / p0t2, 2)) -
+                    2 * Math.exp(-Math.pow(p3yt2 / p0t2, 2));
+            double dDpexpyt2 = 2 * Math.exp(-p4yt2 / Math.pow(p0t2, 2)) *
+                    (Math.exp(p5yt2 / Math.pow(p0t2, 2)) + Math.exp(p6yt2 / Math.pow(p0t2, 2)) -
+                            2 * Math.exp(p7yt2 / Math.pow(p0t2, 2)));
             double dvyperfyt2 = (Erf.erf(p2yt2 / p0t2) + 2 * Erf.erf(p3yt2 / p0t2) - Erf.erf(p1yt2 / p0t2)) * x;
-            double perfyt2 = p1yt2 * Erf.erf(p1yt2 / p0t2) + p2yt2 * Erf.erf(p2yt2 / p0t2)
-                    - 2 * p3yt2 * Erf.erf(p3yt2 / p0t2);
+            double perfyt2 =
+                    p1yt2 * Erf.erf(p1yt2 / p0t2) + p2yt2 * Erf.erf(p2yt2 / p0t2) - 2 * p3yt2 * Erf.erf(p3yt2 / p0t2);
 
             // CF for the lateral dimension (x, y) and its derivative for D
-            double plat2 = (p0t2 / sqrpi * pexpxt2 + perfxt2) * (p0t2 / sqrpi * pexpyt2 + perfyt2)
-                    / (4 * Math.pow(ax * ay, 2) / fobsvol);
-            double dDplat2 = (1 / (sqrpi * p0t2))
-                    * (dDpexpyt2 * x * (p0t2 / sqrpi * pexpxt2 + perfxt2)
-                            + dDpexpxt2 * x * (p0t2 / sqrpi * pexpyt2 + perfyt2))
-                    / (4 * Math.pow(ax * ay, 2) / fobsvol);
+            double plat2 = (p0t2 / sqrpi * pexpxt2 + perfxt2) * (p0t2 / sqrpi * pexpyt2 + perfyt2) /
+                    (4 * Math.pow(ax * ay, 2) / fobsvol);
+            double dDplat2 = (1 / (sqrpi * p0t2)) * (dDpexpyt2 * x * (p0t2 / sqrpi * pexpxt2 + perfxt2) +
+                    dDpexpxt2 * x * (p0t2 / sqrpi * pexpyt2 + perfyt2)) / (4 * Math.pow(ax * ay, 2) / fobsvol);
 
             // CF for the axial dimension (z) and its derivative for D
             double pspim2 = 1 / Math.sqrt(1 + (4 * pareq[6] * x) / Math.pow(szeff, 2));
-            double dDpspim2 = -4 * x
-                    / (2 * Math.pow(szeff, 2) * Math.pow(Math.sqrt(1 + (4 * pareq[6] * x) / Math.pow(szeff, 2)), 3));
+            double dDpspim2 = -4 * x /
+                    (2 * Math.pow(szeff, 2) * Math.pow(Math.sqrt(1 + (4 * pareq[6] * x) / Math.pow(szeff, 2)), 3));
 
             double acf2 = plat2 * pspim2;
 
@@ -19204,53 +19304,53 @@ public class Imaging_FCS implements PlugIn {
             double p1xt3 = ax + rx - pareq[2] * x;
             double p2xt3 = ax - rx + pareq[2] * x;
             double p3xt3 = rx - pareq[2] * x;
-            double p4xt3 = 2 * Math.pow(ax, 2) + 3 * Math.pow(rx, 2) - 6 * x * rx * pareq[2]
-                    + 3 * Math.pow(x * pareq[2], 2);
+            double p4xt3 =
+                    2 * Math.pow(ax, 2) + 3 * Math.pow(rx, 2) - 6 * x * rx * pareq[2] + 3 * Math.pow(x * pareq[2], 2);
             double p5xt3 = Math.pow(p3xt2, 2) + Math.pow(p1xt2, 2);
             double p6xt3 = Math.pow(p3xt2, 2) + Math.pow(p2xt2, 2);
             double p7xt3 = 2 * (Math.pow(ax, 2) + Math.pow(rx, 2) - 2 * x * rx * pareq[2] + Math.pow(x * pareq[2], 2));
             double p1yt3 = ay + ry - pareq[3] * x;
             double p2yt3 = ay - ry + pareq[3] * x;
             double p3yt3 = ry - pareq[3] * x;
-            double p4yt3 = 2 * Math.pow(ay, 2) + 3 * Math.pow(ry, 2) - 6 * x * ry * pareq[3]
-                    + 3 * Math.pow(x * pareq[3], 2);
+            double p4yt3 =
+                    2 * Math.pow(ay, 2) + 3 * Math.pow(ry, 2) - 6 * x * ry * pareq[3] + 3 * Math.pow(x * pareq[3], 2);
             double p5yt3 = Math.pow(p3yt3, 2) + Math.pow(p1yt3, 2);
             double p6yt3 = Math.pow(p3yt3, 2) + Math.pow(p2yt3, 2);
             double p7yt3 = 2 * (Math.pow(ay, 2) + Math.pow(ry, 2) - 2 * x * ry * pareq[3] + Math.pow(x * pareq[3], 2));
-            double pexpxt3 = Math.exp(-Math.pow(p1xt3 / p0t3, 2)) + Math.exp(-Math.pow(p2xt3 / p0t3, 2))
-                    - 2 * Math.exp(-Math.pow(p3xt3 / p0t3, 2));
-            double perfxt3 = p1xt3 * Erf.erf(p1xt3 / p0t3) + p2xt3 * Erf.erf(p2xt3 / p0t3)
-                    - 2 * p3xt3 * Erf.erf(p3xt3 / p0t3);
-            double dDpexpxt3 = 2 * Math.exp(-p4xt3 / Math.pow(p0t3, 2)) * (Math.exp(p5xt3 / Math.pow(p0t3, 2))
-                    + Math.exp(p6xt3 / Math.pow(p0t3, 2)) - 2 * Math.exp(p7xt3 / Math.pow(p0t3, 2)));
+            double pexpxt3 = Math.exp(-Math.pow(p1xt3 / p0t3, 2)) + Math.exp(-Math.pow(p2xt3 / p0t3, 2)) -
+                    2 * Math.exp(-Math.pow(p3xt3 / p0t3, 2));
+            double perfxt3 =
+                    p1xt3 * Erf.erf(p1xt3 / p0t3) + p2xt3 * Erf.erf(p2xt3 / p0t3) - 2 * p3xt3 * Erf.erf(p3xt3 / p0t3);
+            double dDpexpxt3 = 2 * Math.exp(-p4xt3 / Math.pow(p0t3, 2)) *
+                    (Math.exp(p5xt3 / Math.pow(p0t3, 2)) + Math.exp(p6xt3 / Math.pow(p0t3, 2)) -
+                            2 * Math.exp(p7xt3 / Math.pow(p0t3, 2)));
             double dvxperfxt3 = (Erf.erf(p2xt3 / p0t3) + 2 * Erf.erf(p3xt3 / p0t3) - Erf.erf(p1xt3 / p0t3)) * x;
-            double pexpyt3 = Math.exp(-Math.pow(p1yt3 / p0t3, 2)) + Math.exp(-Math.pow(p2yt3 / p0t3, 2))
-                    - 2 * Math.exp(-Math.pow(p3yt3 / p0t3, 2));
-            double dDpexpyt3 = 2 * Math.exp(-p4yt3 / Math.pow(p0t3, 2)) * (Math.exp(p5yt3 / Math.pow(p0t3, 2))
-                    + Math.exp(p6yt3 / Math.pow(p0t3, 2)) - 2 * Math.exp(p7yt3 / Math.pow(p0t3, 2)));
+            double pexpyt3 = Math.exp(-Math.pow(p1yt3 / p0t3, 2)) + Math.exp(-Math.pow(p2yt3 / p0t3, 2)) -
+                    2 * Math.exp(-Math.pow(p3yt3 / p0t3, 2));
+            double dDpexpyt3 = 2 * Math.exp(-p4yt3 / Math.pow(p0t3, 2)) *
+                    (Math.exp(p5yt3 / Math.pow(p0t3, 2)) + Math.exp(p6yt3 / Math.pow(p0t3, 2)) -
+                            2 * Math.exp(p7yt3 / Math.pow(p0t3, 2)));
             double dvyperfyt3 = (Erf.erf(p2yt3 / p0t3) + 2 * Erf.erf(p3yt3 / p0t3) - Erf.erf(p1yt3 / p0t3)) * x;
-            double perfyt3 = p1yt3 * Erf.erf(p1yt3 / p0t3) + p2yt3 * Erf.erf(p2yt3 / p0t3)
-                    - 2 * p3yt3 * Erf.erf(p3yt3 / p0t3);
+            double perfyt3 =
+                    p1yt3 * Erf.erf(p1yt3 / p0t3) + p2yt3 * Erf.erf(p2yt3 / p0t3) - 2 * p3yt3 * Erf.erf(p3yt3 / p0t3);
 
             // TRIPLET
             double triplet = 1 + pareq[9] / (1 - pareq[9]) * Math.exp(-x / pareq[10]);
-            double dtripletFtrip = Math.exp(-x / pareq[10])
-                    * (1 / (1 - pareq[9]) + pareq[9] / Math.pow(1 - pareq[9], 2));
-            double dtripletTtrip = Math.exp(-x / pareq[10]) * (pareq[9] * x)
-                    / ((1 - pareq[9]) * Math.pow(pareq[10], 2));
+            double dtripletFtrip =
+                    Math.exp(-x / pareq[10]) * (1 / (1 - pareq[9]) + pareq[9] / Math.pow(1 - pareq[9], 2));
+            double dtripletTtrip =
+                    Math.exp(-x / pareq[10]) * (pareq[9] * x) / ((1 - pareq[9]) * Math.pow(pareq[10], 2));
 
             // CF for the lateral dimension (x, y) and its derivative for D
-            double plat3 = (p0t3 / sqrpi * pexpxt3 + perfxt3) * (p0t3 / sqrpi * pexpyt3 + perfyt3)
-                    / (4 * Math.pow(ax * ay, 2) / fobsvol);
-            double dDplat3 = (1 / (sqrpi * p0t3))
-                    * (dDpexpyt3 * x * (p0t3 / sqrpi * pexpxt3 + perfxt3)
-                            + dDpexpxt3 * x * (p0t3 / sqrpi * pexpyt3 + perfyt3))
-                    / (4 * Math.pow(ax * ay, 2) / fobsvol);
+            double plat3 = (p0t3 / sqrpi * pexpxt3 + perfxt3) * (p0t3 / sqrpi * pexpyt3 + perfyt3) /
+                    (4 * Math.pow(ax * ay, 2) / fobsvol);
+            double dDplat3 = (1 / (sqrpi * p0t3)) * (dDpexpyt3 * x * (p0t3 / sqrpi * pexpxt3 + perfxt3) +
+                    dDpexpxt3 * x * (p0t3 / sqrpi * pexpyt3 + perfyt3)) / (4 * Math.pow(ax * ay, 2) / fobsvol);
 
             // CF for the axial dimension (z) and its derivative for D
             double pspim3 = 1 / Math.sqrt(1 + (4 * pareq[8] * x) / Math.pow(szeff, 2));
-            double dDpspim3 = -4 * x
-                    / (2 * Math.pow(szeff, 2) * Math.pow(Math.sqrt(1 + (4 * pareq[8] * x) / Math.pow(szeff, 2)), 3));
+            double dDpspim3 = -4 * x /
+                    (2 * Math.pow(szeff, 2) * Math.pow(Math.sqrt(1 + (4 * pareq[8] * x) / Math.pow(szeff, 2)), 3));
 
             double acf3 = plat3 * pspim3;
 
@@ -19265,28 +19365,25 @@ public class Imaging_FCS implements PlugIn {
             double df32 = 2 * pareq[5] * Math.pow(q2, 2) * (1 - q3);
             double df33 = Math.pow(q3, 2) * (1 - pareq[5] + pareq[7] + q2 * pareq[5] - q3 * pareq[7]);
 
-            double pacf = (1 / pareq[0])
-                    * ((1 - pareq[5] - pareq[7]) * acf1 + Math.pow(q2, 2) * pareq[5] * acf2
-                            + Math.pow(q3, 2) * pareq[7] * acf3)
-                    / Math.pow(1 - pareq[5] - pareq[7] + q2 * pareq[5] + q3 * pareq[7], 2) * triplet + pareq[4];
+            double pacf = (1 / pareq[0]) * ((1 - pareq[5] - pareq[7]) * acf1 + Math.pow(q2, 2) * pareq[5] * acf2 +
+                    Math.pow(q3, 2) * pareq[7] * acf3) /
+                    Math.pow(1 - pareq[5] - pareq[7] + q2 * pareq[5] + q3 * pareq[7], 2) * triplet + pareq[4];
 
-            double[] grad = new double[] {
+            double[] grad = new double[]{
                     (-1 / Math.pow(pareq[0], 2)) * (pf1 * acf1 + pf2 * acf2 + pf3 * acf3) * triplet,
                     (1 / pareq[0]) * pf1 * (plat * dDpspim + pspim * dDplat),
-                    (1 / pareq[0]) * (pf1 * ((p0t / sqrpi * pexpyt + perfyt) * dvxperfxt) * pspim
-                            / (4 * Math.pow(ax * ay, 2) / fobsvol)
-                            + pf2 * ((p0t2 / sqrpi * pexpyt2 + perfyt2) * dvxperfxt2) * pspim2
-                                    / (4 * Math.pow(ax * ay, 2) / fobsvol)
-                            + pf3 * ((p0t3 / sqrpi * pexpyt3 + perfyt3) * dvxperfxt3) * pspim3
-                                    / (4 * Math.pow(ax * ay, 2) / fobsvol))
-                            * triplet,
-                    (1 / pareq[0]) * (pf1 * ((p0t / sqrpi * pexpxt + perfxt) * dvyperfyt) * pspim
-                            / (4 * Math.pow(ax * ay, 2) / fobsvol)
-                            + pf2 * ((p0t2 / sqrpi * pexpxt2 + perfxt2) * dvyperfyt2) * pspim2
-                                    / (4 * Math.pow(ax * ay, 2) / fobsvol)
-                            + pf3 * ((p0t3 / sqrpi * pexpxt3 + perfxt3) * dvyperfyt3) * pspim3
-                                    / (4 * Math.pow(ax * ay, 2) / fobsvol))
-                            * triplet,
+                    (1 / pareq[0]) * (pf1 * ((p0t / sqrpi * pexpyt + perfyt) * dvxperfxt) * pspim /
+                            (4 * Math.pow(ax * ay, 2) / fobsvol) +
+                            pf2 * ((p0t2 / sqrpi * pexpyt2 + perfyt2) * dvxperfxt2) * pspim2 /
+                                    (4 * Math.pow(ax * ay, 2) / fobsvol) +
+                            pf3 * ((p0t3 / sqrpi * pexpyt3 + perfyt3) * dvxperfxt3) * pspim3 /
+                                    (4 * Math.pow(ax * ay, 2) / fobsvol)) * triplet,
+                    (1 / pareq[0]) * (pf1 * ((p0t / sqrpi * pexpxt + perfxt) * dvyperfyt) * pspim /
+                            (4 * Math.pow(ax * ay, 2) / fobsvol) +
+                            pf2 * ((p0t2 / sqrpi * pexpxt2 + perfxt2) * dvyperfyt2) * pspim2 /
+                                    (4 * Math.pow(ax * ay, 2) / fobsvol) +
+                            pf3 * ((p0t3 / sqrpi * pexpxt3 + perfxt3) * dvyperfyt3) * pspim3 /
+                                    (4 * Math.pow(ax * ay, 2) / fobsvol)) * triplet,
                     1,
                     (1 / pareq[0]) * (1 / dfnom) * (df21 * acf1 + df22 * acf2 + df23 * acf3) * triplet,
                     (1 / pareq[0]) * pf2 * (plat2 * dDpspim2 + pspim2 * dDplat2) * triplet,
@@ -19297,7 +19394,7 @@ public class Imaging_FCS implements PlugIn {
             };
 
             double[] gradret = new double[num]; // return the gradients of the fit model in respect to the fit
-                                                // parameters
+            // parameters
             num = 0;
             for (int i = 0; i < noparam; i++) {
                 if (paramfit[i]) {
@@ -19330,15 +19427,15 @@ public class Imaging_FCS implements PlugIn {
             double p1yt = ay + ry - pareq[3] * x;
             double p2yt = ay - ry + pareq[3] * x;
             double p3yt = ry - pareq[3] * x;
-            double pexpxt = Math.exp(-Math.pow(p1xt / p0t, 2)) + Math.exp(-Math.pow(p2xt / p0t, 2))
-                    - 2 * Math.exp(-Math.pow(p3xt / p0t, 2));
+            double pexpxt = Math.exp(-Math.pow(p1xt / p0t, 2)) + Math.exp(-Math.pow(p2xt / p0t, 2)) -
+                    2 * Math.exp(-Math.pow(p3xt / p0t, 2));
             double perfxt = p1xt * Erf.erf(p1xt / p0t) + p2xt * Erf.erf(p2xt / p0t) - 2 * p3xt * Erf.erf(p3xt / p0t);
-            double pexpyt = Math.exp(-Math.pow(p1yt / p0t, 2)) + Math.exp(-Math.pow(p2yt / p0t, 2))
-                    - 2 * Math.exp(-Math.pow(p3yt / p0t, 2));
+            double pexpyt = Math.exp(-Math.pow(p1yt / p0t, 2)) + Math.exp(-Math.pow(p2yt / p0t, 2)) -
+                    2 * Math.exp(-Math.pow(p3yt / p0t, 2));
             double perfyt = p1yt * Erf.erf(p1yt / p0t) + p2yt * Erf.erf(p2yt / p0t) - 2 * p3yt * Erf.erf(p3yt / p0t);
 
-            double pplane1 = (p0t / sqrpi * pexpxt + perfxt) * (p0t / sqrpi * pexpyt + perfyt)
-                    / (4 * Math.pow(ax * ay, 2) / fobsvol);
+            double pplane1 = (p0t / sqrpi * pexpxt + perfxt) * (p0t / sqrpi * pexpyt + perfyt) /
+                    (4 * Math.pow(ax * ay, 2) / fobsvol);
             double pspim1 = 1 / Math.sqrt(1 + (4 * pareq[1] * x) / Math.pow(szeff, 2));
             double acf1 = pplane1 * pspim1;
 
@@ -19351,17 +19448,17 @@ public class Imaging_FCS implements PlugIn {
             double p1yt2 = ay + ry - pareq[3] * x;
             double p2yt2 = ay - ry + pareq[3] * x;
             double p3yt2 = ry - pareq[3] * x;
-            double pexpxt2 = Math.exp(-Math.pow(p1xt2 / p0t2, 2)) + Math.exp(-Math.pow(p2xt2 / p0t2, 2))
-                    - 2 * Math.exp(-Math.pow(p3xt2 / p0t2, 2));
-            double perfxt2 = p1xt * Erf.erf(p1xt2 / p0t2) + p2xt2 * Erf.erf(p2xt2 / p0t2)
-                    - 2 * p3xt2 * Erf.erf(p3xt2 / p0t2);
-            double pexpyt2 = Math.exp(-Math.pow(p1yt2 / p0t2, 2)) + Math.exp(-Math.pow(p2yt2 / p0t2, 2))
-                    - 2 * Math.exp(-Math.pow(p3yt2 / p0t2, 2));
-            double perfyt2 = p1yt2 * Erf.erf(p1yt2 / p0t2) + p2yt2 * Erf.erf(p2yt2 / p0t2)
-                    - 2 * p3yt2 * Erf.erf(p3yt2 / p0t2);
+            double pexpxt2 = Math.exp(-Math.pow(p1xt2 / p0t2, 2)) + Math.exp(-Math.pow(p2xt2 / p0t2, 2)) -
+                    2 * Math.exp(-Math.pow(p3xt2 / p0t2, 2));
+            double perfxt2 =
+                    p1xt * Erf.erf(p1xt2 / p0t2) + p2xt2 * Erf.erf(p2xt2 / p0t2) - 2 * p3xt2 * Erf.erf(p3xt2 / p0t2);
+            double pexpyt2 = Math.exp(-Math.pow(p1yt2 / p0t2, 2)) + Math.exp(-Math.pow(p2yt2 / p0t2, 2)) -
+                    2 * Math.exp(-Math.pow(p3yt2 / p0t2, 2));
+            double perfyt2 =
+                    p1yt2 * Erf.erf(p1yt2 / p0t2) + p2yt2 * Erf.erf(p2yt2 / p0t2) - 2 * p3yt2 * Erf.erf(p3yt2 / p0t2);
 
-            double pplane2 = (p0t2 / sqrpi * pexpxt2 + perfxt2) * (p0t2 / sqrpi * pexpyt2 + perfyt2)
-                    / (4 * Math.pow(ax * ay, 2) / fobsvol);
+            double pplane2 = (p0t2 / sqrpi * pexpxt2 + perfxt2) * (p0t2 / sqrpi * pexpyt2 + perfyt2) /
+                    (4 * Math.pow(ax * ay, 2) / fobsvol);
             double pspim2 = 1 / Math.sqrt(1 + (4 * pareq[6] * x) / Math.pow(szeff, 2));
             double acf2 = pplane2 * pspim2;
 
@@ -19374,27 +19471,26 @@ public class Imaging_FCS implements PlugIn {
             double p1yt3 = ay + ry - pareq[3] * x;
             double p2yt3 = ay - ry + pareq[3] * x;
             double p3yt3 = ry - pareq[3] * x;
-            double pexpxt3 = Math.exp(-Math.pow(p1xt3 / p0t3, 2)) + Math.exp(-Math.pow(p2xt3 / p0t3, 2))
-                    - 2 * Math.exp(-Math.pow(p3xt3 / p0t3, 2));
-            double perfxt3 = p1xt * Erf.erf(p1xt3 / p0t3) + p2xt3 * Erf.erf(p2xt3 / p0t3)
-                    - 2 * p3xt3 * Erf.erf(p3xt3 / p0t3);
-            double pexpyt3 = Math.exp(-Math.pow(p1yt3 / p0t3, 2)) + Math.exp(-Math.pow(p2yt3 / p0t3, 2))
-                    - 2 * Math.exp(-Math.pow(p3yt3 / p0t3, 2));
-            double perfyt3 = p1yt3 * Erf.erf(p1yt3 / p0t3) + p2yt3 * Erf.erf(p2yt3 / p0t3)
-                    - 2 * p3yt3 * Erf.erf(p3yt3 / p0t3);
+            double pexpxt3 = Math.exp(-Math.pow(p1xt3 / p0t3, 2)) + Math.exp(-Math.pow(p2xt3 / p0t3, 2)) -
+                    2 * Math.exp(-Math.pow(p3xt3 / p0t3, 2));
+            double perfxt3 =
+                    p1xt * Erf.erf(p1xt3 / p0t3) + p2xt3 * Erf.erf(p2xt3 / p0t3) - 2 * p3xt3 * Erf.erf(p3xt3 / p0t3);
+            double pexpyt3 = Math.exp(-Math.pow(p1yt3 / p0t3, 2)) + Math.exp(-Math.pow(p2yt3 / p0t3, 2)) -
+                    2 * Math.exp(-Math.pow(p3yt3 / p0t3, 2));
+            double perfyt3 =
+                    p1yt3 * Erf.erf(p1yt3 / p0t3) + p2yt3 * Erf.erf(p2yt3 / p0t3) - 2 * p3yt3 * Erf.erf(p3yt3 / p0t3);
 
-            double pplane3 = (p0t3 / sqrpi * pexpxt3 + perfxt3) * (p0t3 / sqrpi * pexpyt3 + perfyt3)
-                    / (4 * Math.pow(ax * ay, 2) / fobsvol);
+            double pplane3 = (p0t3 / sqrpi * pexpxt3 + perfxt3) * (p0t3 / sqrpi * pexpyt3 + perfyt3) /
+                    (4 * Math.pow(ax * ay, 2) / fobsvol);
             double pspim3 = 1 / Math.sqrt(1 + (4 * pareq[8] * x) / Math.pow(szeff, 2));
             double acf3 = pplane3 * pspim3;
 
             // TRIPLET
             double triplet = 1 + pareq[9] / (1 - pareq[9]) * Math.exp(-x / pareq[10]);
 
-            return (1 / pareq[0])
-                    * ((1 - pareq[5] - pareq[7]) * acf1 + Math.pow(q2, 2) * pareq[5] * acf2
-                            + Math.pow(q3, 2) * pareq[7] * acf3)
-                    / Math.pow(1 - pareq[5] - pareq[7] + q2 * pareq[5] + q3 * pareq[7], 2) * triplet + pareq[4];
+            return (1 / pareq[0]) * ((1 - pareq[5] - pareq[7]) * acf1 + Math.pow(q2, 2) * pareq[5] * acf2 +
+                    Math.pow(q3, 2) * pareq[7] * acf3) /
+                    Math.pow(1 - pareq[5] - pareq[7] + q2 * pareq[5] + q3 * pareq[7], 2) * triplet + pareq[4];
         }
     }
 
@@ -19411,7 +19507,7 @@ public class Imaging_FCS implements PlugIn {
         @Override
         public double[] gradient(double x, double[] params) {
             int num = params.length; // number of values in the gradient of FCS_3p, which depends on the number of
-                                     // parameters to be fit
+            // parameters to be fit
             double[][] gradtau = new double[num][chanum - 1];
             double[] tmpgrad = new double[num]; // temporary variable;
             double[] finalgrad = new double[num];
@@ -19579,7 +19675,7 @@ public class Imaging_FCS implements PlugIn {
     // Transform data using the regularized covariance matrix for a generalized
     // least squares fit
     public void dataTransform(double[] corav, double[][] covmats) { // this needs to be runCPU before the Bayes fit or
-                                                                    // any generalized least suqares
+        // any generalized least suqares
         // corav: correlation function
         // covmats: covariance matrix
         double[] cortmp = new double[chanum - 1];
@@ -19587,7 +19683,7 @@ public class Imaging_FCS implements PlugIn {
         System.arraycopy(corav, 1, cortmp, 0, chanum - 1);
 
         RealMatrix mat = MatrixUtils.createRealMatrix(covmats); // lower triangular matrix of the CholeskyDecomposition
-                                                                // of covmats
+        // of covmats
         RealMatrix matL;
 
         try { // perfrom the Cholesky decomposition and determine the lower triangular matrix
@@ -19599,7 +19695,7 @@ public class Imaging_FCS implements PlugIn {
         }
 
         DecompositionSolver solver = new LUDecomposition(matL).getSolver(); // solve for a new correlation vector with
-                                                                            // independent elements
+        // independent elements
         RealVector constants = new ArrayRealVector(cortmp);
         RealVector solution = solver.solve(constants);
         lowerCholDecCovmats = matL;
@@ -19764,7 +19860,7 @@ public class Imaging_FCS implements PlugIn {
         double simNA = 1.0; // NA of the objective
         double simSigma0 = 0.8; // actual resolution
         String[] newSimSettings = new String[nosimsettings]; // an array for reading out the settings in Simulation
-                                                             // panel
+        // panel
 
         newSimSettings[0] = (String) cbSimMode.getSelectedItem();
         newSimSettings[1] = tbSimTrip.getText();
@@ -19809,13 +19905,13 @@ public class Imaging_FCS implements PlugIn {
             simTauBleach = Double.parseDouble(newSimSettings[5]); // bleach time in seconds
             simPixelnum = Integer.parseInt(newSimSettings[6]); // width of image in pixels
             simExtFactor = Double.parseDouble(newSimSettings[7]); // factor by which the simulated area is bigger than
-                                                                  // the observed area
+            // the observed area
             simNoTStep = Integer.parseInt(newSimSettings[8]); // number of frames to be simulated
             simFrameTime = Double.parseDouble(newSimSettings[9]); // time resolution of the camera in second
             simStepsPerFrame = Integer.parseInt(newSimSettings[10]); // steps of simulations doen for each frame
             simD1 = Double.parseDouble(newSimSettings[12]) / Math.pow(10, 12); // particle 1 diffusion coefficient
             simDoutDinRatio = Double.parseDouble(newSimSettings[13]); // ratio of diffusion coefficients outside over
-                                                                      // inside of domains
+            // inside of domains
             simD2 = Double.parseDouble(newSimSettings[14]) / Math.pow(10, 12); // particle 2 diffusion coefficient
             simD3 = Double.parseDouble(newSimSettings[16]) / Math.pow(10, 12); // particle 3 diffusion coefficient
             simF2 = Double.parseDouble(newSimSettings[15]); // fraction of particle 2
@@ -19852,7 +19948,7 @@ public class Imaging_FCS implements PlugIn {
 
         int numOfSeeds = 18;
         int[] simSeedArray = new int[numOfSeeds]; // array of simulation Seeds so that the random number generators are
-                                                  // different
+        // different
         double simPixelSize = simPixelSizeRS / simMag; // pixel size in object space
         double simPSFSize = 0.5 * simSigma0 * simWavelength / simNA; // PSF size
         double simGridSize = simPixelnum * simPixelSize; // gridsize; i.e. the size of the pixel area of the detector
@@ -19860,7 +19956,7 @@ public class Imaging_FCS implements PlugIn {
         double simSizeLL = -simExtFactor * simGridSize; // lower limit of the simulation area
         double simSizeUL = simExtFactor * simGridSize; // upper limit of the simulation area
         double simDetectorSize = simGridSize / 2.0; // the detector extends from -simDetectorSize to simDetectorSize,
-                                                    // i.e. it is the same as simGridSize
+        // i.e. it is the same as simGridSize
         double bleachFactor = 2.0; // the 2.0 ensures that no bleaching happens if simTauBleach is 0
         if (simTauBleach != 0) {
             bleachFactor = Math.exp(-simTStep / simTauBleach);
@@ -19874,20 +19970,20 @@ public class Imaging_FCS implements PlugIn {
         int numberofdomains = (int) Math.ceil(Math.pow(gridLength * Math.pow(10, 6), 2) * simDomainDensity);
         double[][] domains = new double[numberofdomains][3];
         int subgridnum = (int) Math.ceil(gridLength / (simDomainRadius * 10)) + 1; // number N of elements in a NxN
-                                                                                   // array
+        // array
         double subgridsize = gridLength / (subgridnum - 1); // gridsize in the NxN array
         int maxdomainperarea = (int) Math.ceil(Math.pow(subgridsize / (simDomainRadius * 0.5), 2.0));
         int maxct = 0;
         int[][][] domainsorted = new int[1][1][1]; // subgridsize defines a grid with sizes larger than the largest
-                                                   // domain radius
+        // domain radius
         int[][][] dsortmp = new int[subgridnum][subgridnum][maxdomainperarea];
         int[][] dctr = new int[subgridnum][subgridnum]; // temporary counter
         int num1 = (int) Math.round(simNoParticles * (1 - simF2 - simF3)); // divide particle into their types according
-                                                                           // to their fractions (1- F2 - F3), F2, F3
+        // to their fractions (1- F2 - F3), F2, F3
         int num2 = (int) Math.round(simNoParticles * simF2);
         double[][] particles = new double[simNoParticles][5]; // array for particle positions (0:x, 1:y), whether
-                                                              // particle is bleached (2) or in dark state (4) and if
-                                                              // particle is in domain then (3) contains domain number
+        // particle is bleached (2) or in dark state (4) and if
+        // particle is in domain then (3) contains domain number
         ImagePlus impSim = IJ.createImage("2D Simulation", "GRAY16", simPixelnum, simPixelnum, simNoTStep);
 
         if (simSeed == 0) {
@@ -19915,12 +20011,12 @@ public class Imaging_FCS implements PlugIn {
         // PoissonGenerator rpgnoise = new PoissonGenerator(simCameraNoiseFactor,
         // simSeedArray[cs++]);
         GaussianGenerator rggnoise = new GaussianGenerator(0, Math.sqrt(simCameraNoiseFactor), simSeedArray[cs++]);
-        GaussianGenerator rggdom1 = new GaussianGenerator(0, Math.sqrt(2 * simD1 / simDoutDinRatio * simTStep),
-                simSeedArray[cs++]);
-        GaussianGenerator rggdom2 = new GaussianGenerator(0, Math.sqrt(2 * simD2 / simDoutDinRatio * simTStep),
-                simSeedArray[cs++]);
-        GaussianGenerator rggdom3 = new GaussianGenerator(0, Math.sqrt(2 * simD3 / simDoutDinRatio * simTStep),
-                simSeedArray[cs++]);
+        GaussianGenerator rggdom1 =
+                new GaussianGenerator(0, Math.sqrt(2 * simD1 / simDoutDinRatio * simTStep), simSeedArray[cs++]);
+        GaussianGenerator rggdom2 =
+                new GaussianGenerator(0, Math.sqrt(2 * simD2 / simDoutDinRatio * simTStep), simSeedArray[cs++]);
+        GaussianGenerator rggdom3 =
+                new GaussianGenerator(0, Math.sqrt(2 * simD3 / simDoutDinRatio * simTStep), simSeedArray[cs++]);
         GaussianGenerator rggdrad = new GaussianGenerator(simDomainRadius, simDomainRadius / 10, simSeedArray[cs++]);
 
         if (simDomainFlag) { // create domains
@@ -19938,9 +20034,10 @@ public class Imaging_FCS implements PlugIn {
                 domains[counter][1] = rugypos.next();
                 domains[counter][2] = rggdrad.next();
                 for (int x = 0; x < counter; x++) { // check that domains do not overlap; if there is overlap create a
-                                                    // new domain
-                    if (Math.pow(domains[counter][0] - domains[x][0], 2) + Math.pow(domains[counter][1] - domains[x][1],
-                            2) < Math.pow(domains[counter][2] + domains[x][2], 2)) {
+                    // new domain
+                    if (Math.pow(domains[counter][0] - domains[x][0], 2) +
+                            Math.pow(domains[counter][1] - domains[x][1], 2) <
+                            Math.pow(domains[counter][2] + domains[x][2], 2)) {
                         x = counter--;
                     }
                 }
@@ -19961,22 +20058,22 @@ public class Imaging_FCS implements PlugIn {
                 int xt = (int) Math.floor((domains[x][0] + gridMidPos) / subgridsize);
                 int yt = (int) Math.floor((domains[x][1] + gridMidPos) / subgridsize);
                 dsortmp[xt][yt][dctr[xt][yt]++] = x; // dsortmp stores the number of each domain whose centre is in a
-                                                     // particular grid area
+                // particular grid area
                 if (dctr[xt][yt] > maxct) {
                     maxct = dctr[xt][yt]; // maximum number of domains detected in any grid
                 }
             }
 
             maxct *= 9; // the domains of 9 neighbouring pixels are combined into one grid, so the
-                        // maximum number increases accordingly
+            // maximum number increases accordingly
 
             domainsorted = new int[subgridnum][subgridnum][maxct]; // domains will be sorted into a grid for faster
-                                                                   // testing whether particles are in domains
+            // testing whether particles are in domains
 
             for (int x = 0; x < subgridnum; x++) { // domainsorted contains for each grid position all domains in that
-                                                   // and all directly surrounding grid positions
+                // and all directly surrounding grid positions
                 for (int y = 0; y < subgridnum; y++) { // as the grid is larger than a domain radius, a particle in that
-                                                       // grid can be only in any of these domains if at all
+                    // grid can be only in any of these domains if at all
                     int dct = 0;
                     int dtmp = 0;
                     while (dsortmp[x][y][dtmp] > 0) {
@@ -20052,8 +20149,9 @@ public class Imaging_FCS implements PlugIn {
 
         if (simDomainFlag) { // check for each particle whether it is in a domain
             for (int m = 0; m < simNoParticles; m++) {
-                particles[m][3] = simCheckInDomain(particles[m][0], particles[m][1], domains, domainsorted, maxct,
-                        gridMidPos, subgridsize);
+                particles[m][3] =
+                        simCheckInDomain(particles[m][0], particles[m][1], domains, domainsorted, maxct, gridMidPos,
+                                subgridsize);
             }
         }
 
@@ -20117,8 +20215,8 @@ public class Imaging_FCS implements PlugIn {
                         boolean hoptrue = simHopProbability > rugphop.next() || simHopProbability == 1;
 
                         if (!hoptrue) { // if hop is not true, step inside the mesh only
-                            while ((Math.floor(particles[m][0] / simMeshworkSize) != Math
-                                    .floor((particles[m][0] + dx) / simMeshworkSize))) {
+                            while ((Math.floor(particles[m][0] / simMeshworkSize) !=
+                                    Math.floor((particles[m][0] + dx) / simMeshworkSize))) {
                                 if (m < num1) {
                                     dx = rgg1.next();
                                 } else if (m >= num1 && m < num1 + num2) {
@@ -20127,8 +20225,8 @@ public class Imaging_FCS implements PlugIn {
                                     dx = rgg3.next();
                                 }
                             }
-                            while ((Math.floor(particles[m][1] / simMeshworkSize) != Math
-                                    .floor((particles[m][1] + dy) / simMeshworkSize))) {
+                            while ((Math.floor(particles[m][1] / simMeshworkSize) !=
+                                    Math.floor((particles[m][1] + dy) / simMeshworkSize))) {
                                 if (m < num1) {
                                     dy = rgg1.next();
                                 } else if (m >= num1 && m < num1 + num2) {
@@ -20140,15 +20238,15 @@ public class Imaging_FCS implements PlugIn {
                         }
 
                     } else if (simDomainFlag && !simMeshFlag) { // if there are domains, determine for each particle
-                                                                // whether it is in a domain and have it diffuse
-                                                                // accordingly
+                        // whether it is in a domain and have it diffuse
+                        // accordingly
 
                         int domnum = (int) particles[m][3];
 
                         if (domnum != 0) { // if the particle is in a domain, the next step size is determined by domain
-                                           // diffusion
+                            // diffusion
                             if (m < num1) { // if there is no border crossing this would be the 1. case of diffusion
-                                            // within a domain (in->in)
+                                // within a domain (in->in)
                                 dx = rggdom1.next();
                                 dy = rggdom1.next();
                             } else if (m >= num1 && m < num1 + num2) {
@@ -20159,9 +20257,9 @@ public class Imaging_FCS implements PlugIn {
                                 dy = rggdom3.next();
                             }
                         } else { // if the particle is not in a domain, the next step size is determined by
-                                 // diffusion of the surrounding matrix
+                            // diffusion of the surrounding matrix
                             if (m < num1) { // if there is no border crossing this would be the 2. case of diffusion
-                                            // outside domains (out->out)
+                                // outside domains (out->out)
                                 dx = rgg1.next();
                                 dy = rgg1.next();
                             } else if (m >= num1 && m < num1 + num2) {
@@ -20183,17 +20281,18 @@ public class Imaging_FCS implements PlugIn {
                         }
 
                         if (domnum != 0 && crossinout) { // if inside domain and in-out allowed
-                            int domcheck = simCheckInDomain(particles[m][0] + dx, particles[m][1] + dy, domains,
-                                    domainsorted, maxct, gridMidPos, subgridsize); // is new position in domain
+                            int domcheck =
+                                    simCheckInDomain(particles[m][0] + dx, particles[m][1] + dy, domains, domainsorted,
+                                            maxct, gridMidPos, subgridsize); // is new position in domain
                             if (domcheck == 0) { // act only if new position is actually outside domain
                                 double domx = domains[domnum][0]; // domain coordinates
                                 double domy = domains[domnum][1];
                                 double domr = domains[domnum][2];
                                 double px = particles[m][0] - domx;
                                 double py = particles[m][1] - domy;
-                                double sol = (-(px * dx + py * dy) + Math.sqrt(-Math.pow(py * dx - px * dy, 2.0)
-                                        + Math.pow(dx * domr, 2.0) + Math.pow(dy * domr, 2.0)))
-                                        / (Math.pow(dx, 2.0) + Math.pow(dy, 2.0));
+                                double sol = (-(px * dx + py * dy) + Math.sqrt(
+                                        -Math.pow(py * dx - px * dy, 2.0) + Math.pow(dx * domr, 2.0) +
+                                                Math.pow(dy * domr, 2.0))) / (Math.pow(dx, 2.0) + Math.pow(dy, 2.0));
                                 // move the particle to the border with Din and outside with Dout
                                 dx = (sol + (1 - sol) * Math.sqrt(simDoutDinRatio)) * dx;
                                 dy = (sol + (1 - sol) * Math.sqrt(simDoutDinRatio)) * dy;
@@ -20205,8 +20304,8 @@ public class Imaging_FCS implements PlugIn {
                             double domy = domains[domnum][1];
                             double domr = domains[domnum][2];
                             // find (dx, dy) to stay in domain
-                            while (Math.pow(particles[m][0] + dx - domx, 2.0)
-                                    + Math.pow(particles[m][1] + dy - domy, 2.0) > Math.pow(domr, 2.0)) {
+                            while (Math.pow(particles[m][0] + dx - domx, 2.0) +
+                                    Math.pow(particles[m][1] + dy - domy, 2.0) > Math.pow(domr, 2.0)) {
                                 if (m < num1) {
                                     dx = rggdom1.next();
                                     dy = rggdom1.next();
@@ -20221,17 +20320,18 @@ public class Imaging_FCS implements PlugIn {
                         }
 
                         if (domnum == 0 && crossoutin) { // if outside domain and out-in allowed
-                            int domcheck = simCheckInDomain(particles[m][0] + dx, particles[m][1] + dy, domains,
-                                    domainsorted, maxct, gridMidPos, subgridsize); // is new position in domain
+                            int domcheck =
+                                    simCheckInDomain(particles[m][0] + dx, particles[m][1] + dy, domains, domainsorted,
+                                            maxct, gridMidPos, subgridsize); // is new position in domain
                             if (domcheck != 0) { // act only if step brings particle into domain
                                 double domx = domains[domcheck][0]; // domain coordinates
                                 double domy = domains[domcheck][1];
                                 double domr = domains[domcheck][2];
                                 double px = particles[m][0] - domx;
                                 double py = particles[m][1] - domy;
-                                double sol = (-(px * dx + py * dy) - Math.sqrt(-Math.pow(py * dx - px * dy, 2.0)
-                                        + Math.pow(dx * domr, 2.0) + Math.pow(dy * domr, 2.0)))
-                                        / (Math.pow(dx, 2.0) + Math.pow(dy, 2.0));
+                                double sol = (-(px * dx + py * dy) - Math.sqrt(
+                                        -Math.pow(py * dx - px * dy, 2.0) + Math.pow(dx * domr, 2.0) +
+                                                Math.pow(dy * domr, 2.0))) / (Math.pow(dx, 2.0) + Math.pow(dy, 2.0));
                                 // move the particle to the border with Dout and inside with Din
                                 dx = (sol + (1 - sol) / Math.sqrt(simDoutDinRatio)) * dx;
                                 dy = (sol + (1 - sol) / Math.sqrt(simDoutDinRatio)) * dy;
@@ -20274,8 +20374,8 @@ public class Imaging_FCS implements PlugIn {
                         }
                     }
 
-                    if (particles[m][0] > simSizeUL || particles[m][1] > simSizeUL || particles[m][0] < simSizeLL
-                            || particles[m][1] < simSizeLL) {
+                    if (particles[m][0] > simSizeUL || particles[m][1] > simSizeUL || particles[m][0] < simSizeLL ||
+                            particles[m][1] < simSizeLL) {
                         // Reset particle on border if particle left the simulation region
                         int tmp1 = (int) Math.floor(ruig.next() + 0.5);
                         int tmp2 = (int) (1 - 2 * Math.floor(ruig.next() + 0.5));
@@ -20285,16 +20385,17 @@ public class Imaging_FCS implements PlugIn {
                     }
 
                     if (simDomainFlag) { // check the domain location of the particle
-                        particles[m][3] = simCheckInDomain(particles[m][0], particles[m][1], domains, domainsorted,
-                                maxct, gridMidPos, subgridsize);
+                        particles[m][3] =
+                                simCheckInDomain(particles[m][0], particles[m][1], domains, domainsorted, maxct,
+                                        gridMidPos, subgridsize);
                     }
                     // create photons if the particle is fluorescent
                     int nop = (int) Math.round(rpgphoton.next() * particles[m][2] * particles[m][4]);
                     for (int p = 0; p < nop; p++) { // runCPU over emitted photons
                         double cordx = particles[m][0] + rggpsf.next();
                         double cordy = particles[m][1] + rggpsf.next();
-                        if (cordx < simDetectorSize && cordy < simDetectorSize && cordx > -simDetectorSize
-                                && cordy > -simDetectorSize) {
+                        if (cordx < simDetectorSize && cordy < simDetectorSize && cordx > -simDetectorSize &&
+                                cordy > -simDetectorSize) {
                             int tpx = (int) Math.floor((cordx + simMidPos) / simPixelSize);
                             int tpy = (int) Math.floor((cordy + simMidPos) / simPixelSize);
                             int tmp = (int) (ipSim.getPixelValue(tpx, tpy) + 1);
@@ -20309,7 +20410,7 @@ public class Imaging_FCS implements PlugIn {
         if (!batchSim) {
             // show the simulation file
             System.arraycopy(newSimSettings, 0, simSettings, 0, nosimsettings); // save the settings used for the
-                                                                                // simulation in simSettings
+            // simulation in simSettings
             imp = (ImagePlus) impSim.clone();
             imp.show();
             IJ.run(imp, "Enhance Contrast", "saturated=0.35"); // autoscaling the contrast
@@ -20318,14 +20419,14 @@ public class Imaging_FCS implements PlugIn {
             closeWindows();
         } else {
             // save the simulation file
-            String $fs = simBatchPath.getAbsolutePath().toString() + "/" + "sim" + simD1 * Math.pow(10, 12) + "-"
-                    + simD2 * Math.pow(10, 12) + "-" + simF2 + ".tif";
+            String $fs = simBatchPath.getAbsolutePath().toString() + "/" + "sim" + simD1 * Math.pow(10, 12) + "-" +
+                    simD2 * Math.pow(10, 12) + "-" + simF2 + ".tif";
             IJ.saveAsTiff(impSim, $fs);
         }
     }
 
     public int simCheckInDomain(double px, double py, double[][] domains, int[][][] domainsorted, int maxct,
-            double gridMidPos, double subgridsize) {
+                                double gridMidPos, double subgridsize) {
         // px and py are particle positions
         // domains has the position and size of the different existing domains
         // domainsorted is essentially a grid in which the domains are sorted according
@@ -20346,15 +20447,15 @@ public class Imaging_FCS implements PlugIn {
         boolean indomain = false;
         int ct = 0;
         while (domainsorted[xt][yt][ct] > 0 && ct < maxct && !indomain) { // check whether particle is in domain, and if
-                                                                          // yes, remember the domain number
-            if (Math.pow(px - domains[domainsorted[xt][yt][ct]][0], 2.0)
-                    + Math.pow(py - domains[domainsorted[xt][yt][ct]][1], 2.0)
-                    - Math.pow(domains[domainsorted[xt][yt][ct]][2], 2.0) <= 0.0) {
+            // yes, remember the domain number
+            if (Math.pow(px - domains[domainsorted[xt][yt][ct]][0], 2.0) +
+                    Math.pow(py - domains[domainsorted[xt][yt][ct]][1], 2.0) -
+                    Math.pow(domains[domainsorted[xt][yt][ct]][2], 2.0) <= 0.0) {
                 result = domainsorted[xt][yt][ct]; // remember number of domain in which particle resides
                 indomain = true;
-                if (Math.pow(px - domains[domainsorted[xt][yt][ct]][0], 2.0)
-                        + Math.pow(py - domains[domainsorted[xt][yt][ct]][1], 2.0)
-                        - Math.pow(domains[domainsorted[xt][yt][ct]][2], 2.0) == 0.0) {
+                if (Math.pow(px - domains[domainsorted[xt][yt][ct]][0], 2.0) +
+                        Math.pow(py - domains[domainsorted[xt][yt][ct]][1], 2.0) -
+                        Math.pow(domains[domainsorted[xt][yt][ct]][2], 2.0) == 0.0) {
                 }
             }
             ct++;
@@ -20388,7 +20489,7 @@ public class Imaging_FCS implements PlugIn {
         double simSigma0 = 0.8; // actual resolution
         double simSigmaZ = 1.0; // axial resolution
         String[] newSimSettings = new String[nosimsettings]; // an array for reading out the settings in Simulation
-                                                             // panel
+        // panel
 
         newSimSettings[0] = (String) cbSimMode.getSelectedItem();
         newSimSettings[1] = tbSimTrip.getText();
@@ -20434,7 +20535,7 @@ public class Imaging_FCS implements PlugIn {
             simTauBleach = Double.parseDouble(newSimSettings[5]); // bleach time in seconds
             simPixelnum = Integer.parseInt(newSimSettings[6]); // width of image in pixels
             simExtFactor = Double.parseDouble(newSimSettings[7]); // factor by which the simulated area is bigger than
-                                                                  // the observed area
+            // the observed area
             simNoTStep = Integer.parseInt(newSimSettings[8]); // number of frames to be simulated
             simFrameTime = Double.parseDouble(newSimSettings[9]); // time resolution of the camera in second
             simStepsPerFrame = Integer.parseInt(newSimSettings[10]); // steps of simulations doen for each frame
@@ -20464,7 +20565,7 @@ public class Imaging_FCS implements PlugIn {
 
         int numOfSeeds = 50;
         int[] simSeedArray = new int[numOfSeeds]; // array of simulation Seeds so that the random number generators are
-                                                  // different
+        // different
         double simPixelSize = simPixelSizeRS / simMag; // pixel size in object space
         double simPSFSize = 0.5 * simSigma0 * simWavelength / simNA; // PSF size
         double simGridSize = simPixelnum * simPixelSize; // gridsize
@@ -20481,10 +20582,10 @@ public class Imaging_FCS implements PlugIn {
         blinkFactor[1] = Math.exp(-simTStep * simKoff);
 
         double lightSheetThickness = simSigmaZ * simWavelength / simNA / 2.0; // division by 2 to yield the 1/sqrt(e)
-                                                                              // radius
+        // radius
 
         double simThicknessLL = -10.0 * lightSheetThickness; // lower and upper limit of the zdirection of the
-                                                             // simulation volume
+        // simulation volume
         double simThicknessUL = 10.0 * lightSheetThickness; // z dimension is 20 times the light sheet thickness
 
         // divide particle in to their types according to their fractions (1- F2 - F3),
@@ -20492,7 +20593,7 @@ public class Imaging_FCS implements PlugIn {
         int num1 = (int) Math.ceil(simNoParticles * (1 - simF2 - simF3));
         int num2 = (int) Math.ceil(simNoParticles * simF2);
         double[][] particles = new double[simNoParticles][5]; // array for particle positions and whether particle is
-                                                              // bleached or in the dark state
+        // bleached or in the dark state
         double zcor;
         // double zfac = Math.tan( Math.asin(simNA/1.333) ); // factor describing the
         // spread of the PSF cross-section on the camera if the particle is not in the
@@ -20590,9 +20691,9 @@ public class Imaging_FCS implements PlugIn {
                         }
                     }
 
-                    if (particles[m][0] > simSizeUL || particles[m][1] > simSizeUL || particles[m][2] > simThicknessUL
-                            || particles[m][0] < simSizeLL || particles[m][1] < simSizeLL
-                            || particles[m][2] < simThicknessLL) {
+                    if (particles[m][0] > simSizeUL || particles[m][1] > simSizeUL ||
+                            particles[m][2] > simThicknessUL || particles[m][0] < simSizeLL ||
+                            particles[m][1] < simSizeLL || particles[m][2] < simThicknessLL) {
                         // Reset particle on border
                         int tmp1 = (int) Math.ceil(dug1.next());
                         int tmp2 = (int) Math.ceil(dug2.next());
@@ -20627,18 +20728,18 @@ public class Imaging_FCS implements PlugIn {
                     // focal plane
                     zcor = (simPSFSize + (Math.abs(particles[m][2]) * (zfac / 2)));
                     int nop = (int) Math.round((Math.abs(
-                            rpgphoton.next() * Math.exp(-0.5 * Math.pow(particles[m][2] / lightSheetThickness, 2.0))
-                                    * particles[m][3] * particles[m][4])));
+                            rpgphoton.next() * Math.exp(-0.5 * Math.pow(particles[m][2] / lightSheetThickness, 2.0)) *
+                                    particles[m][3] * particles[m][4])));
                     if (nop < 0) { // no negative photons
                         nop = 0;
                     }
                     for (int p = 0; p < nop; p++) { // runCPU over emitted photons
-                        double cordx = particles[m][0]
-                                + zcor * (Math.sqrt(-2 * Math.log(BMU1.next()))) * Math.cos(2 * Math.PI * BMU2.next());
-                        double cordy = particles[m][1]
-                                + zcor * (Math.sqrt(-2 * Math.log(BMU3.next()))) * Math.cos(2 * Math.PI * BMU4.next());
-                        if (cordx < simDetectorSize && cordy < simDetectorSize && cordx > -simDetectorSize
-                                && cordy > -simDetectorSize) {
+                        double cordx = particles[m][0] +
+                                zcor * (Math.sqrt(-2 * Math.log(BMU1.next()))) * Math.cos(2 * Math.PI * BMU2.next());
+                        double cordy = particles[m][1] +
+                                zcor * (Math.sqrt(-2 * Math.log(BMU3.next()))) * Math.cos(2 * Math.PI * BMU4.next());
+                        if (cordx < simDetectorSize && cordy < simDetectorSize && cordx > -simDetectorSize &&
+                                cordy > -simDetectorSize) {
                             int tpx = (int) Math.floor((cordx + simMidPos) / simPixelSize);
                             int tpy = (int) Math.floor((cordy + simMidPos) / simPixelSize);
                             int tmp = (int) (ipSim.getPixelValue(tpx, tpy) + 1);
@@ -20711,7 +20812,7 @@ public class Imaging_FCS implements PlugIn {
     }
 
     private void getVoxels(int this_width, int this_height, int this_framediff, float[] pixels,
-            boolean IsNBCalculation) {
+                           boolean IsNBCalculation) {
         int startX = IsNBCalculation ? 0 : roi1StartX;
         int startY = IsNBCalculation ? 0 : roi1StartY;
         int startFrame = firstframe - 1;
@@ -20725,8 +20826,8 @@ public class Imaging_FCS implements PlugIn {
             for (int t = startFrame; t < this_framediff; t++) {
                 for (int j = startY; j < endY; j++) {
                     for (int i = startX; i < endX; i++) {
-                        pixels[(t - startFrame) * this_height * this_width + (j - startY) * this_width
-                                + (i - startX)] = (float) imp.getStack().getVoxel(i, j, t);
+                        pixels[(t - startFrame) * this_height * this_width + (j - startY) * this_width + (i - startX)] =
+                                (float) imp.getStack().getVoxel(i, j, t);
                     }
                 }
             }
@@ -20738,9 +20839,8 @@ public class Imaging_FCS implements PlugIn {
      * arrays pixels1, blockvararray, NBmeanGPU, and NBcovarianceGPU are passed by
      * reference.
      */
-    private boolean GPU_Calculate_ACF(float[] pixels, double[] pixels1, double[] blockvararray,
-            double[] NBmeanGPU, double[] NBcovarianceGPU,
-            double[] bleachcorr_params, ACFParameters GPUparams) {
+    private boolean GPU_Calculate_ACF(float[] pixels, double[] pixels1, double[] blockvararray, double[] NBmeanGPU,
+                                      double[] NBcovarianceGPU, double[] bleachcorr_params, ACFParameters GPUparams) {
 
         boolean IsGPUCalculationOK = true;
 
@@ -20765,8 +20865,8 @@ public class Imaging_FCS implements PlugIn {
         // copy result to blocked
         for (int y = 0; y < GPUparams.height; y++) {
             for (int x = 0; x < GPUparams.width; x++) {
-                blocked[0][x + roi1StartX][y
-                        + roi1StartY] = (int) blocked1D[GPUparams.width * GPUparams.height + y * GPUparams.width + x];
+                blocked[0][x + roi1StartX][y + roi1StartY] =
+                        (int) blocked1D[GPUparams.width * GPUparams.height + y * GPUparams.width + x];
             }
         }
 
@@ -20778,10 +20878,10 @@ public class Imaging_FCS implements PlugIn {
         // pixbinX and pixbinY in the cpu plugin are strides in width and height
         // respectively. They are determined automatically depending on the overlap in
         // the plugin.
-        int w_out = isNBcalculation ? width
-                : (int) Math.floor((Math.min(roi1WidthX + cfXDistance, width) - cfXDistance) / pixbinX);
-        int h_out = isNBcalculation ? height
-                : (int) Math.floor((Math.min(roi1HeightY + cfYDistance, height) - cfYDistance) / pixbinY);
+        int w_out = isNBcalculation ? width : (int) Math.floor(
+                (Math.min(roi1WidthX + cfXDistance, width) - cfXDistance) / pixbinX);
+        int h_out = isNBcalculation ? height : (int) Math.floor(
+                (Math.min(roi1HeightY + cfYDistance, height) - cfYDistance) / pixbinY);
 
         if (w_out <= 0 || h_out <= 0) {
             return false;
@@ -20851,7 +20951,7 @@ public class Imaging_FCS implements PlugIn {
     }
 
     private boolean GPU_get_pixels(GpufitImFCS.ACFParameters GPUparams, float[] pixels, boolean isNBcalculation,
-            boolean returnRawTrace) {
+                                   boolean returnRawTrace) {
 
         // pixels is the input intensity array on which the auto and cross-correlation
         // will be calculated.
@@ -20873,9 +20973,9 @@ public class Imaging_FCS implements PlugIn {
             // array is too huge. Tentatively, we set a limit of 96*96*50000.
             boolean WithinSizeLimit = (GPUparams.w_temp * GPUparams.h_temp * GPUparams.framediff) < 96 * 96 * 50000;
 
-            System.out.println("GPU_get_pixels WithinSizeLimit: " + WithinSizeLimit
-                    + ", GpufitImFCS.isBinningMemorySufficient(GPUparams): "
-                    + GpufitImFCS.isBinningMemorySufficient(GPUparams));
+            System.out.println("GPU_get_pixels WithinSizeLimit: " + WithinSizeLimit +
+                    ", GpufitImFCS.isBinningMemorySufficient(GPUparams): " +
+                    GpufitImFCS.isBinningMemorySufficient(GPUparams));
 
             if (WithinSizeLimit && GpufitImFCS.isBinningMemorySufficient(GPUparams)) {
                 // Binning on GPU
@@ -20895,8 +20995,8 @@ public class Imaging_FCS implements PlugIn {
                                 sum = 0;
                                 for (int k = 0; k < GPUparams.binningY; k++) {
                                     for (int i = 0; i < GPUparams.binningX; i++) {
-                                        sum += (float) pixels_approach2[z * GPUparams.win_star * GPUparams.hin_star
-                                                + (y + k) * GPUparams.win_star + x + i];
+                                        sum += (float) pixels_approach2[z * GPUparams.win_star * GPUparams.hin_star +
+                                                (y + k) * GPUparams.win_star + x + i];
                                     }
                                 }
                                 pixels[z * GPUparams.w_temp * GPUparams.h_temp + y * GPUparams.w_temp + x] = sum;
@@ -20918,8 +21018,8 @@ public class Imaging_FCS implements PlugIn {
                         for (int i = 0; i < GPUparams.w_temp; i++) {
                             for (int y = 0; y < GPUparams.binningY; y++) {
                                 for (int x = 0; x < GPUparams.binningX; x++) {
-                                    pixels[k * GPUparams.h_temp * GPUparams.w_temp + j * GPUparams.w_temp
-                                            + i] -= (float) (int) Math.round(bgrmean[i + x][j + y]);
+                                    pixels[k * GPUparams.h_temp * GPUparams.w_temp + j * GPUparams.w_temp + i] -=
+                                            (float) (int) Math.round(bgrmean[i + x][j + y]);
                                 }
                             }
 
@@ -20938,14 +21038,14 @@ public class Imaging_FCS implements PlugIn {
     }
 
     private boolean GPU_Calculate_BleachCorrection(GpufitImFCS.ACFParameters GPUparams, float[] pixels,
-            double[] bleachcorr_params) {
+                                                   double[] bleachcorr_params) {
         boolean IsGPUCalculationOK = true;
 
         try {
             float[] datableach_correction = new float[GPUparams.w_temp * GPUparams.h_temp * nopit];
             GpufitImFCS.calcDataBleachCorrection(pixels, datableach_correction, GPUparams);
-            int numberFitsbleach_correction = GPUparams.w_temp * GPUparams.h_temp,
-                    numberPoints_bleach_correction = nopit;
+            int numberFitsbleach_correction = GPUparams.w_temp * GPUparams.h_temp, numberPoints_bleach_correction =
+                    nopit;
             float tolerance_bleachcorrection = 0.0000000000000001f; // similar to GPU_ACF_Fit
             int maxNumberIterations_bleachcorrection = fitMaxIterations;
             Model model_bleachcorrection = Model.LINEAR_1D;
@@ -20960,14 +21060,13 @@ public class Imaging_FCS implements PlugIn {
             // NOTE: initialization of 0-th term is different from CPU code, where in class
             // PolynomFit (extends AbstractCurveFitter), the last point in target array is
             // used as offset estimate.
-            float[] initialParameters_bleachcorrection = new float[numberFitsbleach_correction
-                    * model_bleachcorrection.numberParameters];
+            float[] initialParameters_bleachcorrection =
+                    new float[numberFitsbleach_correction * model_bleachcorrection.numberParameters];
             for (int i = 0; i < numberFitsbleach_correction; i++) {
                 int offset = i * model_bleachcorrection.numberParameters;
                 for (int j = 0; j < model_bleachcorrection.numberParameters; j++) {
-                    initialParameters_bleachcorrection[offset + j] = (j == 0)
-                            ? datableach_correction[(i + 1) * nopit - 1]
-                            : (float) 0; // last value of every nopit points. This works the best.
+                    initialParameters_bleachcorrection[offset + j] = (j == 0) ? datableach_correction[(i + 1) * nopit -
+                            1] : (float) 0; // last value of every nopit points. This works the best.
                 }
             }
 
@@ -20981,10 +21080,11 @@ public class Imaging_FCS implements PlugIn {
                 weights_bleachcorr[i] = (float) 1.0;
             }
 
-            FitModel fitModel_bleachcorrection = new FitModel(numberFitsbleach_correction,
-                    numberPoints_bleach_correction, true, model_bleachcorrection, tolerance_bleachcorrection,
-                    maxNumberIterations_bleachcorrection, GPUparams.bleachcorr_order,
-                    parameters_to_fit_bleachcorrection, estimator_bleachcorrection, nopit * Float.SIZE / 8);
+            FitModel fitModel_bleachcorrection =
+                    new FitModel(numberFitsbleach_correction, numberPoints_bleach_correction, true,
+                            model_bleachcorrection, tolerance_bleachcorrection, maxNumberIterations_bleachcorrection,
+                            GPUparams.bleachcorr_order, parameters_to_fit_bleachcorrection, estimator_bleachcorrection,
+                            nopit * Float.SIZE / 8);
             fitModel_bleachcorrection.weights.clear();
             fitModel_bleachcorrection.weights.put(weights_bleachcorr);
             fitModel_bleachcorrection.userInfo.clear();
@@ -21022,8 +21122,8 @@ public class Imaging_FCS implements PlugIn {
             for (int y1 = 0; y1 < GPUparams.h_temp; y1++) {
                 for (int x1 = 0; x1 < GPUparams.w_temp; x1++) {
                     for (int ii = 0; ii < GPUparams.bleachcorr_order; ii++) {
-                        bleachcorr_params[counter4] = fitResult_bleachcorrection.parameters
-                                .get((y1 * GPUparams.w_temp + x1) * model_bleachcorrection.numberParameters + ii);
+                        bleachcorr_params[counter4] = fitResult_bleachcorrection.parameters.get(
+                                (y1 * GPUparams.w_temp + x1) * model_bleachcorrection.numberParameters + ii);
                         counter4 += 1;
                     }
                 }
@@ -21040,7 +21140,7 @@ public class Imaging_FCS implements PlugIn {
     }
 
     private void GPU_Perform_BackgroundCorrection(GpufitImFCS.ACFParameters GPUparams, float[] pixels, int startXmap,
-            int endXmap, int startYmap, int endYmap) {
+                                                  int endXmap, int startYmap, int endYmap) {
 
         // pixels data structure pixels[k * GPUparams.h_temp * GPUparams.w_temp + j *
         // GPUparams.w_temp + i]
@@ -21078,14 +21178,16 @@ public class Imaging_FCS implements PlugIn {
 
                 // Update float[] min with minimum counts from each frames
                 for (int z = GPUparams.firstframe; z <= GPUparams.lastframe; z++) {
-                    min[z - GPUparams.firstframe] = pixels[(z - GPUparams.firstframe) * GPUparams.w_temp
-                            * GPUparams.h_temp + ystart * GPUparams.w_temp + xstart];
+                    min[z - GPUparams.firstframe] =
+                            pixels[(z - GPUparams.firstframe) * GPUparams.w_temp * GPUparams.h_temp +
+                                    ystart * GPUparams.w_temp + xstart];
                     for (int y = ystart; y <= yend; y += pixbinY) {
                         for (int x = xstart; x <= xend; x += pixbinX) {
-                            if (pixels[(z - GPUparams.firstframe) * GPUparams.w_temp * GPUparams.h_temp
-                                    + y * GPUparams.w_temp + x] < min[z - GPUparams.firstframe]) {
-                                min[z - GPUparams.firstframe] = pixels[(z - GPUparams.firstframe) * GPUparams.w_temp
-                                        * GPUparams.h_temp + y * GPUparams.w_temp + x];
+                            if (pixels[(z - GPUparams.firstframe) * GPUparams.w_temp * GPUparams.h_temp +
+                                    y * GPUparams.w_temp + x] < min[z - GPUparams.firstframe]) {
+                                min[z - GPUparams.firstframe] =
+                                        pixels[(z - GPUparams.firstframe) * GPUparams.w_temp * GPUparams.h_temp +
+                                                y * GPUparams.w_temp + x];
                             }
                         }
                     }
@@ -21096,8 +21198,8 @@ public class Imaging_FCS implements PlugIn {
                     float tempmin = min[z - GPUparams.firstframe];
                     for (int y = ystart; y <= yend; y += pixbinY) {
                         for (int x = xstart; x <= xend; x += pixbinX) {
-                            pixels[(z - GPUparams.firstframe) * GPUparams.w_temp * GPUparams.h_temp
-                                    + y * GPUparams.w_temp + x] -= tempmin;
+                            pixels[(z - GPUparams.firstframe) * GPUparams.w_temp * GPUparams.h_temp +
+                                    y * GPUparams.w_temp + x] -= tempmin;
                         }
                     }
                 }
@@ -21118,10 +21220,10 @@ public class Imaging_FCS implements PlugIn {
                 for (int z = GPUparams.firstframe; z <= GPUparams.lastframe; z++) {
                     for (int y = ystart; y <= yend; y += pixbinY) {
                         for (int x = xstart; x <= xend; x += pixbinX) {
-                            if (pixels[(z - GPUparams.firstframe) * GPUparams.w_temp * GPUparams.h_temp
-                                    + y * GPUparams.w_temp + x] < min) {
-                                min = pixels[(z - GPUparams.firstframe) * GPUparams.w_temp * GPUparams.h_temp
-                                        + y * GPUparams.w_temp + x];
+                            if (pixels[(z - GPUparams.firstframe) * GPUparams.w_temp * GPUparams.h_temp +
+                                    y * GPUparams.w_temp + x] < min) {
+                                min = pixels[(z - GPUparams.firstframe) * GPUparams.w_temp * GPUparams.h_temp +
+                                        y * GPUparams.w_temp + x];
                             }
                         }
                     }
@@ -21131,8 +21233,8 @@ public class Imaging_FCS implements PlugIn {
                 for (int z = GPUparams.firstframe; z <= GPUparams.lastframe; z++) {
                     for (int y = ystart; y <= yend; y += pixbinY) {
                         for (int x = xstart; x <= xend; x += pixbinX) {
-                            pixels[(z - GPUparams.firstframe) * GPUparams.w_temp * GPUparams.h_temp
-                                    + y * GPUparams.w_temp + x] -= min;
+                            pixels[(z - GPUparams.firstframe) * GPUparams.w_temp * GPUparams.h_temp +
+                                    y * GPUparams.w_temp + x] -= min;
                         }
                     }
                 }
@@ -21156,10 +21258,11 @@ public class Imaging_FCS implements PlugIn {
                     for (int x = xstart; x <= xend; x += pixbinX) {
                         min[x - xstart][y - ystart] = pixels[(y - ystart) * GPUparams.w_temp + (x - xstart)];
                         for (int z = GPUparams.firstframe; z <= GPUparams.lastframe; z++) {
-                            if (pixels[(z - GPUparams.firstframe) * GPUparams.w_temp * GPUparams.h_temp
-                                    + y * GPUparams.w_temp + x] < min[x - xstart][y - ystart]) {
-                                min[x - xstart][y - ystart] = pixels[(z - GPUparams.firstframe) * GPUparams.w_temp
-                                        * GPUparams.h_temp + y * GPUparams.w_temp + x];
+                            if (pixels[(z - GPUparams.firstframe) * GPUparams.w_temp * GPUparams.h_temp +
+                                    y * GPUparams.w_temp + x] < min[x - xstart][y - ystart]) {
+                                min[x - xstart][y - ystart] =
+                                        pixels[(z - GPUparams.firstframe) * GPUparams.w_temp * GPUparams.h_temp +
+                                                y * GPUparams.w_temp + x];
                             }
                         }
                     }
@@ -21170,8 +21273,8 @@ public class Imaging_FCS implements PlugIn {
                     for (int x = xstart; x <= xend; x += pixbinX) {
                         float tempmin = min[x - xstart][y - ystart];
                         for (int z = GPUparams.firstframe; z <= GPUparams.lastframe; z++) {
-                            pixels[(z - GPUparams.firstframe) * GPUparams.w_temp * GPUparams.h_temp
-                                    + y * GPUparams.w_temp + x] -= tempmin;
+                            pixels[(z - GPUparams.firstframe) * GPUparams.w_temp * GPUparams.h_temp +
+                                    y * GPUparams.w_temp + x] -= tempmin;
                         }
                     }
                 }
@@ -21181,7 +21284,7 @@ public class Imaging_FCS implements PlugIn {
     }
 
     private void GPU_show_Images(GpufitImFCS.ACFParameters GPUparams, float[] pixels, int startXmap, int endXmap,
-            int startYmap, int endYmap, String title) {
+                                 int startYmap, int endYmap, String title) {
         int xstart = startXmap * GPUparams.pixbinX;
         int ystart = startYmap * GPUparams.pixbinY;
         int xend = endXmap * GPUparams.pixbinX;
@@ -21196,8 +21299,8 @@ public class Imaging_FCS implements PlugIn {
             ipf = new FloatProcessor(wx, wy);
             for (int y = 0; y < wy; y++) {
                 for (int x = 0; x < wx; x++) {
-                    ipf.putPixelValue(x, y, pixels[(z - GPUparams.firstframe) * GPUparams.w_temp * GPUparams.h_temp
-                            + y * GPUparams.w_temp + x]);
+                    ipf.putPixelValue(x, y, pixels[(z - GPUparams.firstframe) * GPUparams.w_temp * GPUparams.h_temp +
+                            y * GPUparams.w_temp + x]);
                 }
             }
             stack.addSlice(ipf);
@@ -21208,7 +21311,7 @@ public class Imaging_FCS implements PlugIn {
     }
 
     private boolean GPU_append_bleach_corrected(GpufitImFCS.ACFParameters GPUparams, float[] pixels,
-            double[] bleachcorr_params) {
+                                                double[] bleachcorr_params) {
         // Set GPUparams.bleachcorr_gpu = false
         double corfunc;
 
@@ -21217,17 +21320,17 @@ public class Imaging_FCS implements PlugIn {
                 for (int z = 0; z < GPUparams.framediff; z++) {
                     corfunc = 0;
                     for (int p = 0; p < GPUparams.bleachcorr_order; p++) {
-                        corfunc += bleachcorr_params[(y * GPUparams.w_temp + x) * GPUparams.bleachcorr_order + p]
-                                * Math.pow(GPUparams.frametime * (z + 1.5), p);
+                        corfunc += bleachcorr_params[(y * GPUparams.w_temp + x) * GPUparams.bleachcorr_order + p] *
+                                Math.pow(GPUparams.frametime * (z + 1.5), p);
                     }
-                    pixels[z * GPUparams.w_temp * GPUparams.h_temp + y * GPUparams.w_temp
-                            + x] = (float) (pixels[z * GPUparams.w_temp * GPUparams.h_temp + y * GPUparams.w_temp + x]
-                                    / Math.sqrt(corfunc / (float) bleachcorr_params[(y * GPUparams.w_temp + x)
-                                            * GPUparams.bleachcorr_order])
-                                    + (float) bleachcorr_params[(y * GPUparams.w_temp + x) * GPUparams.bleachcorr_order]
-                                            * (1 - Math
-                                                    .sqrt(corfunc / (float) bleachcorr_params[(y * GPUparams.w_temp + x)
-                                                            * GPUparams.bleachcorr_order])));
+                    pixels[z * GPUparams.w_temp * GPUparams.h_temp + y * GPUparams.w_temp + x] = (float) (
+                            pixels[z * GPUparams.w_temp * GPUparams.h_temp + y * GPUparams.w_temp + x] / Math.sqrt(
+                                    corfunc / (float) bleachcorr_params[(y * GPUparams.w_temp + x) *
+                                            GPUparams.bleachcorr_order]) +
+                                    (float) bleachcorr_params[(y * GPUparams.w_temp + x) * GPUparams.bleachcorr_order] *
+                                            (1 - Math.sqrt(corfunc /
+                                                    (float) bleachcorr_params[(y * GPUparams.w_temp + x) *
+                                                            GPUparams.bleachcorr_order])));
                 }
             }
         }
@@ -21260,7 +21363,7 @@ public class Imaging_FCS implements PlugIn {
             Estimator estimator = Estimator.LSE;
             float[] trueParameters;
 
-            trueParameters = new float[] {
+            trueParameters = new float[]{
                     (float) Double.parseDouble(tfParamN.getText()),
                     (float) Double.parseDouble(tfParamD.getText()) / (float) Math.pow(10, 12),
                     (float) Double.parseDouble(tfParamVx.getText()) / (float) Math.pow(10, 6),
@@ -21325,8 +21428,8 @@ public class Imaging_FCS implements PlugIn {
             for (int y = 0; y < GPUparams.height; y++) {// fill data according to fitstart and fitend
                 for (int x = 0; x < GPUparams.width; x++) {
                     for (int z = GPUparams.fitstart; z < (GPUparams.fitstart + numberPoints); z++) {
-                        data[counter] = (float) pixels1[z * GPUparams.width * GPUparams.height + y * GPUparams.width
-                                + x];
+                        data[counter] =
+                                (float) pixels1[z * GPUparams.width * GPUparams.height + y * GPUparams.width + x];
                         counter += 1;
                     }
                 }
@@ -21337,10 +21440,10 @@ public class Imaging_FCS implements PlugIn {
             for (int y = 0; y < GPUparams.height; y++) {
                 for (int x = 0; x < GPUparams.width; x++) {
                     for (int z = GPUparams.fitstart; z < (GPUparams.fitstart + numberPoints); z++) {
-                        weights[counter1] = (float) 1.0 / (float) blockvararray[z * GPUparams.width * GPUparams.height
-                                + y * GPUparams.width + x];
-                        varacf[0][x][y][z] = blockvararray[z * GPUparams.width * GPUparams.height + y * GPUparams.width
-                                + x];
+                        weights[counter1] = (float) 1.0 /
+                                (float) blockvararray[z * GPUparams.width * GPUparams.height + y * GPUparams.width + x];
+                        varacf[0][x][y][z] =
+                                blockvararray[z * GPUparams.width * GPUparams.height + y * GPUparams.width + x];
                         sdacf[0][x][y][z] = Math.sqrt((double) varacf[0][x][y][z]);
                         counter1 = counter1 + 1;
                     }
@@ -21428,16 +21531,16 @@ public class Imaging_FCS implements PlugIn {
             int numfreefitpar = parfitcounters;
             for (int i1 = 0; i1 < GPUparams.width; i1++) {
                 for (int i2 = 0; i2 < GPUparams.height; i2++) {
-                    chi2[0][i1 + roi1StartX][i2 + roi1StartY] = fitResult.chiSquares.get(i2 * GPUparams.width + i1)
-                            / ((fitend - fitstart) - numfreefitpar - 1);
+                    chi2[0][i1 + roi1StartX][i2 + roi1StartY] = fitResult.chiSquares.get(i2 * GPUparams.width + i1) /
+                            ((fitend - fitstart) - numfreefitpar - 1);
 
                     if (converged[i2 * GPUparams.width + i1]) {
                         pixfitted[0][i1 + roi1StartX][i2 + roi1StartY] = true;
                         pixvalid[0][i1 + roi1StartX][i2 + roi1StartY] = 1.0;
 
                         for (int j = 0; j < model.numberParameters; j++) {
-                            gpuresultarray[i1 + roi1StartX][i2 + roi1StartY][j] = (double) fitResult.parameters
-                                    .get((i2 * GPUparams.width + i1) * model.numberParameters + j);
+                            gpuresultarray[i1 + roi1StartX][i2 + roi1StartY][j] = (double) fitResult.parameters.get(
+                                    (i2 * GPUparams.width + i1) * model.numberParameters + j);
                         }
                     }
                 }
@@ -21452,8 +21555,8 @@ public class Imaging_FCS implements PlugIn {
                 for (int j = 0; j < height; j++) {
                     for (int k = 0; k < noparam; k++) {
                         if (i >= LBoundX && i < UBoundX && j >= LBoundY && j < UBoundY) {
-                            if (filterArray[i * pixbinX][j * pixbinY] >= filterLL * binningX * binningY
-                                    && filterArray[i * pixbinX][j * pixbinY] <= filterUL * binningX * binningY) {
+                            if (filterArray[i * pixbinX][j * pixbinY] >= filterLL * binningX * binningY &&
+                                    filterArray[i * pixbinX][j * pixbinY] <= filterUL * binningX * binningY) {
                                 fitres[0][i][j][k] = gpuresultarray[i][j][k];
                             }
                         }
@@ -21516,9 +21619,9 @@ public class Imaging_FCS implements PlugIn {
                         for (int x3 = firstframe; x3 <= lastframe; x3++) {
                             for (int x4 = 0; x4 < binningX; x4++) {
                                 for (int x5 = 0; x5 < binningY; x5++) {
-                                    if (improi.contains(x1, x2) && improi.contains(x1, x2 + binningY - 1)
-                                            && improi.contains(x1 + binningX - 1, x2)
-                                            && improi.contains(x1 + binningX - 1, x2 + binningY - 1)) {
+                                    if (improi.contains(x1, x2) && improi.contains(x1, x2 + binningY - 1) &&
+                                            improi.contains(x1 + binningX - 1, x2) &&
+                                            improi.contains(x1 + binningX - 1, x2 + binningY - 1)) {
                                         filterArray[x1][x2] += imp.getStack().getProcessor(x3).get(x1 + x4, x2 + x5);
                                     } else {
                                         filterArray[x1][x2] = Float.NaN;
@@ -21534,11 +21637,11 @@ public class Imaging_FCS implements PlugIn {
                     for (int x2 = startY; x2 <= endY; x2 = x2 + pixbinY) {
                         for (int x3 = 0; x3 < binningX; x3++) {
                             for (int x4 = 0; x4 < binningY; x4++) {
-                                if (improi.contains(x1, x2) && improi.contains(x1, x2 + binningY - 1)
-                                        && improi.contains(x1 + binningX - 1, x2)
-                                        && improi.contains(x1 + binningX - 1, x2 + binningY - 1)) {
-                                    filterArray[x1][x2] += imp.getStack().getProcessor(firstframe).get(x1 + x3,
-                                            x2 + x4);
+                                if (improi.contains(x1, x2) && improi.contains(x1, x2 + binningY - 1) &&
+                                        improi.contains(x1 + binningX - 1, x2) &&
+                                        improi.contains(x1 + binningX - 1, x2 + binningY - 1)) {
+                                    filterArray[x1][x2] +=
+                                            imp.getStack().getProcessor(firstframe).get(x1 + x3, x2 + x4);
                                 } else {
                                     filterArray[x1][x2] = Float.NaN;
                                 }
@@ -21552,9 +21655,9 @@ public class Imaging_FCS implements PlugIn {
                 for (int x2 = startY; x2 <= endY; x2 = x2 + pixbinY) {
                     for (int x3 = 0; x3 < binningX; x3++) {
                         for (int x4 = 0; x4 < binningY; x4++) {
-                            if (improi.contains(x1, x2) && improi.contains(x1, x2 + binningY - 1)
-                                    && improi.contains(x1 + binningX - 1, x2)
-                                    && improi.contains(x1 + binningX - 1, x2 + binningY - 1)) {
+                            if (improi.contains(x1, x2) && improi.contains(x1, x2 + binningY - 1) &&
+                                    improi.contains(x1 + binningX - 1, x2) &&
+                                    improi.contains(x1 + binningX - 1, x2 + binningY - 1)) {
                                 filterArray[x1][x2] += imp.getStack().getProcessor(firstframe).get(x1 + x3, x2 + x4);
                             } else {
                                 filterArray[x1][x2] = Float.NaN;
@@ -21584,10 +21687,10 @@ public class Imaging_FCS implements PlugIn {
         float[] pixels = new float[GPUparams.w_temp * GPUparams.h_temp * GPUparams.framediff];
         double[] bleachcorr_params = new double[GPUparams.w_temp * GPUparams.h_temp * GPUparams.bleachcorr_order];
 
-        if ((!JBackgroundSubtractionComponentObj.rbtnIsSubtractionAfterBleachCorrection.isSelected()
-                && JBackgroundSubtractionComponentObj.selectedMode == modeBGR.modeBGREnum.CONSTANT_BACKGROUND)
-                || (!JBackgroundSubtractionComponentObj.rbtnIsSubtractionAfterBleachCorrection.isSelected()
-                        && JBackgroundSubtractionComponentObj.selectedMode == modeBGR.modeBGREnum.LOAD_BGR_IMAGE)) {
+        if ((!JBackgroundSubtractionComponentObj.rbtnIsSubtractionAfterBleachCorrection.isSelected() &&
+                JBackgroundSubtractionComponentObj.selectedMode == modeBGR.modeBGREnum.CONSTANT_BACKGROUND) ||
+                (!JBackgroundSubtractionComponentObj.rbtnIsSubtractionAfterBleachCorrection.isSelected() &&
+                        JBackgroundSubtractionComponentObj.selectedMode == modeBGR.modeBGREnum.LOAD_BGR_IMAGE)) {
 
             // ********************************************************************************************************************
             // Get pixels.
@@ -21656,7 +21759,7 @@ public class Imaging_FCS implements PlugIn {
                 if (GPUparams.bleachcorr_gpu && IsGPUCalculationOK) {
                     IsGPUCalculationOK = GPU_Calculate_BleachCorrection(GPUparams, pixels, bleachcorr_params);
                     if (GPU_append_bleach_corrected(GPUparams, pixels, bleachcorr_params)) { // append pixels with
-                                                                                             // bleach corrected data
+                        // bleach corrected data
                         GPUparams.bleachcorr_gpu = false;
                     }
 
@@ -21729,8 +21832,9 @@ public class Imaging_FCS implements PlugIn {
                 if (isTimeProcesses) {
                     timerObj6.tic();
                 }
-                IsGPUCalculationOK = GPU_Calculate_ACF(pixels, pixels1, blockvararray, NBmeanGPU, NBcovarianceGPU,
-                        bleachcorr_params, GPUparams);
+                IsGPUCalculationOK =
+                        GPU_Calculate_ACF(pixels, pixels1, blockvararray, NBmeanGPU, NBcovarianceGPU, bleachcorr_params,
+                                GPUparams);
                 if (isTimeProcesses) {
                     timerObj6.toc();
                     IJ.log("time GPU_Calculate_ACF: " + timerObj6.getTimeMillis() + " ms");
@@ -21754,8 +21858,8 @@ public class Imaging_FCS implements PlugIn {
                         for (int x = 0; x < GPUparams.width; x++) {
                             // acf[0][x][y][z] = pixels1[z * GPUparams.width * GPUparams.height + y *
                             // GPUparams.width + x];
-                            acf[0][x + roi1StartX][y + roi1StartY][z] = pixels1[z * GPUparams.width * GPUparams.height
-                                    + y * GPUparams.width + x];
+                            acf[0][x + roi1StartX][y + roi1StartY][z] =
+                                    pixels1[z * GPUparams.width * GPUparams.height + y * GPUparams.width + x];
                         }
                     }
                 }
@@ -21806,8 +21910,8 @@ public class Imaging_FCS implements PlugIn {
                 for (int x = startXmap; x <= endXmap; x++) {
                     for (int y = startYmap; y <= endYmap; y++) {
 
-                        if (filterArray[x * pixbinX][y * pixbinY] < filterLL * binningX * binningY
-                                || filterArray[x * pixbinX][y * pixbinY] > filterUL * binningX * binningY) {
+                        if (filterArray[x * pixbinX][y * pixbinY] < filterLL * binningX * binningY ||
+                                filterArray[x * pixbinX][y * pixbinY] > filterUL * binningX * binningY) {
                             for (int kcf = 0; kcf < k; kcf++) {
                                 pixfitted[kcf][x][y] = false;
                             }
@@ -21971,9 +22075,9 @@ public class Imaging_FCS implements PlugIn {
                 String $sigmaZ = tfSigmaZ.getText();
                 String $sigmaZ2 = tfSigmaZ2.getText();
 
-                if (!$pixelsize.isEmpty() && !$objmag.isEmpty() && !$NA.isEmpty() && !$sigma.isEmpty()
-                        && !$emlambda.isEmpty() && !$sigma2.isEmpty() && !$emlambda2.isEmpty() && !$sigmaZ.isEmpty()
-                        && !$sigmaZ2.isEmpty()) {
+                if (!$pixelsize.isEmpty() && !$objmag.isEmpty() && !$NA.isEmpty() && !$sigma.isEmpty() &&
+                        !$emlambda.isEmpty() && !$sigma2.isEmpty() && !$emlambda2.isEmpty() && !$sigmaZ.isEmpty() &&
+                        !$sigmaZ2.isEmpty()) {
                     pixelsize = Double.parseDouble($pixelsize);
                     objmag = Double.parseDouble($objmag);
                     NA = Double.parseDouble($NA);
@@ -22186,7 +22290,7 @@ public class Imaging_FCS implements PlugIn {
 
             ImageProcessor ipParaCnnAcf1 = impParaCnnAcf1.getStack()
                     .getProcessor(nochannels * (noparamCnnAcf + 2) + m + 1); // set the stack to the frame for filtering
-                                                                             // mask
+            // mask
 
             for (int x = 0; x < wx; x++) { // fill the frame with filtering mask
                 for (int y = 0; y < hy; y++) {
@@ -22217,7 +22321,7 @@ public class Imaging_FCS implements PlugIn {
             // label for filtering mask
         }
 
-        IJ.run(impParaCnnAcf1, "Red Hot", ""); // apply "Fire" LUT
+        ApplyCustomLUT.applyCustomLUT(impParaCnnAcf1, "Red Hot");
         IJ.run(impParaCnnAcf1, "Original Scale", ""); // first set image to original scale
 
         // then zoom to fit within application
@@ -22358,8 +22462,8 @@ public class Imaging_FCS implements PlugIn {
                                 // We perform bleach correction based on the total amount of available frames,
                                 // not the window.
                                 // perform background subtraction before bleach correction
-                                double[] pix_intensity_trace = getIntensity(imp, x_pix, y_pix, 0, firstframe, lastframe,
-                                        true);
+                                double[] pix_intensity_trace =
+                                        getIntensity(imp, x_pix, y_pix, 0, firstframe, lastframe, true);
 
                                 // Now, perform windowing over the 2500 frame chunks.
                                 for (int t = 0; t < num_chunks; t++) {
@@ -22376,8 +22480,8 @@ public class Imaging_FCS implements PlugIn {
                                     // Note that we need to force the values into float, as the expected inputs are
                                     // 32 bit, not 64.
                                     for (int f = 0; f < 2500; f++) {
-                                        cnnRawImageInput[t][f][x_offset][y_offset] = (float) pix_intensity_trace[start_frame
-                                                + f];
+                                        cnnRawImageInput[t][f][x_offset][y_offset] =
+                                                (float) pix_intensity_trace[start_frame + f];
                                     }
                                 }
                             }
@@ -22516,8 +22620,8 @@ public class Imaging_FCS implements PlugIn {
             for (int p = 0; p < noparamCnnImage; p++) { // put pixel values for fit parameters in the maps
                 System.out.println(fitresCnnImage);
                 System.out.println(pixvalidCnnImage);
-                ImageProcessor ipParaCnnImage1 = impParaCnnImage1.getStack()
-                        .getProcessor((m * noparamCnnImage) + p + 1);
+                ImageProcessor ipParaCnnImage1 =
+                        impParaCnnImage1.getStack().getProcessor((m * noparamCnnImage) + p + 1);
                 for (int x = 0; x < wx; x++) {
                     for (int y = 0; y < hy; y++) {
                         ipParaCnnImage1.putPixelValue(x, y, fitresCnnImage[cm][x + xm][y + ym][p]);
@@ -22527,7 +22631,7 @@ public class Imaging_FCS implements PlugIn {
 
             ImageProcessor ipParaCnnImage1 = impParaCnnImage1.getStack()
                     .getProcessor(nochannels * (noparamCnnImage + 2) + m + 1); // set the stack to the frame for
-                                                                               // filtering
+            // filtering
             // mask
             for (int x = 0; x < wx; x++) { // fill the frame with filtering mask
                 for (int y = 0; y < hy; y++) {
@@ -22561,7 +22665,7 @@ public class Imaging_FCS implements PlugIn {
             // label for filtering mask
         }
 
-        IJ.run(impParaCnnImage1, "Red Hot", ""); // apply "Fire" LUT
+        ApplyCustomLUT.applyCustomLUT(impParaCnnImage1, "Red Hot");
         IJ.run(impParaCnnImage1, "Original Scale", ""); // first set image to original scale
         // then zoom to fit within application
         IJ.run(impParaCnnImage1, "Set... ",
