@@ -576,7 +576,12 @@ public final class MainPanelController {
 
             new BackgroundTaskWorker<Void, Void>(() -> {
                 for (File file : files) {
-                    imageController.loadImage(IJ.openImage(file.getAbsolutePath()), null);
+                    try {
+                        imageController.loadImage(IJ.openImage(file.getAbsolutePath()), null);
+                    } catch (Exception e) {
+                        IJ.log(String.format("The file %s is not an image file. Skipping it.", file.getAbsolutePath()));
+                        continue;
+                    }
 
                     if ((boolean) run.get("Correlate All")) {
                         // Perform the correlation synchronously
