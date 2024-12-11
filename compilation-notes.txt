@@ -3,3 +3,5 @@ mvn clean
 mvn clean package -DgenerateJniHeaders=true
 
 mvn clean package -DcompileLibs=true -e
+
+test from zpe5
