@@ -4,7 +4,13 @@ mvn clean package -DgenerateJniHeaders=true
 
 mvn clean package -DcompileLibs=true -e
 
-debugged compilation from daniel@zpe5 machine
+
+***
+18/12/2024 
+    cli compilation from daniel@zpe5 machine
+    recompile .jar success with WSL2 Ubuntu 22.04.5 LTS CUDA 11.5.119 cmake 3.22.1 gcc 11.4 java 1.8.432
+    NVIDIA RTX A4000 CUDA Version 12.5 Driver Version 556.12 NVIDIA-SMI 555.58.02
+
 
 
 TODO:
