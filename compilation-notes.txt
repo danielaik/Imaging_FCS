@@ -4,4 +4,8 @@ mvn clean package -DgenerateJniHeaders=true
 
 mvn clean package -DcompileLibs=true -e
 
-test from zpe5
+debugged compilation from daniel@zpe5 machine
+
+
+TODO:
+- Starting from CMake 3.18, the FindCUDA module has been deprecated. The modern CMake approach involves using the find_package(CUDAToolkit) module, which replaces FindCUDA. Update all the CMakeLists.txt files
