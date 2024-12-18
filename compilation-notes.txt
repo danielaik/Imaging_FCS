@@ -1,17 +1,56 @@
+*** compilation note
+
 mvn clean
 
 mvn clean package -DgenerateJniHeaders=true
 
 mvn clean package -DcompileLibs=true -e
 
+***
+
+*** log 
+18/12/2024 
+    Successful CLI compilation in linux and windows from daniel@zpe5 machine NVIDIA RTX A4000
+    
+    (LINUX) successful.so generation and .jar compilation
+        WSL2 Ubuntu 22.04.5 LTS 
+        
+        nvcc: NVIDIA (R) Cuda compiler driver
+        Copyright (c) 2005-2021 NVIDIA Corporation
+        Built on Thu_Nov_18_09:45:30_PST_2021
+        Cuda compilation tools, release 11.5, V11.5.119
+        Build cuda_11.5.r11.5/compiler.30672275_0
+
+        cmake version 3.22.1
+        
+        openjdk version "1.8.0_432"
+        OpenJDK Runtime Environment (build 1.8.0_432-8u432-ga~us1-0ubuntu2~22.04-ga)
+        OpenJDK 64-Bit Server VM (build 25.432-bga, mixed mode)
+    
+    
+    cli compilation WIN from daniel@zpe5 machine NVIDIA RTX A4000
+    (WIN) successful.so generation and .jar compilation
+        WSL2 Ubuntu 22.04.5 LTS 
+
+        nvcc: NVIDIA (R) Cuda compiler driver
+        Copyright (c) 2005-2021 NVIDIA Corporation
+        Built on Mon_Sep_13_20:11:50_Pacific_Daylight_Time_2021
+        Cuda compilation tools, release 11.5, V11.5.50
+        Build cuda_11.5.r11.5/compiler.30411180_0
+
+        cmake version 3.15.7cmake 3.15.7 
+  
+        java version "1.8.0_202"
+        Java(TM) SE Runtime Environment (build 1.8.0_202-b08)
+        Java HotSpot(TM) 64-Bit Server VM (build 25.202-b08, mixed mode)java 1.8.432mvn clean package -DcompileLibs=true -e
+
 
 ***
-18/12/2024 
-    cli compilation from daniel@zpe5 machine
-    recompile .jar success with WSL2 Ubuntu 22.04.5 LTS CUDA 11.5.119 cmake 3.22.1 gcc 11.4 java 1.8.432
-    NVIDIA RTX A4000 CUDA Version 12.5 Driver Version 556.12 NVIDIA-SMI 555.58.02
 
 
+*** todo
+- (18/12/24) Starting from CMake 3.18, the FindCUDA module has been deprecated. The modern CMake approach involves using the find_package(CUDAToolkit) module, which replaces FindCUDA. Update all the CMakeLists.txt files
+- (18/12/24) For modern Cmake use target_include_directories instead of include_directories for visibility within agpufit project for example
+- 
 
-TODO:
-- Starting from CMake 3.18, the FindCUDA module has been deprecated. The modern CMake approach involves using the find_package(CUDAToolkit) module, which replaces FindCUDA. Update all the CMakeLists.txt files
+***
