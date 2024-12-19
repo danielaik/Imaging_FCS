@@ -1,17 +1,18 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0"
-         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>imagej.imfcs</groupId>
     <artifactId>Imaging_FCS</artifactId>
-    <version>1_632_da</version>
+    <version>1_633_da</version>
 
     <properties>
         <java.version>1.8</java.version>
         <maven.compiler.source>${java.version}</maven.compiler.source>
         <maven.compiler.target>${java.version}</maven.compiler.target>
-        <!-- Skip tests if necessary, but consider enabling and writing tests for better software quality -->
+        <!-- Skip tests if necessary, but consider enabling and writing tests for better software
+        quality -->
         <maven.test.skip>true</maven.test.skip>
 
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -127,61 +128,74 @@
                                 <configuration>
                                     <target>
                                         <path id="compile.classpath">
-                                            <path path="${project.build.directory}/classes"/>
+                                            <path path="${project.build.directory}/classes" />
                                             <fileset dir="${project.build.directory}/dependencies">
-                                                <include name="**/*.jar"/>
+                                                <include name="**/*.jar" />
                                             </fileset>
                                         </path>
-                                        <property name="compile.classpath" refid="compile.classpath"/>
+                                        <property name="compile.classpath" refid="compile.classpath" />
 
                                         <exec executable="javac">
-                                            <arg value="-classpath"/>
-                                            <arg value="${project.build.directory}/classes"/>
-                                            <arg value="-d"/>
-                                            <arg value="${project.build.directory}/classes"/>
-                                            <arg value="-h"/>
-                                            <arg value="src/main/cpp/gpufit"/>
-                                            <arg value="src/main/java/fiji/plugin/imaging_fcs/gpufitImFCS/GpufitImFCS.java"/>
+                                            <arg value="-classpath" />
+                                            <arg value="${project.build.directory}/classes" />
+                                            <arg value="-d" />
+                                            <arg value="${project.build.directory}/classes" />
+                                            <arg value="-h" />
+                                            <arg value="src/main/cpp/gpufit" />
+                                            <arg
+                                                value="src/main/java/fiji/plugin/imaging_fcs/gpufitImFCS/GpufitImFCS.java" />
                                         </exec>
 
                                         <exec executable="javac">
-                                            <arg value="-classpath"/>
-                                            <arg value="${project.build.directory}/classes${path.separator}${compile.classpath}"/>
-                                            <arg value="-d"/>
-                                            <arg value="${project.build.directory}/classes"/>
-                                            <arg value="-h"/>
-                                            <arg value="src/main/cpp/cameras/sdk2/dependencies/include"/>
-                                            <arg value="src/main/java/fiji/plugin/imaging_fcs/directCameraReadout/andorsdk2v3/AndorSDK2v3.java"/>
+                                            <arg value="-classpath" />
+                                            <arg
+                                                value="${project.build.directory}/classes${path.separator}${compile.classpath}" />
+                                            <arg value="-d" />
+                                            <arg value="${project.build.directory}/classes" />
+                                            <arg value="-h" />
+                                            <arg
+                                                value="src/main/cpp/cameras/sdk2/dependencies/include" />
+                                            <arg
+                                                value="src/main/java/fiji/plugin/imaging_fcs/directCameraReadout/andorsdk2v3/AndorSDK2v3.java" />
                                         </exec>
 
                                         <exec executable="javac">
-                                            <arg value="-classpath"/>
-                                            <arg value="${project.build.directory}/classes${path.separator}${compile.classpath}"/>
-                                            <arg value="-d"/>
-                                            <arg value="${project.build.directory}/classes"/>
-                                            <arg value="-h"/>
-                                            <arg value="src/main/cpp/cameras/sdk3/dependencies/include"/>
-                                            <arg value="src/main/java/fiji/plugin/imaging_fcs/directCameraReadout/andorsdk3v2/AndorSDK3v2.java"/>
+                                            <arg value="-classpath" />
+                                            <arg
+                                                value="${project.build.directory}/classes${path.separator}${compile.classpath}" />
+                                            <arg value="-d" />
+                                            <arg value="${project.build.directory}/classes" />
+                                            <arg value="-h" />
+                                            <arg
+                                                value="src/main/cpp/cameras/sdk3/dependencies/include" />
+                                            <arg
+                                                value="src/main/java/fiji/plugin/imaging_fcs/directCameraReadout/andorsdk3v2/AndorSDK3v2.java" />
                                         </exec>
 
                                         <exec executable="javac">
-                                            <arg value="-classpath"/>
-                                            <arg value="${project.build.directory}/classes${path.separator}${compile.classpath}"/>
-                                            <arg value="-d"/>
-                                            <arg value="${project.build.directory}/classes"/>
-                                            <arg value="-h"/>
-                                            <arg value="src/main/cpp/cameras/dcam/dependencies/include"/>
-                                            <arg value="src/main/java/fiji/plugin/imaging_fcs/directCameraReadout/hamadcamsdk4/Hamamatsu_DCAM_SDK4.java"/>
+                                            <arg value="-classpath" />
+                                            <arg
+                                                value="${project.build.directory}/classes${path.separator}${compile.classpath}" />
+                                            <arg value="-d" />
+                                            <arg value="${project.build.directory}/classes" />
+                                            <arg value="-h" />
+                                            <arg
+                                                value="src/main/cpp/cameras/dcam/dependencies/include" />
+                                            <arg
+                                                value="src/main/java/fiji/plugin/imaging_fcs/directCameraReadout/hamadcamsdk4/Hamamatsu_DCAM_SDK4.java" />
                                         </exec>
 
                                         <exec executable="javac">
-                                            <arg value="-classpath"/>
-                                            <arg value="${project.build.directory}/classes${path.separator}${compile.classpath}"/>
-                                            <arg value="-d"/>
-                                            <arg value="${project.build.directory}/classes"/>
-                                            <arg value="-h"/>
-                                            <arg value="src/main/cpp/cameras/pvcam/dependencies/include"/>
-                                            <arg value="src/main/java/fiji/plugin/imaging_fcs/directCameraReadout/pvcamsdk/Photometrics_PVCAM_SDK.java"/>
+                                            <arg value="-classpath" />
+                                            <arg
+                                                value="${project.build.directory}/classes${path.separator}${compile.classpath}" />
+                                            <arg value="-d" />
+                                            <arg value="${project.build.directory}/classes" />
+                                            <arg value="-h" />
+                                            <arg
+                                                value="src/main/cpp/cameras/pvcam/dependencies/include" />
+                                            <arg
+                                                value="src/main/java/fiji/plugin/imaging_fcs/directCameraReadout/pvcamsdk/Photometrics_PVCAM_SDK.java" />
                                         </exec>
                                     </target>
                                 </configuration>
@@ -193,7 +207,7 @@
         </profile>
 
         <profile>
-             <id>compile_libs</id>
+            <id>compile_libs</id>
             <!-- This profile activates when compile_libs is true -->
             <activation>
                 <property>
