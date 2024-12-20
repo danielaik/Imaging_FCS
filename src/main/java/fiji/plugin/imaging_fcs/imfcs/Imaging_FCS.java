@@ -7330,12 +7330,11 @@ public class Imaging_FCS implements PlugIn {
 
     // fill CF, SD, Fit function, residual, msd of (CF, ACF1, ACF2) row-by-row
     private void fillCFs(int indexSheet, Sheet sheet, XSSFWorkbook wb, double[][][] arr) {
-        IJ.log("---inside fillCF indexSheet: " + indexSheet);
+
         try {
             sheet = wb.getSheetAt(indexSheet);
 
             int totalRow = sheet.getLastRowNum() + 1;
-            IJ.log("totalrow: " + totalRow);
 
             for (int rowcount = 0; rowcount < totalRow; rowcount++) {
                 Row row = sheet.getRow(rowcount);
@@ -7364,7 +7363,6 @@ public class Imaging_FCS implements PlugIn {
     // fit fit results
     private void fillFitRes(int indexSheet, Sheet sheet, XSSFWorkbook wb, boolean[][] pixfitted, double[][][] fitres,
             double[][] chi2, double[][] blocked, double[][] pixvalid) {
-        IJ.log("---inside fillFitRes indexSheet: " + indexSheet);
         double tmpread;
 
         try {
@@ -7374,24 +7372,19 @@ public class Imaging_FCS implements PlugIn {
             int totalRow = sheet.getLastRowNum() + 1; // 1-based index
             Row firstRow = sheet.getRow(0); // assume the first row contains the same number of column as nth row
             int totalCell = firstRow.getLastCellNum(); // 1-based index
-            IJ.log("totalrow: " + totalRow);
-            IJ.log("totalcol: " + totalCell);
 
             final int rowOffset = 1;
             final int colOffset = 2;
 
             // fill pixfitted bool
             for (int rowcount = 0; rowcount < (totalRow - rowOffset); rowcount++) {
-                IJ.log("rowcount: " + rowcount);
                 Row row = sheet.getRow(rowcount + rowOffset);
                 Iterator<Cell> cellIterator = row.cellIterator();
                 if (cellIterator.hasNext()) {
-                    IJ.log("has next1");
                     cellIterator.next();
                 }
 
                 if (cellIterator.hasNext()) {
-                    IJ.log("has next2");
                     int h = (int) Math.floor(rowcount / width);
                     int w = rowcount - h * width;
                     Cell cell = cellIterator.next();
@@ -7408,7 +7401,6 @@ public class Imaging_FCS implements PlugIn {
 
                     Cell cell = currentRow.getCell(col);
 
-                    IJ.log("rowcount: " + rowcount + ", col: " + col);
                     int h = (int) Math.floor(rowcount / width);
                     int w = rowcount - h * width;
 
@@ -7420,7 +7412,6 @@ public class Imaging_FCS implements PlugIn {
                         tmpread = Double.NaN;
                     }
                     if (colcount < noparam) {
-                        IJ.log("length fitres w: " + w + ", h: " + h + ": " + fitres[w][h].length);
                         fitres[w][h][colcount] = tmpread;
                     }
                     if (colcount == noparam) {
