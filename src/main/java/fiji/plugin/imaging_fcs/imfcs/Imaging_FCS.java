@@ -7361,8 +7361,8 @@ public class Imaging_FCS implements PlugIn {
     }
 
     // fit fit results
-    private void fillFitRes(int indexSheet, Sheet sheet, XSSFWorkbook wb, boolean[][] pixfitted, double[][][] fitres,
-            double[][] chi2, double[][] blocked, double[][] pixvalid) {
+    private void fillFitRes(int indexSheet, Sheet sheet, XSSFWorkbook wb, int index, boolean[][][] pixfitted, double[][][][] fitres,
+            double[][][] chi2, double[][][] blocked, double[][][] pixvalid, double[][] CCFq) {
         double tmpread;
 
         try {
@@ -7388,7 +7388,7 @@ public class Imaging_FCS implements PlugIn {
                     int h = (int) Math.floor(rowcount / width);
                     int w = rowcount - h * width;
                     Cell cell = cellIterator.next();
-                    pixfitted[w][h] = Boolean.parseBoolean(cell.getStringCellValue());
+                    pixfitted[index][w][h] = Boolean.parseBoolean(cell.getStringCellValue());
                 }
             }
 
@@ -7412,16 +7412,21 @@ public class Imaging_FCS implements PlugIn {
                         tmpread = Double.NaN;
                     }
                     if (colcount < noparam) {
-                        fitres[w][h][colcount] = tmpread;
+                        fitres[index][w][h][colcount] = tmpread;
                     }
                     if (colcount == noparam) {
-                        chi2[w][h] = tmpread;
+                        chi2[index][w][h] = tmpread;
                     }
                     if (colcount == noparam + 1) {
-                        blocked[w][h] = tmpread;
+                        blocked[index][w][h] = tmpread;
                     }
                     if (colcount == noparam + 2) {
-                        pixvalid[w][h] = tmpread;
+                        pixvalid[index][w][h] = tmpread;
+                    }
+                    if (index == 2) {
+                        if (colcount == noparam + 3) {
+                            CCFq[w][h] = tmpread;
+                        }
                     }
                 }
 
@@ -7810,593 +7815,48 @@ public class Imaging_FCS implements PlugIn {
         // read ACF0 row-by-row
         fillCFs(ACF0, sheet, wb, acf[0]);
 
-        /*
-         * TODELETE
-         * // read ACF0
-         * try {
-         * sheet = wb.getSheetAt(ACF0);
-         * rowIterator = sheet.iterator();
-         * if (rowIterator.hasNext()) {
-         * Row row = rowIterator.next();
-         * }
-         * rowcount = 0;
-         * while (rowIterator.hasNext()) {
-         * Row row = rowIterator.next();
-         * cellIterator = row.cellIterator();
-         * cellcount = 0;
-         * while (cellIterator.hasNext()) {
-         * h = (int) Math.floor(cellcount / width);
-         * w = cellcount - h * width;
-         * Cell cell = cellIterator.next();
-         * try {
-         * acf[0][w][h][rowcount] = cell.getNumericCellValue();
-         * } catch (IllegalStateException ise) {
-         * acf[0][w][h][rowcount] = Double.NaN;
-         * }
-         * cellcount++;
-         * }
-         * rowcount++;
-         * }
-         * } catch (IllegalArgumentException iae) {
-         * }
-         */
         // read SD0 row-by-row
         fillCFs(SD0, sheet, wb, sdacf[0]);
 
-        /*
-         * TODELETE
-         * // read SD0
-         * try {
-         * sheet = wb.getSheetAt(SD0);
-         * rowIterator = sheet.iterator();
-         * if (rowIterator.hasNext()) {
-         * Row row = rowIterator.next();
-         * }
-         * rowcount = 0;
-         * while (rowIterator.hasNext()) {
-         * Row row = rowIterator.next();
-         * cellIterator = row.cellIterator();
-         * cellcount = 0;
-         * while (cellIterator.hasNext()) {
-         * h = (int) Math.floor(cellcount / width);
-         * w = cellcount - h * width;
-         * Cell cell = cellIterator.next();
-         * try {
-         * sdacf[0][w][h][rowcount] = cell.getNumericCellValue();
-         * } catch (IllegalStateException ise) {
-         * sdacf[0][w][h][rowcount] = Double.NaN;
-         * }
-         * cellcount++;
-         * }
-         * rowcount++;
-         * }
-         * } catch (IllegalArgumentException iae) {
-         * }
-         */
         // read fitacf0 row-by-row
         fillCFs(FITACF0, sheet, wb, fitacf[0]);
 
-        /*
-         * TODELETE
-         * // read fitacf0
-         * try {
-         *
-         * sheet = wb.getSheetAt(FITACF0);
-         * rowIterator = sheet.iterator();
-         * if (rowIterator.hasNext()) {
-         * Row row = rowIterator.next();
-         * }
-         * rowcount = 0;
-         * while (rowIterator.hasNext()) {
-         * Row row = rowIterator.next();
-         * cellIterator = row.cellIterator();
-         * cellcount = 0;
-         * while (cellIterator.hasNext()) {
-         * h = (int) Math.floor(cellcount / width);
-         * w = cellcount - h * width;
-         * Cell cell = cellIterator.next();
-         * try {
-         * fitacf[0][w][h][rowcount] = cell.getNumericCellValue();
-         * } catch (IllegalStateException ise) {
-         * fitacf[0][w][h][rowcount] = Double.NaN;
-         * }
-         * cellcount++;
-         * }
-         * rowcount++;
-         * }
-         *
-         * } catch (IllegalArgumentException iae) {
-         * }
-         */
         // read res0 row-by-row
         fillCFs(RES0, sheet, wb, res[0]);
 
-        /*
-         * TODELETE
-         * // read res0
-         * try {
-         * sheet = wb.getSheetAt(RES0);
-         * rowIterator = sheet.iterator();
-         * if (rowIterator.hasNext()) {
-         * Row row = rowIterator.next();
-         * }
-         * rowcount = 0;
-         * while (rowIterator.hasNext()) {
-         * Row row = rowIterator.next();
-         * cellIterator = row.cellIterator();
-         * cellcount = 0;
-         * while (cellIterator.hasNext()) {
-         * h = (int) Math.floor(cellcount / width);
-         * w = cellcount - h * width;
-         * Cell cell = cellIterator.next();
-         * try {
-         * res[0][w][h][rowcount] = cell.getNumericCellValue();
-         * } catch (IllegalStateException ise) {
-         * res[0][w][h][rowcount] = Double.NaN;
-         * }
-         * cellcount++;
-         * }
-         * rowcount++;
-         * }
-         * } catch (IllegalArgumentException iae) {
-         * }
-         */
         // read FITRES0 row-by-row
-        fillFitRes(FITRES0, sheet, wb, pixfitted[0], fitres[0], chi2[0], blocked[0], pixvalid[0]);
+        fillFitRes(FITRES0, sheet, wb, 0, pixfitted, fitres, chi2, blocked, pixvalid, CCFq);
 
-        /*
-         * // read FITRES0
-         * try {
-         * sheet = wb.getSheetAt(FITRES0);
-         * rowIterator = sheet.iterator();
-         * if (rowIterator.hasNext()) {
-         * Row row = rowIterator.next();
-         * }
-         * if (rowIterator.hasNext()) {
-         * Row row = rowIterator.next();
-         * cellIterator = row.cellIterator();
-         * if (cellIterator.hasNext()) {
-         * Cell cell = cellIterator.next();
-         * }
-         * cellcount = 0;
-         * while (cellIterator.hasNext()) {
-         * h = (int) Math.floor(cellcount / width);
-         * w = cellcount - h * width;
-         * Cell cell = cellIterator.next();
-         * pixfitted[0][w][h] = Boolean.parseBoolean(cell.getStringCellValue());
-         * cellcount++;
-         * }
-         * }
-         * rowcount = 0;
-         * while (rowIterator.hasNext()) {
-         * Row row = rowIterator.next();
-         * cellIterator = row.cellIterator();
-         * if (cellIterator.hasNext()) {
-         * Cell cell = cellIterator.next();
-         * }
-         * cellcount = 0;
-         * while (cellIterator.hasNext()) {
-         * h = (int) Math.floor(cellcount / width);
-         * w = cellcount - h * width;
-         * Cell cell = cellIterator.next();
-         * try {
-         * tmpread = cell.getNumericCellValue();
-         * } catch (IllegalStateException ise) {
-         * tmpread = Double.NaN;
-         * }
-         * if (rowcount < noparam) {
-         * fitres[0][w][h][rowcount] = tmpread;
-         * }
-         * if (rowcount == noparam) {
-         * chi2[0][w][h] = tmpread;
-         * }
-         * if (rowcount == noparam + 1) {
-         * blocked[0][w][h] = tmpread;
-         * }
-         * if (rowcount == noparam + 2) {
-         * pixvalid[0][w][h] = tmpread;
-         * }
-         * cellcount++;
-         * }
-         * rowcount++;
-         * }
-         * } catch (IllegalArgumentException iae) {
-         * }
-         */
         // read acf1 row-by-row
         fillCFs(ACF1, sheet, wb, acf[1]);
 
-        /*
-         * TODELETE
-         * // read ACF1
-         * try {
-         * sheet = wb.getSheetAt(ACF1);
-         * rowIterator = sheet.iterator();
-         * if (rowIterator.hasNext()) {
-         * Row row = rowIterator.next();
-         * }
-         * rowcount = 0;
-         * while (rowIterator.hasNext()) {
-         * Row row = rowIterator.next();
-         * cellIterator = row.cellIterator();
-         * cellcount = 0;
-         * while (cellIterator.hasNext()) {
-         * h = (int) Math.floor(cellcount / width);
-         * w = cellcount - h * width;
-         * Cell cell = cellIterator.next();
-         * try {
-         * acf[1][w][h][rowcount] = cell.getNumericCellValue();
-         * } catch (IllegalStateException ise) {
-         * acf[1][w][h][rowcount] = Double.NaN;
-         * }
-         * cellcount++;
-         * }
-         * rowcount++;
-         * }
-         * } catch (IllegalArgumentException iae) {
-         * }
-         */
         // read SD1 row-by-row
         fillCFs(SD1, sheet, wb, sdacf[1]);
 
-        /*
-         * TODELETE
-         * // read SD1
-         * try {
-         * sheet = wb.getSheetAt(SD1);
-         * rowIterator = sheet.iterator();
-         * if (rowIterator.hasNext()) {
-         * Row row = rowIterator.next();
-         * }
-         * rowcount = 0;
-         * while (rowIterator.hasNext()) {
-         * Row row = rowIterator.next();
-         * cellIterator = row.cellIterator();
-         * cellcount = 0;
-         * while (cellIterator.hasNext()) {
-         * h = (int) Math.floor(cellcount / width);
-         * w = cellcount - h * width;
-         * Cell cell = cellIterator.next();
-         * try {
-         * sdacf[1][w][h][rowcount] = cell.getNumericCellValue();
-         * } catch (IllegalStateException ise) {
-         * sdacf[1][w][h][rowcount] = Double.NaN;
-         * }
-         * cellcount++;
-         * }
-         * rowcount++;
-         * }
-         * } catch (IllegalArgumentException iae) {
-         * }
-         */
         // read fitacf1 row-by-row
         fillCFs(FITACF1, sheet, wb, fitacf[1]);
 
-        /*
-         * TODELETE
-         * // read fitacf1
-         * try {
-         * sheet = wb.getSheetAt(FITACF1);
-         * rowIterator = sheet.iterator();
-         * if (rowIterator.hasNext()) {
-         * Row row = rowIterator.next();
-         * }
-         * rowcount = 0;
-         * while (rowIterator.hasNext()) {
-         * Row row = rowIterator.next();
-         * cellIterator = row.cellIterator();
-         * cellcount = 0;
-         * while (cellIterator.hasNext()) {
-         * h = (int) Math.floor(cellcount / width);
-         * w = cellcount - h * width;
-         * Cell cell = cellIterator.next();
-         * try {
-         * fitacf[1][w][h][rowcount] = cell.getNumericCellValue();
-         * } catch (IllegalStateException ise) {
-         * fitacf[1][w][h][rowcount] = Double.NaN;
-         * }
-         * cellcount++;
-         * }
-         * rowcount++;
-         * }
-         * } catch (IllegalArgumentException iae) {
-         * }
-         */
         // read res1 row-by-row
         fillCFs(RES1, sheet, wb, res[1]);
 
-        /*
-         * TODELETE
-         * // read res1
-         * try {
-         * sheet = wb.getSheetAt(RES1);
-         * rowIterator = sheet.iterator();
-         * if (rowIterator.hasNext()) {
-         * Row row = rowIterator.next();
-         * }
-         * rowcount = 0;
-         * while (rowIterator.hasNext()) {
-         * Row row = rowIterator.next();
-         * cellIterator = row.cellIterator();
-         * cellcount = 0;
-         * while (cellIterator.hasNext()) {
-         * h = (int) Math.floor(cellcount / width);
-         * w = cellcount - h * width;
-         * Cell cell = cellIterator.next();
-         * try {
-         * res[1][w][h][rowcount] = cell.getNumericCellValue();
-         * } catch (IllegalStateException ise) {
-         * res[1][w][h][rowcount] = Double.NaN;
-         * }
-         * cellcount++;
-         * }
-         * rowcount++;
-         * }
-         * } catch (IllegalArgumentException iae) {
-         * }
-         *
-         *
-         *
-         *
-         */
         // read FITRES1 row-by-row
-        fillFitRes(FITRES1, sheet, wb, pixfitted[1], fitres[1], chi2[1], blocked[1], pixvalid[1]);
+        fillFitRes(FITRES1, sheet, wb, 1, pixfitted, fitres, chi2, blocked, pixvalid, CCFq);
 
-        /*
-         * // read FITRES1
-         * try {
-         * sheet = wb.getSheetAt(FITRES1);
-         * rowIterator = sheet.iterator();
-         * if (rowIterator.hasNext()) {
-         * Row row = rowIterator.next();
-         * }
-         * if (rowIterator.hasNext()) {
-         * Row row = rowIterator.next();
-         * cellIterator = row.cellIterator();
-         * if (cellIterator.hasNext()) {
-         * Cell cell = cellIterator.next();
-         * }
-         * cellcount = 0;
-         * while (cellIterator.hasNext()) {
-         * h = (int) Math.floor(cellcount / width);
-         * w = cellcount - h * width;
-         * Cell cell = cellIterator.next();
-         * pixfitted[1][w][h] = Boolean.parseBoolean(cell.getStringCellValue());
-         * cellcount++;
-         * }
-         * }
-         * rowcount = 0;
-         * while (rowIterator.hasNext()) {
-         * Row row = rowIterator.next();
-         * cellIterator = row.cellIterator();
-         * if (cellIterator.hasNext()) {
-         * Cell cell = cellIterator.next();
-         * }
-         * cellcount = 0;
-         * while (cellIterator.hasNext()) {
-         * h = (int) Math.floor(cellcount / width);
-         * w = cellcount - h * width;
-         * Cell cell = cellIterator.next();
-         * try {
-         * tmpread = cell.getNumericCellValue();
-         * } catch (IllegalStateException ise) {
-         * tmpread = Double.NaN;
-         * }
-         * if (rowcount < noparam) {
-         * fitres[1][w][h][rowcount] = tmpread;
-         * }
-         * if (rowcount == noparam) {
-         * chi2[1][w][h] = tmpread;
-         * }
-         * if (rowcount == noparam + 1) {
-         * blocked[1][w][h] = tmpread;
-         * }
-         * if (rowcount == noparam + 2) {
-         * pixvalid[1][w][h] = tmpread;
-         * }
-         * cellcount++;
-         * }
-         * rowcount++;
-         * }
-         * } catch (IllegalArgumentException iae) {
-         * }
-         */
         // read acf2 row-by-row
         fillCFs(ACF2, sheet, wb, acf[2]);
 
-        /*
-         * TODELETE
-         * // read ACF2
-         * try {
-         * sheet = wb.getSheetAt(ACF2);
-         * rowIterator = sheet.iterator();
-         * if (rowIterator.hasNext()) {
-         * Row row = rowIterator.next();
-         * }
-         * rowcount = 0;
-         * while (rowIterator.hasNext()) {
-         * Row row = rowIterator.next();
-         * cellIterator = row.cellIterator();
-         * cellcount = 0;
-         * while (cellIterator.hasNext()) {
-         * h = (int) Math.floor(cellcount / width);
-         * w = cellcount - h * width;
-         * Cell cell = cellIterator.next();
-         * try {
-         * acf[2][w][h][rowcount] = cell.getNumericCellValue();
-         * } catch (IllegalStateException ise) {
-         * acf[2][w][h][rowcount] = Double.NaN;
-         * }
-         * cellcount++;
-         * }
-         * rowcount++;
-         * }
-         * } catch (IllegalArgumentException iae) {
-         * }
-         */
         // read SD2 row-by-row
         fillCFs(SD2, sheet, wb, sdacf[2]);
 
-        /*
-         * // read SD2
-         * try {
-         * sheet = wb.getSheetAt(SD2);
-         * rowIterator = sheet.iterator();
-         * if (rowIterator.hasNext()) {
-         * Row row = rowIterator.next();
-         * }
-         * rowcount = 0;
-         * while (rowIterator.hasNext()) {
-         * Row row = rowIterator.next();
-         * cellIterator = row.cellIterator();
-         * cellcount = 0;
-         * while (cellIterator.hasNext()) {
-         * h = (int) Math.floor(cellcount / width);
-         * w = cellcount - h * width;
-         * Cell cell = cellIterator.next();
-         * try {
-         * sdacf[2][w][h][rowcount] = cell.getNumericCellValue();
-         * } catch (IllegalStateException ise) {
-         * sdacf[2][w][h][rowcount] = Double.NaN;
-         * }
-         * cellcount++;
-         * }
-         * rowcount++;
-         * }
-         * } catch (IllegalArgumentException iae) {
-         * }
-         */
         // read fitacf2 row-by-row
         fillCFs(FITACF2, sheet, wb, fitacf[2]);
 
-        /*
-         * TODELETE
-         * // read fitacf2
-         * try {
-         * sheet = wb.getSheetAt(FITACF2);
-         * rowIterator = sheet.iterator();
-         * if (rowIterator.hasNext()) {
-         * Row row = rowIterator.next();
-         * }
-         * rowcount = 0;
-         * while (rowIterator.hasNext()) {
-         * Row row = rowIterator.next();
-         * cellIterator = row.cellIterator();
-         * cellcount = 0;
-         * while (cellIterator.hasNext()) {
-         * h = (int) Math.floor(cellcount / width);
-         * w = cellcount - h * width;
-         * Cell cell = cellIterator.next();
-         * try {
-         * fitacf[2][w][h][rowcount] = cell.getNumericCellValue();
-         * } catch (IllegalStateException ise) {
-         * fitacf[2][w][h][rowcount] = Double.NaN;
-         * }
-         * cellcount++;
-         * }
-         * rowcount++;
-         * }
-         * } catch (IllegalArgumentException iae) {
-         * }
-         */
         // read res2 row-by-row
         fillCFs(RES2, sheet, wb, res[2]);
 
-        /*
-         * TODELETE
-         * // read res2
-         * try {
-         * sheet = wb.getSheetAt(RES2);
-         * rowIterator = sheet.iterator();
-         * if (rowIterator.hasNext()) {
-         * Row row = rowIterator.next();
-         * }
-         * rowcount = 0;
-         * while (rowIterator.hasNext()) {
-         * Row row = rowIterator.next();
-         * cellIterator = row.cellIterator();
-         * cellcount = 0;
-         * while (cellIterator.hasNext()) {
-         * h = (int) Math.floor(cellcount / width);
-         * w = cellcount - h * width;
-         * Cell cell = cellIterator.next();
-         * try {
-         * res[2][w][h][rowcount] = cell.getNumericCellValue();
-         * } catch (IllegalStateException ise) {
-         * res[2][w][h][rowcount] = Double.NaN;
-         * }
-         * cellcount++;
-         * }
-         * rowcount++;
-         * }
-         * } catch (IllegalArgumentException iae) {
-         * }
-         */
         // read FITRES2 row-by-row
-        fillFitRes(FITRES2, sheet, wb, pixfitted[2], fitres[2], chi2[2], blocked[2], pixvalid[2]);
+        fillFitRes(FITRES2, sheet, wb, 2, pixfitted, fitres, chi2, blocked, pixvalid, CCFq);
 
-        /*
-         * // read FITRES2
-         * try {
-         * sheet = wb.getSheetAt(FITRES2);
-         * rowIterator = sheet.iterator();
-         * if (rowIterator.hasNext()) {
-         * Row row = rowIterator.next();
-         * }
-         * if (rowIterator.hasNext()) {
-         * Row row = rowIterator.next();
-         * cellIterator = row.cellIterator();
-         * if (cellIterator.hasNext()) {
-         * Cell cell = cellIterator.next();
-         * }
-         * cellcount = 0;
-         * while (cellIterator.hasNext()) {
-         * h = (int) Math.floor(cellcount / width);
-         * w = cellcount - h * width;
-         * Cell cell = cellIterator.next();
-         * pixfitted[2][w][h] = Boolean.parseBoolean(cell.getStringCellValue());
-         * cellcount++;
-         * }
-         * }
-         * rowcount = 0;
-         * while (rowIterator.hasNext()) {
-         * Row row = rowIterator.next();
-         * cellIterator = row.cellIterator();
-         * if (cellIterator.hasNext()) {
-         * Cell cell = cellIterator.next();
-         * }
-         * cellcount = 0;
-         * while (cellIterator.hasNext()) {
-         * h = (int) Math.floor(cellcount / width);
-         * w = cellcount - h * width;
-         * Cell cell = cellIterator.next();
-         * try {
-         * tmpread = cell.getNumericCellValue();
-         * } catch (IllegalStateException ise) {
-         * tmpread = Double.NaN;
-         * }
-         * if (rowcount < noparam) {
-         * fitres[2][w][h][rowcount] = tmpread;
-         * }
-         * if (rowcount == noparam) {
-         * chi2[2][w][h] = tmpread;
-         * }
-         * if (rowcount == noparam + 1) {
-         * blocked[2][w][h] = tmpread;
-         * }
-         * if (rowcount == noparam + 2) {
-         * pixvalid[2][w][h] = tmpread;
-         * }
-         * if (rowcount == noparam + 3) {
-         * CCFq[w][h] = tmpread;
-         * }
-         * cellcount++;
-         * }
-         * rowcount++;
-         * }
-         * } catch (IllegalArgumentException iae) {
-         * }
-         */
         // read DiffLaw
         try {
             difflaw = new double[3][difflawallbin];
@@ -8527,93 +7987,6 @@ public class Imaging_FCS implements PlugIn {
         fillCFs(MSD1, sheet, wb, msd[1]);
         fillCFs(MSD2, sheet, wb, msd[2]);
 
-        /*
-         * TODELETE
-         * // read MSD0
-         * try {
-         * sheet = wb.getSheetAt(MSD0);
-         * rowIterator = sheet.iterator();
-         * if (rowIterator.hasNext()) {
-         * Row row = rowIterator.next();
-         * }
-         * rowcount = 0;
-         * while (rowIterator.hasNext()) {
-         * Row row = rowIterator.next();
-         * cellIterator = row.cellIterator();
-         * cellcount = 0;
-         * while (cellIterator.hasNext()) {
-         * h = (int) Math.floor(cellcount / width);
-         * w = cellcount - h * width;
-         * Cell cell = cellIterator.next();
-         * try {
-         * msd[0][w][h][rowcount] = cell.getNumericCellValue();
-         * } catch (IllegalStateException ise) {
-         * msd[0][w][h][rowcount] = Double.NaN;
-         * }
-         * cellcount++;
-         * }
-         * rowcount++;
-         * }
-         * } catch (Exception e) {
-         * }
-         *
-         *
-         * // read MSD1
-         * try {
-         * sheet = wb.getSheetAt(MSD0);
-         * rowIterator = sheet.iterator();
-         * if (rowIterator.hasNext()) {
-         * Row row = rowIterator.next();
-         * }
-         * rowcount = 0;
-         * while (rowIterator.hasNext()) {
-         * Row row = rowIterator.next();
-         * cellIterator = row.cellIterator();
-         * cellcount = 0;
-         * while (cellIterator.hasNext()) {
-         * h = (int) Math.floor(cellcount / width);
-         * w = cellcount - h * width;
-         * Cell cell = cellIterator.next();
-         * try {
-         * msd[1][w][h][rowcount] = cell.getNumericCellValue();
-         * } catch (IllegalStateException ise) {
-         * msd[1][w][h][rowcount] = Double.NaN;
-         * }
-         * cellcount++;
-         * }
-         * rowcount++;
-         * }
-         * } catch (Exception e) {
-         * }
-         *
-         * // read MSD2
-         * try {
-         * sheet = wb.getSheetAt(MSD0);
-         * rowIterator = sheet.iterator();
-         * if (rowIterator.hasNext()) {
-         * Row row = rowIterator.next();
-         * }
-         * rowcount = 0;
-         * while (rowIterator.hasNext()) {
-         * Row row = rowIterator.next();
-         * cellIterator = row.cellIterator();
-         * cellcount = 0;
-         * while (cellIterator.hasNext()) {
-         * h = (int) Math.floor(cellcount / width);
-         * w = cellcount - h * width;
-         * Cell cell = cellIterator.next();
-         * try {
-         * msd[2][w][h][rowcount] = cell.getNumericCellValue();
-         * } catch (IllegalStateException ise) {
-         * msd[2][w][h][rowcount] = Double.NaN;
-         * }
-         * cellcount++;
-         * }
-         * rowcount++;
-         * }
-         * } catch (Exception e) {
-         * }
-         */
         // read dCCF
         try {
             sheet = wb.getSheetAt(DCCF);
