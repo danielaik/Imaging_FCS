@@ -74,9 +74,15 @@ public class DiffusionLawModel {
      */
     private int fitPixelAndAddD(ExpSettingsModel settings, FitModel fitModel, Correlator correlator, double[] averageD,
                                 double[] varianceD, PixelModel pixelModel, int x, int y, int index) {
-        correlator.correlatePixelModel(pixelModel, imageModel.getImage(), x, y, x, y, settings.getFirstFrame(),
-                settings.getLastFrame());
-        fitModel.standardFit(pixelModel, Constants.ITIR_FCS_2D, correlator.getLagTimes());
+        try {
+            correlator.correlatePixelModel(pixelModel, imageModel.getImage(), x, y, x, y, settings.getFirstFrame(),
+                    settings.getLastFrame());
+            fitModel.standardFit(pixelModel, Constants.ITIR_FCS_2D, correlator.getLagTimes());
+        } catch (Exception e) {
+            IJ.log(String.format("Fail to correlate points for x=%d, y=%d with error: %s", x, y,
+                    e.getMessage()));
+            return 0;
+        }
 
         if (pixelModel.isFitted()) {
             averageD[index] += pixelModel.getFitParams().getD();
