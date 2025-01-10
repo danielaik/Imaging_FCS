@@ -7,6 +7,7 @@ import ij.IJ;
 import org.apache.poi.ss.usermodel.*;
 
 import javax.swing.*;
+import javax.swing.filechooser.FileNameExtensionFilter;
 import java.awt.*;
 import java.io.File;
 import java.io.FileInputStream;
@@ -229,6 +230,11 @@ public final class ExcelReader {
     public static Workbook selectExcelFileToLoad(String openPath) {
         JFileChooser fileChooser = new JFileChooser(openPath);
         fileChooser.setDialogTitle("Open Excel File");
+
+        // Set a file filter to only show Excel files
+        FileNameExtensionFilter excelFilter = new FileNameExtensionFilter("Excel Files (*.xls, *.xlsx)", "xls", "xlsx");
+        fileChooser.setFileFilter(excelFilter);
+
         int userSelection = fileChooser.showOpenDialog(null);
 
         if (userSelection == JFileChooser.APPROVE_OPTION) {
