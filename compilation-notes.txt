@@ -9,6 +9,10 @@ mvn clean package -DcompileLibs=true -e
 ***
 
 *** log 
+
+13/01/2025
+    batch PSF analysis disabled dialog prompt and allow as many PSF permutations
+
 18/12/2024 
     Successful CLI compilation in linux and windows from daniel@zpe5 machine NVIDIA RTX A4000
     

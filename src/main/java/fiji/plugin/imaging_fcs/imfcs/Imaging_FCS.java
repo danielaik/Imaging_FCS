@@ -2194,7 +2194,7 @@ public class Imaging_FCS implements PlugIn {
 
     ActionListener btnPSFPressed = (ActionEvent ev) -> {
         if (setParameters()) {
-            correlatePSFWorker correlatePSFInstant = new correlatePSFWorker();
+            correlatePSFWorker correlatePSFInstant = new correlatePSFWorker(false);
             correlatePSFInstant.execute();
         }
     };
@@ -8499,6 +8499,12 @@ public class Imaging_FCS implements PlugIn {
 
     public class correlatePSFWorker extends SwingWorker<Void, Void> {
 
+        private boolean isBatchMode;
+
+        public correlatePSFWorker(boolean isBatchMode) {
+            this.isBatchMode = isBatchMode;
+        }
+
         private void failIfInterrupted() throws InterruptedException {
             if (Thread.currentThread().isInterrupted()) {
                 throw new InterruptedException("Interrupted while calcualting CFs");
@@ -8507,7 +8513,7 @@ public class Imaging_FCS implements PlugIn {
 
         @Override
         protected Void doInBackground() throws Exception {
-            determinePSF();
+            determinePSF(isBatchMode);
             return null;
         }
     }
@@ -9969,7 +9975,7 @@ public class Imaging_FCS implements PlugIn {
         return min;
     }
 
-    public void determinePSF() {
+    public void determinePSF(boolean isBatchMode) {
         double maxval = 0;
         double minval = 1;
 
@@ -9980,14 +9986,18 @@ public class Imaging_FCS implements PlugIn {
             return;
         }
 
-        // get input for estimated PSF range for user
-        if (psfDialogue()) {
+        // get input for estimated PSF range for user only during non batch mode
+        boolean proceed = true;
+        if (!isBatchMode) {
+            proceed = psfDialogue();
+        }
+        if (proceed) {
             psfmaxbin = psfBinEnd - psfBinStart + 1; // calculate for binning as defined by user
             numofpsf = (int) Math.floor((psfEnd - psfStart) / psfStep + 1.1); // how many calculations are necessary?
 
             IJ.showStatus("Calculating PSF plots");
 
-            if (numofpsf >= 10) {
+            if (numofpsf >= 10 && !isBatchMode) {
                 JOptionPane.showMessageDialog(null,
                         "PSF range and stepsize lead to too many calculations. Please chose a smaller range.");
                 return;
@@ -10018,7 +10028,9 @@ public class Imaging_FCS implements PlugIn {
                 }
             }
             minval /= 2; // make margin for plot label
-            plotPSF(minval, maxval, numofpsf);
+            if (!isBatchMode) {
+                plotPSF(minval, maxval, numofpsf);
+            }
             IJ.showStatus("Done");
         }
     }
@@ -10366,6 +10378,11 @@ public class Imaging_FCS implements PlugIn {
         batchfc.setMultiSelectionEnabled(true);
         batchfc.setFileSelectionMode(JFileChooser.FILES_ONLY);
         int returnVal = batchfc.showOpenDialog(null);
+
+        if (batchPSF) {
+            psfDialogue();
+        }
+
         if (returnVal == JFileChooser.APPROVE_OPTION) {
             File[] files = batchfc.getSelectedFiles();
             numOfFiles = files.length;
@@ -10428,7 +10445,7 @@ public class Imaging_FCS implements PlugIn {
                 }
 
                 if (batchPSF) {
-                    correlatePSFWorker correlatePSFInstant = new correlatePSFWorker();
+                    correlatePSFWorker correlatePSFInstant = new correlatePSFWorker(batchPSF);
                     correlatePSFInstant.execute();
                     while (correlatePSFInstant.isDone() == false) {
                     }
@@ -10660,6 +10677,10 @@ public class Imaging_FCS implements PlugIn {
 
         } else {
             setImp = false;
+        }
+
+        if (batchPSF) {
+            batchPSF = false;
         }
 
     }
