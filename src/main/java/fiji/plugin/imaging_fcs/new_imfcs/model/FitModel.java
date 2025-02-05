@@ -39,9 +39,11 @@ public class FitModel {
     }
 
     /**
-     * Copy constructor for FitModel.
+     * Copy constructor for FitModel. Use a different instance of
+     * settings to prevent side effects.
      *
-     * @param other The FitModel instance to copy.
+     * @param settings The experimental settings.
+     * @param other    The FitModel instance to copy.
      */
     public FitModel(ExpSettingsModel settings, FitModel other) {
         this.settings = settings;

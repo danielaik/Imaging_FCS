@@ -103,7 +103,7 @@ public final class MainPanelController {
 
         this.nbController = new NBController(imageModel, settings, optionsModel, bleachCorrectionModel);
 
-        this.diffusionLawController = new DiffusionLawController(settings, imageModel, fitModel);
+        this.diffusionLawController = new DiffusionLawController(settings, imageModel, fitModel, bleachCorrectionModel);
         imageController.setSetDiffusionLawRange(diffusionLawController::setDefaultRange);
 
         this.filteringController =

@@ -24,6 +24,7 @@ public class DiffusionLawModel {
     private static final int MINIMUM_POINTS = 4;
     private final ExpSettingsModel interfaceSettings;
     private final FitModel interfaceFitModel;
+    private final BleachCorrectionModel interfaceBleachCorrectionModel;
     private final ImageModel imageModel;
     private final Runnable resetCallback;
     private String mode = "All";
@@ -45,15 +46,18 @@ public class DiffusionLawModel {
     /**
      * Initializes the model with the provided experimental settings, image data, and fitting model.
      *
-     * @param settings      Experimental settings model.
-     * @param imageModel    Image model containing the data.
-     * @param fitModel      Fitting model used for the correlation data.
-     * @param resetCallback Callback to handle resetting results.
+     * @param settings              Experimental settings model.
+     * @param imageModel            Image model containing the data.
+     * @param fitModel              Fitting model used for the correlation data.
+     * @param bleachCorrectionModel BleachCorrection model used for applying bleach correction.
+     * @param resetCallback         Callback to handle resetting results.
      */
     public DiffusionLawModel(ExpSettingsModel settings, ImageModel imageModel, FitModel fitModel,
-                             Runnable resetCallback) {
+                             BleachCorrectionModel bleachCorrectionModel, Runnable resetCallback) {
         this.interfaceSettings = settings;
         this.interfaceFitModel = fitModel;
+        this.interfaceBleachCorrectionModel = bleachCorrectionModel;
+
         this.imageModel = imageModel;
         this.resetCallback = resetCallback;
     }
@@ -131,7 +135,10 @@ public class DiffusionLawModel {
         FitModel fitModel = new FitModel(settings, interfaceFitModel);
         fitModel.setFix(true);
 
-        Correlator correlator = new Correlator(settings, fitModel, this.imageModel);
+        BleachCorrectionModel bleachCorrectionModel =
+                new BleachCorrectionModel(settings, interfaceBleachCorrectionModel);
+
+        Correlator correlator = new Correlator(settings, bleachCorrectionModel, fitModel);
         PixelModel pixelModel = new PixelModel();
 
         effectiveArea = new double[binningEnd - binningStart + 1];

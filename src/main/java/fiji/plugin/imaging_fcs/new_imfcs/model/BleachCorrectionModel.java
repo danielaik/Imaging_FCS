@@ -34,6 +34,21 @@ public class BleachCorrectionModel {
     }
 
     /**
+     * Copy constructor for BleachCorrectionModel. Use a different instance of
+     * settings to prevent side effects.
+     *
+     * @param settings The experimental settings.
+     * @param other    The BleachCorrectionModel instance to copy.
+     */
+    public BleachCorrectionModel(ExpSettingsModel settings, BleachCorrectionModel other) {
+        this.settings = settings;
+        this.imageModel = other.imageModel;
+        this.polynomialOrder = other.polynomialOrder;
+        this.numPointsIntensityTrace = other.numPointsIntensityTrace;
+        this.averageStride = other.averageStride;
+    }
+
+    /**
      * Calculates the intensity trace for a specific pixel location in an image.
      *
      * @param img the image from which intensity data is extracted
