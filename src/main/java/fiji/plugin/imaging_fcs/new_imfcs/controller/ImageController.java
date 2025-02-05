@@ -38,6 +38,7 @@ public final class ImageController {
     private final OptionsModel options;
     private final Consumer<Integer> setLastFrame;
     private Runnable refreshThresholdView = () -> {};
+    private Runnable setDiffusionLawRange = () -> {};
     private ImageView imageView;
     private int previousX = -1;
     private int previousY = -1;
@@ -155,6 +156,9 @@ public final class ImageController {
         imageModel.loadImage(image, simulationName);
 
         initializeAndDisplayImage();
+
+        // set the default end for diffusion law
+        setDiffusionLawRange.run();
     }
 
     /**
@@ -625,5 +629,9 @@ public final class ImageController {
 
     public void setRefreshThresholdView(Runnable refreshThresholdView) {
         this.refreshThresholdView = refreshThresholdView;
+    }
+
+    public void setSetDiffusionLawRange(Runnable setDiffusionLawRange) {
+        this.setDiffusionLawRange = setDiffusionLawRange;
     }
 }

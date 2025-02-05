@@ -84,6 +84,16 @@ public class DiffusionLawView extends BaseView {
         setText(tfDLFitEnd, model.getFitEnd());
     }
 
+    /**
+     * Refresh the text fields for the binning and fit ranges.
+     */
+    public void setDefaultRange() {
+        setText(tfDLBinStart, model.getBinningStart());
+        setText(tfDLBinEnd, model.getBinningEnd());
+        setText(tfDLFitStart, model.getFitStart());
+        setText(tfDLFitEnd, model.getFitEnd());
+    }
+
 
     @Override
     protected void initializeButtons() {

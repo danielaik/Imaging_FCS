@@ -21,6 +21,7 @@ import java.util.Map;
 public class DiffusionLawModel {
     private static final int MAX_POINTS = 30;
     private static final int DIMENSION_ROI = 7;
+    private static final int MINIMUM_POINTS = 4;
     private final ExpSettingsModel interfaceSettings;
     private final FitModel interfaceFitModel;
     private final ImageModel imageModel;
@@ -79,8 +80,7 @@ public class DiffusionLawModel {
                     settings.getLastFrame());
             fitModel.standardFit(pixelModel, Constants.ITIR_FCS_2D, correlator.getLagTimes());
         } catch (Exception e) {
-            IJ.log(String.format("Fail to correlate points for x=%d, y=%d with error: %s", x, y,
-                    e.getMessage()));
+            IJ.log(String.format("Fail to correlate points for x=%d, y=%d with error: %s", x, y, e.getMessage()));
             return 0;
         }
 
@@ -339,6 +339,25 @@ public class DiffusionLawModel {
 
         intercept = -1;
         slope = -1;
+    }
+
+    /**
+     * Set the default range for binning and fit based on the image model dimension.
+     */
+    public void setDefaultRange() {
+        resetResults();
+
+        binningStart = 1;
+        fitStart = 1;
+
+        int size = Math.min(imageModel.getWidth(), imageModel.getHeight());
+        if (interfaceSettings.isOverlap()) {
+            binningEnd = size + 1 - MINIMUM_POINTS;
+        } else {
+            binningEnd = size / MINIMUM_POINTS;
+        }
+
+        fitEnd = binningEnd;
     }
 
     // Getter and setter methods with input validation for binning and fitting ranges.

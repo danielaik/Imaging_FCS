@@ -125,6 +125,14 @@ public class DiffusionLawController {
     }
 
     /**
+     * Set the default ranges for binning and fit based on the image model dimension.
+     */
+    public void setDefaultRange() {
+        model.setDefaultRange();
+        view.setDefaultRange();
+    }
+
+    /**
      * Saves the diffusion law and PSF data into the given Excel workbook.
      * This method creates and adds sheets for diffusion law data and PSF results using the corresponding model.
      *

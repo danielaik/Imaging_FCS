@@ -104,6 +104,7 @@ public final class MainPanelController {
         this.nbController = new NBController(imageModel, settings, optionsModel, bleachCorrectionModel);
 
         this.diffusionLawController = new DiffusionLawController(settings, imageModel, fitModel);
+        imageController.setSetDiffusionLawRange(diffusionLawController::setDefaultRange);
 
         this.filteringController =
                 new FilteringController(settings, optionsModel, imageController, fitController, fitModel, correlator);
@@ -705,6 +706,7 @@ public final class MainPanelController {
             } else if (ev.getStateChange() == ItemEvent.SELECTED) {
                 // Don't show the message if the button is unselected.
                 IJ.showMessage("No image stack loaded.");
+                diffusionLawController.setVisible(false);
                 ((JToggleButton) ev.getSource()).setSelected(false);
             }
         };
