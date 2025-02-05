@@ -219,7 +219,6 @@ public final class MainPanelController {
                     JOptionPane.YES_NO_OPTION);
 
             if (response == JOptionPane.YES_OPTION) {
-                //                SingleTaskWorker.cancelWorker();
                 correlator.resetResults();
                 Plots.closePlots();
             } else {
@@ -1065,12 +1064,34 @@ public final class MainPanelController {
      * @return an ItemListener that processes the "Overlap" toggle button press event
      */
     public ItemListener tbOverlapPressed() {
-        return (ItemEvent ev) -> {
-            JToggleButton button = (JToggleButton) ev.getItemSelectable();
-            boolean selected = (ev.getStateChange() == ItemEvent.SELECTED);
+        return new ItemListener() {
+            private boolean ignoreEvent = false;
 
-            button.setText(selected ? "Overlap On" : "Overlap Off");
-            settings.setOverlap(selected);
+            @Override
+            public void itemStateChanged(ItemEvent ev) {
+                // If we're updating the button programmatically, ignore the event.
+                if (ignoreEvent) {
+                    return;
+                }
+
+                JToggleButton button = (JToggleButton) ev.getItemSelectable();
+                boolean selected = (ev.getStateChange() == ItemEvent.SELECTED);
+
+                try {
+                    // Check if we need to reset results due to parameter changes
+                    askResetResults();
+                } catch (RejectResetException e) {
+                    // ignore the event for the next modification
+                    ignoreEvent = true;
+                    // revert to previous stage
+                    button.setSelected(!selected);
+                    ignoreEvent = false;
+                    return;
+                }
+
+                button.setText(selected ? "Overlap On" : "Overlap Off");
+                settings.setOverlap(selected);
+            }
         };
     }
 
