@@ -117,7 +117,7 @@ public final class MainPanelController {
         } else {
             // load parameters from the excel file
             try {
-                loadExcelSettings(workbook, imageModel);
+                loadExcelSettings(workbook, imageController);
             } catch (Exception e) {
                 // if we fail to read the excel file, we just setup the class the normal way
                 IJ.showMessage("Error", "Excel format is incorrect.");
@@ -133,10 +133,6 @@ public final class MainPanelController {
         this.view = new MainPanelView(this, this.settings);
 
         if (workbook != null) {
-            if (imageModel.getImage() != null) {
-                this.imageController.initializeAndDisplayImage();
-            }
-
             // read the Excel file to restore parameters
             correlator.loadResultsFromWorkbook(workbook, imageModel.getDimension());
 
@@ -173,14 +169,14 @@ public final class MainPanelController {
     }
 
     /**
-     * Loads settings from the provided Excel workbook and applies them to the image model.
+     * Loads settings from the provided Excel workbook and applies them to the image model through the ImageController.
      * This method reads the experimental settings from the workbook, attempts to reload the image
      * from the specified path, and updates the settings and image model with the retrieved data.
      *
-     * @param workbook   the Excel workbook containing the settings to be loaded
-     * @param imageModel the ImageModel instance to be updated with the loaded settings
+     * @param workbook        the Excel workbook containing the settings to be loaded
+     * @param imageController the ImageController instance to be updated with the loaded settings
      */
-    private void loadExcelSettings(Workbook workbook, ImageModel imageModel) {
+    private void loadExcelSettings(Workbook workbook, ImageController imageController) {
         Map<String, Object> expSettingsMap = ExcelReader.readSheetToMap(workbook, "Experimental settings");
 
         ImagePlus reloadImage = IJ.openImage(expSettingsMap.get("Image path").toString());
@@ -191,11 +187,11 @@ public final class MainPanelController {
         }
 
         if (reloadImage != null) {
-            imageModel.loadImage(reloadImage, null);
+            imageController.loadImage(reloadImage, null);
         }
 
         settings.fromMapExcelLoading(expSettingsMap);
-        imageModel.fromMap(expSettingsMap);
+        imageController.fromMap(expSettingsMap);
     }
 
     /**
@@ -233,7 +229,10 @@ public final class MainPanelController {
      * @param lastFrame The last frame number to be set.
      */
     public void setLastFrame(int lastFrame) {
-        view.setTfLastFrame(String.valueOf(lastFrame));
+        if (view != null) {
+            view.setTfLastFrame(String.valueOf(lastFrame));
+        }
+
         settings.setLastFrame(String.valueOf(lastFrame));
         settings.setSlidingWindowLength(lastFrame / 20);
         updateStrideParamFields();
