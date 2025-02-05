@@ -246,21 +246,21 @@ public class BleachCorrectionModel {
         double[] result = polynomialFit.fitIntensityTrace(intensityTrace);
 
         for (int i = 0; i < intensityData.length; i++) {
-            double correlationFunction = 0;
+            double correctionFunction = 0;
             for (int j = 0; j <= polynomialOrder; j++) {
-                correlationFunction += result[j] * Math.pow(settings.getFrameTime() * (i + 0.5), j);
+                correctionFunction += result[j] * Math.pow(settings.getFrameTime() * (i + 0.5), j);
             }
-            intensityData[i] = intensityData[i] / Math.sqrt(correlationFunction / result[0]) +
-                    result[0] * (1 - Math.sqrt(correlationFunction / result[0]));
+            intensityData[i] = intensityData[i] / Math.sqrt(correctionFunction / result[0]) +
+                    result[0] * (1 - Math.sqrt(correctionFunction / result[0]));
         }
 
         for (int i = 0; i < numPointsIntensityTrace; i++) {
-            double correlationFunction = 0;
+            double correctionFunction = 0;
             for (int j = 0; j <= polynomialOrder; j++) {
-                correlationFunction += result[j] * Math.pow(intensityTime[i], j);
+                correctionFunction += result[j] * Math.pow(intensityTime[i], j);
             }
-            intensityTrace[i] = intensityTrace[i] / Math.sqrt(correlationFunction / result[0]) +
-                    result[0] * (1 - Math.sqrt(correlationFunction / result[0]));
+            intensityTrace[i] = intensityTrace[i] / Math.sqrt(correctionFunction / result[0]) +
+                    result[0] * (1 - Math.sqrt(correctionFunction / result[0]));
         }
     }
 
