@@ -178,19 +178,19 @@ public class PixelModel {
      */
     private static boolean toFilterPixelModel(PixelModel pixelModel, FitModel model,
                                               Function<FilteringModel, FilteringModel> getThreshold) {
-        return pixelModel.fitParams == null ||
-                getThreshold.apply(model.getN().getThreshold()).toFilter(pixelModel.fitParams.getN()) ||
-                getThreshold.apply(model.getD().getThreshold()).toFilter(pixelModel.fitParams.getD()) ||
-                getThreshold.apply(model.getF2().getThreshold()).toFilter(pixelModel.fitParams.getF2()) ||
-                getThreshold.apply(model.getD2().getThreshold()).toFilter(pixelModel.fitParams.getD2()) ||
-                getThreshold.apply(model.getF3().getThreshold()).toFilter(pixelModel.fitParams.getF3()) ||
-                getThreshold.apply(model.getD3().getThreshold()).toFilter(pixelModel.fitParams.getD3()) ||
-                getThreshold.apply(model.getG().getThreshold()).toFilter(pixelModel.fitParams.getG()) ||
-                getThreshold.apply(model.getVx().getThreshold()).toFilter(pixelModel.fitParams.getVx()) ||
-                getThreshold.apply(model.getVy().getThreshold()).toFilter(pixelModel.fitParams.getVy()) ||
-                getThreshold.apply(model.getFTrip().getThreshold()).toFilter(pixelModel.fitParams.getFTrip()) ||
-                getThreshold.apply(model.getTTrip().getThreshold()).toFilter(pixelModel.fitParams.getTTrip()) ||
-                getThreshold.apply(model.getChi2Threshold()).toFilter(pixelModel.chi2);
+        return pixelModel.fitParams != null &&
+                (getThreshold.apply(model.getN().getThreshold()).toFilter(pixelModel.fitParams.getN()) ||
+                        getThreshold.apply(model.getD().getThreshold()).toFilter(pixelModel.fitParams.getD()) ||
+                        getThreshold.apply(model.getF2().getThreshold()).toFilter(pixelModel.fitParams.getF2()) ||
+                        getThreshold.apply(model.getD2().getThreshold()).toFilter(pixelModel.fitParams.getD2()) ||
+                        getThreshold.apply(model.getF3().getThreshold()).toFilter(pixelModel.fitParams.getF3()) ||
+                        getThreshold.apply(model.getD3().getThreshold()).toFilter(pixelModel.fitParams.getD3()) ||
+                        getThreshold.apply(model.getG().getThreshold()).toFilter(pixelModel.fitParams.getG()) ||
+                        getThreshold.apply(model.getVx().getThreshold()).toFilter(pixelModel.fitParams.getVx()) ||
+                        getThreshold.apply(model.getVy().getThreshold()).toFilter(pixelModel.fitParams.getVy()) ||
+                        getThreshold.apply(model.getFTrip().getThreshold()).toFilter(pixelModel.fitParams.getFTrip()) ||
+                        getThreshold.apply(model.getTTrip().getThreshold()).toFilter(pixelModel.fitParams.getTTrip()) ||
+                        getThreshold.apply(model.getChi2Threshold()).toFilter(pixelModel.chi2));
     }
 
     /**
