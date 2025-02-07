@@ -311,5 +311,6 @@ public class FitController {
 
     public void setFitModel(String fitModel) {
         settings.setFitModel(fitModel);
+        updateSettingsField.run();
     }
 }

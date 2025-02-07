@@ -70,6 +70,7 @@ public final class ExpSettingsView extends BaseView {
                 createTextField(model.getEmLambda2Interface(), "", controller.updateSettings(model::setEmLambda2));
         tfSigma = createTextField(model.getSigma(), "", controller.updateSettings(model::setSigma));
         tfSigma2 = createTextField(model.getSigma2(), "", controller.updateSettings(model::setSigma2));
+
         tfSigmaZ = createTextField(model.getSigmaZ(), "", controller.updateSettings(model::setSigmaZ));
         tfSigmaZ2 = createTextField(model.getSigmaZ2(), "", controller.updateSettings(model::setSigmaZ2));
 
@@ -82,7 +83,7 @@ public final class ExpSettingsView extends BaseView {
         tfParamZ2 = createTextField("", "");
         tfParamRx = createTextField("", "");
         tfParamRy = createTextField("", "");
-        setNonEditable();
+        setNonEnabled();
     }
 
     /**
@@ -104,14 +105,23 @@ public final class ExpSettingsView extends BaseView {
     }
 
     /**
-     * Sets certain text fields to be non-editable, indicating they are for display only.
+     * Set PSFz field enabled based on the fit model
      */
-    private void setNonEditable() {
+    public void setPSFZEnabled() {
+        boolean enabled = model.getFitModel().equals(Constants.SPIM_FCS_3D);
+        tfSigmaZ.setEnabled(enabled);
+        tfSigmaZ2.setEnabled(enabled);
+    }
+
+    /**
+     * Sets certain text fields to be non-enabled, indicating they are for display only.
+     */
+    private void setNonEnabled() {
         JTextField[] nonEditFields =
                 {tfParamAx, tfParamAy, tfParamW, tfParamZ, tfParamW2, tfParamZ2, tfParamRx, tfParamRy};
 
         for (JTextField textField : nonEditFields) {
-            textField.setEditable(false);
+            textField.setEnabled(false);
         }
     }
 

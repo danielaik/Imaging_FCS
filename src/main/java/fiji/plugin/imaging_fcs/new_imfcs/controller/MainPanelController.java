@@ -1117,6 +1117,7 @@ public final class MainPanelController {
         Runnable doUpdateSettingsField = () -> {
             settings.updateSettings();
             expSettingsView.setNonUserSettings();
+            expSettingsView.setPSFZEnabled();
             filteringController.enableButtonSameAsCCF(settings.isFCCSDisp());
             filteringController.refreshFilteringView();
         };

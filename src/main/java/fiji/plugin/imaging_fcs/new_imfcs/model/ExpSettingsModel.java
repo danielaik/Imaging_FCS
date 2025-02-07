@@ -35,8 +35,8 @@ public final class ExpSettingsModel {
     private double emLambda = 515 / NANO_CONVERSION_FACTOR;
     private double sigma2 = 0.8;
     private double emLambda2 = 600 / NANO_CONVERSION_FACTOR;
-    private double sigmaZ = 1000000;
-    private double sigmaZ2 = 1000000;
+    private double sigmaZ = 1;
+    private double sigmaZ2 = 1;
     //// Other user parameters
     private int firstFrame = 1;
     private int lastFrame = 0;
