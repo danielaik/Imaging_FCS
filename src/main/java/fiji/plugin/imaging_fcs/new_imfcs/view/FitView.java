@@ -31,8 +31,7 @@ public class FitView extends BaseView {
     private final FitController controller;
 
     private JTextField tfParamQ2, tfParamN, tfParamF2, tfParamD, tfParamD2, tfParamF3, tfParamD3, tfParamQ3, tfParamVx,
-            tfParamVy, tfParamG, tfParamFTrip, tfParamTTrip, tfFitStart, tfFitEnd, tfFitModel, tfModProb1, tfModProb2,
-            tfModProb3;
+            tfParamVy, tfParamG, tfParamFTrip, tfParamTTrip, tfFitStart, tfFitEnd, tfModProb1, tfModProb2, tfModProb3;
     private JButton btnTest, btnSetPar;
     private JToggleButton tbGLS, tbBayes, tbFixPar;
     private JRadioButton holdN, holdF2, holdD, holdD2, holdF3, holdD3, holdVx, holdVy, holdG, holdFTrip, holdTTtrip;
@@ -80,11 +79,6 @@ public class FitView extends BaseView {
         tfParamTTrip = createTextField(model.getTTripInterface(), "", createFocusListener(model::setTTrip));
         tfFitStart = createTextField(model.getFitStart(), "", createFocusListener(model::setFitStart));
         tfFitEnd = createTextField(model.getFitEnd(), "", createFocusListener(model::setFitEnd));
-
-        // TODO: set this value to the model currently selected
-        //  (we can probably just delete it as it duplicates the model name)
-        tfFitModel = createTextField("Model", "");
-        tfFitModel.setEditable(false);
 
         tfModProb1 = createTextField(model.getModProb1(), "", createFocusListener(model::setModProb1));
         tfModProb2 = createTextField(model.getModProb2(), "", createFocusListener(model::setModProb2));
