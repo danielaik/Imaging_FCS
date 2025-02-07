@@ -75,9 +75,9 @@ public class DiffusionLawView extends BaseView {
      * @param b {@code true} to make the fields editable; {@code false} to make them non-editable.
      */
     public void setFieldsEditable(boolean b) {
-        tfDLBinEnd.setEditable(b);
-        tfDLFitStart.setEditable(b);
-        tfDLFitEnd.setEditable(b);
+        tfDLBinEnd.setEnabled(b);
+        tfDLFitStart.setEnabled(b);
+        tfDLFitEnd.setEnabled(b);
 
         setText(tfDLBinEnd, model.getBinningEnd());
         setText(tfDLFitStart, model.getFitStart());

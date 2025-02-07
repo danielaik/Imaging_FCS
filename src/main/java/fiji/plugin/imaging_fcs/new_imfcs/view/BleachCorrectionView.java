@@ -67,7 +67,7 @@ public class BleachCorrectionView extends BaseView {
         tfIntAveStride =
                 createTextField(model.getAverageStride(), "", controller.updateStrideParam(model::setAverageStride));
         tfNumPointsIntensityTrace = createTextField(model.getNumPointsIntensityTrace(), "");
-        tfNumPointsIntensityTrace.setEditable(false);
+        tfNumPointsIntensityTrace.setEnabled(false);
     }
 
     /**
