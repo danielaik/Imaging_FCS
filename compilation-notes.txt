@@ -10,6 +10,9 @@ mvn clean package -DcompileLibs=true -e
 
 *** log 
 
+07/02/2025
+    Allow batch analysis to start with user defined first and last frame to correlate or process
+
 13/01/2025
     batch PSF analysis disabled dialog prompt and allow as many PSF permutations
 

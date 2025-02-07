@@ -2134,7 +2134,7 @@ public class Imaging_FCS implements PlugIn {
         if (WindowManager.getImageCount() > 0) {
             closeWindows();
             imp = IJ.getImage();
-            obtainImage();
+            obtainImage(true);
         } else {
             IJ.showMessage("No image open.");
         }
@@ -2144,7 +2144,7 @@ public class Imaging_FCS implements PlugIn {
         imp = IJ.openImage();
         if (imp != null) {
             imp.show();
-            obtainImage();
+            obtainImage(true);
             closeWindows();
         }
     };
@@ -7593,14 +7593,14 @@ public class Imaging_FCS implements PlugIn {
 
             if (imp != null) {
                 imp.show();
-                obtainImage();
+                obtainImage(false);
                 closeWindows();
             } else {
                 IJ.log("Image not found, please select path");
                 imp = IJ.openImage();
 
                 imp.show();
-                obtainImage();
+                obtainImage(false);
                 closeWindows();
                 boolean DataOK = (data_width == width) && (data_height == height)
                         && ((data_lastframe - data_firstframe + 1) == frames);
@@ -8593,7 +8593,7 @@ public class Imaging_FCS implements PlugIn {
      * The following procedures check that correct images are open and paramters are
      * meaningful and partly define reuqired parameters for the correlation
      *
-     * public void obtainImage(): use existing image or load new image and set
+     * public void obtainImage(boolean isAutomaticSet): use existing image or load new image and set
      * essential variables and arrays for this image; sets parameter setImp to true
      * infroming the program that an appropriate image is available
      * public void check(ImagePlus image): checks whether the open file is a
@@ -8607,7 +8607,7 @@ public class Imaging_FCS implements PlugIn {
      * the panel is performed
      * public void initializeArrays(): initializes arrays if essential parameters
      * have been changed or image loaded; is called from setParameters() and
-     * obtainImage()
+     * obtainImage(boolean isAutomaticSetFrames)
      * public void initializeFitres(int a, int b, int c, int d): initialize Fitres
      * and CCFq with NaN
      * public void initializepixvalid(int a, int b, int c): initialize filtering
@@ -8645,7 +8645,7 @@ public class Imaging_FCS implements PlugIn {
      * experiment after readExperiment
      *
      */
-    public void obtainImage() {
+    public void obtainImage(boolean isAutomaticSetFrames) {
 
         if (impwin != null && impwin.isClosed() == false) { // remove listeners and overlays from image window if a
             // previous one existed
@@ -8689,7 +8689,15 @@ public class Imaging_FCS implements PlugIn {
         // the image window
         width = imp.getWidth();
         height = imp.getHeight();
-        frames = imp.getStackSize();
+        if (isAutomaticSetFrames) {
+            firstframe = 1;
+            frames = imp.getStackSize();
+            lastframe = frames;
+        } else {
+            firstframe = Integer.parseInt(tfFirstFrame.getText());
+            lastframe = Integer.parseInt(tfLastFrame.getText());
+            frames = lastframe - firstframe + 1;
+        }
 
         // check whether a background file has been loaded and whether this is to be
         // used
@@ -8738,7 +8746,8 @@ public class Imaging_FCS implements PlugIn {
         // "Set" command was necessary
 
         // set file parameters in control window
-        tfLastFrame.setText(Integer.toString(frames));
+        tfFirstFrame.setText(Integer.toString(firstframe));
+        tfLastFrame.setText(Integer.toString(lastframe));
         JBackgroundSubtractionComponentObj.tfBackground.setText(Integer.toString(impmin));
         JBackgroundSubtractionComponentObj.tfBackground2.setText(Integer.toString(impmin));
         slidingWindowLength = (int) Math.floor(frames / 20);
@@ -9013,8 +9022,8 @@ public class Imaging_FCS implements PlugIn {
 
             // check parameter settings
             // check that numbers are not out of bounds and make sense
-            if (firstframe < 1 || firstframe > frames || lastframe < 1 || lastframe > frames
-                    || firstframe >= lastframe) {
+            // lastframe > frames (can be valid scenario)
+            if (firstframe < 1 || firstframe > frames || lastframe < 1 || firstframe >= lastframe) {
                 JOptionPane.showMessageDialog(null, "Frames set incorrectly");
                 return false;
             }
@@ -9961,8 +9970,8 @@ public class Imaging_FCS implements PlugIn {
     // determine minimum value in imsPVideoNDave
     public int minDetermination(ImagePlus image) {
         int min;
-        min = image.getStack().getProcessor(1).get(0, 0);
-        for (int z = 1; z <= frames; z++) {
+        min = image.getStack().getProcessor(firstframe).get(0, 0);
+        for (int z = firstframe; z <= lastframe; z++) {
             for (int x = 0; x < width; x++) {
                 for (int y = 0; y < height; y++) {
                     if (image.getStack().getProcessor(z).get(x, y) < min) {
@@ -10389,7 +10398,7 @@ public class Imaging_FCS implements PlugIn {
             for (File currentFile : files) {
                 imp = IJ.openImage(currentFile.getAbsolutePath());
                 imp.show();
-                obtainImage();
+                obtainImage(false);
                 setParameters();
 
                 // perform selected functions on the current image
@@ -20854,7 +20863,7 @@ public class Imaging_FCS implements PlugIn {
             imp.show();
             IJ.run(imp, "Enhance Contrast", "saturated=0.35"); // autoscaling the contrast
             simFile = true;
-            obtainImage();
+            obtainImage(true);
             closeWindows();
         } else {
             // save the simulation file
@@ -21230,7 +21239,7 @@ public class Imaging_FCS implements PlugIn {
         imp.show();
         IJ.run(imp, "Enhance Contrast", "saturated=0.35"); // autoscaling the contrast
         simFile = true;
-        obtainImage();
+        obtainImage(true);
     }
 
     /*
