@@ -112,12 +112,7 @@ public abstract class FCSFit implements ParametricUnivariateFunction {
             double plat = calculatePlat(perfTermX, perfTermY, sqrtTerm);
             double dDplat = calculateDPlat(perfTermX, perfTermY, sqrtTerm, x);
 
-            double pspim = 1 / Math.sqrt(1 + (4 * D * x) / Math.pow(sz, 2));
-            double dDpspim = -4 * x / (2 * Math.pow(sz, 2) * Math.pow(Math.sqrt(1 + (4 * D * x) / Math.pow(sz, 2)), 3));
-
-            double acf = plat * pspim;
-
-            return new double[]{plat, dDplat, perfTermX.dPerf, perfTermY.dPerf, pspim, dDpspim, acf};
+            return new double[]{plat, dDplat, perfTermX.dPerf, perfTermY.dPerf};
         });
     }
 
@@ -191,13 +186,10 @@ public abstract class FCSFit implements ParametricUnivariateFunction {
         double[] component3 = calculateComponent(x, p.getD3(), p.getVx(), p.getVy());
 
         double plat1 = component1[0], dDplat1 = component1[1], dvxPerfXt1 = component1[2], dvyPerfYt1 = component1[3];
-        double pspim1 = component1[4], dDpspim1 = component1[5], acf1 = component1[6];
 
         double plat2 = component2[0], dDplat2 = component2[1], dvxPerfXt2 = component2[2], dvyPerfYt2 = component2[3];
-        double pspim2 = component2[4], dDpspim2 = component2[5], acf2 = component2[6];
 
         double plat3 = component3[0], dDplat3 = component3[1], dvxPerfXt3 = component3[2], dvyPerfYt3 = component3[3];
-        double pspim3 = component3[4], dDpspim3 = component3[5], acf3 = component3[6];
 
         // Triplet Correction
         double triplet = calculateTriplet(x, p.getFTrip(), p.getTTrip());
@@ -210,22 +202,22 @@ public abstract class FCSFit implements ParametricUnivariateFunction {
         double[] df = calculateDNomFactors(p.getF2(), p.getF3(), q2, q3);
         double dfNom = df[0], df21 = df[1], df22 = df[2], df23 = df[3], df31 = df[4], df32 = df[5], df33 = df[6];
 
-        double pacf = (1 / p.getN()) * ((1 - p.getF2() - p.getF3()) * acf1 + Math.pow(q2, 2) * p.getF2() * acf2 +
-                Math.pow(q3, 2) * p.getF3() * acf3) /
+        double pacf = (1 / p.getN()) * ((1 - p.getF2() - p.getF3()) * plat1 + Math.pow(q2, 2) * p.getF2() * plat2 +
+                Math.pow(q3, 2) * p.getF3() * plat3) /
                 Math.pow(1 - p.getF2() - p.getF3() + q2 * p.getF2() + q3 * p.getF3(), 2) * triplet + p.getG();
 
         double[] results = new double[]{
-                (-1 / Math.pow(p.getN(), 2)) * (pf1 * acf1 + pf2 * acf2 + pf3 * acf3) * triplet,
-                (1 / p.getN()) * pf1 * (plat1 * dDpspim1 + pspim1 * dDplat1),
-                (1 / p.getN()) * (pf1 * dvxPerfXt1 * plat1 * pspim1 + pf2 * dvxPerfXt2 * plat2 * pspim2 +
-                        pf3 * dvxPerfXt3 * plat3 * pspim3) * triplet,
-                (1 / p.getN()) * (pf1 * dvyPerfYt1 * plat1 * pspim1 + pf2 * dvyPerfYt2 * plat2 * pspim2 +
-                        pf3 * dvyPerfYt3 * plat3 * pspim3) * triplet,
+                (-1 / Math.pow(p.getN(), 2)) * (pf1 * plat1 + pf2 * plat2 + pf3 * plat3) * triplet,
+                (1 / p.getN()) * pf1 * dDplat1,
+                (1 / p.getN()) * (pf1 * dvxPerfXt1 * plat1 + pf2 * dvxPerfXt2 * plat2 + pf3 * dvxPerfXt3 * plat3) *
+                        triplet,
+                (1 / p.getN()) * (pf1 * dvyPerfYt1 * plat1 + pf2 * dvyPerfYt2 * plat2 + pf3 * dvyPerfYt3 * plat3) *
+                        triplet,
                 1,
-                (1 / p.getN()) * (1 / dfNom) * (df21 * acf1 + df22 * acf2 + df23 * acf3) * triplet,
-                (1 / p.getN()) * pf2 * (plat2 * dDpspim2 + pspim2 * dDplat2) * triplet,
-                (1 / p.getN()) * (1 / dfNom) * (df31 * acf1 + df32 * acf2 + df33 * acf3) * triplet,
-                (1 / p.getN()) * pf3 * (plat3 * dDpspim3 + pspim3 * dDplat3) * triplet,
+                (1 / p.getN()) * (1 / dfNom) * (df21 * plat1 + df22 * plat2 + df23 * plat3) * triplet,
+                (1 / p.getN()) * pf2 * dDplat2 * triplet,
+                (1 / p.getN()) * (1 / dfNom) * (df31 * plat1 + df32 * plat2 + df33 * plat3) * triplet,
+                (1 / p.getN()) * pf3 * dDplat3 * triplet,
                 dTripletFtrip * pacf,
                 dTripletTtrip * pacf
         };
@@ -310,9 +302,9 @@ public abstract class FCSFit implements ParametricUnivariateFunction {
     public double value(double x, double[] params) {
         PixelModel.FitParameters p = new PixelModel.FitParameters(fitModel.fillParamsArray(params));
 
-        double acf1 = calculateComponent(x, p.getD(), p.getVx(), p.getVy())[6];
-        double acf2 = calculateComponent(x, p.getD2(), p.getVx(), p.getVy())[6];
-        double acf3 = calculateComponent(x, p.getD3(), p.getVx(), p.getVy())[6];
+        double acf1 = calculateComponent(x, p.getD(), p.getVx(), p.getVy())[0];
+        double acf2 = calculateComponent(x, p.getD2(), p.getVx(), p.getVy())[0];
+        double acf3 = calculateComponent(x, p.getD3(), p.getVx(), p.getVy())[0];
 
         double triplet = calculateTriplet(x, p.getFTrip(), p.getTTrip());
 
