@@ -50,7 +50,7 @@ public final class MainPanelView extends BaseView {
 
     // Buttons
     private JButton btnSave, btnRead, btnExit, btnLoad, btnBatch, btnDCCF, btnWriteConfig, btnUseExisting, btnDCR,
-            btnParamVideo, btnOptions, btnAve, btnParaCor, btnPSF, btnAll, btnROI, btnBtf, btnMore;
+            btnParamVideo, btnOptions, btnAve, btnParaCor, btnPSF, btnAll, btnROI, btnMore, btnCancel;
     private JToggleButton tbExpSettings, tbFit, tbOverlap, tbBackground, tbNB, tbFiltering, tbBleachCorStride, tbDL,
             tbSim, tbMSD;
 
@@ -236,8 +236,10 @@ public final class MainPanelView extends BaseView {
         btnAll = createJButton("All", "Calculates all ACFs.", null, controller.btnAllPressed());
         btnROI = createJButton("ROI", "Calculates ACFs only in the currently chose ROI.", null,
                 controller.btnROIPressed());
-        btnBtf = createJButton("To Front", "Bring all windows of this plugin instance to the front.", null,
-                controller.btnBringToFrontPressed());
+        btnCancel = createJButton("Cancel correlation", "Cancel the current correlation run.", null,
+                controller.btnCancelCorrelationPressed());
+        btnCancel.setForeground(EXIT_BUTTON_COLOR);
+
         btnMore = createJButton("More \u25BC", "Show more options", null, controller.btnMorePressed());
     }
 
@@ -398,7 +400,7 @@ public final class MainPanelView extends BaseView {
 
         addRow(extendedPanel, btnDCCF, cbDCCF, btnParaCor, cbParaCor);
         addRow(extendedPanel, btnPSF, tbDL, tbMSD, tbSim);
-        addRow(extendedPanel, btnBtf);
+        addRow(extendedPanel, btnCancel);
     }
 
     /**

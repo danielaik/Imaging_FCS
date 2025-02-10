@@ -189,15 +189,6 @@ public final class ImageController {
     }
 
     /**
-     * Bring the loaded image to front
-     */
-    public void toFront() {
-        if (isImageLoaded()) {
-            imageModel.getWindow().toFront();
-        }
-    }
-
-    /**
      * Performs the correlation and fitting for a pixel at the given coordinates.
      * If FCCS display is enabled, it additionally fits the FCCS model. It also optionally computes
      * the Mean Squared Displacement (MSD) if enabled in the settings.

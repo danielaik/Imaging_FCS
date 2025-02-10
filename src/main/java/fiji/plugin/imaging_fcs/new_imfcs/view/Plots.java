@@ -1207,19 +1207,4 @@ public class Plots {
             saveWindow(window, path);
         }
     }
-
-    /**
-     * Brings all managed {@link ImageWindow} instances to the front.
-     * <p>
-     * Iterates through all open windows and brings each one to the front
-     * if it is not null, ensuring they are visible to the user.
-     * </p>
-     */
-    public static void toFront() {
-        for (ImageWindow window : getImageWindows()) {
-            if (window != null) {
-                window.toFront();
-            }
-        }
-    }
 }

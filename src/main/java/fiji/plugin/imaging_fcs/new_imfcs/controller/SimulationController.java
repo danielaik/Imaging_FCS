@@ -193,11 +193,4 @@ public final class SimulationController {
     public void dispose() {
         this.simulationView.dispose();
     }
-
-    /**
-     * Bring the view to front
-     */
-    public void toFront() {
-        this.simulationView.toFront();
-    }
 }
