@@ -1,10 +1,7 @@
 package fiji.plugin.imaging_fcs.new_imfcs.model.correlations;
 
 import fiji.plugin.imaging_fcs.new_imfcs.constants.Constants;
-import fiji.plugin.imaging_fcs.new_imfcs.model.BleachCorrectionModel;
-import fiji.plugin.imaging_fcs.new_imfcs.model.ExpSettingsModel;
-import fiji.plugin.imaging_fcs.new_imfcs.model.FitModel;
-import fiji.plugin.imaging_fcs.new_imfcs.model.PixelModel;
+import fiji.plugin.imaging_fcs.new_imfcs.model.*;
 import fiji.plugin.imaging_fcs.new_imfcs.utils.ExcelReader;
 import fiji.plugin.imaging_fcs.new_imfcs.utils.Pair;
 import ij.ImagePlus;
@@ -945,6 +942,8 @@ public class Correlator {
      * Reset the saved results.
      */
     public void resetResults() {
+        CorrelationWorker.cancelPreviousInstance();
+
         pixelModels = null;
         lastUsedPixelModel = null;
         lags = null;

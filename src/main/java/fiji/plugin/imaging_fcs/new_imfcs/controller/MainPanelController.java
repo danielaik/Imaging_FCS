@@ -938,7 +938,7 @@ public final class MainPanelController {
 
                 // Perform ROI
                 IJ.showStatus("Correlating pixels");
-                new BackgroundTaskWorker<Void, Void>(() -> imageController.correlateROI(imgRoi)).execute();
+                new CorrelationWorker(imageController, imgRoi).execute();
             }
         };
     }

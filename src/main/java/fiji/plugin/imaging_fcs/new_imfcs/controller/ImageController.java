@@ -14,6 +14,7 @@ import ij.gui.ImageCanvas;
 import ij.gui.ImageWindow;
 import ij.gui.Roi;
 
+import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
 import java.util.ArrayList;
@@ -21,6 +22,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 import static fiji.plugin.imaging_fcs.new_imfcs.model.correlations.MeanSquareDisplacement.correlationToMSD;
 
@@ -308,11 +310,14 @@ public final class ImageController {
     }
 
     /**
-     * Correlates a Region of Interest (ROI) in the image.
+     * Correlates the given ROI while periodically checking for cancellation.
+     * Iterates over binned pixels and stops processing if cancelChecker returns true
+     * or the thread is interrupted.
      *
-     * @param imgRoi The ROI to be correlated.
+     * @param imgRoi        the ROI to correlate
+     * @param cancelChecker a Supplier that returns true when cancellation is requested
      */
-    public void correlateROI(Roi imgRoi) {
+    public void correlateROI(Roi imgRoi, Supplier<Boolean> cancelChecker) {
         Point pixelBinning = settings.getPixelBinning();
         Rectangle rect = imgRoi.getBounds();
 
@@ -332,7 +337,17 @@ public final class ImageController {
         List<PixelModel> correlatedPixels = new ArrayList<>();
 
         for (int x = xRange.getStart(); x <= xRange.getEnd(); x += xRange.getStep()) {
+            // Check for interruption
+            if (cancelChecker.get() || Thread.currentThread().isInterrupted()) {
+                return;
+            }
+
             for (int y = yRange.getStart(); y <= yRange.getEnd(); y += yRange.getStep()) {
+                // Check for interruption again to respond quickly
+                if (cancelChecker.get() || Thread.currentThread().isInterrupted()) {
+                    return;
+                }
+
                 try {
                     if (isPixelInRoi(imgRoi, x * pixelBinning.x, y * pixelBinning.y)) {
                         Point[] points = correlatePixel(x, y, false);
@@ -340,7 +355,7 @@ public final class ImageController {
                         PixelModel pixelModel = correlator.getPixelModel(points[0].x, points[0].y);
                         correlatedPixels.add(pixelModel);
 
-                        plotFittedParams(points);
+                        SwingUtilities.invokeLater(() -> plotFittedParams(points));
                     }
                 } catch (Exception e) {
                     IJ.log(String.format("Fail to correlate points for x=%d, y=%d with error: %s", x, y,
@@ -351,6 +366,15 @@ public final class ImageController {
         }
 
         plotMultiplePixelsModels(correlatedPixels);
+    }
+
+    /**
+     * Correlates the given ROI without cancellation support.
+     *
+     * @param imgRoi the ROI to correlate
+     */
+    public void correlateROI(Roi imgRoi) {
+        correlateROI(imgRoi, () -> false);
     }
 
     /**
