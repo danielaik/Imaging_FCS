@@ -53,24 +53,6 @@ public final class ExcelExporter {
     }
 
     /**
-     * Retrieves the row at the specified index from the given sheet.
-     * If the row does not exist, a new row is created at that index.
-     *
-     * @param sheet the sheet from which to retrieve or create the row
-     * @param i     the index of the row to retrieve or create
-     * @return the existing or newly created row at the specified index
-     */
-    private static Row getOrCreateRow(Sheet sheet, int i) {
-        Row row = sheet.getRow(i);
-
-        if (row == null) {
-            row = sheet.createRow(i);
-        }
-
-        return row;
-    }
-
-    /**
      * Creates a sheet in the given workbook from a 2D array of PixelModel objects.
      * The data for each PixelModel is extracted using the provided array getter function
      * and written to the sheet in a specific format.
@@ -421,36 +403,6 @@ public final class ExcelExporter {
     }
 
     /**
-     * Adds a set of values into a given row in the Excel sheet, starting from the second column.
-     * The first cell in the row contains the provided name, and subsequent cells contain the values from
-     * the 2D array in a row-wise manner.
-     *
-     * @param row    the row where the values will be added
-     * @param name   the name to set in the first column of the row
-     * @param values a 2D array of values to add in the subsequent columns
-     * @return 1 if values were added, 0 if the values array is null
-     */
-    private static int addValueInRow(Row row, String name, double[][] values) {
-        if (values == null) {
-            return 0;
-        }
-
-        row.createCell(0).setCellValue(name);
-        int columnIndex = 1;
-
-        int numRow = values.length;
-        int numCol = values[0].length;
-
-        for (int y = 0; y < numCol; y++) {
-            for (int x = 0; x < numRow; x++) {
-                row.createCell(columnIndex++).setCellValue(values[x][y]);
-            }
-        }
-
-        return 1;
-    }
-
-    /**
      * Creates and saves an Excel sheet with Number and Brightness (N&B) data.
      * The sheet includes multiple sections such as "Number", "Brightness", "Num (corrected)",
      * and "Epsilon (corrected)", with each section containing the values from the corresponding 2D array.
@@ -463,28 +415,44 @@ public final class ExcelExporter {
      */
     public static void saveNumberAndBrightnessSheet(Workbook workbook, double[][] NBB, double[][] NBN, double[][] NBNum,
                                                     double[][] NBEpsilon) {
-        if (NBB == null) {
+        if (NBB == null || NBN == null) {
             return;
         }
 
-        Sheet sheet = workbook.createSheet("N&B");
-        Row headerRow = sheet.createRow(0);
-        int numRow = NBB.length;
-        int numCol = NBB[0].length;
+        int numRows = NBB.length;
+        int numCols = NBB[0].length;
 
-        int columnIndex = 1;
-        for (int y = 0; y < numCol; y++) {
-            for (int x = 0; x < numRow; x++) {
-                headerRow.createCell(columnIndex++).setCellValue(String.format("(%d, %d)", x, y));
-            }
+        Sheet sheet = workbook.createSheet("N&B");
+
+        // Create the header row.
+        Row header = sheet.createRow(0);
+        int colIndex = 0;
+        header.createCell(colIndex++).setCellValue("Coordinate");
+        header.createCell(colIndex++).setCellValue("Number");
+        header.createCell(colIndex++).setCellValue("Brightness");
+
+        if (NBNum != null && NBEpsilon != null) {
+            header.createCell(colIndex++).setCellValue("Num (corrected)");
+            header.createCell(colIndex).setCellValue("Epsilon (corrected)");
         }
 
-        // if one of the arrays is null, it will not be added.
+        // Now write each data row in full.
         int rowIndex = 1;
-        rowIndex += addValueInRow(getOrCreateRow(sheet, rowIndex), "Number", NBN);
-        rowIndex += addValueInRow(getOrCreateRow(sheet, rowIndex), "Brightness", NBB);
-        rowIndex += addValueInRow(getOrCreateRow(sheet, rowIndex), "Num (corrected)", NBNum);
-        addValueInRow(getOrCreateRow(sheet, rowIndex), "Epsilon (corrected)", NBEpsilon);
+        for (int y = 0; y < numCols; y++) {
+            for (int x = 0; x < numRows; x++) {
+                Row row = sheet.createRow(rowIndex++);
+                colIndex = 0;
+                // Write coordinate in the first column.
+                row.createCell(colIndex++).setCellValue(String.format("(%d, %d)", x, y));
+                // Write each additional value if the corresponding array is not null.
+                row.createCell(colIndex++).setCellValue(NBN[x][y]);
+                row.createCell(colIndex++).setCellValue(NBB[x][y]);
+                if (NBNum != null && NBEpsilon != null) {
+                    row.createCell(colIndex++).setCellValue(NBNum[x][y]);
+                    row.createCell(colIndex).setCellValue(NBEpsilon[x][y]);
+                }
+            }
+        }
     }
 
     /**
