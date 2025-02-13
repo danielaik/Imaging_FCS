@@ -280,6 +280,13 @@ public class FitController {
     }
 
     /**
+     * Bring the view to front
+     */
+    public void toFront() {
+        this.view.toFront();
+    }
+
+    /**
      * Checks if the view is currently visible (activated).
      *
      * @return true if the view is visible, false otherwise.

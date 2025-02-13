@@ -115,6 +115,13 @@ public class BackgroundSubtractionController {
         this.view.dispose();
     }
 
+    /**
+     * Bring the view to front
+     */
+    public void toFront() {
+        this.view.toFront();
+    }
+
     public void setTfBackground(int background) {
         view.setTfBackground(String.valueOf(background));
     }

@@ -412,6 +412,27 @@ public final class MainPanelController {
     }
 
     /**
+     * Returns an {@link ActionListener} that brings all key application windows to the front.
+     *
+     * @return an {@link ActionListener} to bring all windows to the front.
+     */
+    public ActionListener btnBringToFrontPressed() {
+        return (ActionEvent ev) -> {
+            bleachCorrectionView.toFront();
+            filteringController.toFront();
+            simulationController.toFront();
+            nbController.toFront();
+            backgroundSubtractionController.toFront();
+            imageController.toFront();
+            diffusionLawController.toFront();
+            fitController.toFront();
+            Plots.toFront();
+            expSettingsView.toFront();
+            view.toFront();
+        };
+    }
+
+    /**
      * Returns an {@link ActionListener} that cancels the current correlate ROI method if it's running.
      *
      * @return an {@link ActionListener} to cancel the current correlation.

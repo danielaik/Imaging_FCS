@@ -213,4 +213,11 @@ public class FilteringController {
     public void dispose() {
         view.dispose();
     }
+
+    /**
+     * Brings the filtering view to the front.
+     */
+    public void toFront() {
+        view.toFront();
+    }
 }
