@@ -9,6 +9,8 @@ import fiji.plugin.imaging_fcs.new_imfcs.model.fit.StandardFit;
 import java.util.Arrays;
 import java.util.function.Function;
 
+import java.util.stream.IntStream;
+
 import static fiji.plugin.imaging_fcs.new_imfcs.constants.Constants.DIFFUSION_COEFFICIENT_BASE;
 import static fiji.plugin.imaging_fcs.new_imfcs.constants.Constants.PIXEL_SIZE_REAL_SPACE_CONVERSION_FACTOR;
 
@@ -148,6 +150,73 @@ public class FitModel {
                 .filter(parameter -> !parameter.isHeld())
                 .mapToDouble(Parameter::getValue)
                 .toArray();
+    }
+
+
+    /**
+     * Retrieves the values of parameters that are not held (fixed) from a given PixelModel.
+     *
+     * @param fitParameters The fit parameters from a PixelModel instance.
+     * @return An array of parameter values that are not held.
+     */
+    public double[] getNonHeldParameterValuesFromPixelModel(PixelModel.FitParameters fitParameters) {
+        Parameter[] paramArray = {N, D, vx, vy, G, F2, D2, F3, D3, fTrip, tTrip};
+
+        // Corresponding FitParameters "get" methods in the same order
+        double[] paramValues = {
+                fitParameters.getN(),
+                fitParameters.getD(),
+                fitParameters.getVx(),
+                fitParameters.getVy(),
+                fitParameters.getG(),
+                fitParameters.getF2(),
+                fitParameters.getD2(),
+                fitParameters.getF3(),
+                fitParameters.getD3(),
+                fitParameters.getFTrip(),
+                fitParameters.getTTrip()
+        };
+
+        // Filter out all parameters that are held
+        return IntStream.range(0, paramArray.length)
+                        .filter(i -> !paramArray[i].isHeld())
+                        .mapToDouble(i -> paramValues[i])
+                        .toArray();
+    }
+
+    /**
+     * Retrieves the values of all parameters as an array of floats.
+     *
+     * @return A float array containing the values of all parameters.
+     */
+    public float[] getFloatParameterValues() {
+        Parameter[] parameters = {N, D, vx, vy, G, F2, D2, F3, D3, fTrip, tTrip};
+
+        float[] values = new float[parameters.length];
+
+        for (int i = 0; i < parameters.length; i++) {
+            values[i] = (float) parameters[i].getValue();
+        }
+
+        return values;
+
+    }
+
+    /**
+     * Retrieves a boolean array indicating which parameters should be fitted.
+     *
+     * @return A boolean array representing the fit state of each parameter.
+     */
+    public boolean[] getParametersToFit() {
+        Parameter[] parameters = {N, D, vx, vy, G, F2, D2, F3, D3, fTrip, tTrip};
+
+        boolean[] parametersToFit = new boolean[parameters.length];
+
+        for (int i = 0; i < parameters.length; i++) {
+            parametersToFit[i] = !parameters[i].isHeld();
+        }
+
+        return parametersToFit;
     }
 
     /**
@@ -292,6 +361,17 @@ public class FitModel {
     public void theoreticalFit(PixelModel pixelModel, double[] lagTimes) {
         StandardFit fitter = new StandardFit(this, settings, settings.getFitModel());
         fitter.theoreticalFit(pixelModel, lagTimes);
+    }
+
+    /**
+     * Computes the fitted correlation function for a given pixel model.
+     *
+     * @param pixelModel The pixel model for which to compute the fitted correlation function.
+     * @param lagTimes   The array of lag times used in the computation.
+     */
+    public void calculateFittedCorrelationFunction(PixelModel pixelModel, double[] lagTimes) {
+        StandardFit fitter = new StandardFit(this, settings, settings.getFitModel());
+        fitter.calculateFittedCorrelationFunction(pixelModel, lagTimes);
     }
 
     /**

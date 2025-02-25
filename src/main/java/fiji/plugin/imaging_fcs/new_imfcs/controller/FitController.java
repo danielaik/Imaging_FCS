@@ -319,6 +319,10 @@ public class FitController {
         updateSettingsField.run();
     }
 
+    public FitModel getModel() {
+        return model;
+    }
+
     public void setFitModelField(FitFunctions fitModel) {
         view.setFitModel(fitModel);
     }

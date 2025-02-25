@@ -180,6 +180,26 @@ public class StandardFit extends BaseFit {
     }
 
     /**
+     * Calculates the fitted correlation function for a given pixel model using the specified lag times.
+     * This method evaluates the correlation function using the current parameter values stored in the pixel model
+     * and updates the fitted correlation function in the pixel model.
+     *
+     * @param pixelModel The PixelModel instance containing the correlation function and fitting parameters.
+     * @param lagTimes   The array of lag times used for evaluating the fitted correlation function.
+     */
+    public void calculateFittedCorrelationFunction(PixelModel pixelModel, double[] lagTimes) {
+        int channelNumber = pixelModel.getCorrelationFunction().length;
+        double[] fitAcf = new double[channelNumber];
+        double[] parameters = model.getNonHeldParameterValuesFromPixelModel(pixelModel.getFitParams());
+
+        for (int i = model.getFitStart(); i <= model.getFitEnd(); i++) {
+            fitAcf[i] = function.value(lagTimes[i], parameters);
+        }
+
+        pixelModel.setFittedCF(fitAcf);
+    }
+
+    /**
      * A static class representing the output of a fitting process.
      * It contains the covariance matrix, residuals, and sigma values.
      */

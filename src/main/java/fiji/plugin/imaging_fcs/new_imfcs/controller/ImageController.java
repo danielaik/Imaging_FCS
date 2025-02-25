@@ -2,6 +2,7 @@ package fiji.plugin.imaging_fcs.new_imfcs.controller;
 
 import fiji.plugin.imaging_fcs.new_imfcs.enums.BackgroundMode;
 import fiji.plugin.imaging_fcs.new_imfcs.enums.FitFunctions;
+import fiji.plugin.imaging_fcs.new_imfcs.gpu.GpuCorrelator;
 import fiji.plugin.imaging_fcs.new_imfcs.model.*;
 import fiji.plugin.imaging_fcs.new_imfcs.model.correlations.Correlator;
 import fiji.plugin.imaging_fcs.new_imfcs.model.correlations.SelectedPixel;
@@ -15,7 +16,6 @@ import ij.gui.ImageCanvas;
 import ij.gui.ImageWindow;
 import ij.gui.Roi;
 
-import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
 import java.util.ArrayList;
@@ -24,6 +24,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
+
+import javax.swing.SwingUtilities;
 
 import static fiji.plugin.imaging_fcs.new_imfcs.model.correlations.MeanSquareDisplacement.correlationToMSD;
 
@@ -56,12 +58,13 @@ public final class ImageController {
      * @param correlator                      The correlator.
      * @param settings                        The experimental settings model.
      * @param options                         The options model.
-     * @param setLastFrame                    A {@code Consumer<Integer>} to set the last frame index.
+     * @param setLastFrame                    A {@code Consumer<Integer>} to set the
+     *                                        last frame index.
      */
     public ImageController(ImageModel imageModel, BackgroundSubtractionController backgroundSubtractionController,
-                           FitController fitController, BleachCorrectionModel bleachCorrectionModel,
-                           Correlator correlator, ExpSettingsModel settings, OptionsModel options,
-                           Consumer<Integer> setLastFrame) {
+            FitController fitController, BleachCorrectionModel bleachCorrectionModel,
+            Correlator correlator, ExpSettingsModel settings, OptionsModel options,
+            Consumer<Integer> setLastFrame) {
         this.imageModel = imageModel;
         this.backgroundSubtractionController = backgroundSubtractionController;
         this.fitController = fitController;
@@ -94,7 +97,8 @@ public final class ImageController {
     /**
      * Retrieves the dimension of the currently loaded image from the model.
      *
-     * @return The Dimension object representing the dimension of the currently loaded image.
+     * @return The Dimension object representing the dimension of the currently
+     *         loaded image.
      */
     public Dimension getImageDimension() {
         return imageModel.getDimension();
@@ -154,7 +158,8 @@ public final class ImageController {
     }
 
     /**
-     * Loads the given image into the model and sets up the view and event listeners.
+     * Loads the given image into the model and sets up the view and event
+     * listeners.
      *
      * @param image The ImagePlus instance to load.
      */
@@ -175,7 +180,8 @@ public final class ImageController {
     }
 
     /**
-     * Initializes the image view, sets up the display, and attaches event listeners.
+     * Initializes the image view, sets up the display, and attaches event
+     * listeners.
      */
     public void initializeAndDisplayImage() {
         imageView = new ImageView();
@@ -220,12 +226,14 @@ public final class ImageController {
 
     /**
      * Performs the correlation and fitting for a pixel at the given coordinates.
-     * If FCCS display is enabled, it additionally fits the FCCS model. It also optionally computes
+     * If FCCS display is enabled, it additionally fits the FCCS model. It also
+     * optionally computes
      * the Mean Squared Displacement (MSD) if enabled in the settings.
      *
      * @param x                      The x-coordinate of the pixel.
      * @param y                      The y-coordinate of the pixel.
-     * @param singlePixelCorrelation A boolean indicating if it is a single pixel correlation.
+     * @param singlePixelCorrelation A boolean indicating if it is a single pixel
+     *                               correlation.
      * @return An array of Points representing the cursor positions.
      */
     private Point[] correlatePixel(int x, int y, boolean singlePixelCorrelation) {
@@ -259,8 +267,10 @@ public final class ImageController {
 
     /**
      * Performs fitting for the given pixel models at the specified coordinates.
-     * This method fits two pixel models (acf1Model and acf2Model) using different fit settings and lag times.
-     * If MSD (Mean Squared Displacement) is enabled in the settings, it calculates and sets the MSD for both models.
+     * This method fits two pixel models (acf1Model and acf2Model) using different
+     * fit settings and lag times.
+     * If MSD (Mean Squared Displacement) is enabled in the settings, it calculates
+     * and sets the MSD for both models.
      *
      * @param acf1Model The first pixel model to be fitted (ACF1).
      * @param acf2Model The second pixel model to be fitted (ACF2).
@@ -314,15 +324,20 @@ public final class ImageController {
     }
 
     /**
-     * Checks if the specified pixel is fully contained within the given Region of Interest (ROI).
-     * A pixel is considered fully contained if all four corners, defined by the top-left corner (x, y)
+     * Checks if the specified pixel is fully contained within the given Region of
+     * Interest (ROI).
+     * A pixel is considered fully contained if all four corners, defined by the
+     * top-left corner (x, y)
      * and the binning dimensions, are within the ROI.
      *
      * @param imgRoi The Region of Interest (ROI) to check against.
-     * @param x      The x-coordinate of the top-left corner of the pixel in the image.
-     * @param y      The y-coordinate of the top-left corner of the pixel in the image.
-     * @return {@code true} if the pixel defined by (x, y) and its binning dimensions
-     * is fully within the ROI; {@code false} otherwise.
+     * @param x      The x-coordinate of the top-left corner of the pixel in the
+     *               image.
+     * @param y      The y-coordinate of the top-left corner of the pixel in the
+     *               image.
+     * @return {@code true} if the pixel defined by (x, y) and its binning
+     *         dimensions
+     *         is fully within the ROI; {@code false} otherwise.
      */
     private boolean isPixelInRoi(Roi imgRoi, int x, int y) {
         return imgRoi.contains(x, y) && imgRoi.contains(x + settings.getBinning().x - 1, y) &&
@@ -355,39 +370,45 @@ public final class ImageController {
             return;
         }
 
-        List<PixelModel> correlatedPixels = new ArrayList<>();
+        if (options.isUseGpu()) {
+            GpuCorrelator gpuCorrelator = new GpuCorrelator(settings, bleachCorrectionModel, imageModel, fitController.getModel(), false, correlator);
+            gpuCorrelator.correlateAndFit(xRange, yRange, fitController.isActivated());
+            SwingUtilities.invokeLater(() -> plotAll());
+        } else {
+            List<PixelModel> correlatedPixels = new ArrayList<>();
 
-        for (int x = xRange.getStart(); x <= xRange.getEnd(); x += xRange.getStep()) {
-            // Check for interruption
-            if (cancelChecker.get() || Thread.currentThread().isInterrupted()) {
-                return;
-            }
-
-            for (int y = yRange.getStart(); y <= yRange.getEnd(); y += yRange.getStep()) {
-                // Check for interruption again to respond quickly
+            for (int x = xRange.getStart(); x <= xRange.getEnd(); x += xRange.getStep()) {
+                // Check for interruption
                 if (cancelChecker.get() || Thread.currentThread().isInterrupted()) {
                     return;
                 }
 
-                try {
-                    if ((isPixelInRoi(imgRoi, x * pixelBinning.x, y * pixelBinning.y)) &&
-                            !imageModel.isPixelFiltered(x * pixelBinning.x, y * pixelBinning.y)) {
-                        Point[] points = correlatePixel(x, y, false);
-
-                        PixelModel pixelModel = correlator.getPixelModel(points[0].x, points[0].y);
-                        correlatedPixels.add(pixelModel);
-
-                        SwingUtilities.invokeLater(() -> plotFittedParams(points));
+                for (int y = yRange.getStart(); y <= yRange.getEnd(); y += yRange.getStep()) {
+                    // Check for interruption again to respond quickly
+                    if (cancelChecker.get() || Thread.currentThread().isInterrupted()) {
+                        return;
                     }
-                } catch (Exception e) {
-                    IJ.log(String.format("Fail to correlate points for x=%d, y=%d with error: %s", x, y,
-                            e.getMessage()));
-                }
-            }
-            IJ.showProgress(x - xRange.getStart(), xRange.length());
-        }
 
-        plotMultiplePixelsModels(correlatedPixels);
+                    try {
+                        if ((isPixelInRoi(imgRoi, x * pixelBinning.x, y * pixelBinning.y)) &&
+                            !imageModel.isPixelFiltered(x * pixelBinning.x, y * pixelBinning.y)) {
+                            Point[] points = correlatePixel(x, y, false);
+
+                            PixelModel pixelModel = correlator.getPixelModel(points[0].x, points[0].y);
+                            correlatedPixels.add(pixelModel);
+
+                            SwingUtilities.invokeLater(() -> plotFittedParams(points));
+                        }
+                    } catch (Exception e) {
+                        IJ.log(String.format("Fail to correlate points for x=%d, y=%d with error: %s", x, y,
+                                e.getMessage()));
+                    }
+                }
+                    IJ.showProgress(x - xRange.getStart(), xRange.length());
+            }
+
+            plotMultiplePixelsModels(correlatedPixels);
+        }
     }
 
     /**
@@ -428,7 +449,8 @@ public final class ImageController {
     /**
      * Plots the results for a pixel at the given coordinates.
      *
-     * @param cursorPositions The array of cursor positions where the two first elements represent the pixel
+     * @param cursorPositions The array of cursor positions where the two first
+     *                        elements represent the pixel
      *                        coordinates.
      */
     private void plotResuts(Point[] cursorPositions) {
@@ -475,8 +497,10 @@ public final class ImageController {
 
     /**
      * Plots the fitted parameters at the specified cursor positions.
-     * This method retrieves the pixel model at the given position, checks if it has been fitted,
-     * and if so, plots the parameter maps. Additionally, if the option is enabled, it plots the
+     * This method retrieves the pixel model at the given position, checks if it has
+     * been fitted,
+     * and if so, plots the parameter maps. Additionally, if the option is enabled,
+     * it plots the
      * parameter histograms.
      *
      * @param cursorPositions An array of Points representing the cursor positions.
@@ -499,9 +523,12 @@ public final class ImageController {
     }
 
     /**
-     * Plots all the pixel models that have valid ACF (Autocorrelation Function) data.
-     * This method iterates through all the pixel models, identifies those with non-null ACF data,
-     * computes the intensity trace for each valid pixel model, and plots the fitted parameters.
+     * Plots all the pixel models that have valid ACF (Autocorrelation Function)
+     * data.
+     * This method iterates through all the pixel models, identifies those with
+     * non-null ACF data,
+     * computes the intensity trace for each valid pixel model, and plots the fitted
+     * parameters.
      * Finally, it plots multiple pixel models together (ACF and MSD).
      */
     public void plotAll() {
@@ -570,7 +597,8 @@ public final class ImageController {
                         x /= settings.getBinning().x;
                         y /= settings.getBinning().y;
 
-                        // Here we multiply by the binning again to make sure that X and Y are factor of the binning
+                        // Here we multiply by the binning again to make sure that X and Y are factor of
+                        // the binning
                         // It is only useful if the binning was changed by the user in the meantime
                         previousX = x * settings.getBinning().x;
                         previousY = y * settings.getBinning().y;
@@ -583,9 +611,12 @@ public final class ImageController {
     }
 
     /**
-     * Creates and returns a MouseListener that responds to mouse clicks on an ImageCanvas.
-     * This listener retrieves pixel coordinates from the clicked location, checks if the pixel
-     * model is correlated, updates fit parameters on the view, and plots the results.
+     * Creates and returns a MouseListener that responds to mouse clicks on an
+     * ImageCanvas.
+     * This listener retrieves pixel coordinates from the clicked location, checks
+     * if the pixel
+     * model is correlated, updates fit parameters on the view, and plots the
+     * results.
      * In case of a double click, it resets this pixel.
      *
      * @return a MouseListener that handles mouse click events on an ImageCanvas.
@@ -638,7 +669,7 @@ public final class ImageController {
                     int x2 = x + settings.getCCF().width;
                     int y2 = y + settings.getCCF().height;
 
-                    Point[] points = new Point[]{new Point(x, y), new Point(x2, y2)};
+                    Point[] points = new Point[] { new Point(x, y), new Point(x2, y2) };
 
                     correlator.setLastUsedPixelModel(new Pair<>(points, pixelModel));
                     plotResuts(points);
@@ -662,9 +693,9 @@ public final class ImageController {
                         Point pixelBinning = settings.getPixelBinning();
                         Point minimumPosition = settings.getMinCursorPosition();
 
-                        List<PixelModel> pixelModels =
-                                SelectedPixel.getPixelModelsInRoi(roi, pixelBinning, minimumPosition,
-                                        settings::convertPointToBinning, correlator.getPixelModels(), fitController);
+                        List<PixelModel> pixelModels = SelectedPixel.getPixelModelsInRoi(roi, pixelBinning,
+                                minimumPosition,
+                                settings::convertPointToBinning, correlator.getPixelModels(), fitController);
 
                         plotMultiplePixelsModels(pixelModels);
                     }

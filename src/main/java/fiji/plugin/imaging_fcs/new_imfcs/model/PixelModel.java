@@ -398,6 +398,7 @@ public class PixelModel {
      * The FitParameters class encapsulates the fitting parameters for a pixel.
      */
     public static class FitParameters {
+        public static final int NUM_PARAMETERS = 11;
         private final double N, D, vx, vy, G, F2, D2, F3, D3, fTrip, tTrip;
 
         /**
