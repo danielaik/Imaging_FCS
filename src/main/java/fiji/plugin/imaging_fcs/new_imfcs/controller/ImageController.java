@@ -27,6 +27,8 @@ import java.util.function.Supplier;
 
 import javax.swing.SwingUtilities;
 
+import javax.swing.SwingUtilities;
+
 import static fiji.plugin.imaging_fcs.new_imfcs.model.correlations.MeanSquareDisplacement.correlationToMSD;
 
 /**

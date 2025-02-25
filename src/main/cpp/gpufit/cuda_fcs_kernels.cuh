@@ -10,7 +10,7 @@ extern __global__ void calc_data_bleach_correction(float *data, float *data1, in
                                                    int ave);
 
 extern __global__ void bleachcorrection(float *data, int w_temp, int h_temp, int d, int bleachcorr_order,
-                                        double frametimegpu, double *bleachcorr_params);
+                                        double frametimegpu, const double *bleachcorr_params);
 
 extern __global__ void calcacf2a(float *data, int w_temp, int h_temp, int numbin);
 

@@ -1,6 +1,5 @@
 package fiji.plugin.imaging_fcs.gpufit;
 
-import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
 
@@ -36,7 +35,7 @@ public class Gpufit {
      */
     private static native int fit(int numberFits, int numberPoints, FloatBuffer data, FloatBuffer weights, int model_id,
                                   FloatBuffer initialParameters, float tolerance, int maxNumberIterations,
-                                  IntBuffer parametersToFit, int estimatorID, int userInfoSize, ByteBuffer userInfo,
+                                  IntBuffer parametersToFit, int estimatorID, int userInfoSize, FloatBuffer userInfo,
                                   FloatBuffer outputParameters, IntBuffer outputStates, FloatBuffer outputChiSquares,
                                   IntBuffer outputNumberIterations);
 
@@ -52,7 +51,7 @@ public class Gpufit {
      * @param fitResult Fit result (could be old one which is reused) or null
      * @return Fit result
      */
-    public static FitResult fit(FitModel fitModel, FitResult fitResult) {
+    public static FitResult fit(GpuFitModel fitModel, FitResult fitResult) {
 
         // Should we reuse fitResult?
         if (null == fitResult) {
@@ -87,7 +86,7 @@ public class Gpufit {
      * @param fitModel Fit data including the model
      * @return Fit result
      */
-    public static FitResult fit(FitModel fitModel) {
+    public static FitResult fit(GpuFitModel fitModel) {
         return fit(fitModel, null);
     }
 

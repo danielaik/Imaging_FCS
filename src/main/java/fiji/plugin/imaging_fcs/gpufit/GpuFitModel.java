@@ -18,6 +18,7 @@ import java.nio.IntBuffer;
  */
 public class GpuFitModel {
     public static final int FIT_MAX_ITERATIONS = 2000;
+    public static final float TOLERANCE = 1e-16f;
 
     /**
      * Number of fits, i.e. number of independent data sets

@@ -324,7 +324,6 @@ public class GpuParameters {
 
         // Gpufit setup
         int numberPoints = nopit;
-        float tolerance = 0.0000000000000001f;
         Model model = Model.LINEAR_1D;
         Estimator estimator = Estimator.LSE;
 
@@ -357,7 +356,7 @@ public class GpuParameters {
 
         // Fit using Gpufit
         GpuFitModel fitModel = new GpuFitModel(
-            numberFits, numberPoints, true, model, tolerance, GpuFitModel.FIT_MAX_ITERATIONS,
+            numberFits, numberPoints, true, model, GpuFitModel.TOLERANCE, GpuFitModel.FIT_MAX_ITERATIONS,
             bleachcorr_order, parametersToFit, estimator, nopit * Float.SIZE / 8
         );
         fitModel.data.put(datableachCorrection);

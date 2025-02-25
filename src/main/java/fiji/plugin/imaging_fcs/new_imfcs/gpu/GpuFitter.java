@@ -17,8 +17,6 @@ import fiji.plugin.imaging_fcs.new_imfcs.model.PixelModel;
  * and processes the results for each pixel in the image.
  */
 public class GpuFitter {
-    private static final float TOLERANCE = 1e-16f;
-
     private final ExpSettingsModel settings;
     private final GpuParameters gpuParams;
     private final fiji.plugin.imaging_fcs.new_imfcs.model.FitModel fitModel;
@@ -64,13 +62,13 @@ public class GpuFitter {
             numberPoints,
             true,
             model,
-            TOLERANCE,
+            GpuFitModel.TOLERANCE,
             GpuFitModel.FIT_MAX_ITERATIONS,
             gpuParams.bleachcorr_order,
             parametersToFit,
             Estimator.LSE,
             numberPoints * Float.BYTES
-            );
+        );
 
         gpufitModel.data.put(data);
         gpufitModel.weights.put(weights);
