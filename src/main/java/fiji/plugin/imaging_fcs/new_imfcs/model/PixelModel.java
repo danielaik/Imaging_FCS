@@ -318,7 +318,6 @@ public class PixelModel {
     }
 
     public void setFittedCF(double[] fittedCF) {
-        this.fitted = true;
         this.fittedCF = fittedCF;
     }
 
@@ -343,6 +342,7 @@ public class PixelModel {
     }
 
     public void setFitParams(FitParameters fitParams) {
+        this.fitted = true;
         this.fitParams = fitParams;
     }
 
