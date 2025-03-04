@@ -294,7 +294,8 @@ public final class ExpSettingsModel {
      */
     public Dimension getUsefulArea(Dimension dimension) {
         if (overlap) {
-            return new Dimension(dimension.width - binning.x, dimension.height - binning.y);
+            return new Dimension(dimension.width - Math.abs(CCF.width) + 1,
+                    dimension.height - Math.abs(CCF.height) + 1);
         } else {
             return new Dimension((dimension.width / binning.x) - 1, (dimension.height / binning.y) - 1);
         }
@@ -341,7 +342,7 @@ public final class ExpSettingsModel {
         if (distance >= 0) {
             int effectiveWidth = pixelDimension * pixelBinning + binning;
             double adjustedDistance = distance - (imageDimension - effectiveWidth);
-            return (int) (pixelDimension - adjustedDistance / pixelBinning);
+            return (int) (pixelDimension - adjustedDistance / binning);
         }
 
         return pixelDimension;
@@ -415,7 +416,16 @@ public final class ExpSettingsModel {
     public Dimension getConvertedImageDimension(Dimension imageDimension) {
         Point minimumPosition = getMinCursorPosition();
         Point maximumPosition = getMaxCursorPosition(imageDimension);
-        return new Dimension(maximumPosition.x - minimumPosition.x + 1, maximumPosition.y - minimumPosition.y + 1);
+
+        int width = (maximumPosition.x - minimumPosition.x + 1);
+        int height = (maximumPosition.y - minimumPosition.y + 1);
+
+        if (overlap) {
+            width = width - binning.x + 1;
+            height = height - binning.y + 1;
+        }
+
+        return new Dimension(width, height);
     }
 
     // Getters and setters for various parameters follow, allowing external modification and access to the settings.
