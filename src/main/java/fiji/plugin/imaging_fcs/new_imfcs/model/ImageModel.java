@@ -19,6 +19,7 @@ import java.util.function.Consumer;
  */
 public final class ImageModel {
     private static final double ZOOM_FACTOR = 250;
+    private static final double MAX_ZOOM = 25.0;
     private final Runnable resetCallback;
     private ImagePlus image;
     private ImagePlus backgroundImage;
@@ -47,23 +48,17 @@ public final class ImageModel {
      * @param image The ImagePlus object to be scaled.
      */
     public static void adaptImageScale(ImagePlus image) {
-        double scimp;
-        if (image.getWidth() >= image.getHeight()) {
-            scimp = ZOOM_FACTOR / image.getWidth();
-        } else {
-            scimp = ZOOM_FACTOR / image.getHeight();
-        }
+        int maxDim = Math.max(image.getWidth(), image.getHeight());
+        double zoomFactor = ZOOM_FACTOR / maxDim;
 
-        if (scimp < 1.0) {
-            scimp = 1.0;
-        }
-        // Convert scale factor to percentage for the ImageJ command
-        scimp *= 100;
+        // Cap zoom between 100% and MAX_ZOOM (e.g., 3200%)
+        zoomFactor = Math.max(1.0, Math.min(zoomFactor, MAX_ZOOM));
 
+        // Apply settings
         IJ.run(image, "Original Scale", "");
-        String options = String.format("zoom=%f x=%d y=%d", scimp, image.getWidth() / 2, image.getHeight() / 2);
+        String options =
+                String.format("zoom=%.1f x=%d y=%d", zoomFactor * 100, image.getWidth() / 2, image.getHeight() / 2);
         IJ.run(image, "Set... ", options);
-        // This workaround addresses a potential bug in ImageJ versions 1.48v and later
         IJ.run(image, "In [+]", "");
     }
 
