@@ -47,11 +47,9 @@ public class GpuParameters {
     public int fitend;
 
     public GpuParameters(ExpSettingsModel settings, BleachCorrectionModel bleachCorrectionModel, ImageModel imageModel,
-            FitModel fitModel, boolean isNBcalculation, Correlator correlator) {
+            FitModel fitModel, boolean isNBcalculation, Correlator correlator, Range xRange, Range yRange) {
         // Extract dimensions from ImageModel
         this.imageModel = imageModel;
-        int imageWidth = imageModel.getWidth();
-        int imageHeight = imageModel.getHeight();
 
         Point pixelBinning = settings.getPixelBinning();
         this.pixbinX = isNBcalculation ? 1 : pixelBinning.x;
@@ -73,8 +71,8 @@ public class GpuParameters {
         this.fitend = fitModel.getFitEnd();
 
         // Calculate output dimensions
-        this.width = (int) Math.floor((Math.min(imageWidth + cfXDistance, imageWidth) - cfXDistance) / pixbinX);
-        this.height = (int) Math.floor((Math.min(imageHeight + cfYDistance, imageHeight) - cfYDistance) / pixbinY);
+        this.width = xRange.length();
+        this.height = yRange.length();
 
         // Ensure dimensions are valid
         if (this.width <= 0 || this.height <= 0) {
@@ -114,12 +112,17 @@ public class GpuParameters {
 
     public float[] getIntensityData(Range xRange, Range yRange,
             boolean returnRawData) {
-        // (A) Compute total frames & total output size
+
+        boolean needBinning = (this.binningX > 1 || this.binningY > 1);
+        int intensityWidth = needBinning ? win_star : w_temp;
+        int intensityHeight = needBinning ? hin_star : h_temp;
+
+        // Compute total frames & total output size
         int totalFrames = this.framediff;
-        int totalSize = w_temp * h_temp * totalFrames;
+        int totalSize = intensityWidth * intensityHeight * totalFrames;
         float[] pixels = new float[totalSize];
 
-        // (B) Try to read from the ImagePlus in one shot, if possible
+        // Try to read from the ImagePlus in one shot, if possible
         ImagePlus imp = imageModel.getImage();
         try {
             // startX, startY are in "binned coordinates."
@@ -132,8 +135,8 @@ public class GpuParameters {
                     absoluteX,
                     absoluteY,
                     absoluteZ,
-                    w_temp, // width
-                    h_temp, // height
+                    intensityWidth, // width
+                    intensityHeight, // height
                     totalFrames, // depth
                     pixels // destination
             );
@@ -142,8 +145,7 @@ public class GpuParameters {
             manualVoxelCopy(imp, pixels, xRange, yRange, totalFrames);
         }
 
-        // (C) Check if we need binning (only if binningX or binningY > 1)
-        boolean needBinning = (this.binningX > 1 || this.binningY > 1);
+        // Check if we need binning (only if binningX or binningY > 1)
         if (needBinning) {
             // Check if we can bin on GPU
             // (This is a placeholder—use your own logic to decide)
@@ -270,18 +272,6 @@ public class GpuParameters {
         boolean bgrloaded = imageModel.isBackgroundLoaded();
 
         if (bgrloaded) {
-            /*
-             * 1) Use the background mean array from the loaded background image.
-             * We replicate your old loop structure:
-             *
-             * for each frame in [0..framediff-1]
-             * for each j in [0..h_temp-1]
-             * for each i in [0..w_temp-1]
-             * for each sub-bin y in [0..binningY-1]
-             * for each sub-bin x in [0..binningX-1]
-             *
-             * Subtract bgrMean[i + x][j + y]
-             */
             double[][] bgrMean = imageModel.getBackgroundMean();
             for (int k = 0; k < framediff; k++) {
                 for (int j = 0; j < h_temp; j++) {

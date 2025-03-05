@@ -35,12 +35,12 @@ public class GpuCorrelator {
      * @param correlator Correlator for managing correlation data.
      */
     public GpuCorrelator(ExpSettingsModel settings, BleachCorrectionModel bleachCorrectionModel, ImageModel imageModel,
-            FitModel fitModel, boolean isNBcalculation, Correlator correlator) {
+            FitModel fitModel, boolean isNBcalculation, Correlator correlator, Range xRange, Range yRange) {
         this.settings = settings;
         this.correlator = correlator;
         this.imageModel = imageModel;
         this.gpuParameters = new GpuParameters(settings, bleachCorrectionModel, imageModel, fitModel, isNBcalculation,
-                correlator);
+                correlator, xRange, yRange);
         this.fitModel = fitModel;
     }
 
@@ -73,12 +73,12 @@ public class GpuCorrelator {
 
         IJ.showProgress(1, numberOfStep);
 
-        PixelModel[][] pixelModels = createPixelModels(pixels1, blockVarianceArray, blocked1D);
+        PixelModel[][] pixelModels = createPixelModels(pixels1, blockVarianceArray, blocked1D, xRange.getStart(), yRange.getStart());
 
         if (fit) {
             // Perform GPU fit
             GpuFitter fitter = new GpuFitter(gpuParameters, fitModel, settings, correlator);
-            fitter.fit(pixelModels, pixels1, blockVarianceArray);
+            fitter.fit(pixelModels, pixels1, blockVarianceArray, xRange.getStart(), yRange.getStart());
 
             IJ.showProgress(2, numberOfStep);
         }
@@ -92,8 +92,12 @@ public class GpuCorrelator {
      * @param blocked1D Array containing blocked data
      * @return 2D array of pixel models with correlation data
      */
-    private PixelModel[][] createPixelModels(double[] pixels1, double[] blockVarianceArray, double[] blocked1D) {
-        PixelModel[][] pixelModels = new PixelModel[imageModel.getWidth()][imageModel.getHeight()];
+    private PixelModel[][] createPixelModels(double[] pixels1, double[] blockVarianceArray, double[] blocked1D, int roiStartX, int roiStartY) {
+        PixelModel[][] pixelModels = correlator.getPixelModels();
+
+        if (pixelModels == null) {
+            pixelModels = new PixelModel[imageModel.getWidth()][imageModel.getHeight()];
+        }
 
         for (int x = 0; x < gpuParameters.width; x++) {
             for (int y = 0; y < gpuParameters.height; y++) {
@@ -116,7 +120,7 @@ public class GpuCorrelator {
                 pixelModel.setStandardDeviationCF(standardDeviationCF);
                 pixelModel.setBlocked((int) blocked1D[x + gpuParameters.width + gpuParameters.width * gpuParameters.height]);
 
-                pixelModels[x][y] = pixelModel;
+                pixelModels[(x + roiStartX) * gpuParameters.pixbinX][(y + roiStartY) * gpuParameters.pixbinY] = pixelModel;
             }
         }
 

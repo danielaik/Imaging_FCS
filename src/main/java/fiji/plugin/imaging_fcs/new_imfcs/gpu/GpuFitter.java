@@ -1,6 +1,5 @@
 package fiji.plugin.imaging_fcs.new_imfcs.gpu;
 
-import fiji.plugin.imaging_fcs.gpufit.Gpufit;
 import fiji.plugin.imaging_fcs.gpufit.Estimator;
 import fiji.plugin.imaging_fcs.gpufit.FitResult;
 import fiji.plugin.imaging_fcs.gpufit.FitState;
@@ -50,7 +49,7 @@ public class GpuFitter {
      * @param pixels1 Array containing correlation function values
      * @param blockVarianceArray Array containing variance data
      */
-    public void fit(PixelModel[][] pixelModels, double[] pixels1, double[] blockVarianceArray) {
+    public void fit(PixelModel[][] pixelModels, double[] pixels1, double[] blockVarianceArray, int roiStartX, int roiStartY) {
         Model model = determineModel(settings.getFitModel());
         int numberFits = gpuParams.width * gpuParams.height;
         int numberPoints = gpuParams.fitend - gpuParams.fitstart + 1;
@@ -82,7 +81,7 @@ public class GpuFitter {
         // FitResult fitResult = Gpufit.fit(gpufitModel);
         FitResult fitResult = GpufitImFCS.fit(gpufitModel);
 
-        processFitResults(pixelModels, model, numberFits, fitResult);
+        processFitResults(pixelModels, model, numberFits, fitResult, roiStartX, roiStartY);
         // applyIntensityFilter(pixelModels);
     }
 
@@ -234,31 +233,31 @@ public class GpuFitter {
      * @param numberFits Number of fits performed
      * @param fitResult Results from GPU fitting
      */
-    private void processFitResults(PixelModel[][] pixelModels, Model model, int numberFits, FitResult fitResult) {
+    private void processFitResults(PixelModel[][] pixelModels, Model model, int numberFits, FitResult fitResult, int roiStartX, int roiStartY) {
         int numFreeParams = (int) fitModel.getNonHeldParameterValues().length;
-        int width = gpuParams.width;
         int numParameters = PixelModel.FitParameters.NUM_PARAMETERS;
 
-        for (int i = 0; i < numberFits; i++) {
-            int x = i % width;
-            int y = i / width;
+        for (int x = 0; x < gpuParams.width; x++) {
+            for (int y = 0; y < gpuParams.height; y++) {
+                PixelModel pixel = pixelModels[(x + roiStartX) * gpuParams.pixbinX][(y + roiStartY) * gpuParams.pixbinY];
+                int index = y * gpuParams.width + x;
 
-            PixelModel pixel = pixelModels[x][y];
-            boolean converged = FitState.fromID(fitResult.states.get(i)) == FitState.CONVERGED;
-            pixel.setFitted(converged);
+                boolean converged = FitState.fromID(fitResult.states.get(index)) == FitState.CONVERGED;
+                pixel.setFitted(converged);
 
-            float chiSquare = fitResult.chiSquares.get(i);
-            int degreesOfFreedom = (gpuParams.fitend - gpuParams.fitstart + 1) - numFreeParams - 1;
-            pixel.setChi2(chiSquare / degreesOfFreedom);
+                float chiSquare = fitResult.chiSquares.get(index);
+                int degreesOfFreedom = (gpuParams.fitend - gpuParams.fitstart + 1) - numFreeParams - 1;
+                pixel.setChi2(chiSquare / degreesOfFreedom);
 
-            if (converged) {
-                double[] params = new double[numParameters];
-                for (int p = 0; p < numParameters; p++) {
-                    params[p] = fitResult.parameters.get(i * model.numberParameters + p);
+                if (converged) {
+                    double[] params = new double[numParameters];
+                    for (int p = 0; p < numParameters; p++) {
+                        params[p] = fitResult.parameters.get(index * model.numberParameters + p);
+                    }
+
+                    pixel.setFitParams(new PixelModel.FitParameters(params));
+                    fitModel.calculateFittedCorrelationFunction(pixel, correlator.getLagTimes());
                 }
-
-                pixel.setFitParams(new PixelModel.FitParameters(params));
-                fitModel.calculateFittedCorrelationFunction(pixel, correlator.getLagTimes());
             }
         }
     }
