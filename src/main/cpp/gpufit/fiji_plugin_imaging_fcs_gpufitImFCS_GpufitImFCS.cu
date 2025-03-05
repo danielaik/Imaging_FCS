@@ -193,8 +193,6 @@ void JNICALL Java_fiji_plugin_imaging_1fcs_gpufitImFCS_GpufitImFCS_calcDataBleac
 
         CUDA_CHECK_STATUS(cudaStreamDestroy(stream));
 
-        CUDA_CHECK_STATUS(cudaDeviceReset());
-
         // copy values to Java output arrays.
         env->SetFloatArrayRegion(outdata, 0, num_elements_output, Coutput.data());
     }
@@ -294,8 +292,7 @@ void JNICALL Java_fiji_plugin_imaging_1fcs_gpufitImFCS_GpufitImFCS_calcBinning(J
         CUDA_CHECK_STATUS(cudaStreamCreate(&stream));
 
         calc_binning<<<gridSizeBin, blockSizeBin, 0, stream>>>(d_Cindata.get(), d_Coutput.get(), p.win_star, p.hin_star,
-                                                               p.w_temp, p.h_temp, framediff, p.pixbinX, p.pixbinY,
-                                                               p.binningX, p.binningY);
+                                                               p.w_temp, p.h_temp, framediff, p.binningX, p.binningY);
 
         // Synchronize and check for errors
         CUDA_CHECK_STATUS(cudaStreamSynchronize(stream));
@@ -306,8 +303,6 @@ void JNICALL Java_fiji_plugin_imaging_1fcs_gpufitImFCS_GpufitImFCS_calcBinning(J
             cudaMemcpy(Coutput.data(), d_Coutput.get(), num_output_elements * sizeof(float), cudaMemcpyDeviceToHost));
 
         CUDA_CHECK_STATUS(cudaStreamDestroy(stream));
-
-        CUDA_CHECK_STATUS(cudaDeviceReset());
 
         // copy values to Java output arrays.
         env->SetFloatArrayRegion(outdata, 0, num_output_elements, Coutput.data());

@@ -3,8 +3,8 @@
 
 #include <cuda_runtime.h>
 
-extern __global__ void calc_binning(float *data, float *data1, int win_star, int hin_star, int w_temp, int h_temp,
-                                    int framediff, int pixbinX, int pixbinY, int binningX, int binningY);
+extern __global__ void calc_binning(const float *data, float *data1, int win_star, int hin_star, int w_temp, int h_temp,
+                                    int framediff, int binningX, int binningY);
 
 extern __global__ void calc_data_bleach_correction(float *data, float *data1, int width, int height, int nopit,
                                                    int ave);
