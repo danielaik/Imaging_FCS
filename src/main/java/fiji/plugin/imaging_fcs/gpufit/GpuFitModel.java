@@ -17,6 +17,7 @@ import java.nio.IntBuffer;
  * Optional variables are weights, initialParameters, tolerance, maxNumberIterations, parametersToFit.
  */
 public class GpuFitModel {
+    public static final int FIT_MAX_ITERATIONS = 2000;
 
     /**
      * Number of fits, i.e. number of independent data sets

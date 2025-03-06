@@ -56,8 +56,10 @@ public class GpuCorrelator {
         int numberOfStep = fit ? 3 : 2;
 
         float[] pixels = gpuParameters.getIntensityData(xRange, yRange, false);
-        double[] bleachCorrectionParams = new double[gpuParameters.w_temp * gpuParameters.h_temp
-                * gpuParameters.bleachcorr_order];
+
+        double[] bleachCorrectionParams = gpuParameters.calculateBleachCorrectionParams(pixels);
+        // gpuParameters.applyBleachCorrection(pixels, bleachCorrectionParams);
+
         double[] nbMean = new double[gpuParameters.width * gpuParameters.height];
         double[] nbCovariance = new double[gpuParameters.width * gpuParameters.height];
 

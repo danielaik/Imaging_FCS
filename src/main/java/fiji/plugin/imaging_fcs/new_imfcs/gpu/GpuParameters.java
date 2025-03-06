@@ -9,6 +9,10 @@ import fiji.plugin.imaging_fcs.new_imfcs.model.ExpSettingsModel;
 import fiji.plugin.imaging_fcs.new_imfcs.model.ImageModel;
 import fiji.plugin.imaging_fcs.new_imfcs.model.correlations.Correlator;
 import fiji.plugin.imaging_fcs.new_imfcs.utils.Range;
+import fiji.plugin.imaging_fcs.gpufit.Estimator;
+import fiji.plugin.imaging_fcs.gpufit.Model;
+import fiji.plugin.imaging_fcs.gpufit.GpuFitModel;
+import fiji.plugin.imaging_fcs.gpufit.FitResult;
 import ij.IJ;
 import ij.ImagePlus;
 
@@ -298,6 +302,105 @@ public class GpuParameters {
             int constant = this.background * binningX * binningY;
             for (int i = 0; i < pixels.length; i++) {
                 pixels[i] -= constant;
+            }
+        }
+    }
+
+    /**
+     * Calculates bleach correction parameters using Gpufit.
+     * @param pixels Intensity data to fit
+     * @return Array of polynomial coefficients
+     */
+    public double[] calculateBleachCorrectionParams(float[] pixels) {
+        if (!bleachcorr_gpu) {
+            return new double[0]; // No correction needed
+        }
+
+        int numberFits = w_temp * h_temp;
+        float[] datableachCorrection = new float[w_temp * h_temp * nopit];
+
+        // Calculate averaged intensity traces
+        GpufitImFCS.calcDataBleachCorrection(pixels, datableachCorrection, this);
+
+        // Gpufit setup
+        int numberPoints = nopit;
+        float tolerance = 0.0000000000000001f;
+        Model model = Model.LINEAR_1D;
+        Estimator estimator = Estimator.LSE;
+
+        Boolean[] parametersToFit = new Boolean[model.numberParameters];
+        parametersToFit[0] = true; // Offset
+        for (int i = 1; i < model.numberParameters; i++) {
+            parametersToFit[i] = i < bleachcorr_order;
+        }
+
+        // Initialize parameters (offset = last point)
+        float[] initialParams = new float[numberFits * model.numberParameters];
+        for (int i = 0; i < numberFits; i++) {
+            int offset = i * model.numberParameters;
+            initialParams[offset] = datableachCorrection[(i + 1) * nopit - 1];
+            for (int j = 1; j < model.numberParameters; j++) {
+                initialParams[offset + j] = 0f;
+            }
+        }
+
+        // Time points for fitting
+        float[] intTime = new float[nopit];
+        for (int z = 0; z < nopit; z++) {
+            intTime[z] = (float) (frametime * (z + 0.5) * ave);
+        }
+
+        float[] weights = new float[numberFits * numberPoints];
+        for (int i = 0; i < weights.length; i++) {
+            weights[i] = 1.0f;
+        }
+
+        // Fit using Gpufit
+        GpuFitModel fitModel = new GpuFitModel(
+            numberFits, numberPoints, true, model, tolerance, GpuFitModel.FIT_MAX_ITERATIONS,
+            bleachcorr_order, parametersToFit, estimator, nopit * Float.SIZE / 8
+        );
+        fitModel.data.put(datableachCorrection);
+        fitModel.weights.put(weights);
+        fitModel.initialParameters.put(initialParams);
+        fitModel.userInfo.put(intTime);
+
+        FitResult fitResult = GpufitImFCS.fit(fitModel);
+
+        // Extract parameters
+        double[] bleachCorrParams = new double[numberFits * bleachcorr_order];
+        for (int i = 0; i < numberFits; i++) {
+            for (int p = 0; p < bleachcorr_order; p++) {
+                bleachCorrParams[i * bleachcorr_order + p] = fitResult.parameters.get(i * model.numberParameters + p);
+            }
+        }
+
+        return bleachCorrParams;
+    }
+
+    /**
+     * Applies bleach correction to the intensity data.
+     * @param pixels Intensity data to correct
+     * @param bleachCorrParams Polynomial coefficients
+     */
+    public void applyBleachCorrection(float[] pixels, double[] bleachCorrParams) {
+        if (!bleachcorr_gpu || bleachCorrParams.length == 0) {
+            return;
+        }
+
+        for (int y = 0; y < h_temp; y++) {
+            for (int x = 0; x < w_temp; x++) {
+                for (int z = 0; z < framediff; z++) {
+                    double corfunc = 0;
+                    int idx = (y * w_temp + x) * bleachcorr_order;
+                    for (int p = 0; p < bleachcorr_order; p++) {
+                        corfunc += bleachCorrParams[idx + p] * Math.pow(frametime * (z + 1.5), p);
+                    }
+                    int pixelIdx = z * w_temp * h_temp + y * w_temp + x;
+                    float offset = (float) bleachCorrParams[idx];
+                    float val = pixels[pixelIdx];
+                    pixels[pixelIdx] = (float) (val / Math.sqrt(corfunc / offset) + offset * (1 - Math.sqrt(corfunc / offset)));
+                }
             }
         }
     }

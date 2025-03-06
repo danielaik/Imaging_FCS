@@ -17,7 +17,6 @@ import fiji.plugin.imaging_fcs.new_imfcs.model.PixelModel;
  * and processes the results for each pixel in the image.
  */
 public class GpuFitter {
-    private static final int FIT_MAX_ITERATIONS = 2000;
     private static final float TOLERANCE = 1e-16f;
 
     private final ExpSettingsModel settings;
@@ -66,7 +65,7 @@ public class GpuFitter {
             true,
             model,
             TOLERANCE,
-            FIT_MAX_ITERATIONS,
+            GpuFitModel.FIT_MAX_ITERATIONS,
             gpuParams.bleachcorr_order,
             parametersToFit,
             Estimator.LSE,

@@ -551,6 +551,8 @@ public class GpufitImFCS {
      */
     public static native void calcDataBleachCorrection(float[] pixels, float[] outdata, ACFParameters ACFInputParams);
 
+    public static native void calcDataBleachCorrection(float[] pixels, float[] outdata, GpuParameters ACFInputParams);
+
     /**
      * Native method. Find if GPU memory is sufficient to perform binning.
      *
