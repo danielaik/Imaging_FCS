@@ -2,7 +2,6 @@ package fiji.plugin.imaging_fcs.new_imfcs.gpu;
 
 import java.util.stream.IntStream;
 
-import fiji.plugin.imaging_fcs.gpufitImFCS.GpufitImFCS;
 import fiji.plugin.imaging_fcs.new_imfcs.model.BleachCorrectionModel;
 import fiji.plugin.imaging_fcs.new_imfcs.model.ExpSettingsModel;
 import fiji.plugin.imaging_fcs.new_imfcs.model.ImageModel;
@@ -69,7 +68,7 @@ public class GpuCorrelator {
         double[] blockVarianceArray = new double[arraySize];
         double[] blocked1D = new double[arraySize];
 
-        GpufitImFCS.calcACF(pixels, pixels1, blockVarianceArray, nbMean, nbCovariance, blocked1D,
+        calcACF(pixels, pixels1, blockVarianceArray, nbMean, nbCovariance, blocked1D,
                 bleachCorrectionParams, IntStream.of(correlator.getSampleTimes()).asDoubleStream().toArray(),
                 correlator.getLags(), gpuParameters);
 
@@ -131,8 +130,8 @@ public class GpuCorrelator {
         return pixelModels;
     }
 
-    // public static native void calcACF(float[] pixels, double[] pixels1, double[] blockvararray,
-    //         double[] NBmeanGPU, double[] NBcovarianceGPU,
-    //         double[] blocked1D, double[] bleachcorr_params,
-    //         double[] samp, int[] lag, GpuParameters ACFInputParams);
+    private static native void calcACF(float[] pixels, double[] pixels1, double[] blockvararray,
+            double[] NBmeanGPU, double[] NBcovarianceGPU,
+            double[] blocked1D, double[] bleachcorr_params,
+            double[] samp, int[] lag, GpuParameters ACFInputParams);
 }

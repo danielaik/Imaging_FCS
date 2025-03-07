@@ -5,7 +5,7 @@ import fiji.plugin.imaging_fcs.gpufit.FitResult;
 import fiji.plugin.imaging_fcs.gpufit.FitState;
 import fiji.plugin.imaging_fcs.gpufit.GpuFitModel;
 import fiji.plugin.imaging_fcs.gpufit.Model;
-import fiji.plugin.imaging_fcs.gpufitImFCS.GpufitImFCS;
+import fiji.plugin.imaging_fcs.gpufit.Gpufit;
 import fiji.plugin.imaging_fcs.new_imfcs.model.correlations.Correlator;
 import fiji.plugin.imaging_fcs.new_imfcs.model.fit.parametric_univariate_functions.FCSFit;
 import fiji.plugin.imaging_fcs.new_imfcs.model.ExpSettingsModel;
@@ -76,7 +76,7 @@ public class GpuFitter {
         gpufitModel.userInfo.put(userInfo);
 
         // FitResult fitResult = Gpufit.fit(gpufitModel);
-        FitResult fitResult = GpufitImFCS.fit(gpufitModel);
+        FitResult fitResult = Gpufit.fit(gpufitModel);
 
         processFitResults(pixelModels, model, numberFits, fitResult, roiStartX, roiStartY);
         // applyIntensityFilter(pixelModels);

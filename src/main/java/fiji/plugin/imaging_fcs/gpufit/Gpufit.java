@@ -20,16 +20,6 @@ public class Gpufit {
      */
     public static final String VERSION = "1.2.0";
 
-    static {
-        /*
-         * Need to load Gpufit first, otherwise the call to loadLibrary with GpufitJNI will throw an exception
-         * on Windows.
-         * java.lang.UnsatisfiedLinkError: GpufitJNI.dll: Can't find dependent libraries
-         */
-        System.loadLibrary("Gpufit");
-        System.loadLibrary("GpufitJNI");
-    }
-
     /**
      * Native method. More of less calls gpufit() in the gpufit C interface directly. Used only internally.
      */

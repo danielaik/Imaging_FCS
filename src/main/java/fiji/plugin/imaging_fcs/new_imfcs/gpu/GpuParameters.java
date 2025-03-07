@@ -3,7 +3,7 @@ package fiji.plugin.imaging_fcs.new_imfcs.gpu;
 import java.awt.Point;
 
 import fiji.plugin.imaging_fcs.new_imfcs.model.FitModel;
-import fiji.plugin.imaging_fcs.gpufitImFCS.GpufitImFCS;
+import fiji.plugin.imaging_fcs.gpufit.Gpufit;
 import fiji.plugin.imaging_fcs.new_imfcs.model.BleachCorrectionModel;
 import fiji.plugin.imaging_fcs.new_imfcs.model.ExpSettingsModel;
 import fiji.plugin.imaging_fcs.new_imfcs.model.ImageModel;
@@ -204,24 +204,13 @@ public class GpuParameters {
         }
     }
 
-    /**
-     * Attempt GPU binning by calling your JNI code.
-     * This is a placeholder—replace with your actual GPU binning call.
-     */
     private float[] gpuBinning(float[] source) {
         float[] result = new float[w_temp * h_temp * framediff];
-        GpufitImFCS.calcBinning(source, result, this);
-        // e.g. GpufitImFCS.calcBinning(source, result, this);
-        // or any other GPU-based function
+        calcBinning(source, result, this);
         IJ.log("Performing GPU-based binning...");
-        // Here, we'll just copy the source -> result for demonstration
         return result;
     }
 
-    /**
-     * CPU binning when GPU memory is insufficient or not available.
-     * Summation binning by binningX/binningY factor.
-     */
     private float[] cpuBinning(float[] source) {
         IJ.log("Performing CPU-based binning...");
         float[] result = new float[w_temp * h_temp * framediff];
@@ -258,11 +247,8 @@ public class GpuParameters {
      * Replace with your logic that checks GPU memory constraints.
      */
     private boolean canBinOnGpu() {
-
-        // e.g. compare (w_temp*h_temp*framediff) to some limit
-        // and also check GpufitImFCS.isBinningMemorySufficient(this)
         boolean withinSizeLimit = (w_temp * h_temp * framediff) < 96 * 96 * 50000;
-        return withinSizeLimit && GpufitImFCS.isBinningMemorySufficient(this);
+        return withinSizeLimit && isBinningMemorySufficient(this);
     }
 
     /**
@@ -320,7 +306,7 @@ public class GpuParameters {
         float[] datableachCorrection = new float[w_temp * h_temp * nopit];
 
         // Calculate averaged intensity traces
-        GpufitImFCS.calcDataBleachCorrection(pixels, datableachCorrection, this);
+        calcDataBleachCorrection(pixels, datableachCorrection, this);
 
         // Gpufit setup
         int numberPoints = nopit;
@@ -364,7 +350,7 @@ public class GpuParameters {
         fitModel.initialParameters.put(initialParams);
         fitModel.userInfo.put(intTime);
 
-        FitResult fitResult = GpufitImFCS.fit(fitModel);
+        FitResult fitResult = Gpufit.fit(fitModel);
 
         // Extract parameters
         double[] bleachCorrParams = new double[numberFits * bleachcorr_order];
@@ -403,4 +389,33 @@ public class GpuParameters {
             }
         }
     }
+
+    /**
+     * Native method. Find if GPU memory is sufficient to perform binning.
+     *
+     * @param ACFInputParams Object that encapsulates / stores the necessary
+     * input values.
+     * @return true is memory is sufficient, false otherwise.
+     */
+    private static native boolean isBinningMemorySufficient(GpuParameters ACFInputParams);
+
+    /**
+     * Native method. Do binning given a 1D array.
+     *
+     * @param indata 1D float array. Dimension win_star = w_out x pixbinX +
+     * cfXDistance, hin_star = h_out x pixbinY + cfYDistance
+     * @param outdata output data, by reference.
+     * @param ACFInputParams Values pixbinX, pixbinY are required.
+     */
+    private static native void calcBinning(float[] indata, float[] outdata, GpuParameters ACFInputParams);
+
+    /**
+     * Native method. Get data bleach correction given the 1D pixels values.
+     *
+     * @param pixels 1D float array of pixels values
+     * @param outdata output data, by reference.
+     * @param ACFInputParams Values nopit, ave, cfXDistance, cfYDistance, width
+     * and height are required
+     */
+    private static native void calcDataBleachCorrection(float[] pixels, float[] outdata, GpuParameters ACFInputParams);
 }
