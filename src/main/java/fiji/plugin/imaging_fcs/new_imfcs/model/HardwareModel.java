@@ -5,6 +5,8 @@ import fiji.plugin.imaging_fcs.new_imfcs.utils.CheckOS;
 import java.io.*;
 import java.nio.file.Files;
 
+import static fiji.plugin.imaging_fcs.gpufit.Gpufit.isCudaAvailable;
+
 /**
  * Represents the hardware configuration model for the Imaging FCS application.
  * This class is responsible for determining if CUDA (GPU computing) is available
@@ -20,15 +22,8 @@ public final class HardwareModel {
      * Sets the CUDA message accordingly.
      */
     public HardwareModel() {
-        this.cuda = isCudaAvailable();
+        this.cuda = loadIfCudaAvailable();
     }
-
-    /**
-     * Native method. Indicates if CUDA capability is available.
-     *
-     * @return True if available, false otherwise.
-     */
-    private static native boolean isCudaAvailableInt();
 
     /**
      * Loads the required GPU libraries based on the operating system.
@@ -94,10 +89,10 @@ public final class HardwareModel {
      *
      * @return true if CUDA is available, false otherwise.
      */
-    private boolean isCudaAvailable() {
+    private boolean loadIfCudaAvailable() {
         try {
             loadGpuLibraries();
-            return isCudaAvailableInt();
+            return isCudaAvailable();
         } catch (Exception e) {
             cudaMessage = e.getMessage();
             return false;
