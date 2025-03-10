@@ -75,7 +75,6 @@ public class GpuFitter {
         gpufitModel.initialParameters.put(initialParameters);
         gpufitModel.userInfo.put(userInfo);
 
-        // FitResult fitResult = Gpufit.fit(gpufitModel);
         FitResult fitResult = Gpufit.fit(gpufitModel);
 
         processFitResults(pixelModels, model, numberFits, fitResult, roiStartX, roiStartY);

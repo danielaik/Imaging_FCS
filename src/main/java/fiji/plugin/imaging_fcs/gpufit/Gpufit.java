@@ -21,13 +21,14 @@ public class Gpufit {
     public static final String VERSION = "1.2.0";
 
     /**
-     * Native method. More of less calls gpufit() in the gpufit C interface directly. Used only internally.
+     * Native method. More of less calls gpufit() in the gpufit C interface
+     * directly. Used only internally.
      */
     private static native int fit(int numberFits, int numberPoints, FloatBuffer data, FloatBuffer weights, int model_id,
                                   FloatBuffer initialParameters, float tolerance, int maxNumberIterations,
-                                  IntBuffer parametersToFit, int estimatorID, int userInfoSize, FloatBuffer userInfo,
-                                  FloatBuffer outputParameters, IntBuffer outputStates, FloatBuffer outputChiSquares,
-                                  IntBuffer outputNumberIterations);
+                                  int numValidCoefs, IntBuffer parametersToFit, int estimatorID, int userInfoSize,
+                                  FloatBuffer userInfo, FloatBuffer outputParameters, IntBuffer outputStates,
+                                  FloatBuffer outputChiSquares, IntBuffer outputNumberIterations);
 
     /**
      * Use this method to perform a parallel fit of many single fits of the same Function model and the same
@@ -55,8 +56,8 @@ public class Gpufit {
         long t0 = System.currentTimeMillis();
         int status = Gpufit.fit(fitModel.numberFits, fitModel.numberPoints, fitModel.data, fitModel.weights,
                 fitModel.model.id, fitModel.initialParameters, fitModel.tolerance, fitModel.maxNumberIterations,
-                fitModel.parametersToFit, fitModel.estimator.id, fitModel.userInfo.capacity(), fitModel.userInfo,
-                fitResult.parameters, fitResult.states, fitResult.chiSquares, fitResult.numberIterations);
+                fitModel.numValidCoefs, fitModel.parametersToFit, fitModel.estimator.id, fitModel.userInfo.capacity(),
+                fitModel.userInfo, fitResult.parameters, fitResult.states, fitResult.chiSquares, fitResult.numberIterations);
         long t1 = System.currentTimeMillis();
         fitResult.fitDuration = (float) (t1 - t0) / 1000;
 
