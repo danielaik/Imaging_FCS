@@ -1,6 +1,7 @@
 package fiji.plugin.imaging_fcs.new_imfcs.controller;
 
 import fiji.plugin.imaging_fcs.new_imfcs.model.*;
+import fiji.plugin.imaging_fcs.new_imfcs.model.correlations.Correlator;
 import fiji.plugin.imaging_fcs.new_imfcs.utils.ApplyCustomLUT;
 import fiji.plugin.imaging_fcs.new_imfcs.utils.ExcelExporter;
 import ij.IJ;
@@ -26,10 +27,11 @@ public final class NBController {
      * @param expSettingsModel      the model containing experiment settings
      * @param options               the model containing options for the analysis
      * @param bleachCorrectionModel the model for bleach correction settings
+     * @param correlator            the correlator for getting lags
      */
     public NBController(ImageModel imageModel, ExpSettingsModel expSettingsModel, OptionsModel options,
-                        BleachCorrectionModel bleachCorrectionModel) {
-        model = new NBModel(imageModel, expSettingsModel, options, bleachCorrectionModel);
+                        BleachCorrectionModel bleachCorrectionModel, Correlator correlator) {
+        model = new NBModel(imageModel, expSettingsModel, options, bleachCorrectionModel, correlator);
         this.imageModel = imageModel;
     }
 

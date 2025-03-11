@@ -71,8 +71,8 @@ public class GpuParameters {
 
         this.nopit = bleachCorrectionModel.getNumPointsIntensityTrace();
 
-        this.fitstart = fitModel.getFitStart();
-        this.fitend = fitModel.getFitEnd();
+        this.fitstart = isNBcalculation ? 0 : fitModel.getFitStart();
+        this.fitend = isNBcalculation ? 0 : fitModel.getFitEnd();
 
         // Calculate output dimensions
         this.width = xRange.length();

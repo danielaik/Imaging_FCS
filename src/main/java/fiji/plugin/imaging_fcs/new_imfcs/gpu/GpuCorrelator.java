@@ -130,8 +130,12 @@ public class GpuCorrelator {
         return pixelModels;
     }
 
-    private static native void calcACF(float[] pixels, double[] pixels1, double[] blockvararray,
+    public static native void calcACF(float[] pixels, double[] pixels1, double[] blockvararray,
             double[] NBmeanGPU, double[] NBcovarianceGPU,
             double[] blocked1D, double[] bleachcorr_params,
             double[] samp, int[] lag, GpuParameters ACFInputParams);
+
+    public GpuParameters getGpuParameters() {
+        return gpuParameters;
+    }
 }
