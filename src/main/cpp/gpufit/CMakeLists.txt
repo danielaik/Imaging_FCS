@@ -68,4 +68,4 @@ if (WIN32)
     target_compile_definitions(agpufit PRIVATE USE_CUBLAS)
 endif()
 
-target_link_libraries(agpufit ${CUDA_LIBRARIES})
+target_link_libraries(agpufit ${CUDA_LIBRARIES} ${CUDA_CUBLAS_LIBRARIES})

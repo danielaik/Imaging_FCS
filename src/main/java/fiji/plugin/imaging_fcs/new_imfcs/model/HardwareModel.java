@@ -13,7 +13,6 @@ import static fiji.plugin.imaging_fcs.gpufit.Gpufit.isCudaAvailable;
  * and fetching any relevant messages regarding the CUDA setup.
  */
 public final class HardwareModel {
-    private static final String CUBLAS_DLL = "cublas64_92.dll";
     private final boolean cuda;
     private String cudaMessage = "CUDA and libs loaded.";
 
@@ -43,18 +42,6 @@ public final class HardwareModel {
         File tmpDir = Files.createTempDirectory("gpufitImFCS-lib").toFile();
         // Mark for deletion on exit
         tmpDir.deleteOnExit();
-
-        // Write and load the appropriate libraries
-        if (osType == CheckOS.OperatingSystem.WINDOWS) {
-            try {
-                writeLibraryFile(tmpDir, CUBLAS_DLL);
-                // Load the CUBLAS library
-                System.load(tmpDir + "/" + CUBLAS_DLL);
-            } catch (Exception e) {
-                throw new IOException(
-                        String.format("Unable to load %s. Please install CUDA Toolkit 9.2 or newer.", CUBLAS_DLL));
-            }
-        }
 
         // Write and load your custom GPU library
         writeLibraryFile(tmpDir, libName);
