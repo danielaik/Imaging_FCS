@@ -3,12 +3,10 @@ package fiji.plugin.imaging_fcs.new_imfcs.controller;
 import fiji.plugin.imaging_fcs.new_imfcs.model.*;
 import fiji.plugin.imaging_fcs.new_imfcs.utils.ApplyCustomLUT;
 import fiji.plugin.imaging_fcs.new_imfcs.utils.ExcelExporter;
-import fiji.plugin.imaging_fcs.new_imfcs.view.NBView;
 import ij.IJ;
 import ij.ImagePlus;
 import org.apache.poi.ss.usermodel.Workbook;
 
-import javax.swing.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 
@@ -17,7 +15,6 @@ import java.awt.event.ActionListener;
  * It connects the NBView and NBModel, handling user interactions and updating the view.
  */
 public final class NBController {
-    private final NBView view;
     private final NBModel model;
 
     private final ImageModel imageModel;
@@ -33,42 +30,7 @@ public final class NBController {
     public NBController(ImageModel imageModel, ExpSettingsModel expSettingsModel, OptionsModel options,
                         BleachCorrectionModel bleachCorrectionModel) {
         model = new NBModel(imageModel, expSettingsModel, options, bleachCorrectionModel);
-        view = new NBView(this, model);
         this.imageModel = imageModel;
-    }
-
-    /**
-     * Sets the visibility of the NBView.
-     *
-     * @param b true to make the view visible, false to hide it
-     */
-    public void setVisible(boolean b) {
-        view.setVisible(b);
-    }
-
-    /**
-     * Creates an ActionListener to handle changes in the NB mode selection.
-     *
-     * @return the ActionListener for NB mode changes
-     */
-    public ActionListener cbNBModeChanged() {
-        return (ActionEvent ev) -> {
-            String mode = ControllerUtils.getComboBoxSelectionFromEvent(ev);
-            model.setMode(mode);
-
-            if ("G1".equals(mode)) {
-                view.setEnabledTextFields(false);
-            } else {
-                view.setEnabledTextFields(true);
-                if (!imageModel.isBackgroundLoaded()) {
-                    IJ.showMessage("Background not loaded, please load a background first.");
-                    view.setEnabledTextFields(false);
-                    ((JComboBox<?>) ev.getSource()).setSelectedIndex(0);
-                } else {
-                    // TODO: camCalibrate
-                }
-            }
-        };
     }
 
     /**
@@ -79,7 +41,8 @@ public final class NBController {
     public ActionListener btnNBPressed() {
         return (ActionEvent ev) -> {
             if (imageModel.isImageLoaded() && imageModel.isBackgroundLoaded()) {
-                model.performNB(imageModel.getImage(), "Calibrated".equals(model.getMode()), this::showImage);
+                new BackgroundTaskWorker<Void, Void>(
+                        () -> model.performNB(imageModel.getImage(), this::showImage)).execute();
             } else {
                 IJ.showMessage("No image and/or background loaded or assigned.");
             }
@@ -107,21 +70,6 @@ public final class NBController {
      * @param workbook the Excel workbook to which the N&B sheet will be added
      */
     public void saveExcelSheet(Workbook workbook) {
-        ExcelExporter.saveNumberAndBrightnessSheet(workbook, model.getNBB(), model.getNBN(), model.getNBNum(),
-                model.getNBEpsilon());
-    }
-
-    /**
-     * Dispose the view
-     */
-    public void dispose() {
-        this.view.dispose();
-    }
-
-    /**
-     * Bring the view to front
-     */
-    public void toFront() {
-        this.view.toFront();
+        ExcelExporter.saveNumberAndBrightnessSheet(workbook, model.getNBB(), model.getNBN());
     }
 }

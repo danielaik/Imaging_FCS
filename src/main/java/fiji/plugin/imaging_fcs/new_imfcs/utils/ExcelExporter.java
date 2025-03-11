@@ -407,14 +407,11 @@ public final class ExcelExporter {
      * The sheet includes multiple sections such as "Number", "Brightness", "Num (corrected)",
      * and "Epsilon (corrected)", with each section containing the values from the corresponding 2D array.
      *
-     * @param workbook  the workbook to add the sheet to
-     * @param NBB       a 2D array representing brightness values
-     * @param NBN       a 2D array representing number values
-     * @param NBNum     a 2D array representing corrected number values
-     * @param NBEpsilon a 2D array representing corrected epsilon values
+     * @param workbook the workbook to add the sheet to
+     * @param NBB      a 2D array representing brightness values
+     * @param NBN      a 2D array representing number values
      */
-    public static void saveNumberAndBrightnessSheet(Workbook workbook, double[][] NBB, double[][] NBN, double[][] NBNum,
-                                                    double[][] NBEpsilon) {
+    public static void saveNumberAndBrightnessSheet(Workbook workbook, double[][] NBB, double[][] NBN) {
         if (NBB == null || NBN == null) {
             return;
         }
@@ -429,12 +426,7 @@ public final class ExcelExporter {
         int colIndex = 0;
         header.createCell(colIndex++).setCellValue("Coordinate");
         header.createCell(colIndex++).setCellValue("Number");
-        header.createCell(colIndex++).setCellValue("Brightness");
-
-        if (NBNum != null && NBEpsilon != null) {
-            header.createCell(colIndex++).setCellValue("Num (corrected)");
-            header.createCell(colIndex).setCellValue("Epsilon (corrected)");
-        }
+        header.createCell(colIndex).setCellValue("Brightness");
 
         // Now write each data row in full.
         int rowIndex = 1;
@@ -446,11 +438,7 @@ public final class ExcelExporter {
                 row.createCell(colIndex++).setCellValue(String.format("(%d, %d)", x, y));
                 // Write each additional value if the corresponding array is not null.
                 row.createCell(colIndex++).setCellValue(NBN[x][y]);
-                row.createCell(colIndex++).setCellValue(NBB[x][y]);
-                if (NBNum != null && NBEpsilon != null) {
-                    row.createCell(colIndex++).setCellValue(NBNum[x][y]);
-                    row.createCell(colIndex).setCellValue(NBEpsilon[x][y]);
-                }
+                row.createCell(colIndex).setCellValue(NBB[x][y]);
             }
         }
     }

@@ -391,7 +391,6 @@ public final class MainPanelController {
             filteringController.dispose();
             bleachCorrectionView.dispose();
             simulationController.dispose();
-            nbController.dispose();
             fitController.dispose();
             backgroundSubtractionController.dispose();
             diffusionLawController.dispose();
@@ -421,7 +420,6 @@ public final class MainPanelController {
             bleachCorrectionView.toFront();
             filteringController.toFront();
             simulationController.toFront();
-            nbController.toFront();
             backgroundSubtractionController.toFront();
             imageController.toFront();
             diffusionLawController.toFront();
@@ -731,18 +729,13 @@ public final class MainPanelController {
     }
 
     /**
-     * Returns an action listener to handle the "Options" button press event.
-     * This listener opens the options controller.
+     * Creates an ActionListener to handle the NB analysis button press.
      *
-     * @return an ActionListener that processes the "Options" button press event
+     * @return the ActionListener for the NB analysis button
      */
-    public ItemListener tbNBPressed() {
-        return (ItemEvent ev) -> {
-            JToggleButton button = (JToggleButton) ev.getItemSelectable();
-
-            boolean selected = (ev.getStateChange() == ItemEvent.SELECTED);
-            button.setText(selected ? "N&B On" : "N&B Off");
-            nbController.setVisible(selected);
+    public ActionListener btnNBPressed() {
+        return (ActionEvent ev) -> {
+            nbController.btnNBPressed().actionPerformed(ev);
         };
     }
 

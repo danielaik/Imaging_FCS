@@ -50,9 +50,10 @@ public final class MainPanelView extends BaseView {
 
     // Buttons
     private JButton btnSave, btnRead, btnExit, btnLoad, btnBatch, btnDCCF, btnWriteConfig, btnUseExisting, btnDCR,
-            btnParamVideo, btnOptions, btnAve, btnParaCor, btnPSF, btnAll, btnROI, btnMore, btnCancel, btnBringToFront;
-    private JToggleButton tbExpSettings, tbFit, tbOverlap, tbBackground, tbNB, tbFiltering, tbBleachCorStride, tbDL,
-            tbSim, tbMSD;
+            btnParamVideo, btnOptions, btnAve, btnParaCor, btnPSF, btnAll, btnROI, btnMore, btnCancel, btnBringToFront,
+            btnNB;
+    private JToggleButton tbExpSettings, tbFit, tbOverlap, tbBackground, tbFiltering, tbBleachCorStride, tbDL, tbSim,
+            tbMSD;
 
     // Extended panel for additional features
     private JPanel extendedPanel;
@@ -236,6 +237,7 @@ public final class MainPanelView extends BaseView {
         btnAll = createJButton("All", "Calculates all ACFs.", null, controller.btnAllPressed());
         btnROI = createJButton("ROI", "Calculates ACFs only in the currently chose ROI.", null,
                 controller.btnROIPressed());
+        btnNB = createJButton("N&B", "", null, controller.btnNBPressed());
         btnBringToFront = createJButton("To Front", "Bring all windows of this plugin instance to the front.", null,
                 controller.btnBringToFrontPressed());
         btnCancel = createJButton("Cancel correlation", "Cancel the current correlation run.", null,
@@ -256,7 +258,6 @@ public final class MainPanelView extends BaseView {
         tbBackground =
                 createJToggleButton("Background", "Panel for different methods to perform background subtraction.",
                         new Font(Constants.PANEL_FONT, Font.BOLD, 10), controller.tbBackgroundPressed());
-        tbNB = createJToggleButton("N&B Off", "", null, controller.tbNBPressed());
         tbFiltering =
                 createJToggleButton("Threshold", "Filters the values in parameters maps using user-defined thresholds",
                         null, controller.tbFilteringPressed());
@@ -367,7 +368,7 @@ public final class MainPanelView extends BaseView {
         addRow(mainPanel, createJLabel("Filter (All)", ""), cbFilter, btnAve, btnROI);
 
         // Threshold, PVideo, NB, More
-        addRow(mainPanel, tbFiltering, btnParamVideo, tbNB, btnMore);
+        addRow(mainPanel, tbFiltering, btnParamVideo, btnNB, btnMore);
 
         // Initialize extended panel and add to main panel
         initializeExtendedPanel();
