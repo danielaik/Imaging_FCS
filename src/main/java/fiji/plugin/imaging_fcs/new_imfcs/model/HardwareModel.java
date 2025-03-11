@@ -57,7 +57,7 @@ public final class HardwareModel {
      */
     private static void writeLibraryFile(File directory, String libName) throws IOException {
         try (InputStream in = HardwareModel.class.getResourceAsStream(
-                "/libs/" + libName); FileOutputStream out = new FileOutputStream(new File(directory, libName))) {
+                "/libs/gpufit/" + libName); FileOutputStream out = new FileOutputStream(new File(directory, libName))) {
 
             if (in == null) {
                 throw new FileNotFoundException("Library " + libName + " not found in resources");
