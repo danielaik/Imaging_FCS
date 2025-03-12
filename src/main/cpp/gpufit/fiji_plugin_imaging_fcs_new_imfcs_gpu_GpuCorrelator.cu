@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <vector>
 
 #include "acf_input_params_wrapper.h"
