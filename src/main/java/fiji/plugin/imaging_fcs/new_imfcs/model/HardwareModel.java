@@ -80,10 +80,11 @@ public final class HardwareModel {
         try {
             loadGpuLibraries();
             return isCudaAvailable();
-        } catch (Exception e) {
+        } catch (UnsatisfiedLinkError | Exception e) {
             cudaMessage = e.getMessage();
-            return false;
         }
+
+        return false;
     }
 
     /**
