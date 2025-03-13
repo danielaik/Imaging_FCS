@@ -253,9 +253,25 @@ public class GpuFitter {
 
                     pixel.setFitParams(new PixelModel.FitParameters(params));
                     fitModel.calculateFittedCorrelationFunction(pixel, correlator.getLagTimes());
+                    pixel.setResiduals(calculateResiduals(pixel.getFittedCF(), pixel.getCorrelationFunction()));
                 }
             }
         }
+    }
+
+    /**
+     * Calculates the residuals of a correlation function given the fitted and original arrays.
+     *
+     * @param fittedCF            the fitted correlation function values
+     * @param correlationFunction the original correlation function values
+     * @return a new array containing the residuals
+     */
+    private static double[] calculateResiduals(double[] fittedCF, double[] correlationFunction) {
+        double[] residuals = new double[fittedCF.length];
+        for (int i = 0; i < fittedCF.length; i++) {
+            residuals[i] = correlationFunction[i] - fittedCF[i];
+        }
+        return residuals;
     }
 
     // private void applyIntensityFilter(List<PixelModel> pixelModels) {
