@@ -191,7 +191,12 @@ public final class ExcelReader {
         while (row != null) {
             Point position = parsePosition(row.getCell(0).getStringCellValue());
             PixelModel pixelModel = getOrInitPixelModel(pixelModels, position);
-            setter.accept(pixelModel, getValuesFromRow(row));
+            try {
+                double[] values = getValuesFromRow(row);
+                setter.accept(pixelModel, values);
+            } catch (Exception e) {
+                IJ.log("Error processing row; skipping. Error: " + e.getMessage());
+            }
 
             row = rowIterator.hasNext() ? rowIterator.next() : null;
         }
