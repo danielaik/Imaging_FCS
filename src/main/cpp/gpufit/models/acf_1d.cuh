@@ -1,237 +1,152 @@
 #ifndef GPUFIT_ACF1D_CUH_INCLUDED
 #define GPUFIT_ACF1D_CUH_INCLUDED
 
-__device__ void calculate_acf1d(REAL const *parameters, int const n_fits,
-                                int const n_points, REAL *value,
-                                REAL *derivative, int const point_index,
-                                int const fit_index, int const chunk_index,
-                                char *user_info,
-                                std::size_t const user_info_size,
-                                int const num_v_coefs) // NEW
+#include <cuda_runtime.h>
+#include <math.h>
+#include <math_constants.h>
+
+// --- Helper Math Function Macros ---
+#ifdef GPUFIT_DOUBLE
+#    define my_exp(x) exp(x)
+#    define my_pow(x, y) pow(x, y)
+#    define my_erf(x) erf(x)
+#    define my_sqrt(x) sqrt(x)
+#else
+#    define my_exp(x) __expf(x)
+#    define my_pow(x, y) __powf(x, y)
+#    define my_erf(x) erff(x)
+#    define my_sqrt(x) sqrtf(x)
+#endif
+
+// --- Helper Structures ---
+struct PerfTerms
 {
-    // indices
+    REAL exp; // Exponential term
+    REAL perf; // Error function term
+    REAL dExp; // Derivative w.r.t. diffusion
+    REAL dPerf; // Derivative w.r.t. velocity
+};
 
+// --- Helper Functions ---
+
+__device__ inline PerfTerms calculatePerfTerms(REAL x, REAL v, REAL a, REAL r, REAL p0t, REAL SQRT_PI)
+{
+    REAL term1 = a + r - v * x;
+    REAL term2 = a - r + v * x;
+    REAL term3 = r - v * x;
+    REAL term4 = 2 * my_pow(a, 2) + 3 * my_pow(r, 2) - 6 * x * r * v + 3 * my_pow(x * v, 2);
+    REAL term5 = my_pow(term3, 2) + my_pow(term1, 2);
+    REAL term6 = my_pow(term3, 2) + my_pow(term2, 2);
+    REAL term7 = 2 * (my_pow(a, 2) + my_pow(r, 2) - 2 * x * r * v + my_pow(x * v, 2));
+
+    REAL expTerm =
+        my_exp(-my_pow(term1 / p0t, 2)) + my_exp(-my_pow(term2 / p0t, 2)) - 2 * my_exp(-my_pow(term3 / p0t, 2));
+    REAL erfTerm = term1 * my_erf(term1 / p0t) + term2 * my_erf(term2 / p0t) - 2 * term3 * my_erf(term3 / p0t);
+    REAL dExpTerm = 2 * my_exp(-term4 / my_pow(p0t, 2))
+        * (my_exp(term5 / my_pow(p0t, 2)) + my_exp(term6 / my_pow(p0t, 2)) - 2 * my_exp(term7 / my_pow(p0t, 2)));
+    REAL dPerf = (my_erf(term2 / p0t) + 2 * my_erf(term3 / p0t) - my_erf(term1 / p0t)) * x;
+
+    PerfTerms terms = { expTerm, erfTerm, dExpTerm, dPerf };
+    return terms;
+}
+
+__device__ inline REAL calculatePlat(PerfTerms perfX, PerfTerms perfY, REAL p0t, REAL SQRT_PI, REAL ax, REAL ay,
+                                     REAL fitObservationVolume)
+{
+    return (p0t / SQRT_PI * perfX.exp + perfX.perf) * (p0t / SQRT_PI * perfY.exp + perfY.perf)
+        / (4 * my_pow(ax * ay, 2) / fitObservationVolume);
+}
+
+__device__ inline REAL calculateDPlat(PerfTerms perfX, PerfTerms perfY, REAL p0t, REAL SQRT_PI, REAL x, REAL ax,
+                                      REAL ay, REAL fitObservationVolume)
+{
+    return (1 / (SQRT_PI * p0t))
+        * (perfY.dExp * x * (p0t / SQRT_PI * perfX.exp + perfX.perf)
+           + perfX.dExp * x * (p0t / SQRT_PI * perfY.exp + perfY.perf))
+        / (4 * my_pow(ax * ay, 2) / fitObservationVolume);
+}
+
+// --- Main Device Function ---
+__device__ void calculate_acf1d(REAL const *parameters, int const n_fits, int const n_points, REAL *value,
+                                REAL *derivative, int const point_index, int const fit_index, int const chunk_index,
+                                char *user_info, std::size_t const user_info_size, int const num_v_coefs)
+{
+    // Extract x from user_info
     REAL *user_info_float = (REAL *)user_info;
-    REAL x = 0;
-    x = user_info_float[point_index];
-    double sqrpi = sqrt((double)3.14159265359);
+    REAL x = user_info_float[point_index];
 
-    double p0t =
-        sqrt(4 * (double)parameters[1] * x + pow((double)parameters[13], 2.0));
-    double p1xt = (double)parameters[11] + (double)parameters[15]
-        - (double)parameters[2] * x;
-    double p2xt = (double)parameters[11] - (double)parameters[15]
-        + (double)parameters[2] * x;
-    double p3xt = (double)parameters[15] - (double)parameters[2] * x;
-    double p4xt = 2 * pow((double)parameters[11], 2.0)
-        + 3 * pow((double)parameters[15], 2.0)
-        - 6 * x * (double)parameters[15] * (double)parameters[2]
-        + 3 * pow(x * (double)parameters[2], 2.0);
-    double p5xt = pow(p3xt, 2.0) + pow(p1xt, 2.0);
-    double p6xt = pow(p3xt, 2.0) + pow(p2xt, 2.0);
-    double p7xt = 2
-        * (pow((double)parameters[11], 2.0) + pow((double)parameters[15], 2.0)
-           - 2 * x * (double)parameters[15] * (double)parameters[2]
-           + pow(x * (double)parameters[2], 2.0));
-    double p1yt = (double)parameters[12] + (double)parameters[16]
-        - (double)parameters[3] * x;
-    double p2yt = (double)parameters[12] - (double)parameters[16]
-        + (double)parameters[3] * x;
-    double p3yt = (double)parameters[16] - (double)parameters[3] * x;
-    double p4yt = 2 * pow((double)parameters[12], 2.0)
-        + 3 * pow((double)parameters[16], 2.0)
-        - 6 * x * (double)parameters[16] * (double)parameters[3]
-        + 3 * pow(x * (double)parameters[3], 2.0);
-    double p5yt = pow(p3yt, 2.0) + pow(p1yt, 2.0);
-    double p6yt = pow(p3yt, 2.0) + pow(p2yt, 2.0);
-    double p7yt = 2
-        * (pow((double)parameters[12], 2.0) + pow((double)parameters[16], 2.0)
-           - 2 * x * (double)parameters[16] * (double)parameters[3]
-           + pow(x * (double)parameters[3], 2.0));
+    // Constants
+    const REAL SQRT_PI = my_sqrt(CUDART_PI);
 
-    double pexpxt = exp(-pow(p1xt / p0t, 2.0)) + exp(-pow(p2xt / p0t, 2.0))
-        - 2 * exp(-pow(p3xt / p0t, 2.0));
-    double perfxt = p1xt * erf(p1xt / p0t) + p2xt * erf(p2xt / p0t)
-        - 2 * p3xt * erf(p3xt / p0t);
-    double dDpexpxt = 2 * exp(-p4xt / pow(p0t, 2.0))
-        * (exp(p5xt / pow(p0t, 2.0)) + exp(p6xt / pow(p0t, 2.0))
-           - 2 * exp(p7xt / pow(p0t, 2.0)));
-    double dvxperfxt =
-        (erf(p2xt / p0t) + 2 * erf(p3xt / p0t) - erf(p1xt / p0t)) * x;
-    double pexpyt = exp(-pow(p1yt / p0t, 2.0)) + exp(-pow(p2yt / p0t, 2.0))
-        - 2 * exp(-pow(p3yt / p0t, 2.0));
-    double dDpexpyt = 2 * exp(-p4yt / pow(p0t, 2.0))
-        * (exp(p5yt / pow(p0t, 2.0)) + exp(p6yt / pow(p0t, 2.0))
-           - 2 * exp(p7yt / pow(p0t, 2.0)));
-    double dvyperfyt =
-        (erf(p2yt / p0t) + 2 * erf(p3yt / p0t) - erf(p1yt / p0t)) * x;
-    double perfyt = p1yt * erf(p1yt / p0t) + p2yt * erf(p2yt / p0t)
-        - 2 * p3yt * erf(p3yt / p0t);
-    double pplane1 = (p0t / sqrpi * pexpxt + perfxt)
-        * (p0t / sqrpi * pexpyt + perfyt)
-        / (4 * (double)parameters[11] * (double)parameters[12])
-        * ((double)parameters[17]
-           / ((double)parameters[11] * (double)parameters[12]));
+    // Extract parameters (assuming REAL is float for GPU performance)
+    REAL N = parameters[0]; // Number of particles
+    REAL D = parameters[1]; // Diffusion coefficient 1
+    REAL vx = parameters[2]; // Velocity in x
+    REAL vy = parameters[3]; // Velocity in y
+    REAL G = parameters[4]; // Offset
+    REAL F2 = parameters[5]; // Fraction of second component
+    REAL D2 = parameters[6]; // Diffusion coefficient 2
+    REAL fTrip = parameters[9]; // Triplet fraction
+    REAL tTrip = parameters[10]; // Triplet time
+    REAL ax = parameters[11]; // Axial size x
+    REAL ay = parameters[12]; // Axial size y
+    REAL s = parameters[13]; // PSF size
+    REAL rx = parameters[15]; // Radial size x
+    REAL ry = parameters[16]; // Radial size y
+    REAL fitObservationVolume = parameters[17]; // Observation volume
+    REAL q2 = parameters[18]; // Relative amplitude of second component
 
-    double p0t2 =
-        sqrt(4 * (double)parameters[6] * x + pow((double)parameters[13], 2));
-    double p1xt2 = (double)parameters[11] + (double)parameters[15]
-        - (double)parameters[2] * x;
-    double p2xt2 = (double)parameters[11] - (double)parameters[15]
-        + (double)parameters[2] * x;
-    double p3xt2 = (double)parameters[15] - (double)parameters[2] * x;
-    double p4xt2 = 2 * pow((double)parameters[11], 2)
-        + 3 * pow((double)parameters[15], 2)
-        - 6 * x * (double)parameters[15] * (double)parameters[2]
-        + 3 * pow(x * (double)parameters[2], 2);
-    double p5xt2 = pow(p3xt2, 2) + pow(p1xt2, 2);
-    double p6xt2 = pow(p3xt2, 2) + pow(p2xt2, 2);
-    double p7xt2 = 2
-        * (pow((double)parameters[11], 2) + pow((double)parameters[15], 2)
-           - 2 * x * (double)parameters[15] * (double)parameters[2]
-           + pow(x * (double)parameters[2], 2));
-    double p1yt2 = (double)parameters[12] + (double)parameters[16]
-        - (double)parameters[3] * x;
-    double p2yt2 = (double)parameters[12] - (double)parameters[16]
-        + (double)parameters[3] * x;
-    double p3yt2 = (double)parameters[16] - (double)parameters[3] * x;
-    double p4yt2 = 2 * pow((double)parameters[12], 2)
-        + 3 * pow((double)parameters[16], 2)
-        - 6 * x * (double)parameters[16] * (double)parameters[3]
-        + 3 * pow(x * (double)parameters[3], 2);
-    double p5yt2 = pow(p3yt2, 2) + pow(p1yt2, 2);
-    double p6yt2 = pow(p3yt2, 2) + pow(p2yt2, 2);
-    double p7yt2 = 2
-        * (pow((double)parameters[12], 2) + pow((double)parameters[16], 2)
-           - 2 * x * (double)parameters[16] * (double)parameters[3]
-           + pow(x * (double)parameters[3], 2));
-    double pexpxt2 = exp(-pow(p1xt2 / p0t2, 2)) + exp(-pow(p2xt2 / p0t2, 2))
-        - 2 * exp(-pow(p3xt2 / p0t2, 2));
-    double perfxt2 = p1xt2 * erf(p1xt2 / p0t2) + p2xt2 * erf(p2xt2 / p0t2)
-        - 2 * p3xt2 * erf(p3xt2 / p0t2);
-    double dDpexpxt2 = 2 * exp(-p4xt2 / pow(p0t2, 2))
-        * (exp(p5xt2 / pow(p0t2, 2)) + exp(p6xt2 / pow(p0t2, 2))
-           - 2 * exp(p7xt2 / pow(p0t2, 2)));
-    double dvxperfxt2 =
-        (erf(p2xt2 / p0t2) + 2 * erf(p3xt2 / p0t2) - erf(p1xt2 / p0t2)) * x;
-    double pexpyt2 = exp(-pow(p1yt2 / p0t2, 2)) + exp(-pow(p2yt2 / p0t2, 2))
-        - 2 * exp(-pow(p3yt2 / p0t2, 2));
-    double dDpexpyt2 = 2 * exp(-p4yt2 / pow(p0t2, 2))
-        * (exp(p5yt2 / pow(p0t2, 2)) + exp(p6yt2 / powf(p0t2, 2))
-           - 2 * exp(p7yt2 / powf(p0t2, 2)));
-    double dvyperfyt2 =
-        (erf(p2yt2 / p0t2) + 2 * erf(p3yt2 / p0t2) - erf(p1yt2 / p0t2)) * x;
-    double perfyt2 = p1yt2 * erf(p1yt2 / p0t2) + p2yt2 * erf(p2yt2 / p0t2)
-        - 2 * p3yt2 * erf(p3yt2 / p0t2);
-    double pplane2 = (p0t2 / sqrpi * pexpxt2 + perfxt2)
-        * (p0t2 / sqrpi * pexpyt2 + perfyt2)
-        / (4 * pow((double)parameters[11] * (double)parameters[12], 2)
-           / (double)parameters[17]);
+    // Precompute p0t for each component
+    REAL p0t1 = my_sqrt(4 * D * x + my_pow(s, 2));
+    REAL p0t2 = my_sqrt(4 * D2 * x + my_pow(s, 2));
 
-    double triplet = 1
-        + (double)parameters[9] / (1 - (double)parameters[9])
-            * exp(-x / (double)parameters[10]);
+    // Compute perf terms for each component
+    PerfTerms perfX1 = calculatePerfTerms(x, vx, ax, rx, p0t1, SQRT_PI);
+    PerfTerms perfY1 = calculatePerfTerms(x, vy, ay, ry, p0t1, SQRT_PI);
+    PerfTerms perfX2 = calculatePerfTerms(x, vx, ax, rx, p0t2, SQRT_PI);
+    PerfTerms perfY2 = calculatePerfTerms(x, vy, ay, ry, p0t2, SQRT_PI);
 
-    value[point_index] = (1 / (double)parameters[0])
-            * ((1 - (double)parameters[5]) * pplane1
-               + powf((double)parameters[18], 2) * (double)parameters[5] * pplane2)
-            / pow(1 - (double)parameters[5]
-                      + (double)parameters[18] * (double)parameters[5],
-                  2)
-            * triplet
-        + (double)parameters[4];
+    // Compute plat and dDplat for each component
+    REAL plat1 = calculatePlat(perfX1, perfY1, p0t1, SQRT_PI, ax, ay, fitObservationVolume);
+    REAL dDplat1 = calculateDPlat(perfX1, perfY1, p0t1, SQRT_PI, x, ax, ay, fitObservationVolume);
+    REAL plat2 = calculatePlat(perfX2, perfY2, p0t2, SQRT_PI, ax, ay, fitObservationVolume);
+    REAL dDplat2 = calculateDPlat(perfX2, perfY2, p0t2, SQRT_PI, x, ax, ay, fitObservationVolume);
 
-    double dDplat = (1 / (sqrpi * p0t))
-        * (dDpexpyt * x * (p0t / sqrpi * pexpxt + perfxt)
-           + dDpexpxt * x * (p0t / sqrpi * pexpyt + perfyt))
-        / (4 * powf((double)parameters[11] * (double)parameters[12], 2.0)
-           / (double)parameters[17]);
+    // Triplet correction
+    REAL triplet = 1 + fTrip / (1 - fTrip) * my_exp(-x / tTrip);
+    REAL dTripletFtrip = my_exp(-x / tTrip) * (1 / (1 - fTrip) + fTrip / my_pow(1 - fTrip, 2));
+    REAL dTripletTtrip = my_exp(-x / tTrip) * (fTrip * x) / ((1 - fTrip) * my_pow(tTrip, 2));
 
-    double dDplat2 = (1 / (sqrpi * p0t2))
-        * (dDpexpyt2 * x * (p0t2 / sqrpi * pexpxt2 + perfxt2)
-           + dDpexpxt2 * x * (p0t2 / sqrpi * pexpyt2 + perfyt2))
-        / (4 * pow((double)parameters[11] * (double)parameters[12], 2)
-           / (double)parameters[17]);
+    // Correction factors
+    REAL denominator = 1 - F2 + q2 * F2;
+    REAL pf1 = (1 - F2) / denominator;
+    REAL pf2 = (my_pow(q2, 2) * F2) / denominator;
 
-    double dtripletFtrip = exp(-x / (double)parameters[10])
-        * (1 / (1 - (double)parameters[9])
-           + (double)parameters[9] / pow(1 - (double)parameters[9], 2));
-    double dtripletTtrip = exp(-x / (double)parameters[10])
-        * ((double)parameters[9] * x)
-        / ((1 - (double)parameters[9]) * pow((double)parameters[10], 2));
+    // Derivative factors for F2
+    REAL dfNom = my_pow(denominator, 3);
+    REAL df21 = 1 - F2 + q2 * F2 - 2 * q2;
+    REAL df22 = my_pow(q2, 2) * (1 + F2 - q2 * F2);
 
-    double pf1 = (1 - (double)parameters[5])
-        / (1 - (double)parameters[5]
-           + (double)parameters[18] * (double)parameters[5]);
-    double pf2 = (pow((double)parameters[18], 2) * (double)parameters[5])
-        / (1 - (double)parameters[5]
-           + (double)parameters[18] * (double)parameters[5]);
-    double dfnom = pow(1 - (double)parameters[5]
-                           + (double)parameters[18] * (double)parameters[5],
-                       3);
-    double df21 = 1 - (double)parameters[5]
-        + (double)parameters[18] * (double)parameters[5]
-        - 2 * (double)parameters[18];
-    double df22 = pow((double)parameters[18], 2)
-        * (1 + (double)parameters[5]
-           - (double)parameters[18] * (double)parameters[5]);
+    // Value computation
+    REAL weightedAcf = pf1 * plat1 + pf2 * plat2;
+    value[point_index] = (1 / N) * weightedAcf * triplet + G;
 
-    double pacf = (1 / (double)parameters[0])
-            * ((1 - (double)parameters[5]) * pplane1
-               + powf((double)parameters[18], 2) * (double)parameters[5] * pplane2)
-            / pow(1 - (double)parameters[5]
-                      + (double)parameters[18] * (double)parameters[5],
-                  2)
-            * triplet
-        + (double)parameters[4];
-
+    // Derivatives
     REAL *current_derivatives = derivative + point_index;
+    REAL pacf = (1 / N) * weightedAcf * triplet + G;
 
-    current_derivatives[0 * n_points] =
-        (float)(-1 / pow((double)parameters[0], 2)) * (pf1 * pplane1 + pf2 * pplane2)
-        * triplet;
-    current_derivatives[1 * n_points] = (1 / parameters[0])
-        * (float)(pf1 * dDplat);
-    current_derivatives[2 * n_points] = (1 / parameters[0])
-        * (float)((pf1 * ((p0t / sqrpi * pexpyt + perfyt) * dvxperfxt)
-                       / (4
-                          * pow((double)parameters[11] * (double)parameters[12],
-                                2)
-                          / parameters[17])
-                   + pf2 * ((p0t2 / sqrpi * pexpyt2 + perfyt2) * dvxperfxt2)
-                       / (4
-                          * pow((double)parameters[11] * (double)parameters[12],
-                                2)
-                          / parameters[17]))
-                  * triplet);
-    current_derivatives[3 * n_points] = (1 / parameters[0])
-        * (float)((pf1 * ((p0t / sqrpi * pexpxt + perfxt) * dvyperfyt)
-                       / (4
-                          * pow((double)parameters[11] * (double)parameters[12],
-                                2)
-                          / parameters[17])
-                   + pf2 * ((p0t2 / sqrpi * pexpxt2 + perfxt2) * dvyperfyt2)
-                       / (4
-                          * pow((double)parameters[11] * (double)parameters[12],
-                                2)
-                          / parameters[17]))
-                  * triplet);
-    current_derivatives[4 * n_points] = 1.0;
-    current_derivatives[5 * n_points] = (1 / parameters[0])
-        * (float)((1 / dfnom) * (df21 * pplane1 + df22 * pplane2) * triplet);
-    current_derivatives[6 * n_points] = (1 / parameters[0])
-        * (float)(pf2 * dDplat2 * triplet);
-    current_derivatives[9 * n_points] = (float)dtripletFtrip * pacf;
-    current_derivatives[10 * n_points] = (float)dtripletTtrip * pacf;
-    // current_derivatives[11 * n_points] = 0.0;
-    // current_derivatives[12 * n_points] = 0.0;
-    // current_derivatives[13 * n_points] = 0.0;
-    // current_derivatives[14 * n_points] = 0.0;
-    // current_derivatives[15 * n_points] = 0.0;
-    // current_derivatives[16 * n_points] = 0.0;
-    // current_derivatives[17 * n_points] = 0.0;
-    // current_derivatives[18 * n_points] = 0.0;
-    // current_derivatives[19 * n_points] = 0.0;
+    current_derivatives[0 * n_points] = (-1 / (N * N)) * weightedAcf * triplet; // d/dN
+    current_derivatives[1 * n_points] = (1 / N) * pf1 * dDplat1 * triplet; // d/dD
+    current_derivatives[2 * n_points] = (1 / N) * // d/dvx
+        (pf1 * perfX1.dPerf * plat1 + pf2 * perfX2.dPerf * plat2) * triplet;
+    current_derivatives[3 * n_points] = (1 / N) * // d/dvy
+        (pf1 * perfY1.dPerf * plat1 + pf2 * perfY2.dPerf * plat2) * triplet;
+    current_derivatives[4 * n_points] = 1.0; // d/dG
+    current_derivatives[5 * n_points] = (1 / N) * (1 / dfNom) * // d/dF2
+        (df21 * plat1 + df22 * plat2) * triplet;
+    current_derivatives[6 * n_points] = (1 / N) * pf2 * dDplat2 * triplet; // d/dD2
+    current_derivatives[9 * n_points] = dTripletFtrip * pacf; // d/dfTrip
+    current_derivatives[10 * n_points] = dTripletTtrip * pacf; // d/dtTrip
 }
 
 #endif
