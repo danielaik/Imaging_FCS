@@ -492,7 +492,7 @@ public final class ImageController {
                     settings.isFCCSDisp());
         }
 
-        if (options.isPlotResCurves() && pixelModel.isFitted()) {
+        if (options.isPlotResCurves() && pixelModel.isFitted() && pixelModel.getResiduals() != null) {
             Plots.plotResiduals(pixelModel.getResiduals(), correlator.getLagTimes(), p);
         }
     }
