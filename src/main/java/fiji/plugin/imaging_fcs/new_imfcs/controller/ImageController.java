@@ -371,9 +371,11 @@ public final class ImageController {
         }
 
         if (options.isUseGpu()) {
-            GpuCorrelator gpuCorrelator = new GpuCorrelator(settings, bleachCorrectionModel, imageModel, fitController.getModel(), false, correlator, xRange, yRange);
+            GpuCorrelator gpuCorrelator =
+                    new GpuCorrelator(settings, bleachCorrectionModel, imageModel, fitController.getModel(), false,
+                            correlator, xRange, yRange);
             gpuCorrelator.correlateAndFit(xRange, yRange, fitController.isActivated());
-            SwingUtilities.invokeLater(() -> plotAll());
+            SwingUtilities.invokeLater(this::plotAll);
         } else {
             List<PixelModel> correlatedPixels = new ArrayList<>();
 
