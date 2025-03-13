@@ -342,4 +342,8 @@ public class FitView extends BaseView {
         holdD2.setSelected(model.getD2().isHeld());
         holdF2.setSelected(model.getF2().isHeld());
     }
+
+    public void setFitModel(String fitModel) {
+        cbFitModel.setSelectedItem(fitModel);
+    }
 }

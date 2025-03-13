@@ -320,4 +320,8 @@ public class FitController {
         settings.setFitModel(fitModel);
         updateSettingsField.run();
     }
+
+    public void setFitModelField(String fitModel) {
+        view.setFitModel(fitModel);
+    }
 }

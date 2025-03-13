@@ -128,6 +128,7 @@ public final class MainPanelController {
         }
 
         // set the different views
+        this.fitController.setFitModelField(settings.getFitModel());
         this.bleachCorrectionView = new BleachCorrectionView(this, bleachCorrectionModel);
         this.expSettingsView = new ExpSettingsView(this, settings);
         updateSettingsField();
@@ -192,6 +193,7 @@ public final class MainPanelController {
         }
 
         settings.fromMapExcelLoading(expSettingsMap);
+        bleachCorrectionModel.setPolynomialOrder(Integer.parseInt(expSettingsMap.get("Polynomial Order").toString()));
         imageController.fromMap(expSettingsMap);
     }
 
