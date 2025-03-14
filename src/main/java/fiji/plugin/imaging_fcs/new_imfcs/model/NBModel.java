@@ -1,11 +1,9 @@
 package fiji.plugin.imaging_fcs.new_imfcs.model;
 
-import fiji.plugin.imaging_fcs.new_imfcs.constants.Constants;
 import ij.IJ;
 import ij.ImagePlus;
 import ij.process.ImageProcessor;
 
-import java.util.Arrays;
 import java.util.function.BiConsumer;
 
 /**
@@ -17,7 +15,7 @@ public final class NBModel {
     private final OptionsModel options;
     private final BleachCorrectionModel bleachCorrectionModel;
 
-    private double[][] filterArray, NBB, NBN;
+    private double[][] NBB, NBN;
 
     private int frameCount;
 
@@ -47,39 +45,10 @@ public final class NBModel {
         int width = img.getWidth();
         int height = img.getHeight();
 
-        filterArray = new double[width][height];
         NBB = new double[width][height];
         NBN = new double[width][height];
 
-        final double filterLL = settings.getFilterLowerLimit();
-        final double filterUL = settings.getFilterUpperLimit();
-
         frameCount = settings.getLastFrame() - settings.getFirstFrame() + 1;
-
-        // If mean is selected we consider all the frames, else just the first frame
-        final int framesToConsider = Constants.FILTER_MEAN.equals(settings.getFilter()) ? frameCount : 1;
-
-        if (Constants.NO_FILTER.equals(settings.getFilter())) {
-            for (int i = 0; i < width; i++) {
-                Arrays.fill(filterArray[i], 1.0);
-            }
-        } else {
-            for (int i = 0; i < width; i++) {
-                for (int j = 0; j < height; j++) {
-                    // This is used when "Mean" is selected, if "Intensity" is selected, we will just the current value
-                    double sum = 0;
-
-                    for (int k = settings.getFirstFrame(); k < settings.getFirstFrame() + framesToConsider; k++) {
-                        sum += img.getStack().getProcessor(k).getPixelValue(i, j);
-                    }
-
-                    // Here we do the mean of the sum. If Intensity is selected, it doesn't change the value (sum / 1)
-                    double value = sum / framesToConsider;
-
-                    filterArray[i][j] = (value > filterLL && value < filterUL) ? value : Double.NaN;
-                }
-            }
-        }
 
         if (options.isUseGpu()) {
             performGpuAnalysis(img);
@@ -102,6 +71,12 @@ public final class NBModel {
     private void performCpuAnalysis(ImagePlus img) {
         for (int i = 0; i < img.getWidth(); i++) {
             for (int j = 0; j < img.getHeight(); j++) {
+                if (imageModel.isPixelFiltered(i, j)) {
+                    NBB[i][j] = Double.NaN;
+                    NBN[i][j] = Double.NaN;
+                    continue;
+                }
+
                 bleachCorrectionModel.calcIntensityTrace(img, i, j, settings.getFirstFrame(), settings.getLastFrame());
                 double[] data = bleachCorrectionModel.getIntensity(img, i, j, 1, settings.getFirstFrame(),
                         settings.getLastFrame());
@@ -120,14 +95,8 @@ public final class NBModel {
                 meanNextElement /= frameCount - 1;
                 covariance = covariance / (frameCount - 1) - mean * meanNextElement;
 
-                // note that offset has already been corrected for in getIntensity()
-                if (Double.isNaN(filterArray[i][j])) {
-                    NBB[i][j] = Double.NaN;
-                    NBN[i][j] = Double.NaN;
-                } else {
-                    NBB[i][j] = (covariance - imageModel.getBackgroundCovariance()[i][j]) / mean;
-                    NBN[i][j] = mean / NBB[i][j];
-                }
+                NBB[i][j] = (covariance - imageModel.getBackgroundCovariance()[i][j]) / mean;
+                NBN[i][j] = mean / NBB[i][j];
             }
         }
     }

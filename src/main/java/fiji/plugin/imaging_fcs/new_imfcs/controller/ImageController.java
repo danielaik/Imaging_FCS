@@ -144,6 +144,13 @@ public final class ImageController {
         imageModel.fromMap(data);
     }
 
+    /**
+     * Updates the image model's filter array using the current filter settings.
+     */
+    public void setFilterArray() {
+        imageModel.setFilterArray(settings.getFilter(), settings.getFilterLowerLimit(), settings.getFilterUpperLimit(),
+                settings.getFirstFrame(), settings.getLastFrame());
+    }
 
     /**
      * Loads the given image into the model and sets up the view and event listeners.
@@ -161,6 +168,9 @@ public final class ImageController {
 
         // set the default end for diffusion law
         setDiffusionLawRange.run();
+
+        // set the filter array
+        setFilterArray();
     }
 
     /**
@@ -349,7 +359,8 @@ public final class ImageController {
                 }
 
                 try {
-                    if (isPixelInRoi(imgRoi, x * pixelBinning.x, y * pixelBinning.y)) {
+                    if ((isPixelInRoi(imgRoi, x * pixelBinning.x, y * pixelBinning.y)) &&
+                            !imageModel.isPixelFiltered(x * pixelBinning.x, y * pixelBinning.y)) {
                         Point[] points = correlatePixel(x, y, false);
 
                         PixelModel pixelModel = correlator.getPixelModel(points[0].x, points[0].y);

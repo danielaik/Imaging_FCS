@@ -45,9 +45,9 @@ public final class ExpSettingsModel {
     private int correlatorQ = 8;
     private String fitModel = Constants.ITIR_FCS_2D;
     private String paraCor = "N vs D";
-    private String dCCF = "x direction";
-    private String bleachCorrection = "none";
-    private String filter = "none";
+    private String dCCF = Constants.X_DIRECTION;
+    private String bleachCorrection = Constants.NO_BLEACH_CORRECTION;
+    private String filter = Constants.NO_FILTER;
     private int filterLowerLimit = 0;
     private int filterUpperLimit = 65536;
     private boolean FCCSDisp = false;

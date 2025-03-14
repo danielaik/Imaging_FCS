@@ -195,6 +195,7 @@ public final class MainPanelController {
         settings.fromMapExcelLoading(expSettingsMap);
         bleachCorrectionModel.setPolynomialOrder(Integer.parseInt(expSettingsMap.get("Polynomial Order").toString()));
         imageController.fromMap(expSettingsMap);
+        imageController.setFilterArray();
     }
 
     /**
@@ -358,6 +359,8 @@ public final class MainPanelController {
                     new FilterLimitsSelectionView(listener, settings.getFilterLowerLimit(),
                             settings.getFilterUpperLimit());
                 }
+
+                imageController.setFilterArray();
             }
         };
     }

@@ -1,7 +1,9 @@
 package fiji.plugin.imaging_fcs.new_imfcs.model;
 
+import fiji.plugin.imaging_fcs.new_imfcs.constants.Constants;
 import ij.IJ;
 import ij.ImagePlus;
+import ij.ImageStack;
 import ij.gui.ImageCanvas;
 import ij.gui.ImageWindow;
 import ij.gui.Overlay;
@@ -30,6 +32,8 @@ public final class ImageModel {
     private int background = 0;
     private int background2 = 0;
     private int minBackgroundValue = 0;
+
+    private boolean[][] filterArray = null;
 
     /**
      * Constructs an ImageModel instance with no image loaded.
@@ -244,6 +248,9 @@ public final class ImageModel {
         image.close();
 
         image = null;
+
+        // reset filter array
+        filterArray = null;
     }
 
     /**
@@ -391,6 +398,60 @@ public final class ImageModel {
         backgroundImage = null;
         background = minBackgroundValue;
         background2 = minBackgroundValue;
+    }
+
+    /**
+     * Sets the filter array for marking pixels that do not meet the specified criteria.
+     * Depending on the filter type (e.g., intensity or mean), the pixel values are compared against the provided lower
+     * and upper limits over a range of frames.
+     *
+     * @param filter     The filter type. Supported values are defined in Constants.
+     * @param lowerLimit The lower limit for the filter.
+     * @param upperLimit The upper limit for the filter.
+     * @param firstFrame The first frame to consider.
+     * @param lastFrame  The last frame to consider.
+     */
+    public void setFilterArray(String filter, int lowerLimit, int upperLimit, int firstFrame, int lastFrame) {
+        if (filter.equals(Constants.NO_FILTER)) {
+            filterArray = null;
+            return;
+        }
+
+        filterArray = new boolean[width][height];
+
+        if (filter.equals(Constants.FILTER_INTENSITY)) {
+            ImageProcessor ip = image.getStack().getProcessor(firstFrame);
+            for (int x = 0; x < width; x++) {
+                for (int y = 0; y < height; y++) {
+                    int value = ip.get(x, y);
+                    filterArray[x][y] = value < lowerLimit || value > upperLimit;
+                }
+            }
+        } else if (filter.equals(Constants.FILTER_MEAN)) {
+            int numberOfFrame = lastFrame - firstFrame + 1;
+            ImageStack imageStack = image.getStack();
+            for (int x = 0; x < width; x++) {
+                for (int y = 0; y < height; y++) {
+                    int meanValue = 0;
+                    for (int i = firstFrame; i <= lastFrame; i++) {
+                        meanValue += imageStack.getProcessor(i).get(x, y);
+                    }
+                    meanValue /= numberOfFrame;
+                    filterArray[x][y] = meanValue < lowerLimit || meanValue > upperLimit;
+                }
+            }
+        }
+    }
+
+    /**
+     * Checks if the pixel at the specified coordinates is filtered.
+     *
+     * @param x The x-coordinate of the pixel.
+     * @param y The y-coordinate of the pixel.
+     * @return True if the pixel is marked as filtered, false otherwise.
+     */
+    public boolean isPixelFiltered(int x, int y) {
+        return filterArray != null && filterArray[x][y];
     }
 
     // List of getters
