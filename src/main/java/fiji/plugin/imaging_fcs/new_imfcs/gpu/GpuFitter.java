@@ -236,6 +236,10 @@ public class GpuFitter {
         for (int x = 0; x < gpuParams.width; x++) {
             for (int y = 0; y < gpuParams.height; y++) {
                 PixelModel pixel = pixelModels[(x + roiStartX) * gpuParams.pixbinX][(y + roiStartY) * gpuParams.pixbinY];
+                if (pixel == null) {
+                    continue;
+                }
+
                 int index = y * gpuParams.width + x;
 
                 boolean converged = FitState.fromID(fitResult.states.get(index)) == FitState.CONVERGED;

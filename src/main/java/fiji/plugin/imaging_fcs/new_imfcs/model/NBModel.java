@@ -1,6 +1,5 @@
 package fiji.plugin.imaging_fcs.new_imfcs.model;
 
-import fiji.plugin.imaging_fcs.new_imfcs.constants.Constants;
 import fiji.plugin.imaging_fcs.new_imfcs.gpu.GpuCorrelator;
 import fiji.plugin.imaging_fcs.new_imfcs.gpu.GpuParameters;
 import fiji.plugin.imaging_fcs.new_imfcs.model.correlations.Correlator;
@@ -106,7 +105,7 @@ public final class NBModel {
             // Process results
             for (int i = 0; i < width; i++) {
                 for (int j = 0; j < height; j++) {
-                    if (Double.isNaN(filterArray[i][j])) {
+                    if (imageModel.isPixelFiltered(i, j)) {
                         NBB[i][j] = Double.NaN;
                         NBN[i][j] = Double.NaN;
                     } else {
