@@ -50,11 +50,12 @@ public class GpuCorrelator {
     /**
      * Performs correlation and optional fitting on a range of pixels.
      *
-     * @param xRange The range of x coordinates to process
-     * @param yRange The range of y coordinates to process
-     * @param fit    Whether to perform fitting after correlation
+     * @param xRange    The range of x coordinates to process
+     * @param yRange    The range of y coordinates to process
+     * @param fit       Whether to perform fitting after correlation
+     * @param progress  Show progress if activated
      */
-    public void correlateAndFit(Range xRange, Range yRange, boolean fit) {
+    public void correlateAndFit(Range xRange, Range yRange, boolean fit, boolean progress) {
         // Define the number of steps. If we fit, we have the correlation, the fit, and
         // then the plot.
         int numberOfStep = fit ? 3 : 2;
@@ -77,7 +78,9 @@ public class GpuCorrelator {
                 bleachCorrectionParams, IntStream.of(correlator.getSampleTimes()).asDoubleStream().toArray(),
                 correlator.getLags(), gpuParameters);
 
-        IJ.showProgress(1, numberOfStep);
+        if (progress) {
+            IJ.showProgress(1, numberOfStep);
+        }
 
         PixelModel[][] pixelModels = createPixelModels(pixels1, blockVarianceArray, blocked1D, xRange.getStart(),
                 yRange.getStart());
@@ -87,7 +90,9 @@ public class GpuCorrelator {
             GpuFitter fitter = new GpuFitter(gpuParameters, fitModel, settings, correlator);
             fitter.fit(pixelModels, pixels1, blockVarianceArray, xRange.getStart(), yRange.getStart());
 
-            IJ.showProgress(2, numberOfStep);
+            if (progress) {
+                IJ.showProgress(2, numberOfStep);
+            }
         }
     }
 

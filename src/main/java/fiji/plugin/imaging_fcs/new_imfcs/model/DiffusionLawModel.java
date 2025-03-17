@@ -3,6 +3,7 @@ package fiji.plugin.imaging_fcs.new_imfcs.model;
 import fiji.plugin.imaging_fcs.new_imfcs.constants.Constants;
 import fiji.plugin.imaging_fcs.new_imfcs.controller.InvalidUserInputException;
 import fiji.plugin.imaging_fcs.new_imfcs.enums.FitFunctions;
+import fiji.plugin.imaging_fcs.new_imfcs.gpu.GpuCorrelator;
 import fiji.plugin.imaging_fcs.new_imfcs.model.correlations.Correlator;
 import fiji.plugin.imaging_fcs.new_imfcs.model.fit.LineFit;
 import fiji.plugin.imaging_fcs.new_imfcs.model.fit.parametric_univariate_functions.FCSFit;
@@ -16,14 +17,17 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
- * The {@code DiffusionLawModel} class represents the data model for diffusion law analysis.
- * It handles data preparation, fitting, and calculation of diffusion law parameters.
+ * The {@code DiffusionLawModel} class represents the data model for diffusion
+ * law analysis.
+ * It handles data preparation, fitting, and calculation of diffusion law
+ * parameters.
  */
 public class DiffusionLawModel {
     private static final int MAX_POINTS = 30;
     private static final int DIMENSION_ROI = 7;
     private static final int MINIMUM_POINTS = 4;
     private final ExpSettingsModel interfaceSettings;
+    private final OptionsModel options;
     private final FitModel interfaceFitModel;
     private final BleachCorrectionModel interfaceBleachCorrectionModel;
     private final ImageModel imageModel;
@@ -45,17 +49,21 @@ public class DiffusionLawModel {
     private double slope = -1;
 
     /**
-     * Initializes the model with the provided experimental settings, image data, and fitting model.
+     * Initializes the model with the provided experimental settings, image data,
+     * and fitting model.
      *
      * @param settings              Experimental settings model.
+     * @param options               the options model containing parameter for gpu usage.
      * @param imageModel            Image model containing the data.
      * @param fitModel              Fitting model used for the correlation data.
-     * @param bleachCorrectionModel BleachCorrection model used for applying bleach correction.
+     * @param bleachCorrectionModel BleachCorrection model used for applying bleach
+     *                              correction.
      * @param resetCallback         Callback to handle resetting results.
      */
-    public DiffusionLawModel(ExpSettingsModel settings, ImageModel imageModel, FitModel fitModel,
-                             BleachCorrectionModel bleachCorrectionModel, Runnable resetCallback) {
+    public DiffusionLawModel(ExpSettingsModel settings, OptionsModel options, ImageModel imageModel, FitModel fitModel,
+            BleachCorrectionModel bleachCorrectionModel, Runnable resetCallback) {
         this.interfaceSettings = settings;
+        this.options = options;
         this.interfaceFitModel = fitModel;
         this.interfaceBleachCorrectionModel = bleachCorrectionModel;
 
@@ -64,12 +72,15 @@ public class DiffusionLawModel {
     }
 
     /**
-     * Fits a pixel at the specified coordinates and updates the diffusion coefficient statistics
+     * Fits a pixel at the specified coordinates and updates the diffusion
+     * coefficient statistics
      * for the current binning setting.
      *
      * @param settings   the experimental settings model used for fitting.
-     * @param fitModel   the fitting model containing parameters for fitting the pixel data.
-     * @param correlator the correlator used to compute correlation data for the pixel.
+     * @param fitModel   the fitting model containing parameters for fitting the
+     *                   pixel data.
+     * @param correlator the correlator used to compute correlation data for the
+     *                   pixel.
      * @param averageD   Array for average diffusion coefficients.
      * @param varianceD  Array for variances.
      * @param pixelModel the model representing the pixel's data and fit parameters.
@@ -79,7 +90,7 @@ public class DiffusionLawModel {
      * @return 1 if the pixel was successfully fitted, 0 otherwise.
      */
     private int fitPixelAndAddD(ExpSettingsModel settings, FitModel fitModel, Correlator correlator, double[] averageD,
-                                double[] varianceD, PixelModel pixelModel, int x, int y, int index) {
+            double[] varianceD, PixelModel pixelModel, int x, int y, int index) {
         try {
             correlator.correlatePixelModel(pixelModel, imageModel.getImage(), x, y, x, y, settings.getFirstFrame(),
                     settings.getLastFrame());
@@ -101,6 +112,47 @@ public class DiffusionLawModel {
     }
 
     /**
+     * Fits all pixels using GPU and updates diffusion coefficient statistics.
+     *
+     * @param settings Experimental settings.
+     * @param bleachCorrectionModel Bleach correction model.
+     * @param fitModel Fit model.
+     * @param correlator Correlator instance.
+     * @param xRange X-axis range.
+     * @param yRange Y-axis range.
+     * @param index Current binning index.
+     * @param averageD Array for average diffusion coefficients.
+     * @param varianceD Array for diffusion variances.
+     * @return Number of pixels fitted.
+     */
+    private int fitAllPixelsGPUAndAddD(ExpSettingsModel settings, BleachCorrectionModel bleachCorrectionModel,
+            FitModel fitModel, Correlator correlator, Range xRange, Range yRange, int index, double[] averageD,
+            double[] varianceD) {
+        // Range on GPU use all of the range (even the end)
+        Range xRangeGPU = new Range(xRange.getStart(), xRange.getEnd() - 1, xRange.getStep());
+        Range yRangeGPU = new Range(yRange.getStart(), yRange.getEnd() - 1, yRange.getStep());
+
+        GpuCorrelator gpuCorrelator = new GpuCorrelator(settings, bleachCorrectionModel, imageModel, fitModel, false,
+                correlator, xRangeGPU, yRangeGPU);
+        gpuCorrelator.correlateAndFit(xRangeGPU, yRangeGPU, true, false);
+
+        PixelModel[][] pixelModels = correlator.getPixelModels();
+        int count = 0;
+
+        for (PixelModel[] pixelModelsRow : pixelModels) {
+            for (PixelModel pixelModel : pixelModelsRow) {
+                if (pixelModel != null && pixelModel.isFitted()) {
+                    averageD[index] += pixelModel.getFitParams().getD();
+                    varianceD[index] += Math.pow(pixelModel.getFitParams().getD(), 2);
+                    count += 1;
+                }
+            }
+        }
+
+        return count;
+    }
+
+    /**
      * Calculates the diffusion law for the current binning range.
      */
     public void calculateDiffusionLaw() {
@@ -110,7 +162,8 @@ public class DiffusionLawModel {
         calculatedBinningStart = binningStart;
         calculatedBinningEnd = binningEnd;
 
-        // create a new settings model to be able to update the binning size separately from the interface.
+        // create a new settings model to be able to update the binning size separately
+        // from the interface.
         ExpSettingsModel settings = new ExpSettingsModel(this.interfaceSettings);
         // set the CCF to 0 for the diffusion law analysis
         settings.setCCF(new Dimension(0, 0));
@@ -131,13 +184,13 @@ public class DiffusionLawModel {
      * @return Pair containing average diffusion coefficients and their variances.
      */
     public Pair<double[], double[]> calculateDiffusionLaw(int binningStart, int binningEnd, ExpSettingsModel settings,
-                                                          boolean progress) {
+            boolean progress) {
         // init a new fit model based on the interface parameters and fix the parameters
         FitModel fitModel = new FitModel(settings, interfaceFitModel);
         fitModel.setFix(true);
 
-        BleachCorrectionModel bleachCorrectionModel =
-                new BleachCorrectionModel(settings, interfaceBleachCorrectionModel);
+        BleachCorrectionModel bleachCorrectionModel = new BleachCorrectionModel(settings,
+                interfaceBleachCorrectionModel);
 
         Correlator correlator = new Correlator(settings, bleachCorrectionModel, fitModel);
         PixelModel pixelModel = new PixelModel();
@@ -156,16 +209,22 @@ public class DiffusionLawModel {
 
             int index = currentBinning - binningStart;
 
-            effectiveArea[index] =
-                    FCSFit.getFitObservationVolume(settings.getParamAx(), settings.getParamAy(), settings.getParamW()) *
-                            Constants.DIFFUSION_COEFFICIENT_BASE;
+            effectiveArea[index] = FCSFit.getFitObservationVolume(settings.getParamAx(), settings.getParamAy(),
+                    settings.getParamW()) *
+                    Constants.DIFFUSION_COEFFICIENT_BASE;
 
-            int numElements = xRange.stream()
-                    .mapToInt(x -> yRange.stream()
-                            .mapToInt(y -> fitPixelAndAddD(settings, fitModel, correlator, averageD, varianceD,
-                                    pixelModel, x, y, index))
-                            .sum())
-                    .sum();
+            int numElements = 0;
+            if (options.isUseGpu()) {
+                numElements = fitAllPixelsGPUAndAddD(settings, bleachCorrectionModel, fitModel, correlator, xRange,
+                        yRange, index, averageD, varianceD);
+            } else {
+                numElements = xRange.stream()
+                        .mapToInt(x -> yRange.stream()
+                                .mapToInt(y -> fitPixelAndAddD(settings, fitModel, correlator, averageD, varianceD,
+                                        pixelModel, x, y, index))
+                                .sum())
+                        .sum();
+            }
 
             // Do the average and convert to um^2/s
             averageD[index] *= Constants.DIFFUSION_COEFFICIENT_BASE / numElements;
@@ -205,14 +264,16 @@ public class DiffusionLawModel {
     }
 
     /**
-     * Determines the Point Spread Function (PSF) by iterating over a range of values.
+     * Determines the Point Spread Function (PSF) by iterating over a range of
+     * values.
      *
      * @param start        Starting PSF value.
      * @param end          Ending PSF value.
      * @param step         Step size for PSF values.
      * @param binningStart Start of binning range.
      * @param binningEnd   End of binning range.
-     * @return A pair containing the minimum and maximum values of the diffusion law.
+     * @return A pair containing the minimum and maximum values of the diffusion
+     *         law.
      */
     public Pair<Double, Double> determinePSF(double start, double end, double step, int binningStart, int binningEnd) {
         // Validate input ranges
@@ -263,7 +324,6 @@ public class DiffusionLawModel {
         return new Pair<>(minValue, maxValue);
     }
 
-
     /**
      * Returns a subarray corresponding to the current fitting range.
      *
@@ -291,8 +351,8 @@ public class DiffusionLawModel {
         double[] segmentStandardDeviation = getFitSegment(standardDeviation);
 
         LineFit lineFit = new LineFit();
-        double[] result =
-                lineFit.doFit(segmentEffectiveArea, segmentTime, segmentStandardDeviation, fitEnd - fitStart + 1);
+        double[] result = lineFit.doFit(segmentEffectiveArea, segmentTime, segmentStandardDeviation,
+                fitEnd - fitStart + 1);
 
         intercept = result[0];
         slope = result[1];
@@ -309,9 +369,11 @@ public class DiffusionLawModel {
 
     /**
      * Resets the binning and fitting range values to their default states.
-     * This method is typically called when the user switches to ROI (Region of Interest) mode.
+     * This method is typically called when the user switches to ROI (Region of
+     * Interest) mode.
      *
-     * @param reset if true, resets the range values and sets the mode to "ROI"; otherwise, sets the mode to "All".
+     * @param reset if true, resets the range values and sets the mode to "ROI";
+     *              otherwise, sets the mode to "All".
      * @return the updated mode string, either "ROI" or "All".
      */
     public String resetRangeValues(boolean reset) {
@@ -331,8 +393,10 @@ public class DiffusionLawModel {
     /**
      * Resets the calculated results of the diffusion law analysis.
      * <p>
-     * This method clears the stored data and resets the calculated binning ranges to their initial states.
-     * It is typically called when the user changes the analysis parameters or when a new calculation is initiated.
+     * This method clears the stored data and resets the calculated binning ranges
+     * to their initial states.
+     * It is typically called when the user changes the analysis parameters or when
+     * a new calculation is initiated.
      */
     public void resetResults() {
         this.calculatedBinningStart = -1;
@@ -368,7 +432,8 @@ public class DiffusionLawModel {
         fitEnd = binningEnd;
     }
 
-    // Getter and setter methods with input validation for binning and fitting ranges.
+    // Getter and setter methods with input validation for binning and fitting
+    // ranges.
 
     public int getBinningStart() {
         return binningStart;

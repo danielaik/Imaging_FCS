@@ -30,14 +30,15 @@ public class DiffusionLawController {
      * model and view for managing diffusion law analysis.
      *
      * @param settings              the experimental settings model containing the parameters for the analysis.
+     * @param options               the options model containing parameter for gpu usage.
      * @param imageModel            the image model containing the data to be analyzed.
      * @param fitModel              the fitting model used to fit the correlation data.
      * @param bleachCorrectionModel the bleach correction model used to apply bleach correction.
      */
-    public DiffusionLawController(ExpSettingsModel settings, ImageModel imageModel, FitModel fitModel,
+    public DiffusionLawController(ExpSettingsModel settings, OptionsModel options, ImageModel imageModel, FitModel fitModel,
                                   BleachCorrectionModel bleachCorrectionModel) {
         this.model =
-                new DiffusionLawModel(settings, imageModel, fitModel, bleachCorrectionModel, this::askResetResults);
+                new DiffusionLawModel(settings, options, imageModel, fitModel, bleachCorrectionModel, this::askResetResults);
         this.view = new DiffusionLawView(this, model);
     }
 
