@@ -207,7 +207,6 @@ public class GpuParameters {
     private float[] gpuBinning(float[] source) {
         float[] result = new float[w_temp * h_temp * framediff];
         calcBinning(source, result, this);
-        IJ.log("Performing GPU-based binning...");
         return result;
     }
 

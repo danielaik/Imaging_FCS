@@ -128,10 +128,13 @@ public class DiffusionLawModel {
     private int fitAllPixelsGPUAndAddD(ExpSettingsModel settings, BleachCorrectionModel bleachCorrectionModel,
             FitModel fitModel, Correlator correlator, Range xRange, Range yRange, int index, double[] averageD,
             double[] varianceD) {
-        // Range on GPU use all of the range (even the end)
-        Range xRangeGPU = new Range(xRange.getStart(), xRange.getEnd() - 1, xRange.getStep());
-        Range yRangeGPU = new Range(yRange.getStart(), yRange.getEnd() - 1, yRange.getStep());
+        // Adapt range for gpu usage
+        Point pixelBinning = settings.getPixelBinning();
+        Range xRangeGPU = new Range(xRange.getStart() / pixelBinning.x, xRange.getEnd() / pixelBinning.x - 1, 1);
+        Range yRangeGPU = new Range(yRange.getStart() / pixelBinning.y, yRange.getEnd() / pixelBinning.y - 1, 1);
 
+        // reset the results pixel model
+        correlator.resetResults();
         GpuCorrelator gpuCorrelator = new GpuCorrelator(settings, bleachCorrectionModel, imageModel, fitModel, false,
                 correlator, xRangeGPU, yRangeGPU);
         gpuCorrelator.correlateAndFit(xRangeGPU, yRangeGPU, true, false);
