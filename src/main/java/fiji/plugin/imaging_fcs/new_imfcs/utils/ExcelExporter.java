@@ -1,6 +1,7 @@
 package fiji.plugin.imaging_fcs.new_imfcs.utils;
 
 import fiji.plugin.imaging_fcs.new_imfcs.constants.Constants;
+import fiji.plugin.imaging_fcs.new_imfcs.enums.DccfDirection;
 import fiji.plugin.imaging_fcs.new_imfcs.model.DiffusionLawModel;
 import fiji.plugin.imaging_fcs.new_imfcs.model.ExpSettingsModel;
 import fiji.plugin.imaging_fcs.new_imfcs.model.PixelModel;
@@ -348,17 +349,17 @@ public final class ExcelExporter {
      * Excel does not allow certain characters like "/" or "\", so known constants are replaced
      * with "diagonal up" or "diagonal down".
      *
-     * @param directionName the original direction name
+     * @param direction the original direction enum
      * @return a safe, Excel-compatible direction name
      */
-    private static String createSafeDirectionName(String directionName) {
-        if (directionName.equals(Constants.DIAGONAL_UP_DIRECTION)) {
-            directionName = "diagonal up";
-        } else if (directionName.equals(Constants.DIAGONAL_DOWN_DIRECTION)) {
-            directionName = "diagonal down";
+    private static String createSafeDirectionName(DccfDirection direction) {
+        if (direction == DccfDirection.DIAGONAL_UP_DIRECTION) {
+            return "diagonal up";
+        } else if (direction == DccfDirection.DIAGONAL_DOWN_DIRECTION) {
+            return "diagonal down";
         }
 
-        return directionName;
+        return direction.getDisplayName();
     }
 
     /**
@@ -369,12 +370,12 @@ public final class ExcelExporter {
      * @param workbook the workbook to add the sheets to
      * @param dccf     a map where the key is the direction name and the value is a 2D array of correlation data
      */
-    public static void savedCCFSheets(Workbook workbook, Map<String, double[][]> dccf) {
+    public static void savedCCFSheets(Workbook workbook, Map<DccfDirection, double[][]> dccf) {
         if (dccf.isEmpty()) {
             return;
         }
 
-        for (Map.Entry<String, double[][]> entry : dccf.entrySet()) {
+        for (Map.Entry<DccfDirection, double[][]> entry : dccf.entrySet()) {
             String directionName = createSafeDirectionName(entry.getKey());
             Sheet sheet = workbook.createSheet("dCCF - " + directionName);
             Row headerRow = sheet.createRow(0);

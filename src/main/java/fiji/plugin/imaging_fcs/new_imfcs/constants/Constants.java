@@ -23,12 +23,6 @@ public final class Constants {
     public static final String MIN_PIXEL_WISE_PER_IMAGE_STACK = "Min Pixel wise per image stack";
     public static final String LOAD_BGR_IMAGE = "Load BGR image";
 
-    // DCCF DIRECTION
-    public static final String X_DIRECTION = "x direction";
-    public static final String Y_DIRECTION = "y direction";
-    public static final String DIAGONAL_UP_DIRECTION = "diagonal /";
-    public static final String DIAGONAL_DOWN_DIRECTION = "diagonal \\";
-
     public static final int PANEL_FONT_SIZE = 12;
     public static final Point MAIN_PANEL_POS = new Point(10, 125);
     public static final Dimension MAIN_PANEL_DIM = new Dimension(410, 370);

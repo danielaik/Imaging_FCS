@@ -3,6 +3,7 @@ package fiji.plugin.imaging_fcs.new_imfcs.model;
 import fiji.plugin.imaging_fcs.new_imfcs.constants.Constants;
 import fiji.plugin.imaging_fcs.new_imfcs.controller.InvalidUserInputException;
 import fiji.plugin.imaging_fcs.new_imfcs.enums.BleachCorrectionMethod;
+import fiji.plugin.imaging_fcs.new_imfcs.enums.DccfDirection;
 import fiji.plugin.imaging_fcs.new_imfcs.enums.EnumUtils;
 import fiji.plugin.imaging_fcs.new_imfcs.enums.FilterMode;
 import fiji.plugin.imaging_fcs.new_imfcs.utils.Range;
@@ -48,7 +49,7 @@ public final class ExpSettingsModel {
     private int correlatorQ = 8;
     private String fitModel = Constants.ITIR_FCS_2D;
     private String paraCor = "N vs D";
-    private String dCCF = Constants.X_DIRECTION;
+    private DccfDirection dCCF = DccfDirection.X_DIRECTION;
     private BleachCorrectionMethod bleachCorrection = BleachCorrectionMethod.NO_BLEACH_CORRECTION;
     private FilterMode filter = FilterMode.NO_FILTER;
     private int filterLowerLimit = 0;
@@ -732,11 +733,11 @@ public final class ExpSettingsModel {
         this.paraCor = paraCor;
     }
 
-    public String getdCCF() {
+    public DccfDirection getdCCF() {
         return dCCF;
     }
 
-    public void setdCCF(String dCCF) {
+    public void setdCCF(DccfDirection dCCF) {
         this.dCCF = dCCF;
     }
 

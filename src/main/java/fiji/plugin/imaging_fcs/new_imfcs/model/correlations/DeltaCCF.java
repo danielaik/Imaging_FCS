@@ -1,6 +1,6 @@
 package fiji.plugin.imaging_fcs.new_imfcs.model.correlations;
 
-import fiji.plugin.imaging_fcs.new_imfcs.constants.Constants;
+import fiji.plugin.imaging_fcs.new_imfcs.enums.DccfDirection;
 import fiji.plugin.imaging_fcs.new_imfcs.model.ExpSettingsModel;
 import fiji.plugin.imaging_fcs.new_imfcs.model.PixelModel;
 import ij.IJ;
@@ -25,28 +25,25 @@ public final class DeltaCCF {
     /**
      * Computes the DCCF for the given image and direction using the specified correlator and settings.
      *
-     * @param correlator    The correlator used to compute the pixel correlations.
-     * @param img           The image to be processed.
-     * @param directionName The name of the direction for DCCF computation.
-     * @param settings      The experimental settings model.
+     * @param correlator The correlator used to compute the pixel correlations.
+     * @param img        The image to be processed.
+     * @param direction  The direction for DCCF computation.
+     * @param settings   The experimental settings model.
      * @return A 2D array representing the computed DCCF values.
      */
-    public static double[][] dccf(Correlator correlator, ImagePlus img, String directionName,
+    public static double[][] dccf(Correlator correlator, ImagePlus img, DccfDirection direction,
                                   ExpSettingsModel settings) {
-        // Retrieve the direction object based on the direction name
-        Direction direction = Direction.fromName(directionName);
-
         // Calculate the useful area and pixel binning based on the settings
         Dimension usefulArea = settings.getUsefulArea(new Dimension(img.getWidth(), img.getHeight()));
         Point pixelBinning = settings.getPixelBinning();
 
         // Define the lengths of the X and Y dimensions
-        int lenX = usefulArea.width - direction.dx + 1;
-        int lenY = usefulArea.height - Math.abs(direction.dy) + 1;
+        int lenX = usefulArea.width - direction.getDx() + 1;
+        int lenY = usefulArea.height - Math.abs(direction.getDy()) + 1;
 
         // Determine the start and end Y positions based on the direction
-        final int startY = direction.dy != -1 ? 0 : 1;
-        final int endY = direction.dy != -1 ? usefulArea.height - direction.dy + 1 : usefulArea.height + 1;
+        final int startY = direction.getDy() != -1 ? 0 : 1;
+        final int endY = direction.getDy() != -1 ? usefulArea.height - direction.getDy() + 1 : usefulArea.height + 1;
 
         double[][] dccf = new double[lenX][lenY];
         AtomicInteger progress = new AtomicInteger();
@@ -56,13 +53,13 @@ public final class DeltaCCF {
             final PixelModel pixelModel2 = new PixelModel();
 
             int x1 = x * pixelBinning.x;
-            int x2 = (x + direction.dx) * pixelBinning.x;
+            int x2 = (x + direction.getDx()) * pixelBinning.x;
 
             double[] currentDCCF = dccf[x];
 
             for (int y = startY; y < endY; y++) {
                 int y1 = y * pixelBinning.y;
-                int y2 = (y + direction.dy) * pixelBinning.y;
+                int y2 = (y + direction.getDy()) * pixelBinning.y;
 
                 correlator.correlatePixelModel(pixelModel1, img, x1, y1, x2, y2, settings.getFirstFrame(),
                         settings.getLastFrame());
@@ -80,51 +77,7 @@ public final class DeltaCCF {
             IJ.showProgress(progress.incrementAndGet(), lenX);
         });
 
-        correlator.setDccf(directionName, dccf);
+        correlator.setDccf(direction, dccf);
         return dccf;
-    }
-
-    /**
-     * The Direction enum represents possible directions for DCCF computation,
-     * including X, Y, and diagonal directions.
-     */
-    private enum Direction {
-        X_DIRECTION(Constants.X_DIRECTION, 1, 0),
-        Y_DIRECTION(Constants.Y_DIRECTION, 0, 1),
-        DIAGONAL_UP(Constants.DIAGONAL_UP_DIRECTION, 1, -1),
-        DIAGONAL_DOWN(Constants.DIAGONAL_DOWN_DIRECTION, 1, 1);
-
-        final int dx, dy;
-        final String name;
-
-        /**
-         * Constructs a Direction enum with the specified name and direction vectors.
-         *
-         * @param name The name of the direction.
-         * @param dx   The change in the X direction.
-         * @param dy   The change in the Y direction.
-         */
-        Direction(String name, int dx, int dy) {
-            this.name = name;
-            this.dx = dx;
-            this.dy = dy;
-        }
-
-        /**
-         * Retrieves the Direction enum corresponding to the given name.
-         *
-         * @param name The name of the direction.
-         * @return The corresponding Direction enum.
-         * @throws IllegalArgumentException if the name does not match any direction.
-         */
-        static Direction fromName(String name) {
-            for (Direction direction : values()) {
-                if (direction.name.equals(name)) {
-                    return direction;
-                }
-            }
-
-            throw new IllegalArgumentException("Invalid direction name: " + name);
-        }
     }
 }

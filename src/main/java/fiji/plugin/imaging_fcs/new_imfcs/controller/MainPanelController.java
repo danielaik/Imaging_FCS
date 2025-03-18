@@ -1,7 +1,7 @@
 package fiji.plugin.imaging_fcs.new_imfcs.controller;
 
-import fiji.plugin.imaging_fcs.new_imfcs.constants.Constants;
 import fiji.plugin.imaging_fcs.new_imfcs.enums.BleachCorrectionMethod;
+import fiji.plugin.imaging_fcs.new_imfcs.enums.DccfDirection;
 import fiji.plugin.imaging_fcs.new_imfcs.enums.FilterMode;
 import fiji.plugin.imaging_fcs.new_imfcs.model.*;
 import fiji.plugin.imaging_fcs.new_imfcs.model.correlations.AverageCorrelation;
@@ -625,34 +625,34 @@ public final class MainPanelController {
                     }
 
                     if ((boolean) run.get("Vertical DCCF")) {
-                        new DeltaCCFWorker(settings, correlator, imageController.getImage(), Constants.X_DIRECTION,
+                        new DeltaCCFWorker(settings, correlator, imageController.getImage(), DccfDirection.X_DIRECTION,
                                 (dccfArray, direction) -> {
                                     IJ.showStatus("Done");
-                                    Plots.plotDCCFWindow(dccfArray, direction);
+                                    Plots.plotDCCFWindow(dccfArray, direction.getDisplayName());
                                 }).executeAndWait();
                     }
 
                     if ((boolean) run.get("Horizontal DCCF")) {
-                        new DeltaCCFWorker(settings, correlator, imageController.getImage(), Constants.Y_DIRECTION,
+                        new DeltaCCFWorker(settings, correlator, imageController.getImage(), DccfDirection.Y_DIRECTION,
                                 (dccfArray, direction) -> {
                                     IJ.showStatus("Done");
-                                    Plots.plotDCCFWindow(dccfArray, direction);
+                                    Plots.plotDCCFWindow(dccfArray, direction.getDisplayName());
                                 }).executeAndWait();
                     }
 
                     if ((boolean) run.get("Diagonal Up DCCF")) {
                         new DeltaCCFWorker(settings, correlator, imageController.getImage(),
-                                Constants.DIAGONAL_UP_DIRECTION, (dccfArray, direction) -> {
+                                DccfDirection.DIAGONAL_UP_DIRECTION, (dccfArray, direction) -> {
                             IJ.showStatus("Done");
-                            Plots.plotDCCFWindow(dccfArray, direction);
+                            Plots.plotDCCFWindow(dccfArray, direction.getDisplayName());
                         }).executeAndWait();
                     }
 
                     if ((boolean) run.get("Diagonal Down DCCF")) {
                         new DeltaCCFWorker(settings, correlator, imageController.getImage(),
-                                Constants.DIAGONAL_DOWN_DIRECTION, (dccfArray, direction) -> {
+                                DccfDirection.DIAGONAL_DOWN_DIRECTION, (dccfArray, direction) -> {
                             IJ.showStatus("Done");
-                            Plots.plotDCCFWindow(dccfArray, direction);
+                            Plots.plotDCCFWindow(dccfArray, direction.getDisplayName());
                         }).executeAndWait();
                     }
 
@@ -831,13 +831,13 @@ public final class MainPanelController {
             if (!imageController.isImageLoaded()) {
                 IJ.showMessage("No image open.");
             } else {
-                String directionName = settings.getdCCF();
+                DccfDirection direction = settings.getdCCF();
                 IJ.showStatus("Correlating all pixels");
                 DeltaCCFWorker dccfWorker =
-                        new DeltaCCFWorker(settings, correlator, imageController.getImage(), directionName,
-                                (dccfArray, direction) -> {
+                        new DeltaCCFWorker(settings, correlator, imageController.getImage(), direction,
+                                (dccfArray, d) -> {
                                     IJ.showStatus("Done");
-                                    Plots.plotDCCFWindow(dccfArray, direction);
+                                    Plots.plotDCCFWindow(dccfArray, d.getDisplayName());
                                 });
                 dccfWorker.execute();
             }

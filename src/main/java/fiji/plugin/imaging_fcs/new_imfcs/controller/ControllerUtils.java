@@ -38,16 +38,19 @@ public final class ControllerUtils {
 
     /**
      * Creates and returns an ActionListener that updates a given property
-     * based on the selected value of a JComboBox. This method facilitates
-     * binding the selection of a JComboBox to a property or model, abstracting
-     * the boilerplate code typically required to implement such behavior.
+     * based on the selected value of a JComboBox. This is generic so it can
+     * handle combo boxes of Strings, enums, or any other type T.
      *
-     * @param setter A Consumer accepting a String value, intended to be used
-     *               to set the value of a property based on the combo box selection.
-     * @return an ActionListener that, when triggered, will update the provided
-     * property via the setter with the current selection of the JComboBox.
+     * @param setter A Consumer accepting the combo box's selected item.
+     * @return an ActionListener that, when triggered, calls the setter with
+     * the current selection of the JComboBox.
      */
-    public static ActionListener updateComboBoxValue(Consumer<String> setter) {
-        return (ActionEvent ev) -> setter.accept(getComboBoxSelectionFromEvent(ev));
+    @SuppressWarnings("unchecked")
+    public static <T> ActionListener updateComboBoxValue(Consumer<T> setter) {
+        return (ActionEvent ev) -> {
+            JComboBox<T> comboBox = (JComboBox<T>) ev.getSource();
+            T selectedItem = (T) comboBox.getSelectedItem();
+            setter.accept(selectedItem);
+        };
     }
 }

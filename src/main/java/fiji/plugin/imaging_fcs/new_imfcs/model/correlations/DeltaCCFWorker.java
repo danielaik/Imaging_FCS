@@ -1,5 +1,6 @@
 package fiji.plugin.imaging_fcs.new_imfcs.model.correlations;
 
+import fiji.plugin.imaging_fcs.new_imfcs.enums.DccfDirection;
 import fiji.plugin.imaging_fcs.new_imfcs.model.BackgroundTaskWorker;
 import fiji.plugin.imaging_fcs.new_imfcs.model.ExpSettingsModel;
 import ij.IJ;
@@ -15,8 +16,8 @@ public final class DeltaCCFWorker extends BackgroundTaskWorker<double[][], Void>
     private final ExpSettingsModel settings;
     private final Correlator correlator;
     private final ImagePlus image;
-    private final String directionName;
-    private final BiConsumer<double[][], String> runOnCompletion;
+    private final DccfDirection direction;
+    private final BiConsumer<double[][], DccfDirection> runOnCompletion;
 
     /**
      * Constructs a new DCCFWorker with the specified parameters.
@@ -24,18 +25,18 @@ public final class DeltaCCFWorker extends BackgroundTaskWorker<double[][], Void>
      * @param settings        The experimental settings model.
      * @param correlator      The correlator used to compute the pixel correlations.
      * @param image           The image to be processed.
-     * @param directionName   The name of the direction for DCCF computation.
+     * @param direction       The direction for DCCF computation.
      * @param runOnCompletion A BiConsumer to run upon completion, accepting the computed DCCF array and direction
      *                        name for plotting.
      */
-    public DeltaCCFWorker(ExpSettingsModel settings, Correlator correlator, ImagePlus image, String directionName,
-                          BiConsumer<double[][], String> runOnCompletion) {
+    public DeltaCCFWorker(ExpSettingsModel settings, Correlator correlator, ImagePlus image, DccfDirection direction,
+                          BiConsumer<double[][], DccfDirection> runOnCompletion) {
         super(() -> {});
 
         this.settings = settings;
         this.correlator = correlator;
         this.image = image;
-        this.directionName = directionName;
+        this.direction = direction;
         this.runOnCompletion = runOnCompletion;
     }
 
@@ -47,7 +48,7 @@ public final class DeltaCCFWorker extends BackgroundTaskWorker<double[][], Void>
      */
     @Override
     protected double[][] doInBackground() throws Exception {
-        return DeltaCCF.dccf(correlator, image, directionName, settings);
+        return DeltaCCF.dccf(correlator, image, direction, settings);
     }
 
     /**
@@ -56,7 +57,7 @@ public final class DeltaCCFWorker extends BackgroundTaskWorker<double[][], Void>
     @Override
     protected void done() {
         try {
-            runOnCompletion.accept(get(), directionName);
+            runOnCompletion.accept(get(), direction);
         } catch (Exception e) {
             IJ.showMessage("Error", "DCCF crashed: " + e.getMessage());
         }

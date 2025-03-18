@@ -2,6 +2,7 @@ package fiji.plugin.imaging_fcs.new_imfcs.model.correlations;
 
 import fiji.plugin.imaging_fcs.new_imfcs.constants.Constants;
 import fiji.plugin.imaging_fcs.new_imfcs.enums.BleachCorrectionMethod;
+import fiji.plugin.imaging_fcs.new_imfcs.enums.DccfDirection;
 import fiji.plugin.imaging_fcs.new_imfcs.model.*;
 import fiji.plugin.imaging_fcs.new_imfcs.utils.ExcelReader;
 import fiji.plugin.imaging_fcs.new_imfcs.utils.Pair;
@@ -26,7 +27,7 @@ public class Correlator {
     private final ExpSettingsModel settings;
     private final BleachCorrectionModel bleachCorrectionModel;
     private final FitModel fitModel;
-    private final Map<String, double[][]> dccf = new HashMap<>();
+    private final Map<DccfDirection, double[][]> dccf = new HashMap<>();
     private int correlatorQ, blockIndex;
     private double median;
     private int[] numSamples, lags, sampleTimes;
@@ -953,16 +954,16 @@ public class Correlator {
         numSamples = null;
     }
 
-    public Map<String, double[][]> getDccf() {
+    public Map<DccfDirection, double[][]> getDccf() {
         return dccf;
     }
 
-    public double[][] getDccf(String directionName) {
-        return dccf.get(directionName);
+    public double[][] getDccf(DccfDirection direction) {
+        return dccf.get(direction);
     }
 
-    public void setDccf(String directionName, double[][] dccf) {
-        this.dccf.put(directionName, dccf);
+    public void setDccf(DccfDirection direction, double[][] dccf) {
+        this.dccf.put(direction, dccf);
     }
 
     public double[][] getRegularizedCovarianceMatrix() {

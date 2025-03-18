@@ -3,6 +3,7 @@ package fiji.plugin.imaging_fcs.new_imfcs.view;
 import fiji.plugin.imaging_fcs.new_imfcs.constants.Constants;
 import fiji.plugin.imaging_fcs.new_imfcs.controller.MainPanelController;
 import fiji.plugin.imaging_fcs.new_imfcs.enums.BleachCorrectionMethod;
+import fiji.plugin.imaging_fcs.new_imfcs.enums.DccfDirection;
 import fiji.plugin.imaging_fcs.new_imfcs.enums.FilterMode;
 import fiji.plugin.imaging_fcs.new_imfcs.model.ExpSettingsModel;
 
@@ -50,7 +51,8 @@ public final class MainPanelView extends BaseView {
     // Combo boxes for selecting options
     private JComboBox<FilterMode> cbFilter;
     private JComboBox<BleachCorrectionMethod> cbBleachCor;
-    private JComboBox<String> cbCorrelatorP, cbParaCor, cbDCCF;
+    private JComboBox<DccfDirection> cbDCCF;
+    private JComboBox<String> cbCorrelatorP, cbParaCor;
 
     // Buttons
     private JButton btnSave, btnRead, btnExit, btnLoad, btnBatch, btnDCCF, btnWriteConfig, btnUseExisting, btnDCR,
@@ -167,12 +169,7 @@ public final class MainPanelView extends BaseView {
                 "D2 vs Sqrt(vx²+vy²)"
         });
 
-        cbDCCF = new JComboBox<>(new String[]{
-                Constants.X_DIRECTION,
-                Constants.Y_DIRECTION,
-                Constants.DIAGONAL_UP_DIRECTION,
-                Constants.DIAGONAL_DOWN_DIRECTION
-        });
+        cbDCCF = new JComboBox<>(DccfDirection.values());
 
         // add listeners
         cbCorrelatorP.addActionListener(
