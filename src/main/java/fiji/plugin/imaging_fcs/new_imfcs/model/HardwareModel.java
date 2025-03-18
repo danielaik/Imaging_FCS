@@ -45,7 +45,7 @@ public final class HardwareModel {
 
         // Write and load your custom GPU library
         writeLibraryFile(tmpDir, libName);
-        System.load(tmpDir + "/" + libName); // Load the custom GPU library
+        System.load(new File(tmpDir, libName).getAbsolutePath()); // Load the custom GPU library
     }
 
     /**
