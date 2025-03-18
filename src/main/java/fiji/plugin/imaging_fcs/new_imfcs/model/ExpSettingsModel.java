@@ -2,6 +2,8 @@ package fiji.plugin.imaging_fcs.new_imfcs.model;
 
 import fiji.plugin.imaging_fcs.new_imfcs.constants.Constants;
 import fiji.plugin.imaging_fcs.new_imfcs.controller.InvalidUserInputException;
+import fiji.plugin.imaging_fcs.new_imfcs.enums.EnumUtils;
+import fiji.plugin.imaging_fcs.new_imfcs.enums.FilterMode;
 import fiji.plugin.imaging_fcs.new_imfcs.utils.Range;
 
 import java.awt.*;
@@ -47,7 +49,7 @@ public final class ExpSettingsModel {
     private String paraCor = "N vs D";
     private String dCCF = Constants.X_DIRECTION;
     private String bleachCorrection = Constants.NO_BLEACH_CORRECTION;
-    private String filter = Constants.NO_FILTER;
+    private FilterMode filter = FilterMode.NO_FILTER;
     private int filterLowerLimit = 0;
     private int filterUpperLimit = 65536;
     private boolean FCCSDisp = false;
@@ -230,7 +232,7 @@ public final class ExpSettingsModel {
         setFirstFrame(data.get("First frame").toString());
         setFitModel(data.get("Fit model").toString());
         setBleachCorrection(data.get("Bleach correction").toString());
-        setFilter(data.get("Filter").toString());
+        setFilter(EnumUtils.fromDisplayName(FilterMode.class, data.get("Filter").toString()));
 
         setFCCSDisp(Boolean.parseBoolean(data.get("FCCS Display").toString()));
         setMSD(Boolean.parseBoolean(data.get("MSD").toString()));
@@ -745,11 +747,11 @@ public final class ExpSettingsModel {
         this.bleachCorrection = bleachCorrection;
     }
 
-    public String getFilter() {
+    public FilterMode getFilter() {
         return filter;
     }
 
-    public void setFilter(String filter) {
+    public void setFilter(FilterMode filter) {
         resetCallback.run();
         this.filter = filter;
     }

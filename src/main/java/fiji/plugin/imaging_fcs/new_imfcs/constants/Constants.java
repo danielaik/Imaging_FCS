@@ -24,11 +24,6 @@ public final class Constants {
     public static final String BLEACH_CORRECTION_POLYNOMIAL = "Polynomial";
     public static final String BLEACH_CORRECTION_LINEAR_SEGMENT = "Linear Segment";
 
-    // filtering method
-    public static final String NO_FILTER = "none";
-    public static final String FILTER_INTENSITY = "Intensity";
-    public static final String FILTER_MEAN = "Mean";
-
     // background subtraction method
     public static final String CONSTANT_BACKGROUND = "Constant Background";
     public static final String MIN_FRAME_BY_FRAME = "Min frame by frame";

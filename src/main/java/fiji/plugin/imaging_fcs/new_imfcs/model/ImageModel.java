@@ -1,6 +1,6 @@
 package fiji.plugin.imaging_fcs.new_imfcs.model;
 
-import fiji.plugin.imaging_fcs.new_imfcs.constants.Constants;
+import fiji.plugin.imaging_fcs.new_imfcs.enums.FilterMode;
 import ij.IJ;
 import ij.ImagePlus;
 import ij.ImageStack;
@@ -402,42 +402,55 @@ public final class ImageModel {
 
     /**
      * Sets the filter array for marking pixels that do not meet the specified criteria.
-     * Depending on the filter type (e.g., intensity or mean), the pixel values are compared against the provided lower
-     * and upper limits over a range of frames.
+     * Depending on the filter mode (e.g., intensity or mean), the pixel values are compared
+     * against the provided lower and upper limits over a range of frames.
      *
-     * @param filter     The filter type. Supported values are defined in Constants.
-     * @param lowerLimit The lower limit for the filter.
-     * @param upperLimit The upper limit for the filter.
-     * @param firstFrame The first frame to consider.
-     * @param lastFrame  The last frame to consider.
+     * @param mode       The filtering mode (NO_FILTER, FILTER_INTENSITY, FILTER_MEAN).
+     * @param lowerLimit The lower intensity limit for the filter.
+     * @param upperLimit The upper intensity limit for the filter.
+     * @param firstFrame The first frame (1-based) to consider in the image stack.
+     * @param lastFrame  The last frame (1-based) to consider in the image stack.
      */
-    public void setFilterArray(String filter, int lowerLimit, int upperLimit, int firstFrame, int lastFrame) {
-        if (filter.equals(Constants.NO_FILTER) || image == null) {
+    public void setFilterArray(FilterMode mode, int lowerLimit, int upperLimit, int firstFrame, int lastFrame) {
+        if (image == null || mode == FilterMode.NO_FILTER) {
             filterArray = null;
             return;
         }
 
         filterArray = new boolean[width][height];
+        ImageStack stack = image.getStack();
 
-        if (filter.equals(Constants.FILTER_INTENSITY)) {
-            ImageProcessor ip = image.getStack().getProcessor(firstFrame);
+        if (mode == FilterMode.FILTER_INTENSITY) {
+            ImageProcessor ip = stack.getProcessor(firstFrame);
             for (int x = 0; x < width; x++) {
                 for (int y = 0; y < height; y++) {
                     int value = ip.get(x, y);
                     filterArray[x][y] = value < lowerLimit || value > upperLimit;
                 }
             }
-        } else if (filter.equals(Constants.FILTER_MEAN)) {
-            int numberOfFrame = lastFrame - firstFrame + 1;
-            ImageStack imageStack = image.getStack();
-            for (int x = 0; x < width; x++) {
-                for (int y = 0; y < height; y++) {
-                    int meanValue = 0;
-                    for (int i = firstFrame; i <= lastFrame; i++) {
-                        meanValue += imageStack.getProcessor(i).get(x, y);
-                    }
-                    meanValue /= numberOfFrame;
-                    filterArray[x][y] = meanValue < lowerLimit || meanValue > upperLimit;
+        } else if (mode == FilterMode.FILTER_MEAN) {
+            int numberOfFrames = lastFrame - firstFrame + 1;
+            int[] sums = new int[width * height];
+
+            for (int frameIndex = firstFrame; frameIndex <= lastFrame; frameIndex++) {
+                short[] pixels = (short[]) stack.getProcessor(frameIndex).getPixels();
+
+                // Add each pixel's value to sums
+                for (int idx = 0; idx < pixels.length; idx++) {
+                    int val = pixels[idx] & 0xFFFF;  // safe way to get 0..65535
+                    sums[idx] += val;
+                }
+            }
+
+            // 3) Compute mean and set filter flags
+            for (int y = 0; y < height; y++) {
+                for (int x = 0; x < width; x++) {
+                    int idx = y * width + x;
+
+                    // integer division or float/double – up to you
+                    int meanValue = sums[idx] / numberOfFrames;
+
+                    filterArray[x][y] = (meanValue < lowerLimit || meanValue > upperLimit);
                 }
             }
         }

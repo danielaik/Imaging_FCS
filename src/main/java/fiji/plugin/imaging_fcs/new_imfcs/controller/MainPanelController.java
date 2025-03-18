@@ -1,6 +1,7 @@
 package fiji.plugin.imaging_fcs.new_imfcs.controller;
 
 import fiji.plugin.imaging_fcs.new_imfcs.constants.Constants;
+import fiji.plugin.imaging_fcs.new_imfcs.enums.FilterMode;
 import fiji.plugin.imaging_fcs.new_imfcs.model.*;
 import fiji.plugin.imaging_fcs.new_imfcs.model.correlations.AverageCorrelation;
 import fiji.plugin.imaging_fcs.new_imfcs.model.correlations.Correlator;
@@ -37,7 +38,6 @@ import java.util.Map;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
-import static fiji.plugin.imaging_fcs.new_imfcs.controller.ControllerUtils.getComboBoxSelectionFromEvent;
 import static fiji.plugin.imaging_fcs.new_imfcs.controller.FieldListenerFactory.createFocusListener;
 
 /**
@@ -333,15 +333,15 @@ public final class MainPanelController {
      *
      * @return an ActionListener that processes filter selection changes
      */
-    public ActionListener cbFilterChanged(JComboBox<String> comboBox) {
+    public ActionListener cbFilterChanged(JComboBox<FilterMode> comboBox) {
         BiConsumer<Integer, Integer> listener = this::onFilterSelectionAccepted;
 
         return new ActionListener() {
-            private String previousSelection = (String) comboBox.getSelectedItem();
+            private FilterMode previousSelection = (FilterMode) comboBox.getSelectedItem();
 
             @Override
             public void actionPerformed(ActionEvent ev) {
-                String filterMode = getComboBoxSelectionFromEvent(ev);
+                FilterMode filterMode = (FilterMode) comboBox.getSelectedItem();
 
                 try {
                     if (!previousSelection.equals(filterMode)) {
@@ -355,7 +355,7 @@ public final class MainPanelController {
                 }
 
                 // If a filter mode other than "none" is selected, show the filter limits dialog.
-                if (!filterMode.equals(Constants.NO_FILTER)) {
+                if (filterMode != FilterMode.NO_FILTER) {
                     new FilterLimitsSelectionView(listener, settings.getFilterLowerLimit(),
                             settings.getFilterUpperLimit());
                 }

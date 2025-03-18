@@ -2,6 +2,7 @@ package fiji.plugin.imaging_fcs.new_imfcs.view;
 
 import fiji.plugin.imaging_fcs.new_imfcs.constants.Constants;
 import fiji.plugin.imaging_fcs.new_imfcs.controller.MainPanelController;
+import fiji.plugin.imaging_fcs.new_imfcs.enums.FilterMode;
 import fiji.plugin.imaging_fcs.new_imfcs.model.ExpSettingsModel;
 
 import javax.swing.*;
@@ -46,7 +47,8 @@ public final class MainPanelView extends BaseView {
     private JTextField tfFirstFrame, tfLastFrame, tfFrameTime, tfBinning, tfCCFDistance, tfCorrelatorQ;
 
     // Combo boxes for selecting options
-    private JComboBox<String> cbCorrelatorP, cbBleachCor, cbFilter, cbParaCor, cbDCCF;
+    private JComboBox<FilterMode> cbFilter;
+    private JComboBox<String> cbCorrelatorP, cbBleachCor, cbParaCor, cbDCCF;
 
     // Buttons
     private JButton btnSave, btnRead, btnExit, btnLoad, btnBatch, btnDCCF, btnWriteConfig, btnUseExisting, btnDCR,
@@ -147,8 +149,7 @@ public final class MainPanelView extends BaseView {
         cbCorrelatorP = new JComboBox<>(new String[]{"16", "32"});
         cbCorrelatorP.setSelectedItem(String.valueOf(settings.getCorrelatorP()));
 
-        cbFilter =
-                new JComboBox<>(new String[]{Constants.NO_FILTER, Constants.FILTER_INTENSITY, Constants.FILTER_MEAN});
+        cbFilter = new JComboBox<>(FilterMode.values());
         cbFilter.setSelectedItem(settings.getFilter());
 
         cbBleachCor = new JComboBox<>(new String[]{
