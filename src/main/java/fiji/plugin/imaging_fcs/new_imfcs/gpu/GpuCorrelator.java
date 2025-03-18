@@ -136,7 +136,7 @@ public class GpuCorrelator {
                 pixelModel.setVarianceCF(varianceCF);
                 pixelModel.setStandardDeviationCF(standardDeviationCF);
                 pixelModel.setBlocked(
-                        (int) blocked1D[x + gpuParameters.width + gpuParameters.width * gpuParameters.height]);
+                        (int) blocked1D[gpuParameters.width * gpuParameters.height + y * gpuParameters.width + x]);
 
                 pixelModels[(x + roiStartX) * gpuParameters.pixbinX][(y + roiStartY)
                         * gpuParameters.pixbinY] = pixelModel;
