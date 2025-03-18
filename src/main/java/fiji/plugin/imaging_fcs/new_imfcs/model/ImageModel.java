@@ -412,7 +412,7 @@ public final class ImageModel {
      * @param lastFrame  The last frame to consider.
      */
     public void setFilterArray(String filter, int lowerLimit, int upperLimit, int firstFrame, int lastFrame) {
-        if (filter.equals(Constants.NO_FILTER)) {
+        if (filter.equals(Constants.NO_FILTER) || image == null) {
             filterArray = null;
             return;
         }
