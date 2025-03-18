@@ -1,6 +1,7 @@
 package fiji.plugin.imaging_fcs.new_imfcs.model.correlations;
 
 import fiji.plugin.imaging_fcs.new_imfcs.constants.Constants;
+import fiji.plugin.imaging_fcs.new_imfcs.enums.BleachCorrectionMethod;
 import fiji.plugin.imaging_fcs.new_imfcs.model.*;
 import fiji.plugin.imaging_fcs.new_imfcs.utils.ExcelReader;
 import fiji.plugin.imaging_fcs.new_imfcs.utils.Pair;
@@ -225,7 +226,7 @@ public class Correlator {
 
         correlatorQ = settings.getCorrelatorQ();
 
-        if (settings.getBleachCorrection().equals(Constants.BLEACH_CORRECTION_SLIDING_WINDOW)) {
+        if (settings.getBleachCorrection() == BleachCorrectionMethod.SLIDING_WINDOW) {
             handleSlidingWindowCorrelation(img, pixelModel, x, y, x2, y2, initialFrame, finalFrame);
         } else {
             // if sliding window is not selected, correlate the full intensity trace

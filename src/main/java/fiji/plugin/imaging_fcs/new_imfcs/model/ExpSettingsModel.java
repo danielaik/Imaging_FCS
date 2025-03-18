@@ -2,6 +2,7 @@ package fiji.plugin.imaging_fcs.new_imfcs.model;
 
 import fiji.plugin.imaging_fcs.new_imfcs.constants.Constants;
 import fiji.plugin.imaging_fcs.new_imfcs.controller.InvalidUserInputException;
+import fiji.plugin.imaging_fcs.new_imfcs.enums.BleachCorrectionMethod;
 import fiji.plugin.imaging_fcs.new_imfcs.enums.EnumUtils;
 import fiji.plugin.imaging_fcs.new_imfcs.enums.FilterMode;
 import fiji.plugin.imaging_fcs.new_imfcs.utils.Range;
@@ -48,7 +49,7 @@ public final class ExpSettingsModel {
     private String fitModel = Constants.ITIR_FCS_2D;
     private String paraCor = "N vs D";
     private String dCCF = Constants.X_DIRECTION;
-    private String bleachCorrection = Constants.NO_BLEACH_CORRECTION;
+    private BleachCorrectionMethod bleachCorrection = BleachCorrectionMethod.NO_BLEACH_CORRECTION;
     private FilterMode filter = FilterMode.NO_FILTER;
     private int filterLowerLimit = 0;
     private int filterUpperLimit = 65536;
@@ -231,7 +232,8 @@ public final class ExpSettingsModel {
         setLastFrame(data.get("Last frame").toString());
         setFirstFrame(data.get("First frame").toString());
         setFitModel(data.get("Fit model").toString());
-        setBleachCorrection(data.get("Bleach correction").toString());
+        setBleachCorrection(
+                EnumUtils.fromDisplayName(BleachCorrectionMethod.class, data.get("Bleach correction").toString()));
         setFilter(EnumUtils.fromDisplayName(FilterMode.class, data.get("Filter").toString()));
 
         setFCCSDisp(Boolean.parseBoolean(data.get("FCCS Display").toString()));
@@ -275,7 +277,7 @@ public final class ExpSettingsModel {
      * Updates the channel number and lag group number based on the bleach correction method.
      */
     public void updateChannelNumber() {
-        if (bleachCorrection.equals(Constants.BLEACH_CORRECTION_SLIDING_WINDOW)) {
+        if (bleachCorrection == BleachCorrectionMethod.SLIDING_WINDOW) {
             lagGroupNumber = (int) Math.floor(
                     (Math.log((double) slidingWindowLength / (SLIDING_WINDOW_MIN_FRAME + correlatorP)) + 1) /
                             Math.log(2));
@@ -738,11 +740,11 @@ public final class ExpSettingsModel {
         this.dCCF = dCCF;
     }
 
-    public String getBleachCorrection() {
+    public BleachCorrectionMethod getBleachCorrection() {
         return bleachCorrection;
     }
 
-    public void setBleachCorrection(String bleachCorrection) {
+    public void setBleachCorrection(BleachCorrectionMethod bleachCorrection) {
         resetCallback.run();
         this.bleachCorrection = bleachCorrection;
     }

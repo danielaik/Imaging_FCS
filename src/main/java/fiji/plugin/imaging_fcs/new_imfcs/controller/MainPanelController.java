@@ -1,6 +1,7 @@
 package fiji.plugin.imaging_fcs.new_imfcs.controller;
 
 import fiji.plugin.imaging_fcs.new_imfcs.constants.Constants;
+import fiji.plugin.imaging_fcs.new_imfcs.enums.BleachCorrectionMethod;
 import fiji.plugin.imaging_fcs.new_imfcs.enums.FilterMode;
 import fiji.plugin.imaging_fcs.new_imfcs.model.*;
 import fiji.plugin.imaging_fcs.new_imfcs.model.correlations.AverageCorrelation;
@@ -248,15 +249,24 @@ public final class MainPanelController {
      *
      * @return ActionListener to handle bleach correction mode changes.
      */
-    public ActionListener cbBleachCorChanged(JComboBox<String> comboBox) {
+    public ActionListener cbBleachCorChanged(JComboBox<BleachCorrectionMethod> comboBox) {
         Consumer<Integer> onBleachCorrectionSlidingWindowAccepted = this::onBleachCorrectionSlidingWindowAccepted;
         Consumer<Integer> onBleachCorrectionOrderAccepted = this::onBleachCorrectionOrderAccepted;
         return new ActionListener() {
-            private String previousSelection = (String) comboBox.getSelectedItem();
+            private BleachCorrectionMethod previousSelection = (BleachCorrectionMethod) comboBox.getSelectedItem();
 
             @Override
             public void actionPerformed(ActionEvent ev) {
-                String currentSelection = (String) comboBox.getSelectedItem();
+                BleachCorrectionMethod currentSelection = (BleachCorrectionMethod) comboBox.getSelectedItem();
+
+                if ((currentSelection == BleachCorrectionMethod.SLIDING_WINDOW ||
+                        currentSelection == BleachCorrectionMethod.LINEAR_SEGMENT) &&
+                        !imageController.isImageLoaded()) {
+                    IJ.showMessage("No image open. Please open an image first.");
+                    // reset the combo box to default in no image is loaded.
+                    comboBox.setSelectedItem(previousSelection);
+                    return;
+                }
 
                 try {
                     if (!previousSelection.equals(currentSelection)) {
@@ -271,17 +281,11 @@ public final class MainPanelController {
 
                 fitController.updateFitEnd(settings);
 
-                if (Constants.BLEACH_CORRECTION_SLIDING_WINDOW.equals(currentSelection) ||
-                        Constants.BLEACH_CORRECTION_LINEAR_SEGMENT.equals(currentSelection)) {
-                    if (!imageController.isImageLoaded()) {
-                        IJ.showMessage("No image open. Please open an image first.");
-                        // reset the combo box to default in no image is loaded.
-                        ((JComboBox<?>) ev.getSource()).setSelectedIndex(0);
-                    } else {
-                        new SlidingWindowSelectionView(onBleachCorrectionSlidingWindowAccepted,
-                                settings.getSlidingWindowLength());
-                    }
-                } else if (Constants.BLEACH_CORRECTION_POLYNOMIAL.equals(currentSelection)) {
+                if (currentSelection == BleachCorrectionMethod.SLIDING_WINDOW ||
+                        currentSelection == BleachCorrectionMethod.LINEAR_SEGMENT) {
+                    new SlidingWindowSelectionView(onBleachCorrectionSlidingWindowAccepted,
+                            settings.getSlidingWindowLength());
+                } else if (currentSelection == BleachCorrectionMethod.POLYNOMIAL) {
                     new PolynomialOrderSelectionView(onBleachCorrectionOrderAccepted,
                             bleachCorrectionModel.getPolynomialOrder());
                 }

@@ -2,6 +2,7 @@ package fiji.plugin.imaging_fcs.new_imfcs.view;
 
 import fiji.plugin.imaging_fcs.new_imfcs.constants.Constants;
 import fiji.plugin.imaging_fcs.new_imfcs.controller.MainPanelController;
+import fiji.plugin.imaging_fcs.new_imfcs.enums.BleachCorrectionMethod;
 import fiji.plugin.imaging_fcs.new_imfcs.enums.FilterMode;
 import fiji.plugin.imaging_fcs.new_imfcs.model.ExpSettingsModel;
 
@@ -48,7 +49,8 @@ public final class MainPanelView extends BaseView {
 
     // Combo boxes for selecting options
     private JComboBox<FilterMode> cbFilter;
-    private JComboBox<String> cbCorrelatorP, cbBleachCor, cbParaCor, cbDCCF;
+    private JComboBox<BleachCorrectionMethod> cbBleachCor;
+    private JComboBox<String> cbCorrelatorP, cbParaCor, cbDCCF;
 
     // Buttons
     private JButton btnSave, btnRead, btnExit, btnLoad, btnBatch, btnDCCF, btnWriteConfig, btnUseExisting, btnDCR,
@@ -152,14 +154,7 @@ public final class MainPanelView extends BaseView {
         cbFilter = new JComboBox<>(FilterMode.values());
         cbFilter.setSelectedItem(settings.getFilter());
 
-        cbBleachCor = new JComboBox<>(new String[]{
-                Constants.NO_BLEACH_CORRECTION,
-                Constants.BLEACH_CORRECTION_SLIDING_WINDOW,
-                Constants.BLEACH_CORRECTION_SINGLE_EXP,
-                Constants.BLEACH_CORRECTION_DOUBLE_EXP,
-                Constants.BLEACH_CORRECTION_POLYNOMIAL,
-                Constants.BLEACH_CORRECTION_LINEAR_SEGMENT
-        });
+        cbBleachCor = new JComboBox<>(BleachCorrectionMethod.values());
         cbBleachCor.setSelectedItem(settings.getBleachCorrection());
 
         cbParaCor = new JComboBox<>(new String[]{

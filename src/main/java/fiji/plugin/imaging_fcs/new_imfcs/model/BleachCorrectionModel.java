@@ -119,16 +119,16 @@ public class BleachCorrectionModel {
         double[] intensityTrace = mode == 1 ? intensityTrace1 : intensityTrace2;
 
         switch (settings.getBleachCorrection()) {
-            case Constants.BLEACH_CORRECTION_SINGLE_EXP:
+            case SINGLE_EXP:
                 handleSingleExponential(intensityData, intensityTrace);
                 break;
-            case Constants.BLEACH_CORRECTION_DOUBLE_EXP:
+            case DOUBLE_EXP:
                 handleDoubleExponential(intensityData, intensityTrace);
                 break;
-            case Constants.BLEACH_CORRECTION_POLYNOMIAL:
+            case POLYNOMIAL:
                 handlePolynomial(intensityData, intensityTrace);
                 break;
-            case Constants.BLEACH_CORRECTION_LINEAR_SEGMENT:
+            case LINEAR_SEGMENT:
                 handleLinearSegment(intensityData, intensityTrace);
                 break;
         }
