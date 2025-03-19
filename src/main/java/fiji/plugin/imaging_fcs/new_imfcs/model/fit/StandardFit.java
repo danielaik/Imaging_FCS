@@ -1,6 +1,6 @@
 package fiji.plugin.imaging_fcs.new_imfcs.model.fit;
 
-import fiji.plugin.imaging_fcs.new_imfcs.constants.Constants;
+import fiji.plugin.imaging_fcs.new_imfcs.enums.FitFunctions;
 import fiji.plugin.imaging_fcs.new_imfcs.model.ExpSettingsModel;
 import fiji.plugin.imaging_fcs.new_imfcs.model.FitModel;
 import fiji.plugin.imaging_fcs.new_imfcs.model.PixelModel;
@@ -38,7 +38,7 @@ public class StandardFit extends BaseFit {
      * @param settings  The experimental settings model.
      * @param modelName The name of the model to use for fitting.
      */
-    public StandardFit(FitModel model, ExpSettingsModel settings, String modelName) {
+    public StandardFit(FitModel model, ExpSettingsModel settings, FitFunctions modelName) {
         this.model = model;
         function = selectFitFunction(settings, modelName);
         numFreeParameters = model.getNonHeldParameterValues().length;
@@ -54,15 +54,15 @@ public class StandardFit extends BaseFit {
      * @param modelName The name of the model to use for fitting.
      * @return The selected parametric univariate function.
      */
-    private ParametricUnivariateFunction selectFitFunction(ExpSettingsModel settings, String modelName) {
+    private ParametricUnivariateFunction selectFitFunction(ExpSettingsModel settings, FitFunctions modelName) {
         switch (modelName) {
-            case Constants.ITIR_FCS_2D:
+            case ITIR_FCS_2D:
                 return new FCS3p(settings, model, 0);
-            case Constants.ITIR_FCS_2D_2:
+            case ITIR_FCS_2D_2:
                 return new FCS3p(settings, model, 1);
-            case Constants.SPIM_FCS_3D:
+            case SPIM_FCS_3D:
                 return new FCS3pSPIM(settings, model);
-            case Constants.DC_FCCS_2D:
+            case DC_FCCS_2D:
                 return new FCCS2p(settings, model);
             default:
                 throw new IllegalArgumentException("Unknown fit model: " + modelName);

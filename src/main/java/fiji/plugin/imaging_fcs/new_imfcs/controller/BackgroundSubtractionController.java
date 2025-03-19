@@ -1,6 +1,6 @@
 package fiji.plugin.imaging_fcs.new_imfcs.controller;
 
-import fiji.plugin.imaging_fcs.new_imfcs.constants.Constants;
+import fiji.plugin.imaging_fcs.new_imfcs.enums.BackgroundMode;
 import fiji.plugin.imaging_fcs.new_imfcs.model.ImageModel;
 import fiji.plugin.imaging_fcs.new_imfcs.view.BackgroundSubtractionView;
 import ij.IJ;
@@ -46,19 +46,19 @@ public class BackgroundSubtractionController {
      *
      * @return An ActionListener for handling background subtraction method changes.
      */
-    public ActionListener cbBackgroundSubtractionMethodChanged(JComboBox<String> comboBox) {
+    public ActionListener cbBackgroundSubtractionMethodChanged(JComboBox<BackgroundMode> comboBox) {
         return new ActionListener() {
-            private String previousSelection = (String) comboBox.getSelectedItem();
+            private BackgroundMode previousSelection = (BackgroundMode) comboBox.getSelectedItem();
 
             @Override
             public void actionPerformed(ActionEvent ev) {
-                String method = ControllerUtils.getComboBoxSelectionFromEvent(ev);
+                BackgroundMode mode = (BackgroundMode) comboBox.getSelectedItem();
 
                 try {
-                    if (!previousSelection.equals(method)) {
+                    if (!previousSelection.equals(mode)) {
                         resetCallback.run();
                         // Update previous selection to current if successful
-                        previousSelection = method;
+                        previousSelection = mode;
                     }
                 } catch (RejectResetException e) {
                     comboBox.setSelectedItem(previousSelection);
@@ -70,17 +70,17 @@ public class BackgroundSubtractionController {
                 setTfBackground(imageModel.getBackground());
                 setTfBackground2(imageModel.getBackground2());
 
-                switch (method) {
-                    case Constants.CONSTANT_BACKGROUND:
+                switch (mode) {
+                    case CONSTANT_BACKGROUND:
                         view.setEnableBackgroundTextField(true);
                         break;
-                    case Constants.MIN_FRAME_BY_FRAME:
+                    case MIN_FRAME_BY_FRAME:
                         break;
-                    case Constants.MIN_PER_IMAGE_STACK:
+                    case MIN_PER_IMAGE_STACK:
                         break;
-                    case Constants.MIN_PIXEL_WISE_PER_IMAGE_STACK:
+                    case MIN_PIXEL_WISE_PER_IMAGE_STACK:
                         break;
-                    case Constants.LOAD_BGR_IMAGE:
+                    case LOAD_BGR_IMAGE:
                         // Only allows background subtraction before performing bleach correction
                         view.unselectSubtractionAfterBleachCorrection();
 

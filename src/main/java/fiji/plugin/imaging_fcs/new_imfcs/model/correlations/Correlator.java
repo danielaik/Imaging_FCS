@@ -1,8 +1,8 @@
 package fiji.plugin.imaging_fcs.new_imfcs.model.correlations;
 
-import fiji.plugin.imaging_fcs.new_imfcs.constants.Constants;
 import fiji.plugin.imaging_fcs.new_imfcs.enums.BleachCorrectionMethod;
 import fiji.plugin.imaging_fcs.new_imfcs.enums.DccfDirection;
+import fiji.plugin.imaging_fcs.new_imfcs.enums.FitFunctions;
 import fiji.plugin.imaging_fcs.new_imfcs.model.*;
 import fiji.plugin.imaging_fcs.new_imfcs.utils.ExcelReader;
 import fiji.plugin.imaging_fcs.new_imfcs.utils.Pair;
@@ -64,7 +64,7 @@ public class Correlator {
 
         loadPixelModelsSheets(workbook, "CF", pixelModels);
 
-        if (settings.getFitModel().equals(Constants.DC_FCCS_2D)) {
+        if (settings.getFitModel() == FitFunctions.DC_FCCS_2D) {
             PixelModel[][] acf1PixelModels = new PixelModel[dimension.width][dimension.height];
             loadPixelModelsSheets(workbook, "ACF1", acf1PixelModels);
             loadAcfPixelModels(acf1PixelModels, PixelModel::setAcf1PixelModel);
@@ -288,7 +288,7 @@ public class Correlator {
                                             int initialFrame, int finalFrame) {
         int numFrames = finalFrame - initialFrame + 1;
 
-        int mode = settings.getFitModel().equals(Constants.DC_FCCS_2D) ? 2 : 1;
+        int mode = settings.getFitModel() == FitFunctions.DC_FCCS_2D ? 2 : 1;
         double[][] intensityBlock = getIntensityBlock(img, x, y, x2, y2, initialFrame, finalFrame, mode);
 
         blockTransform(pixelModel, deepCopy(intensityBlock), numFrames);

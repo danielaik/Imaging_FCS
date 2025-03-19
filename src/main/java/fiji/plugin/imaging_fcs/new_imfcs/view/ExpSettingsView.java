@@ -2,6 +2,7 @@ package fiji.plugin.imaging_fcs.new_imfcs.view;
 
 import fiji.plugin.imaging_fcs.new_imfcs.constants.Constants;
 import fiji.plugin.imaging_fcs.new_imfcs.controller.MainPanelController;
+import fiji.plugin.imaging_fcs.new_imfcs.enums.FitFunctions;
 import fiji.plugin.imaging_fcs.new_imfcs.model.ExpSettingsModel;
 
 import javax.swing.*;
@@ -108,7 +109,7 @@ public final class ExpSettingsView extends BaseView {
      * Set PSFz field enabled based on the fit model
      */
     public void setPSFZEnabled() {
-        boolean enabled = model.getFitModel().equals(Constants.SPIM_FCS_3D);
+        boolean enabled = model.getFitModel() == FitFunctions.SPIM_FCS_3D;
         tfSigmaZ.setEnabled(enabled);
         tfSigmaZ2.setEnabled(enabled);
     }

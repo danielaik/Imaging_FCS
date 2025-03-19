@@ -2,6 +2,7 @@ package fiji.plugin.imaging_fcs.new_imfcs.view;
 
 import fiji.plugin.imaging_fcs.new_imfcs.constants.Constants;
 import fiji.plugin.imaging_fcs.new_imfcs.controller.BackgroundSubtractionController;
+import fiji.plugin.imaging_fcs.new_imfcs.enums.BackgroundMode;
 import fiji.plugin.imaging_fcs.new_imfcs.model.ImageModel;
 import ij.IJ;
 
@@ -26,7 +27,7 @@ public final class BackgroundSubtractionView extends BaseView {
     private final ImageModel model;
 
     // UI components
-    private JComboBox<String> cbBackgroundSubtractionMethod;
+    private JComboBox<BackgroundMode> cbBackgroundSubtractionMethod;
     private JTextField tfBackground, tfBackground2, tfBGRLoadStatus;
     private JRadioButton rbtnIsSubtractionAfterBleachCorrection;
 
@@ -56,13 +57,7 @@ public final class BackgroundSubtractionView extends BaseView {
 
     @Override
     protected void initializeComboBoxes() {
-        cbBackgroundSubtractionMethod = new JComboBox<>(new String[]{
-                Constants.CONSTANT_BACKGROUND,
-                Constants.MIN_FRAME_BY_FRAME,
-                Constants.MIN_PER_IMAGE_STACK,
-                Constants.MIN_PIXEL_WISE_PER_IMAGE_STACK,
-                Constants.LOAD_BGR_IMAGE,
-                });
+        cbBackgroundSubtractionMethod = new JComboBox<>(BackgroundMode.values());
         cbBackgroundSubtractionMethod.addActionListener(
                 controller.cbBackgroundSubtractionMethodChanged(cbBackgroundSubtractionMethod));
     }

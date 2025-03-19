@@ -1,6 +1,6 @@
 package fiji.plugin.imaging_fcs.new_imfcs.controller;
 
-import fiji.plugin.imaging_fcs.new_imfcs.constants.Constants;
+import fiji.plugin.imaging_fcs.new_imfcs.enums.FitFunctions;
 import fiji.plugin.imaging_fcs.new_imfcs.model.*;
 import fiji.plugin.imaging_fcs.new_imfcs.model.correlations.Correlator;
 import fiji.plugin.imaging_fcs.new_imfcs.model.correlations.SelectedPixel;
@@ -257,9 +257,9 @@ public final class ImageController {
      * @param y         The y-coordinate of the pixel.
      */
     private void fitFCCS(PixelModel acf1Model, PixelModel acf2Model, int x, int y) {
-        fitController.fit(acf1Model, Constants.ITIR_FCS_2D, correlator.getLagTimes(),
+        fitController.fit(acf1Model, FitFunctions.ITIR_FCS_2D, correlator.getLagTimes(),
                 correlator.getRegularizedCovarianceMatrix(), x, y);
-        fitController.fit(acf2Model, Constants.ITIR_FCS_2D_2, correlator.getLagTimes(),
+        fitController.fit(acf2Model, FitFunctions.ITIR_FCS_2D_2, correlator.getLagTimes(),
                 correlator.getRegularizedCovarianceMatrix(), x, y);
 
         if (settings.isMSD()) {
@@ -405,7 +405,7 @@ public final class ImageController {
      * @return True if the ROI is larger than the DCFCCS region, false otherwise.
      */
     public boolean isROIOverlapInDCFCCS(Roi roi) {
-        if (settings.getFitModel().equals(Constants.DC_FCCS_2D)) {
+        if (settings.getFitModel() == FitFunctions.DC_FCCS_2D) {
             Rectangle rect = roi.getBounds();
 
             return Math.abs(settings.getCCF().width) < rect.width && Math.abs(settings.getCCF().height) < rect.height;

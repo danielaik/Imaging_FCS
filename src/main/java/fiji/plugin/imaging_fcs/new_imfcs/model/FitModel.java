@@ -1,6 +1,7 @@
 package fiji.plugin.imaging_fcs.new_imfcs.model;
 
 import fiji.plugin.imaging_fcs.new_imfcs.controller.InvalidUserInputException;
+import fiji.plugin.imaging_fcs.new_imfcs.enums.FitFunctions;
 import fiji.plugin.imaging_fcs.new_imfcs.model.fit.BayesFit;
 import fiji.plugin.imaging_fcs.new_imfcs.model.fit.GLSFit;
 import fiji.plugin.imaging_fcs.new_imfcs.model.fit.StandardFit;
@@ -253,7 +254,7 @@ public class FitModel {
      * @param covarianceMatrix The covariance matrix used for fitting.
      * @return A double array of model probabilities if Bayesian fitting is used, otherwise null.
      */
-    public double[] fit(PixelModel pixelModel, String modelName, double[] lagTimes, double[][] covarianceMatrix) {
+    public double[] fit(PixelModel pixelModel, FitFunctions modelName, double[] lagTimes, double[][] covarianceMatrix) {
         if (bayes) {
             BayesFit fitter = new BayesFit(this, settings);
             return fitter.bayesFit(pixelModel, modelName, lagTimes, covarianceMatrix);
@@ -276,7 +277,7 @@ public class FitModel {
      * @param modelName  The name of the model to use for fitting.
      * @param lagTimes   The lag times for fitting.
      */
-    public void standardFit(PixelModel pixelModel, String modelName, double[] lagTimes) {
+    public void standardFit(PixelModel pixelModel, FitFunctions modelName, double[] lagTimes) {
         StandardFit fitter = new StandardFit(this, settings, modelName);
         fitter.fitPixel(pixelModel, lagTimes);
     }

@@ -1,11 +1,7 @@
 package fiji.plugin.imaging_fcs.new_imfcs.model;
 
-import fiji.plugin.imaging_fcs.new_imfcs.constants.Constants;
 import fiji.plugin.imaging_fcs.new_imfcs.controller.InvalidUserInputException;
-import fiji.plugin.imaging_fcs.new_imfcs.enums.BleachCorrectionMethod;
-import fiji.plugin.imaging_fcs.new_imfcs.enums.DccfDirection;
-import fiji.plugin.imaging_fcs.new_imfcs.enums.EnumUtils;
-import fiji.plugin.imaging_fcs.new_imfcs.enums.FilterMode;
+import fiji.plugin.imaging_fcs.new_imfcs.enums.*;
 import fiji.plugin.imaging_fcs.new_imfcs.utils.Range;
 
 import java.awt.*;
@@ -47,7 +43,7 @@ public final class ExpSettingsModel {
     private double frameTime = 0.001;
     private int correlatorP = 16;
     private int correlatorQ = 8;
-    private String fitModel = Constants.ITIR_FCS_2D;
+    private FitFunctions fitModel = FitFunctions.ITIR_FCS_2D;
     private String paraCor = "N vs D";
     private DccfDirection dCCF = DccfDirection.X_DIRECTION;
     private BleachCorrectionMethod bleachCorrection = BleachCorrectionMethod.NO_BLEACH_CORRECTION;
@@ -232,7 +228,7 @@ public final class ExpSettingsModel {
 
         setLastFrame(data.get("Last frame").toString());
         setFirstFrame(data.get("First frame").toString());
-        setFitModel(data.get("Fit model").toString());
+        setFitModel(EnumUtils.fromDisplayName(FitFunctions.class, data.get("Fit model").toString()));
         setBleachCorrection(
                 EnumUtils.fromDisplayName(BleachCorrectionMethod.class, data.get("Bleach correction").toString()));
         setFilter(EnumUtils.fromDisplayName(FilterMode.class, data.get("Filter").toString()));
@@ -265,7 +261,7 @@ public final class ExpSettingsModel {
         // Adjustments for lateral displacements.
         int cfXShift = 0;
         int cfYShift = 0;
-        if (fitModel.equals(Constants.ITIR_FCS_2D) || fitModel.equals(Constants.SPIM_FCS_3D)) {
+        if (fitModel == FitFunctions.ITIR_FCS_2D || fitModel == FitFunctions.SPIM_FCS_3D) {
             cfXShift = CCF.width;
             cfYShift = CCF.height;
         }
@@ -716,11 +712,11 @@ public final class ExpSettingsModel {
         this.correlatorQ = tmp;
     }
 
-    public String getFitModel() {
+    public FitFunctions getFitModel() {
         return fitModel;
     }
 
-    public void setFitModel(String fitModel) {
+    public void setFitModel(FitFunctions fitModel) {
         resetCallback.run();
         this.fitModel = fitModel;
     }

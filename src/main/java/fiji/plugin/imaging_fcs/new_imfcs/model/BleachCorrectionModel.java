@@ -1,6 +1,6 @@
 package fiji.plugin.imaging_fcs.new_imfcs.model;
 
-import fiji.plugin.imaging_fcs.new_imfcs.constants.Constants;
+import fiji.plugin.imaging_fcs.new_imfcs.enums.FitFunctions;
 import fiji.plugin.imaging_fcs.new_imfcs.model.fit.intensity_trace.DoubleExponentialFit;
 import fiji.plugin.imaging_fcs.new_imfcs.model.fit.intensity_trace.PolynomialFit;
 import fiji.plugin.imaging_fcs.new_imfcs.model.fit.intensity_trace.SingleExponentialFit;
@@ -72,8 +72,7 @@ public class BleachCorrectionModel {
         int average = (finalFrame - initialFrame + 1) / numPointsIntensityTrace;
 
         int background1 = imageModel.getBackground();
-        int background2 =
-                Constants.DC_FCCS_2D.equals(settings.getFitModel()) ? imageModel.getBackground2() : background1;
+        int background2 = settings.getFitModel() == FitFunctions.DC_FCCS_2D ? imageModel.getBackground2() : background1;
 
         intensityTrace1 = new double[numPointsIntensityTrace];
         intensityTrace2 = new double[numPointsIntensityTrace];
@@ -150,8 +149,8 @@ public class BleachCorrectionModel {
      * @param y             The y-coordinate of the top left corner of the binning area.
      */
     private void fillIntensityData(ImagePlus img, int mode, double[] intensityData, int x, int y, int initialFrame) {
-        int background = (mode == 2 && Constants.DC_FCCS_2D.equals(
-                settings.getFitModel())) ? imageModel.getBackground2() : imageModel.getBackground();
+        int background = (mode == 2 && settings.getFitModel() ==
+                FitFunctions.DC_FCCS_2D) ? imageModel.getBackground2() : imageModel.getBackground();
 
         for (int i = 0; i < intensityData.length; i++) {
             final ImageProcessor ip = img.getStack().getProcessor(initialFrame + i);

@@ -1,5 +1,6 @@
 package fiji.plugin.imaging_fcs.new_imfcs.model.fit;
 
+import fiji.plugin.imaging_fcs.new_imfcs.enums.FitFunctions;
 import fiji.plugin.imaging_fcs.new_imfcs.model.ExpSettingsModel;
 import fiji.plugin.imaging_fcs.new_imfcs.model.FitModel;
 import fiji.plugin.imaging_fcs.new_imfcs.model.PixelModel;
@@ -51,7 +52,7 @@ public class BayesFit {
      * @param covarianceMatrix the covariance matrix.
      * @return the computed model probability.
      */
-    private double fit(FitModel fitModel, PixelModel pixelModel, String modelName, double[] lagTimes,
+    private double fit(FitModel fitModel, PixelModel pixelModel, FitFunctions modelName, double[] lagTimes,
                        double[][] covarianceMatrix) {
         double logResiduals;
         StandardFit.FitOutput output;
@@ -158,7 +159,8 @@ public class BayesFit {
      * @param covarianceMatrix the covariance matrix.
      * @return an array containing the model probabilities for one-component and two-component fits.
      */
-    public double[] bayesFit(PixelModel pixelModel, String modelName, double[] lagTimes, double[][] covarianceMatrix) {
+    public double[] bayesFit(PixelModel pixelModel, FitFunctions modelName, double[] lagTimes,
+                             double[][] covarianceMatrix) {
         // One-component fit
         FitModel currentFitModel = new FitModel(settings, fitModel);
         setParameterField(currentFitModel.getD2(), 0.0, true);

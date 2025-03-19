@@ -1,6 +1,6 @@
 package fiji.plugin.imaging_fcs.new_imfcs.controller;
 
-import fiji.plugin.imaging_fcs.new_imfcs.constants.Constants;
+import fiji.plugin.imaging_fcs.new_imfcs.enums.FitFunctions;
 import fiji.plugin.imaging_fcs.new_imfcs.model.ExpSettingsModel;
 import fiji.plugin.imaging_fcs.new_imfcs.model.FitModel;
 import fiji.plugin.imaging_fcs.new_imfcs.model.PixelModel;
@@ -18,8 +18,6 @@ import java.awt.event.ItemEvent;
 import java.awt.event.ItemListener;
 import java.util.Collections;
 import java.util.function.Consumer;
-
-import static fiji.plugin.imaging_fcs.new_imfcs.controller.ControllerUtils.getComboBoxSelectionFromEvent;
 
 /**
  * The FitController class handles the interactions between the FitModel and the FitView,
@@ -58,8 +56,8 @@ public class FitController {
      * @param x                 The x coordinate of the pixel.
      * @param y                 The y coordinate of the pixel.
      */
-    public void fit(PixelModel pixelModel, String modelName, double[] lagTimes, double[][] correlationMatrix, int x,
-                    int y) {
+    public void fit(PixelModel pixelModel, FitFunctions modelName, double[] lagTimes, double[][] correlationMatrix,
+                    int x, int y) {
         if (isActivated() && model.canFit()) {
             try {
                 double[] modProbs = model.fit(pixelModel, modelName, lagTimes, correlationMatrix);
@@ -84,7 +82,7 @@ public class FitController {
      * @param modelName  The name of the model to use for fitting.
      * @param lagTimes   The lag times for fitting.
      */
-    public void fit(PixelModel pixelModel, String modelName, double[] lagTimes) {
+    public void fit(PixelModel pixelModel, FitFunctions modelName, double[] lagTimes) {
         if (isActivated() && model.canFit()) {
             try {
                 model.standardFit(pixelModel, modelName, lagTimes);
@@ -219,13 +217,13 @@ public class FitController {
      *
      * @return an ActionListener that processes the action event
      */
-    public ActionListener cbFitModelChanged(JComboBox<String> comboBox) {
+    public ActionListener cbFitModelChanged(JComboBox<FitFunctions> comboBox) {
         return new ActionListener() {
-            private String previousSelection = (String) comboBox.getSelectedItem();
+            private FitFunctions previousSelection = (FitFunctions) comboBox.getSelectedItem();
 
             @Override
             public void actionPerformed(ActionEvent ev) {
-                String fitModel = getComboBoxSelectionFromEvent(ev);
+                FitFunctions fitModel = (FitFunctions) comboBox.getSelectedItem();
                 try {
                     if (!previousSelection.equals(fitModel)) {
                         settings.setFitModel(fitModel);
@@ -233,7 +231,7 @@ public class FitController {
                         previousSelection = fitModel;
 
                         // If the model is not DC_FCCS_2D, deactivate FCCSDisp
-                        boolean isDCFCCS = fitModel.equals(Constants.DC_FCCS_2D);
+                        boolean isDCFCCS = fitModel == FitFunctions.DC_FCCS_2D;
                         settings.setFCCSDisp(isDCFCCS);
                         // update the threshold fields depending on the model used.
                         setAllAcfsThreshold(isDCFCCS);
@@ -312,16 +310,16 @@ public class FitController {
         return model.getFitEnd();
     }
 
-    public String getFitModel() {
+    public FitFunctions getFitModel() {
         return settings.getFitModel();
     }
 
-    public void setFitModel(String fitModel) {
+    public void setFitModel(FitFunctions fitModel) {
         settings.setFitModel(fitModel);
         updateSettingsField.run();
     }
 
-    public void setFitModelField(String fitModel) {
+    public void setFitModelField(FitFunctions fitModel) {
         view.setFitModel(fitModel);
     }
 }

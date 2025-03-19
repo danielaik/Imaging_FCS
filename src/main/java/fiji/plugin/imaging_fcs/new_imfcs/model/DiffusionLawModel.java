@@ -2,6 +2,7 @@ package fiji.plugin.imaging_fcs.new_imfcs.model;
 
 import fiji.plugin.imaging_fcs.new_imfcs.constants.Constants;
 import fiji.plugin.imaging_fcs.new_imfcs.controller.InvalidUserInputException;
+import fiji.plugin.imaging_fcs.new_imfcs.enums.FitFunctions;
 import fiji.plugin.imaging_fcs.new_imfcs.model.correlations.Correlator;
 import fiji.plugin.imaging_fcs.new_imfcs.model.fit.LineFit;
 import fiji.plugin.imaging_fcs.new_imfcs.model.fit.parametric_univariate_functions.FCSFit;
@@ -82,7 +83,7 @@ public class DiffusionLawModel {
         try {
             correlator.correlatePixelModel(pixelModel, imageModel.getImage(), x, y, x, y, settings.getFirstFrame(),
                     settings.getLastFrame());
-            fitModel.standardFit(pixelModel, Constants.ITIR_FCS_2D, correlator.getLagTimes());
+            fitModel.standardFit(pixelModel, FitFunctions.ITIR_FCS_2D, correlator.getLagTimes());
         } catch (Exception e) {
             IJ.log(String.format("Fail to correlate points for x=%d, y=%d with error: %s", x, y, e.getMessage()));
             return 0;

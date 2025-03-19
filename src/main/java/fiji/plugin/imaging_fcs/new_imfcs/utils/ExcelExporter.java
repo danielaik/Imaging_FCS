@@ -1,7 +1,7 @@
 package fiji.plugin.imaging_fcs.new_imfcs.utils;
 
-import fiji.plugin.imaging_fcs.new_imfcs.constants.Constants;
 import fiji.plugin.imaging_fcs.new_imfcs.enums.DccfDirection;
+import fiji.plugin.imaging_fcs.new_imfcs.enums.FitFunctions;
 import fiji.plugin.imaging_fcs.new_imfcs.model.DiffusionLawModel;
 import fiji.plugin.imaging_fcs.new_imfcs.model.ExpSettingsModel;
 import fiji.plugin.imaging_fcs.new_imfcs.model.PixelModel;
@@ -459,7 +459,7 @@ public final class ExcelExporter {
             ExcelExporter.createSheetLagTime(workbook, correlator.getLagTimes(), correlator.getSampleTimes());
 
             saveSheetsPixelModels(workbook, "CF", pixelModels, settings.isMSD());
-            if (settings.getFitModel().equals(Constants.DC_FCCS_2D)) {
+            if (settings.getFitModel() == FitFunctions.DC_FCCS_2D) {
                 saveSheetsPixelModels(workbook, "ACF1",
                         PixelModel.extractAcfPixelModels(pixelModels, PixelModel::getAcf1PixelModel), settings.isMSD());
 

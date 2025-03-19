@@ -1,6 +1,6 @@
 package fiji.plugin.imaging_fcs.new_imfcs.controller;
 
-import fiji.plugin.imaging_fcs.new_imfcs.constants.Constants;
+import fiji.plugin.imaging_fcs.new_imfcs.enums.FitFunctions;
 import fiji.plugin.imaging_fcs.new_imfcs.model.*;
 import fiji.plugin.imaging_fcs.new_imfcs.model.correlations.Correlator;
 import fiji.plugin.imaging_fcs.new_imfcs.model.correlations.SelectedPixel;
@@ -173,7 +173,7 @@ public class FilteringController {
         return (ActionEvent ev) -> {
             JRadioButton radioButton = (JRadioButton) ev.getSource();
 
-            boolean acfsEnabled = settings.getFitModel().equals(Constants.DC_FCCS_2D);
+            boolean acfsEnabled = settings.getFitModel() == FitFunctions.DC_FCCS_2D;
 
             FilteringModel threshold = filterFields.getThreshold();
             threshold.setActive(radioButton.isSelected(), acfsEnabled);

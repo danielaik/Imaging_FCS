@@ -1,7 +1,7 @@
 package fiji.plugin.imaging_fcs.new_imfcs.model.correlations;
 
-import fiji.plugin.imaging_fcs.new_imfcs.constants.Constants;
 import fiji.plugin.imaging_fcs.new_imfcs.controller.FitController;
+import fiji.plugin.imaging_fcs.new_imfcs.enums.FitFunctions;
 import fiji.plugin.imaging_fcs.new_imfcs.model.ExpSettingsModel;
 import fiji.plugin.imaging_fcs.new_imfcs.model.ImageModel;
 import fiji.plugin.imaging_fcs.new_imfcs.model.PixelModel;
@@ -160,7 +160,7 @@ public class SelectedPixel {
      * @return true if there is an overlap, false otherwise
      */
     private boolean isOverlapInDCFCCS() {
-        return settings.getFitModel().equals(Constants.DC_FCCS_2D) &&
+        return settings.getFitModel() == FitFunctions.DC_FCCS_2D &&
                 Math.abs(settings.getCCF().width) < settings.getBinning().x &&
                 Math.abs(settings.getCCF().height) < settings.getBinning().y;
     }
@@ -207,7 +207,7 @@ public class SelectedPixel {
         imageModel.setRoi(roi1);
 
         if (settings.getCCF().width != 0 || settings.getCCF().height != 0 ||
-                settings.getFitModel().equals(Constants.DC_FCCS_2D)) {
+                settings.getFitModel() == FitFunctions.DC_FCCS_2D) {
             Roi roi2 = new Roi(cursorPosition2.x, cursorPosition2.y, settings.getBinning().x, settings.getBinning().y);
             roi2.setStrokeColor(Color.RED);
             imageModel.setOverlay(new Overlay(roi2));

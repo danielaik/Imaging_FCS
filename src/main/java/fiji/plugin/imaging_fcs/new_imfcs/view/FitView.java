@@ -2,6 +2,7 @@ package fiji.plugin.imaging_fcs.new_imfcs.view;
 
 import fiji.plugin.imaging_fcs.new_imfcs.constants.Constants;
 import fiji.plugin.imaging_fcs.new_imfcs.controller.FitController;
+import fiji.plugin.imaging_fcs.new_imfcs.enums.FitFunctions;
 import fiji.plugin.imaging_fcs.new_imfcs.model.FitModel;
 import fiji.plugin.imaging_fcs.new_imfcs.model.PixelModel;
 import ij.IJ;
@@ -35,7 +36,7 @@ public class FitView extends BaseView {
     private JButton btnTest, btnSetPar;
     private JToggleButton tbGLS, tbBayes, tbFixPar;
     private JRadioButton holdN, holdF2, holdD, holdD2, holdF3, holdD3, holdVx, holdVy, holdG, holdFTrip, holdTTtrip;
-    private JComboBox<String> cbFitModel;
+    private JComboBox<FitFunctions> cbFitModel;
 
 
     /**
@@ -128,7 +129,9 @@ public class FitView extends BaseView {
 
     @Override
     protected void initializeComboBoxes() {
-        cbFitModel = new JComboBox<>(new String[]{Constants.ITIR_FCS_2D, Constants.SPIM_FCS_3D, Constants.DC_FCCS_2D});
+        cbFitModel = new JComboBox<>(new FitFunctions[]{
+                FitFunctions.ITIR_FCS_2D, FitFunctions.SPIM_FCS_3D, FitFunctions.DC_FCCS_2D
+        });
         cbFitModel.setSelectedItem(controller.getFitModel());
         cbFitModel.addActionListener(controller.cbFitModelChanged(cbFitModel));
     }
@@ -343,7 +346,7 @@ public class FitView extends BaseView {
         holdF2.setSelected(model.getF2().isHeld());
     }
 
-    public void setFitModel(String fitModel) {
+    public void setFitModel(FitFunctions fitModel) {
         cbFitModel.setSelectedItem(fitModel);
     }
 }

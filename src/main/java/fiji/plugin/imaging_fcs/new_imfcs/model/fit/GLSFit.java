@@ -1,5 +1,6 @@
 package fiji.plugin.imaging_fcs.new_imfcs.model.fit;
 
+import fiji.plugin.imaging_fcs.new_imfcs.enums.FitFunctions;
 import fiji.plugin.imaging_fcs.new_imfcs.model.ExpSettingsModel;
 import fiji.plugin.imaging_fcs.new_imfcs.model.FitModel;
 import fiji.plugin.imaging_fcs.new_imfcs.model.PixelModel;
@@ -33,7 +34,7 @@ public class GLSFit extends StandardFit {
      * @param correlationFunction The correlation function data.
      * @param covarianceMatrix    The covariance matrix for the data.
      */
-    public GLSFit(FitModel model, ExpSettingsModel settings, String modelName, double[] lagTimes,
+    public GLSFit(FitModel model, ExpSettingsModel settings, FitFunctions modelName, double[] lagTimes,
                   double[] correlationFunction, double[][] covarianceMatrix) {
         super(model, settings, modelName);
 

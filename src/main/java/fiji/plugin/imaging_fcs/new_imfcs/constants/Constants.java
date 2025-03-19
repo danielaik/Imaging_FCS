@@ -6,23 +6,6 @@ public final class Constants {
     // define constants
     public static final String PANEL_FONT = "SansSerif";
 
-    // models name
-    public static final String DC_FCCS_2D = "DC-FCCS (2D)";
-    public static final String ITIR_FCS_2D = "ITIR-FCS (2D)";
-
-    // This model only exists for FCCS, it's not defined by the user but it is used to define that we need to use the
-    // psfsize2 in FCSFit.java file
-    public static final String ITIR_FCS_2D_2 = "ITIR-FCS (2D) 2";
-
-    public static final String SPIM_FCS_3D = "SPIM-FCS (3D)";
-
-    // background subtraction method
-    public static final String CONSTANT_BACKGROUND = "Constant Background";
-    public static final String MIN_FRAME_BY_FRAME = "Min frame by frame";
-    public static final String MIN_PER_IMAGE_STACK = "Min per image stack";
-    public static final String MIN_PIXEL_WISE_PER_IMAGE_STACK = "Min Pixel wise per image stack";
-    public static final String LOAD_BGR_IMAGE = "Load BGR image";
-
     public static final int PANEL_FONT_SIZE = 12;
     public static final Point MAIN_PANEL_POS = new Point(10, 125);
     public static final Dimension MAIN_PANEL_DIM = new Dimension(410, 370);
