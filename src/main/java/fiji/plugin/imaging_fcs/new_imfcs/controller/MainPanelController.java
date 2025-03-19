@@ -221,6 +221,8 @@ public final class MainPanelController {
 
             if (response == JOptionPane.YES_OPTION) {
                 correlator.resetResults();
+                fitController.resetFilters();
+                filteringController.refreshFilteringView();
                 Plots.closePlots();
             } else {
                 throw new RejectResetException();
@@ -239,7 +241,6 @@ public final class MainPanelController {
         }
 
         settings.setLastFrame(String.valueOf(lastFrame));
-        settings.setSlidingWindowLength(lastFrame / 20);
         updateStrideParamFields();
     }
 
@@ -459,6 +460,8 @@ public final class MainPanelController {
             if (WindowManager.getImageCount() > 0) {
                 try {
                     imageController.loadImage(IJ.getImage(), null);
+                    fitController.resetFilters();
+                    filteringController.refreshFilteringView();
                 } catch (RuntimeException e) {
                     IJ.showMessage("Wrong image format", e.getMessage());
                 }
@@ -480,6 +483,8 @@ public final class MainPanelController {
             if (image != null) {
                 try {
                     imageController.loadImage(image, null);
+                    fitController.resetFilters();
+                    filteringController.refreshFilteringView();
                 } catch (RuntimeException e) {
                     IJ.showMessage("Wrong image format", e.getMessage());
                 }
