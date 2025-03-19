@@ -3,8 +3,7 @@ package fiji.plugin.imaging_fcs.new_imfcs.view;
 import fiji.plugin.imaging_fcs.new_imfcs.constants.Constants;
 import fiji.plugin.imaging_fcs.new_imfcs.controller.BackgroundSubtractionController;
 import fiji.plugin.imaging_fcs.new_imfcs.enums.BackgroundMode;
-import fiji.plugin.imaging_fcs.new_imfcs.model.ImageModel;
-import ij.IJ;
+import fiji.plugin.imaging_fcs.new_imfcs.model.BackgroundModel;
 
 import javax.swing.*;
 import java.awt.*;
@@ -24,19 +23,18 @@ public final class BackgroundSubtractionView extends BaseView {
     private static final Dimension BACKGROUND_SUBTRACTION_DIM = new Dimension(450, 180);
 
     private final BackgroundSubtractionController controller;
-    private final ImageModel model;
+    private final BackgroundModel model;
 
     // UI components
     private JComboBox<BackgroundMode> cbBackgroundSubtractionMethod;
     private JTextField tfBackground, tfBackground2, tfBGRLoadStatus;
-    private JRadioButton rbtnIsSubtractionAfterBleachCorrection;
 
     /**
      * Initializes the view with the specified background subtraction controller.
      *
      * @param controller Controls background subtraction operations.
      */
-    public BackgroundSubtractionView(BackgroundSubtractionController controller, ImageModel model) {
+    public BackgroundSubtractionView(BackgroundSubtractionController controller, BackgroundModel model) {
         super("Background subtraction method selection");
         this.controller = controller;
         this.model = model;
@@ -58,25 +56,23 @@ public final class BackgroundSubtractionView extends BaseView {
     @Override
     protected void initializeComboBoxes() {
         cbBackgroundSubtractionMethod = new JComboBox<>(BackgroundMode.values());
+        cbBackgroundSubtractionMethod.setSelectedItem(model.getMode());
         cbBackgroundSubtractionMethod.addActionListener(
                 controller.cbBackgroundSubtractionMethodChanged(cbBackgroundSubtractionMethod));
     }
 
     @Override
     protected void initializeTextFields() {
-        tfBackground = createTextField(model.getBackground(), "", createFocusListener(model::setBackground));
-        tfBackground2 = createTextField(model.getBackground2(), "", createFocusListener(model::setBackground2));
+        tfBackground =
+                createTextField(model.getConstantBackground1(), "", createFocusListener(model::setConstantBackground1));
+        tfBackground2 =
+                createTextField(model.getConstantBackground2(), "", createFocusListener(model::setConstantBackground2));
 
         tfBGRLoadStatus = createTextField("",
                 "Status on background file for correction. Has to be the same area recorded under the same conditions" +
                         " as the experimental file");
         tfBGRLoadStatus.setEditable(false);
         tfBGRLoadStatus.setFont(new Font(Constants.PANEL_FONT, Font.BOLD, Constants.PANEL_FONT_SIZE));
-    }
-
-    @Override
-    protected void initializeButtons() {
-        rbtnIsSubtractionAfterBleachCorrection = new JRadioButton("Subtract after bleach correction");
     }
 
     @Override
@@ -90,7 +86,7 @@ public final class BackgroundSubtractionView extends BaseView {
         add(createJLabel("Background 2: ", ""));
         add(tfBackground2);
 
-        add(rbtnIsSubtractionAfterBleachCorrection);
+        add(createJLabel("", ""));
         add(tfBGRLoadStatus);
     }
 
@@ -117,16 +113,6 @@ public final class BackgroundSubtractionView extends BaseView {
     public void setEnableBackgroundTextField(boolean enabled) {
         tfBackground.setEnabled(enabled);
         tfBackground2.setEnabled(enabled);
-    }
-
-    /**
-     * Unselects the radio button for subtraction after bleach correction with a warning message.
-     */
-    public void unselectSubtractionAfterBleachCorrection() {
-        if (rbtnIsSubtractionAfterBleachCorrection.isSelected()) {
-            rbtnIsSubtractionAfterBleachCorrection.setSelected(false);
-            IJ.showMessage("Unable to perform background subtraction on bleach corrected intensity traces.");
-        }
     }
 
     public void setTfBackground(String text) {

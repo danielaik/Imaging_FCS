@@ -1,5 +1,6 @@
 package fiji.plugin.imaging_fcs.new_imfcs.model;
 
+import fiji.plugin.imaging_fcs.new_imfcs.enums.BackgroundMode;
 import fiji.plugin.imaging_fcs.new_imfcs.enums.FilterMode;
 import ij.IJ;
 import ij.ImagePlus;
@@ -22,27 +23,20 @@ import java.util.function.Consumer;
 public final class ImageModel {
     private static final double ZOOM_FACTOR = 250;
     private static final double MAX_ZOOM = 25.0;
-    private final Runnable resetCallback;
+    private final BackgroundModel backgroundModel;
     private ImagePlus image;
-    private ImagePlus backgroundImage;
     private String directory, imagePath, fileName;
-    private double[][] backgroundMean, backgroundVariance, backgroundCovariance;
     private int width = -1;
     private int height = -1;
-    private int background = 0;
-    private int background2 = 0;
-    private int minBackgroundValue = 0;
 
     private boolean[][] filterArray = null;
 
     /**
      * Constructs an ImageModel instance with no image loaded.
      */
-    public ImageModel(Runnable resetCallback) {
+    public ImageModel(ExpSettingsModel settings, Runnable resetCallback) {
+        this.backgroundModel = new BackgroundModel(settings, resetCallback);
         this.image = null;
-        this.backgroundImage = null;
-
-        this.resetCallback = resetCallback;
     }
 
     /**
@@ -67,6 +61,30 @@ public final class ImageModel {
     }
 
     /**
+     * Validates that the provided ImagePlus object is of the correct type (GRAY16).
+     *
+     * @param image The ImagePlus object to check.
+     * @throws RuntimeException if the image type is not GRAY16.
+     */
+    public static void checkImage(ImagePlus image) {
+        if (image.getType() != ImagePlus.GRAY16) {
+            throw new RuntimeException("Only GRAY16 Tiff stacks supported");
+        }
+    }
+
+    /**
+     * Checks if two ImagePlus objects have different sizes.
+     *
+     * @param img1 The first ImagePlus object.
+     * @param img2 The second ImagePlus object.
+     * @return True if the images are not the same size, false otherwise.
+     */
+    public static boolean areNotSameSize(ImagePlus img1, ImagePlus img2) {
+        return img1.getWidth() != img2.getWidth() || img1.getHeight() != img2.getHeight() ||
+                img1.getStackSize() != img2.getStackSize();
+    }
+
+    /**
      * Converts the object’s state into a map representation.
      * The map includes key-value pairs for image properties such as the image path, dimensions,
      * and background details.
@@ -78,10 +96,10 @@ public final class ImageModel {
         data.put("Image path", imagePath);
         data.put("Image width", getWidth());
         data.put("Image height", getHeight());
-        data.put("Background", background);
-        data.put("Background 2", background2);
-        if (backgroundImage != null) {
-            data.put("Background file", backgroundImage.getOriginalFileInfo().getFilePath());
+        data.put("Background", backgroundModel.getConstantBackground1());
+        data.put("Background 2", backgroundModel.getConstantBackground2());
+        if (backgroundModel.getBackgroundImage() != null) {
+            data.put("Background file", backgroundModel.getBackgroundImage().getOriginalFileInfo().getFilePath());
         } else {
             data.put("Background file", "");
         }
@@ -100,18 +118,20 @@ public final class ImageModel {
     public void fromMap(Map<String, Object> data) {
         String backgroundPath = data.get("Background file").toString();
         if (!backgroundPath.isEmpty()) {
-            backgroundImage = IJ.openImage(backgroundPath);
+            ImagePlus backgroundImage = IJ.openImage(backgroundPath);
             if (backgroundImage == null) {
                 IJ.log("Failed to open background image at path: " + backgroundPath);
+            } else {
+                backgroundModel.loadBackgroundImage(image, backgroundImage);
+                backgroundModel.setMode(BackgroundMode.LOAD_BGR_IMAGE);
+                backgroundModel.computeBackground(image);
             }
-        } else {
-            backgroundImage = null;
         }
 
         width = Integer.parseInt(data.get("Image width").toString());
         height = Integer.parseInt(data.get("Image height").toString());
-        setBackground(data.get("Background").toString());
-        setBackground2(data.get("Background 2").toString());
+        backgroundModel.setConstantBackground1(data.get("Background").toString());
+        backgroundModel.setConstantBackground2(data.get("Background 2").toString());
     }
 
     /**
@@ -129,31 +149,7 @@ public final class ImageModel {
      * @return True if a background image is loaded, false otherwise.
      */
     public boolean isBackgroundLoaded() {
-        return backgroundImage != null;
-    }
-
-    /**
-     * Validates that the provided ImagePlus object is of the correct type (GRAY16).
-     *
-     * @param image The ImagePlus object to check.
-     * @throws RuntimeException if the image type is not GRAY16.
-     */
-    private void checkImage(ImagePlus image) {
-        if (image.getType() != ImagePlus.GRAY16) {
-            throw new RuntimeException("Only GRAY16 Tiff stacks supported");
-        }
-    }
-
-    /**
-     * Checks if two ImagePlus objects have different sizes.
-     *
-     * @param img1 The first ImagePlus object.
-     * @param img2 The second ImagePlus object.
-     * @return True if the images are not the same size, false otherwise.
-     */
-    private boolean areNotSameSize(ImagePlus img1, ImagePlus img2) {
-        return img1.getWidth() != img2.getWidth() || img1.getHeight() != img2.getHeight() ||
-                img1.getStackSize() != img2.getStackSize();
+        return backgroundModel.getBackgroundImage() != null;
     }
 
     /**
@@ -189,22 +185,10 @@ public final class ImageModel {
     public void loadImage(ImagePlus image, String simulationName) {
         checkImage(image);
 
-        minBackgroundValue = 0;
-
         // if a background image is loaded, check that there are the same format
-        if (backgroundImage != null && areNotSameSize(image, backgroundImage)) {
+        if (backgroundModel.getBackgroundImage() != null &&
+                areNotSameSize(image, backgroundModel.getBackgroundImage())) {
             throw new RuntimeException("Image is not the same size as the background image");
-        } else {
-            // calculate the minimum background value, this will be used if no background is loaded
-            minBackgroundValue = minDetermination(image);
-        }
-
-        if (backgroundImage == null) {
-            background = minBackgroundValue;
-            background2 = minBackgroundValue;
-        } else {
-            background = 0;
-            background2 = 0;
         }
 
         // If an image is already loaded, unload it
@@ -267,109 +251,13 @@ public final class ImageModel {
     }
 
     /**
-     * Determines the minimum pixel value in the provided ImagePlus object.
-     *
-     * @param img The ImagePlus object to analyze.
-     * @return The minimum pixel value in the image.
-     */
-    private int minDetermination(ImagePlus img) {
-        int min = Integer.MAX_VALUE;
-
-        for (int z = 1; z <= img.getStackSize(); z++) {
-            final ImageProcessor imageProcessor = img.getStack().getProcessor(z);
-            for (int x = 0; x < img.getWidth(); x++) {
-                for (int y = 0; y < img.getHeight(); y++) {
-                    int pixelValue = imageProcessor.get(x, y);
-                    if (pixelValue < min) {
-                        min = imageProcessor.get(x, y);
-                    }
-                }
-            }
-        }
-
-        return min;
-    }
-
-    /**
      * Loads a background image into the model, checking its type and computing statistics.
      *
      * @param backgroundImage The ImagePlus object to load as the background.
      * @return True if the background image was successfully loaded, false otherwise.
      */
     public boolean loadBackgroundImage(ImagePlus backgroundImage) {
-        if (backgroundImage == null) {
-            IJ.showMessage("Selected file does not exist or it is not an image.");
-            return false;
-        }
-
-        checkImage(backgroundImage);
-
-        if (isImageLoaded() && areNotSameSize(image, backgroundImage)) {
-            throw new RuntimeException("Background image is not the same size as Image. Background image not loaded");
-        }
-
-        this.backgroundImage = backgroundImage;
-
-        // Compute Mean, Variance and Covariance of the background
-        computeBackgroundStats();
-
-        // set background values to 0 if a background is loaded
-        background = 0;
-        background2 = 0;
-        return true;
-    }
-
-    /**
-     * Computes the mean, variance, and covariance of the background image.
-     */
-    private void computeBackgroundStats() {
-        int width = backgroundImage.getWidth();
-        int height = backgroundImage.getHeight();
-        int stackSize = backgroundImage.getStackSize();
-
-        backgroundMean = new double[width][height];
-
-        // This is the mean of the current frame without the last frame
-        double[][] meanCurrentNoLastFrame = new double[width][height];
-        double[][] meanNextFrame = new double[width][height];
-
-        backgroundCovariance = new double[width][height];
-        backgroundVariance = new double[width][height];
-
-        for (int stackIndex = 1; stackIndex <= stackSize; stackIndex++) {
-            ImageProcessor ip = backgroundImage.getStack().getProcessor(stackIndex);
-            ImageProcessor ipNextFrame =
-                    (stackIndex < stackSize) ? backgroundImage.getStack().getProcessor(stackIndex + 1) : null;
-
-            // compute the means, variance and covariance
-            for (int x = 0; x < width; x++) {
-                for (int y = 0; y < height; y++) {
-                    double currentPixelValue = ip.getPixelValue(x, y);
-
-                    // Compute covariance if the next frame exists
-                    if (ipNextFrame != null) {
-                        double nextPixelValue = ipNextFrame.getPixelValue(x, y);
-                        meanCurrentNoLastFrame[x][y] += currentPixelValue;
-                        meanNextFrame[x][y] += nextPixelValue;
-                        backgroundCovariance[x][y] += currentPixelValue * nextPixelValue;
-                    }
-
-                    backgroundMean[x][y] += currentPixelValue;
-                    backgroundVariance[x][y] += Math.pow(currentPixelValue, 2.0);
-                }
-            }
-        }
-
-        // Compute final values for mean, variance and covariance
-        for (int x = 0; x < width; x++) {
-            for (int y = 0; y < height; y++) {
-                backgroundMean[x][y] /= stackSize;
-                backgroundVariance[x][y] = backgroundVariance[x][y] / stackSize - Math.pow(backgroundMean[x][y], 2);
-                meanNextFrame[x][y] /= (stackSize - 1);
-                backgroundCovariance[x][y] = backgroundCovariance[x][y] / (stackSize - 1) -
-                        (meanCurrentNoLastFrame[x][y] / (stackSize - 1)) * meanNextFrame[x][y];
-            }
-        }
+        return backgroundModel.loadBackgroundImage(image, backgroundImage);
     }
 
     /**
@@ -391,14 +279,6 @@ public final class ImageModel {
         image.show();
     }
 
-    /**
-     * Resets the background image, removing it from the model.
-     */
-    public void resetBackgroundImage() {
-        backgroundImage = null;
-        background = minBackgroundValue;
-        background2 = minBackgroundValue;
-    }
 
     /**
      * Sets the filter array for marking pixels that do not meet the specified criteria.
@@ -467,6 +347,19 @@ public final class ImageModel {
         return filterArray != null && filterArray[x][y];
     }
 
+    /**
+     * Returns the background value at the specified location and frame, based on the current mode.
+     *
+     * @param frame   The frame index (1-based for ImageJ).
+     * @param x       The x-coordinate of the pixel.
+     * @param y       The y-coordinate of the pixel.
+     * @param whichBg Identifies which constant background value to return if the mode is constant (1 or 2).
+     * @return The background value.
+     */
+    public int getBackgroundValue(int frame, int x, int y, int whichBg) {
+        return backgroundModel.getBackgroundValue(frame, x, y, whichBg);
+    }
+
     // List of getters
     public ImageWindow getWindow() {
         return image.getWindow();
@@ -512,40 +405,12 @@ public final class ImageModel {
         return image;
     }
 
-    public ImagePlus getBackgroundImage() {
-        return backgroundImage;
+    public BackgroundModel getBackgroundModel() {
+        return backgroundModel;
     }
 
-    public double[][] getBackgroundMean() {
-        return backgroundMean;
-    }
-
-    public double[][] getBackgroundVariance() {
-        return backgroundVariance;
-    }
-
-    public double[][] getBackgroundCovariance() {
-        return backgroundCovariance;
-    }
-
-    public int getBackground() {
-        return background;
-    }
-
-    public void setBackground(String background) {
-        int tmp = Integer.parseInt(background);
-        resetCallback.run();
-        this.background = tmp;
-    }
-
-    public int getBackground2() {
-        return background2;
-    }
-
-    public void setBackground2(String background2) {
-        int tmp = Integer.parseInt(background2);
-        resetCallback.run();
-        this.background2 = tmp;
+    public double getBackgroundCovariance(int x, int y) {
+        return backgroundModel.getBackgroundCovariance(x, y);
     }
 
     public String getDirectory() {

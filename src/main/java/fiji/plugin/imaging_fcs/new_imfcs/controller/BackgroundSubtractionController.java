@@ -1,6 +1,7 @@
 package fiji.plugin.imaging_fcs.new_imfcs.controller;
 
 import fiji.plugin.imaging_fcs.new_imfcs.enums.BackgroundMode;
+import fiji.plugin.imaging_fcs.new_imfcs.model.BackgroundModel;
 import fiji.plugin.imaging_fcs.new_imfcs.model.ImageModel;
 import fiji.plugin.imaging_fcs.new_imfcs.view.BackgroundSubtractionView;
 import ij.IJ;
@@ -15,6 +16,7 @@ import java.awt.event.ActionListener;
  */
 public class BackgroundSubtractionController {
     private final ImageModel imageModel;
+    private final BackgroundModel backgroundModel;
     private final Runnable resetCallback;
     private final BackgroundSubtractionView view;
 
@@ -26,7 +28,8 @@ public class BackgroundSubtractionController {
      */
     public BackgroundSubtractionController(ImageModel imageModel, Runnable resetCallback) {
         this.imageModel = imageModel;
-        view = new BackgroundSubtractionView(this, imageModel);
+        this.backgroundModel = imageModel.getBackgroundModel();
+        view = new BackgroundSubtractionView(this, backgroundModel);
 
         this.resetCallback = resetCallback;
     }
@@ -66,44 +69,34 @@ public class BackgroundSubtractionController {
                 }
 
                 view.setEnableBackgroundTextField(false);
-                imageModel.resetBackgroundImage();
-                setTfBackground(imageModel.getBackground());
-                setTfBackground2(imageModel.getBackground2());
+                backgroundModel.resetBackgroundImage();
 
-                switch (mode) {
-                    case CONSTANT_BACKGROUND:
+                if (mode == BackgroundMode.CONSTANT_BACKGROUND) {
+                    view.setEnableBackgroundTextField(true);
+                } else if (mode == BackgroundMode.LOAD_BGR_IMAGE) {
+                    // Try to load image, revert to other background subtraction method if no background file is
+                    // loaded
+                    boolean loaded = false;
+                    try {
+                        loaded = imageModel.loadBackgroundImage(IJ.openImage());
+                    } catch (RuntimeException e) {
+                        IJ.showMessage(e.getMessage());
+                    }
+
+                    if (loaded) {
+                        view.updateStatusOnImageLoad(true);
+                    } else {
+                        mode = BackgroundMode.CONSTANT_BACKGROUND;
+                        comboBox.setSelectedItem(mode);
+                        ((JComboBox<?>) ev.getSource()).setSelectedIndex(0);
                         view.setEnableBackgroundTextField(true);
-                        break;
-                    case MIN_FRAME_BY_FRAME:
-                        break;
-                    case MIN_PER_IMAGE_STACK:
-                        break;
-                    case MIN_PIXEL_WISE_PER_IMAGE_STACK:
-                        break;
-                    case LOAD_BGR_IMAGE:
-                        // Only allows background subtraction before performing bleach correction
-                        view.unselectSubtractionAfterBleachCorrection();
-
-                        // Try to load image, revert to other background subtraction method if no background file is
-                        // loaded
-                        boolean loaded = false;
-                        try {
-                            loaded = imageModel.loadBackgroundImage(IJ.openImage());
-                            setTfBackground(imageModel.getBackground());
-                            setTfBackground2(imageModel.getBackground2());
-                        } catch (RuntimeException e) {
-                            IJ.showMessage(e.getMessage());
-                        }
-
-                        if (loaded) {
-                            view.updateStatusOnImageLoad(true);
-                        } else {
-                            ((JComboBox<?>) ev.getSource()).setSelectedIndex(0);
-                            view.setEnableBackgroundTextField(true);
-                            view.updateStatusOnImageLoad(false);
-                        }
-                        break;
+                        view.updateStatusOnImageLoad(false);
+                    }
                 }
+
+                backgroundModel.setMode(mode);
+                backgroundModel.computeBackground(imageModel.getImage());
+                setTfBackgrounds();
             }
         };
     }
@@ -122,11 +115,8 @@ public class BackgroundSubtractionController {
         this.view.toFront();
     }
 
-    public void setTfBackground(int background) {
-        view.setTfBackground(String.valueOf(background));
-    }
-
-    public void setTfBackground2(int background2) {
-        view.setTfBackground2(String.valueOf(background2));
+    public void setTfBackgrounds() {
+        view.setTfBackground(String.valueOf(backgroundModel.getConstantBackground1()));
+        view.setTfBackground2(String.valueOf(backgroundModel.getConstantBackground2()));
     }
 }

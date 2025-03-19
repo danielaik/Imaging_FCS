@@ -95,7 +95,7 @@ public final class NBModel {
                 meanNextElement /= frameCount - 1;
                 covariance = covariance / (frameCount - 1) - mean * meanNextElement;
 
-                NBB[i][j] = (covariance - imageModel.getBackgroundCovariance()[i][j]) / mean;
+                NBB[i][j] = (covariance - imageModel.getBackgroundCovariance(i, j)) / mean;
                 NBN[i][j] = mean / NBB[i][j];
             }
         }

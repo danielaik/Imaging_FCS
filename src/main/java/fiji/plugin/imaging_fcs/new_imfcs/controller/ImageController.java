@@ -1,5 +1,6 @@
 package fiji.plugin.imaging_fcs.new_imfcs.controller;
 
+import fiji.plugin.imaging_fcs.new_imfcs.enums.BackgroundMode;
 import fiji.plugin.imaging_fcs.new_imfcs.enums.FitFunctions;
 import fiji.plugin.imaging_fcs.new_imfcs.model.*;
 import fiji.plugin.imaging_fcs.new_imfcs.model.correlations.Correlator;
@@ -187,8 +188,18 @@ public final class ImageController {
         ImageModel.adaptImageScale(image);
 
         setLastFrame.accept(imageModel.getStackSize());
-        backgroundSubtractionController.setTfBackground(imageModel.getBackground());
-        backgroundSubtractionController.setTfBackground2(imageModel.getBackground2());
+
+        imageModel.getBackgroundModel().computeBackground(image);
+        backgroundSubtractionController.setTfBackgrounds();
+    }
+
+    /**
+     * Computes background values according to the current {@link BackgroundMode}.
+     * Depending on the mode, it calculates minimum values frame-by-frame, pixel-wise,
+     * or uses a constant value. If a separate background image is loaded
+     */
+    public void computeBackground() {
+        imageModel.getBackgroundModel().computeBackground(imageModel.getImage());
     }
 
     /**

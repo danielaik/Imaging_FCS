@@ -680,6 +680,7 @@ public final class ExpSettingsModel {
         resetCallback.run();
 
         this.lastFrame = intLastFrame;
+        setSlidingWindowLength(this.lastFrame / 20);
     }
 
     public double getFrameTime() {

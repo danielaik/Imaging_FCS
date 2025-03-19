@@ -91,7 +91,7 @@ public final class MainPanelController {
 
         FitModel fitModel = new FitModel(settings);
 
-        ImageModel imageModel = new ImageModel(this::askResetResults);
+        ImageModel imageModel = new ImageModel(settings, this::askResetResults);
         this.backgroundSubtractionController = new BackgroundSubtractionController(imageModel, this::askResetResults);
         this.bleachCorrectionModel = new BleachCorrectionModel(settings, imageModel);
         this.correlator = new Correlator(settings, bleachCorrectionModel, fitModel);
@@ -1180,6 +1180,10 @@ public final class MainPanelController {
         Consumer<String> decoratedSetter = (String value) -> {
             setter.accept(value);
             updateStrideParamFields();
+
+            // recompute backgrounds if first frame / last frame changed
+            imageController.computeBackground();
+            backgroundSubtractionController.setTfBackgrounds();
         };
 
         return createFocusListener(decoratedSetter);

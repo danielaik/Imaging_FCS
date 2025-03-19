@@ -71,8 +71,8 @@ public class BleachCorrectionModel {
     public void calcIntensityTrace(ImagePlus img, int x1, int y1, int x2, int y2, int initialFrame, int finalFrame) {
         int average = (finalFrame - initialFrame + 1) / numPointsIntensityTrace;
 
-        int background1 = imageModel.getBackground();
-        int background2 = settings.getFitModel() == FitFunctions.DC_FCCS_2D ? imageModel.getBackground2() : background1;
+        // We only choose the second background value for DC_FCCS
+        int background2Index = settings.getFitModel() == FitFunctions.DC_FCCS_2D ? 2 : 1;
 
         intensityTrace1 = new double[numPointsIntensityTrace];
         intensityTrace2 = new double[numPointsIntensityTrace];
@@ -85,10 +85,9 @@ public class BleachCorrectionModel {
             for (int x = 0; x < settings.getBinning().x; x++) {
                 for (int y = 0; y < settings.getBinning().y; y++) {
                     for (int z = initialFrame + i * average; z < initialFrame + (i + 1) * average; z++) {
-                        if (imageModel.isBackgroundLoaded()) {
-                            background1 = (int) imageModel.getBackgroundMean()[x1 + x][y1 + y];
-                            background2 = (int) imageModel.getBackgroundMean()[x2 + x][y2 + y];
-                        }
+                        int background1 = imageModel.getBackgroundValue(z, x1 + x, y1 + y, 1);
+                        int background2 = imageModel.getBackgroundValue(z, x2 + x, y2 + y, background2Index);
+
                         sum1 += img.getStack().getProcessor(z).get(x1 + x, y1 + y) - background1;
                         sum2 += img.getStack().getProcessor(z).get(x2 + x, y2 + y) - background2;
                     }
@@ -149,17 +148,13 @@ public class BleachCorrectionModel {
      * @param y             The y-coordinate of the top left corner of the binning area.
      */
     private void fillIntensityData(ImagePlus img, int mode, double[] intensityData, int x, int y, int initialFrame) {
-        int background = (mode == 2 && settings.getFitModel() ==
-                FitFunctions.DC_FCCS_2D) ? imageModel.getBackground2() : imageModel.getBackground();
+        int backgroundIndex = (mode == 2 && settings.getFitModel() == FitFunctions.DC_FCCS_2D) ? 2 : 1;
 
         for (int i = 0; i < intensityData.length; i++) {
             final ImageProcessor ip = img.getStack().getProcessor(initialFrame + i);
             for (int bx = 0; bx < settings.getBinning().x; bx++) {
                 for (int by = 0; by < settings.getBinning().y; by++) {
-                    if (imageModel.isBackgroundLoaded()) {
-                        background = (int) Math.round(imageModel.getBackgroundMean()[x + bx][y + by]);
-                    }
-
+                    int background = imageModel.getBackgroundValue(initialFrame + i, x + bx, y + by, backgroundIndex);
                     intensityData[i] += ip.get(x + bx, y + by) - background;
                 }
             }
