@@ -114,7 +114,7 @@ public final class NBModel {
 
                         // Calculate N&B values
                         double covariance = nbCorrelation[index];
-                        NBB[i][j] = (covariance - imageModel.getBackgroundCovariance()[i][j]) / mean;
+                        NBB[i][j] = (covariance - imageModel.getBackgroundCovariance(i, j)) / mean;
                         NBN[i][j] = mean / NBB[i][j];
                     }
                 }

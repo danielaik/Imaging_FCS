@@ -1,15 +1,11 @@
 package fiji.plugin.imaging_fcs.new_imfcs.gpu;
 
-import fiji.plugin.imaging_fcs.gpufit.Estimator;
-import fiji.plugin.imaging_fcs.gpufit.FitResult;
-import fiji.plugin.imaging_fcs.gpufit.FitState;
-import fiji.plugin.imaging_fcs.gpufit.GpuFitModel;
-import fiji.plugin.imaging_fcs.gpufit.Model;
-import fiji.plugin.imaging_fcs.gpufit.Gpufit;
-import fiji.plugin.imaging_fcs.new_imfcs.model.correlations.Correlator;
-import fiji.plugin.imaging_fcs.new_imfcs.model.fit.parametric_univariate_functions.FCSFit;
+import fiji.plugin.imaging_fcs.gpufit.*;
+import fiji.plugin.imaging_fcs.new_imfcs.enums.FitFunctions;
 import fiji.plugin.imaging_fcs.new_imfcs.model.ExpSettingsModel;
 import fiji.plugin.imaging_fcs.new_imfcs.model.PixelModel;
+import fiji.plugin.imaging_fcs.new_imfcs.model.correlations.Correlator;
+import fiji.plugin.imaging_fcs.new_imfcs.model.fit.parametric_univariate_functions.FCSFit;
 
 /**
  * Handles GPU-accelerated fitting of correlation functions.
@@ -26,13 +22,13 @@ public class GpuFitter {
     /**
      * Constructs a new GPU fitter with all required components.
      *
-     * @param gpuParams GPU parameters for the fitting operation
-     * @param fitModel Model containing fitting parameters and functions
-     * @param settings The experimental settings model
+     * @param gpuParams  GPU parameters for the fitting operation
+     * @param fitModel   Model containing fitting parameters and functions
+     * @param settings   The experimental settings model
      * @param correlator The correlator implementation providing lag times
      */
-    public GpuFitter(GpuParameters gpuParams, fiji.plugin.imaging_fcs.new_imfcs.model.FitModel fitModel, ExpSettingsModel settings,
-                     Correlator correlator) {
+    public GpuFitter(GpuParameters gpuParams, fiji.plugin.imaging_fcs.new_imfcs.model.FitModel fitModel,
+                     ExpSettingsModel settings, Correlator correlator) {
         this.settings = settings;
         this.gpuParams = gpuParams;
         this.fitModel = fitModel;
@@ -40,13 +36,43 @@ public class GpuFitter {
     }
 
     /**
+     * Determines the appropriate model for fitting based on settings.
+     *
+     * @param selectedModel The model name from settings
+     * @return The corresponding GPU fit model
+     */
+    private static Model determineModel(FitFunctions selectedModel) {
+        if (selectedModel == FitFunctions.SPIM_FCS_3D) {
+            return Model.ACF_NUMERICAL_3D;
+        } else {
+            return Model.ACF_1D;
+        }
+    }
+
+    /**
+     * Calculates the residuals of a correlation function given the fitted and original arrays.
+     *
+     * @param fittedCF            the fitted correlation function values
+     * @param correlationFunction the original correlation function values
+     * @return a new array containing the residuals
+     */
+    private static double[] calculateResiduals(double[] fittedCF, double[] correlationFunction) {
+        double[] residuals = new double[fittedCF.length];
+        for (int i = 0; i < fittedCF.length; i++) {
+            residuals[i] = correlationFunction[i] - fittedCF[i];
+        }
+        return residuals;
+    }
+
+    /**
      * Performs parallel fitting on multiple pixels' correlation functions using GPU.
      *
-     * @param pixelModels 2D array of pixel models to fit
-     * @param pixels1 Array containing correlation function values
+     * @param pixelModels        2D array of pixel models to fit
+     * @param pixels1            Array containing correlation function values
      * @param blockVarianceArray Array containing variance data
      */
-    public void fit(PixelModel[][] pixelModels, double[] pixels1, double[] blockVarianceArray, int roiStartX, int roiStartY) {
+    public void fit(PixelModel[][] pixelModels, double[] pixels1, double[] blockVarianceArray, int roiStartX,
+                    int roiStartY) {
         Model model = determineModel(settings.getFitModel());
         int numberFits = gpuParams.width * gpuParams.height;
         int numberPoints = gpuParams.fitend - gpuParams.fitstart + 1;
@@ -57,18 +83,9 @@ public class GpuFitter {
         float[] weights = prepareWeights(blockVarianceArray, numberFits, numberPoints);
         Boolean[] parametersToFit = prepareParametersToFit(model);
 
-        GpuFitModel gpufitModel = new GpuFitModel(
-            numberFits,
-            numberPoints,
-            true,
-            model,
-            GpuFitModel.TOLERANCE,
-            GpuFitModel.FIT_MAX_ITERATIONS,
-            gpuParams.bleachcorr_order,
-            parametersToFit,
-            Estimator.LSE,
-            numberPoints * Float.BYTES
-        );
+        GpuFitModel gpufitModel = new GpuFitModel(numberFits, numberPoints, true, model, GpuFitModel.TOLERANCE,
+                GpuFitModel.FIT_MAX_ITERATIONS, gpuParams.bleachcorr_order, parametersToFit, Estimator.LSE,
+                numberPoints * Float.BYTES);
 
         gpufitModel.data.put(data);
         gpufitModel.weights.put(weights);
@@ -79,23 +96,6 @@ public class GpuFitter {
 
         processFitResults(pixelModels, model, numberFits, fitResult, roiStartX, roiStartY);
         // applyIntensityFilter(pixelModels);
-    }
-
-    /**
-     * Determines the appropriate model for fitting based on settings.
-     *
-     * @param selectedModel The model name from settings
-     * @return The corresponding GPU fit model
-     */
-    private static Model determineModel(String selectedModel) {
-        switch (selectedModel) {
-            case "ITIR-FCS (2D)":
-                return Model.ACF_1D;
-            case "SPIM-FCS (3D)":
-                return Model.ACF_NUMERICAL_3D;
-            default:
-                return Model.ACF_1D;
-        }
     }
 
     /**
@@ -119,7 +119,8 @@ public class GpuFitter {
                 (float) settings.getParamZ(),
                 (float) settings.getParamRx(),
                 (float) settings.getParamRy(),
-                (float) FCSFit.getFitObservationVolume(settings.getParamAx(), settings.getParamAy(), settings.getParamW()),
+                (float) FCSFit.getFitObservationVolume(settings.getParamAx(), settings.getParamAy(),
+                        settings.getParamW()),
                 (float) fitModel.getQ2(),
                 (float) fitModel.getQ3(),
                 (float) settings.getEmLambdaInterface(),
@@ -158,8 +159,8 @@ public class GpuFitter {
     /**
      * Prepares correlation function data for fitting.
      *
-     * @param pixels1 Array containing correlation function values
-     * @param numberFits Number of fits to perform
+     * @param pixels1      Array containing correlation function values
+     * @param numberFits   Number of fits to perform
      * @param numberPoints Number of data points in each fit
      * @return Formatted data array for GPU fitting
      */
@@ -181,8 +182,8 @@ public class GpuFitter {
      * Prepares weights array for weighted fitting.
      *
      * @param blockVarianceArray Array containing variance data
-     * @param numberFits Number of fits to perform
-     * @param numberPoints Number of data points in each fit
+     * @param numberFits         Number of fits to perform
+     * @param numberPoints       Number of data points in each fit
      * @return Weights array for GPU fitting
      */
     private float[] prepareWeights(double[] blockVarianceArray, int numberFits, int numberPoints) {
@@ -225,17 +226,19 @@ public class GpuFitter {
      * Processes and stores fit results in pixel models.
      *
      * @param pixelModels 2D array of pixel models to update
-     * @param model The GPU fitting model used
-     * @param numberFits Number of fits performed
-     * @param fitResult Results from GPU fitting
+     * @param model       The GPU fitting model used
+     * @param numberFits  Number of fits performed
+     * @param fitResult   Results from GPU fitting
      */
-    private void processFitResults(PixelModel[][] pixelModels, Model model, int numberFits, FitResult fitResult, int roiStartX, int roiStartY) {
+    private void processFitResults(PixelModel[][] pixelModels, Model model, int numberFits, FitResult fitResult,
+                                   int roiStartX, int roiStartY) {
         int numFreeParams = (int) fitModel.getNonHeldParameterValues().length;
         int numParameters = PixelModel.FitParameters.NUM_PARAMETERS;
 
         for (int x = 0; x < gpuParams.width; x++) {
             for (int y = 0; y < gpuParams.height; y++) {
-                PixelModel pixel = pixelModels[(x + roiStartX) * gpuParams.pixbinX][(y + roiStartY) * gpuParams.pixbinY];
+                PixelModel pixel =
+                        pixelModels[(x + roiStartX) * gpuParams.pixbinX][(y + roiStartY) * gpuParams.pixbinY];
                 if (pixel == null) {
                     continue;
                 }
@@ -262,33 +265,4 @@ public class GpuFitter {
             }
         }
     }
-
-    /**
-     * Calculates the residuals of a correlation function given the fitted and original arrays.
-     *
-     * @param fittedCF            the fitted correlation function values
-     * @param correlationFunction the original correlation function values
-     * @return a new array containing the residuals
-     */
-    private static double[] calculateResiduals(double[] fittedCF, double[] correlationFunction) {
-        double[] residuals = new double[fittedCF.length];
-        for (int i = 0; i < fittedCF.length; i++) {
-            residuals[i] = correlationFunction[i] - fittedCF[i];
-        }
-        return residuals;
-    }
-
-    // private void applyIntensityFilter(List<PixelModel> pixelModels) {
-    //     for (int y = 0; y < gpuParams.height; y++) {
-    //         for (int x = 0; x < gpuParams.width; x++) {
-    //             int index = y * gpuParams.width + x;
-    //             PixelModel pixel = pixelModels.get(index);
-    //             float filterValue = filterArray[x * gpuParams.pixbinX + y * gpuParams.pixbinY];
-    //             if (filterValue < filterLL * gpuParams.binningX * gpuParams.binningY ||
-    //                 filterValue > filterUL * gpuParams.binningX * gpuParams.binningY) {
-    //                 pixel.setFitted(false);
-    //             }
-    //         }
-    //     }
-    // }
 }

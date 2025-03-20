@@ -1,24 +1,27 @@
 package fiji.plugin.imaging_fcs.new_imfcs.gpu;
 
-import java.awt.Point;
-
-import fiji.plugin.imaging_fcs.new_imfcs.model.FitModel;
-import fiji.plugin.imaging_fcs.gpufit.Gpufit;
+import fiji.plugin.imaging_fcs.gpufit.*;
+import fiji.plugin.imaging_fcs.new_imfcs.enums.BleachCorrectionMethod;
 import fiji.plugin.imaging_fcs.new_imfcs.model.BleachCorrectionModel;
 import fiji.plugin.imaging_fcs.new_imfcs.model.ExpSettingsModel;
+import fiji.plugin.imaging_fcs.new_imfcs.model.FitModel;
 import fiji.plugin.imaging_fcs.new_imfcs.model.ImageModel;
 import fiji.plugin.imaging_fcs.new_imfcs.model.correlations.Correlator;
 import fiji.plugin.imaging_fcs.new_imfcs.utils.Range;
-import fiji.plugin.imaging_fcs.gpufit.Estimator;
-import fiji.plugin.imaging_fcs.gpufit.Model;
-import fiji.plugin.imaging_fcs.gpufit.GpuFitModel;
-import fiji.plugin.imaging_fcs.gpufit.FitResult;
 import ij.IJ;
 import ij.ImagePlus;
 
-public class GpuParameters {
-    private ImageModel imageModel;
+import java.awt.*;
 
+/**
+ * Holds and computes parameters for GPU-based image processing, including image dimensions,
+ * binning parameters, bleach correction settings, and intensity data extraction.
+ * <p>
+ * The class initializes values from experimental settings, image models, and correlator parameters,
+ * and provides native methods to perform binning and bleach correction on GPU as well as fallback CPU methods.
+ * </p>
+ */
+public class GpuParameters {
     public int width; // output width
     public int height; // output height
     public int win_star; // w output x pixbinX + cfXdistance
@@ -49,9 +52,25 @@ public class GpuParameters {
     public int ave;
     public int fitstart;
     public int fitend;
+    private ImageModel imageModel;
 
+    /**
+     * Constructs GPU parameters from experimental settings, bleach correction model, image model,
+     * fit model, and additional parameters.
+     *
+     * @param settings              Experimental settings model.
+     * @param bleachCorrectionModel Bleach correction model.
+     * @param imageModel            Image model containing image and background data.
+     * @param fitModel              Model containing fitting parameters.
+     * @param isNBcalculation       Flag for NB calculation mode.
+     * @param correlator            Correlator to compute additional parameters.
+     * @param xRange                Range for the X dimension.
+     * @param yRange                Range for the Y dimension.
+     * @throws IllegalArgumentException if calculated dimensions are invalid.
+     */
     public GpuParameters(ExpSettingsModel settings, BleachCorrectionModel bleachCorrectionModel, ImageModel imageModel,
-            FitModel fitModel, boolean isNBcalculation, Correlator correlator, Range xRange, Range yRange) {
+                         FitModel fitModel, boolean isNBcalculation, Correlator correlator, Range xRange,
+                         Range yRange) {
         // Extract dimensions from ImageModel
         this.imageModel = imageModel;
 
@@ -90,8 +109,7 @@ public class GpuParameters {
         this.h_temp = this.hin_star - binningY + 1;
 
         // Determine bleach correction
-        String bleachCorrectionMode = settings.getBleachCorrection();
-        if ("Polynomial".equals(bleachCorrectionMode)) {
+        if (settings.getBleachCorrection() == BleachCorrectionMethod.POLYNOMIAL) {
             this.bleachcorr_gpu = true;
             this.bleachcorr_order = bleachCorrectionModel.getPolynomialOrder() + 1;
         } else {
@@ -102,7 +120,7 @@ public class GpuParameters {
         // Average calculation
         this.ave = (int) Math.floor(this.framediff / (double) this.nopit);
 
-        this.background = imageModel.getBackground();
+        this.background = imageModel.getBackgroundModel().getConstantBackground1();
 
         // Example placeholders for GPU-specific parameters
         this.chanum = settings.getChannelNumber();
@@ -114,8 +132,49 @@ public class GpuParameters {
         this.isNBcalculation = isNBcalculation;
     }
 
-    public float[] getIntensityData(Range xRange, Range yRange,
-            boolean returnRawData) {
+    /**
+     * Native method. Find if GPU memory is sufficient to perform binning.
+     *
+     * @param ACFInputParams Object that encapsulates / stores the necessary
+     *                       input values.
+     * @return true is memory is sufficient, false otherwise.
+     */
+    private static native boolean isBinningMemorySufficient(GpuParameters ACFInputParams);
+
+    /**
+     * Native method. Do binning given a 1D array.
+     *
+     * @param indata         1D float array. Dimension win_star = w_out x pixbinX +
+     *                       cfXDistance, hin_star = h_out x pixbinY + cfYDistance
+     * @param outdata        output data, by reference.
+     * @param ACFInputParams Values pixbinX, pixbinY are required.
+     */
+    private static native void calcBinning(float[] indata, float[] outdata, GpuParameters ACFInputParams);
+
+    /**
+     * Native method. Get data bleach correction given the 1D pixels values.
+     *
+     * @param pixels         1D float array of pixels values
+     * @param outdata        output data, by reference.
+     * @param ACFInputParams Values nopit, ave, cfXDistance, cfYDistance, width
+     *                       and height are required
+     */
+    private static native void calcDataBleachCorrection(float[] pixels, float[] outdata, GpuParameters ACFInputParams);
+
+    /**
+     * Retrieves intensity data from the image model.
+     * <p>
+     * This method attempts to extract the data in one shot using {@code getVoxels()};
+     * if that fails, it falls back to a manual voxel copy. Depending on the binning factors,
+     * it will perform GPU or CPU binning and subtract background if requested.
+     * </p>
+     *
+     * @param xRange        Range of x indices to extract.
+     * @param yRange        Range of y indices to extract.
+     * @param returnRawData If {@code false}, background is subtracted from the data.
+     * @return A 1D array of intensity data.
+     */
+    public float[] getIntensityData(Range xRange, Range yRange, boolean returnRawData) {
 
         boolean needBinning = (this.binningX > 1 || this.binningY > 1);
         int intensityWidth = needBinning ? win_star : w_temp;
@@ -135,11 +194,7 @@ public class GpuParameters {
             int absoluteY = yRange.getStart() * binningY;
             int absoluteZ = (this.firstframe - 1); // zero-based slice index if needed
 
-            imp.getStack().getVoxels(
-                    absoluteX,
-                    absoluteY,
-                    absoluteZ,
-                    intensityWidth, // width
+            imp.getStack().getVoxels(absoluteX, absoluteY, absoluteZ, intensityWidth, // width
                     intensityHeight, // height
                     totalFrames, // depth
                     pixels // destination
@@ -169,17 +224,16 @@ public class GpuParameters {
         return pixels;
     }
 
-    // ---------------------------------------------
-    // Private helper methods
-    // ---------------------------------------------
-
     /**
-     * Fallback: triple-nested loop to manually copy from the stack if getVoxels()
-     * fails.
+     * Fallback method: Manually copies voxel data from the image stack using a triple-nested loop.
+     *
+     * @param imp         The ImagePlus object containing the image stack.
+     * @param dest        Destination array to store copied data.
+     * @param xRange      Range for the X dimension.
+     * @param yRange      Range for the Y dimension.
+     * @param totalFrames Total number of frames to process.
      */
-    private void manualVoxelCopy(ImagePlus imp,
-            float[] dest, Range xRange, Range yRange,
-            int totalFrames) {
+    private void manualVoxelCopy(ImagePlus imp, float[] dest, Range xRange, Range yRange, int totalFrames) {
         int widthTemp = this.w_temp;
         int heightTemp = this.h_temp;
         // For each frame/time index from firstframe..lastframe
@@ -195,21 +249,31 @@ public class GpuParameters {
                     // Read from the stack voxel by voxel
                     float val = (float) imp.getStack().getVoxel(absX, absY, z);
                     // Store it in the correct location in 'dest'
-                    int index = frameIndex * (widthTemp * heightTemp)
-                            + by * widthTemp
-                            + bx;
+                    int index = frameIndex * (widthTemp * heightTemp) + by * widthTemp + bx;
                     dest[index] = val;
                 }
             }
         }
     }
 
+    /**
+     * Performs GPU-based binning using native methods.
+     *
+     * @param source 1D array of source pixel values.
+     * @return Binned pixel data.
+     */
     private float[] gpuBinning(float[] source) {
         float[] result = new float[w_temp * h_temp * framediff];
         calcBinning(source, result, this);
         return result;
     }
 
+    /**
+     * Performs CPU-based binning on the source pixel data.
+     *
+     * @param source 1D array of source pixel values.
+     * @return Binned pixel data.
+     */
     private float[] cpuBinning(float[] source) {
         IJ.log("Performing CPU-based binning...");
         float[] result = new float[w_temp * h_temp * framediff];
@@ -227,8 +291,7 @@ public class GpuParameters {
                             // The input index inside the source
                             int inY = oy + by;
                             int inX = ox + bx;
-                            int inIndex = frame * (w_temp * h_temp)
-                                    + inY * w_temp + inX;
+                            int inIndex = frame * (w_temp * h_temp) + inY * w_temp + inX;
                             sum += source[inIndex];
                         }
                     }
@@ -242,8 +305,9 @@ public class GpuParameters {
     }
 
     /**
-     * Check if we can bin on GPU (placeholder).
-     * Replace with your logic that checks GPU memory constraints.
+     * Checks if GPU-based binning is possible by evaluating the size limit and GPU memory constraints.
+     *
+     * @return {@code true} if GPU binning is possible; {@code false} otherwise.
      */
     private boolean canBinOnGpu() {
         boolean withinSizeLimit = (w_temp * h_temp * framediff) < 96 * 96 * 50000;
@@ -252,47 +316,33 @@ public class GpuParameters {
 
     /**
      * Performs background subtraction on the given pixels array.
-     * If a background image is loaded, subtracts the pixelwise mean from bgrMean.
-     * Otherwise, uses a constant background value.
+     * <p>
+     * For each pixel (and its sub-bins), subtracts the corresponding background value.
+     * </p>
      *
-     * @param pixels The array of intensities (size = w_temp * h_temp * framediff)
+     * @param pixels The array of intensity values (size = w_temp * h_temp * framediff).
      */
     private void doBackgroundSubtraction(float[] pixels) {
-        boolean bgrloaded = imageModel.isBackgroundLoaded();
+        for (int z = 0; z < framediff; z++) {
+            for (int x = 0; x < w_temp; x++) {
+                for (int y = 0; y < h_temp; y++) {
+                    int outIndex = z * (w_temp * h_temp) + y * w_temp + x;
 
-        if (bgrloaded) {
-            double[][] bgrMean = imageModel.getBackgroundMean();
-            for (int k = 0; k < framediff; k++) {
-                for (int j = 0; j < h_temp; j++) {
-                    for (int i = 0; i < w_temp; i++) {
-                        // The index in 'pixels' for the (k, j, i) voxel
-                        int outIndex = k * (w_temp * h_temp) + j * w_temp + i;
-
-                        // Subtract for each sub-bin
-                        for (int yy = 0; yy < binningY; yy++) {
-                            for (int xx = 0; xx < binningX; xx++) {
-                                // Old code does (float) (int) Math.round(...)
-                                float bgrVal = (float) (int) Math.round(bgrMean[i + xx][j + yy]);
-                                pixels[outIndex] -= bgrVal;
-                            }
+                    // Subtract for each sub-bin
+                    for (int bx = 0; bx < binningX; bx++) {
+                        for (int by = 0; by < binningY; by++) {
+                            int background = imageModel.getBackgroundValue(z + firstframe, x + bx, y + by, 1);
+                            pixels[outIndex] -= background;
                         }
                     }
                 }
-            }
-        } else {
-            /*
-             * 2) If no background image is loaded, subtract a constant.
-             * Typically: background * binningX * binningY
-             */
-            int constant = this.background * binningX * binningY;
-            for (int i = 0; i < pixels.length; i++) {
-                pixels[i] -= constant;
             }
         }
     }
 
     /**
      * Calculates bleach correction parameters using Gpufit.
+     *
      * @param pixels Intensity data to fit
      * @return Array of polynomial coefficients
      */
@@ -340,10 +390,8 @@ public class GpuParameters {
         }
 
         // Fit using Gpufit
-        GpuFitModel fitModel = new GpuFitModel(
-            numberFits, numberPoints, true, model, GpuFitModel.TOLERANCE, GpuFitModel.FIT_MAX_ITERATIONS,
-            bleachcorr_order, parametersToFit, estimator, nopit * Float.SIZE / 8
-        );
+        GpuFitModel fitModel = new GpuFitModel(numberFits, numberPoints, true, model, GpuFitModel.TOLERANCE,
+                GpuFitModel.FIT_MAX_ITERATIONS, bleachcorr_order, parametersToFit, estimator, nopit * Float.SIZE / 8);
         fitModel.data.put(datableachCorrection);
         fitModel.weights.put(weights);
         fitModel.initialParameters.put(initialParams);
@@ -364,7 +412,8 @@ public class GpuParameters {
 
     /**
      * Applies bleach correction to the intensity data.
-     * @param pixels Intensity data to correct
+     *
+     * @param pixels           Intensity data to correct
      * @param bleachCorrParams Polynomial coefficients
      */
     public void applyBleachCorrection(float[] pixels, double[] bleachCorrParams) {
@@ -383,38 +432,10 @@ public class GpuParameters {
                     int pixelIdx = z * w_temp * h_temp + y * w_temp + x;
                     float offset = (float) bleachCorrParams[idx];
                     float val = pixels[pixelIdx];
-                    pixels[pixelIdx] = (float) (val / Math.sqrt(corfunc / offset) + offset * (1 - Math.sqrt(corfunc / offset)));
+                    pixels[pixelIdx] =
+                            (float) (val / Math.sqrt(corfunc / offset) + offset * (1 - Math.sqrt(corfunc / offset)));
                 }
             }
         }
     }
-
-    /**
-     * Native method. Find if GPU memory is sufficient to perform binning.
-     *
-     * @param ACFInputParams Object that encapsulates / stores the necessary
-     * input values.
-     * @return true is memory is sufficient, false otherwise.
-     */
-    private static native boolean isBinningMemorySufficient(GpuParameters ACFInputParams);
-
-    /**
-     * Native method. Do binning given a 1D array.
-     *
-     * @param indata 1D float array. Dimension win_star = w_out x pixbinX +
-     * cfXDistance, hin_star = h_out x pixbinY + cfYDistance
-     * @param outdata output data, by reference.
-     * @param ACFInputParams Values pixbinX, pixbinY are required.
-     */
-    private static native void calcBinning(float[] indata, float[] outdata, GpuParameters ACFInputParams);
-
-    /**
-     * Native method. Get data bleach correction given the 1D pixels values.
-     *
-     * @param pixels 1D float array of pixels values
-     * @param outdata output data, by reference.
-     * @param ACFInputParams Values nopit, ave, cfXDistance, cfYDistance, width
-     * and height are required
-     */
-    private static native void calcDataBleachCorrection(float[] pixels, float[] outdata, GpuParameters ACFInputParams);
 }
