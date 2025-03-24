@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.8 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.18 FATAL_ERROR)
 project(agpufit LANGUAGES CXX CUDA)
 
 set(CMAKE_CUDA_STANDARD 11)
@@ -6,8 +6,8 @@ set(CMAKE_CUDA_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-find_package(CUDA REQUIRED)
-include_directories(${CUDA_INCLUDE_DIRS})
+find_package(CUDAToolkit REQUIRED)
+include_directories(${CUDAToolkit_INCLUDE_DIRS})
 
 include_directories(cuda_utils)
 include_directories(estimators)
@@ -68,4 +68,6 @@ if (WIN32)
     target_compile_definitions(agpufit PRIVATE USE_CUBLAS)
 endif()
 
-target_link_libraries(agpufit ${CUDA_LIBRARIES} ${CUDA_CUBLAS_LIBRARIES})
+target_link_libraries(agpufit PRIVATE CUDA::cudart CUDA::cublas)
+
+set_target_properties(agpufit PROPERTIES CUDA_ARCHITECTURES "52;61;75;86")
