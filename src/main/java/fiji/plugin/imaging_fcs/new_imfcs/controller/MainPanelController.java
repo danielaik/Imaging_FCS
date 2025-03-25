@@ -821,7 +821,7 @@ public final class MainPanelController {
                 double[][] scPlot = scatterArrayAndLabels.getLeft();
                 String[] labels = scatterArrayAndLabels.getRight();
 
-                Plots.scatterPlot(scPlot, labels[0], labels[1]);
+                Plots.scatterPlot(scPlot, labels[1], labels[0]);
             }
         };
     }

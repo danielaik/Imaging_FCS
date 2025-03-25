@@ -949,7 +949,7 @@ public class Plots {
         plot.setColor(Color.BLUE);
         plot.addPoints(scPlot[1], scPlot[0], Plot.CIRCLE);
         plot.setJustification(Plot.CENTER);
-        plot.addLabel(0.5, 0, labelX + " vs " + labelY);
+        plot.addLabel(0.5, 0, labelY + " vs " + labelX);
 
         plot.draw();
 
