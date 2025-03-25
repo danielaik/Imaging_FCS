@@ -1,117 +1,64 @@
 package fiji.plugin.imaging_fcs.directCameraReadout.gui;
 
-import ij.IJ;
-import ij.ImagePlus;
-import ij.ImageStack;
-import ij.gui.GenericDialog;
-import ij.gui.ImageCanvas;
-import ij.gui.ImageWindow;
-import ij.gui.Roi;
-import ij.gui.Overlay;
-import ij.process.ShortProcessor;
-import java.awt.BorderLayout;
-import java.awt.Color;
-import java.awt.Container;
-import java.awt.GridLayout;
-import java.awt.Point;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
-import java.awt.event.ItemEvent;
-import java.awt.event.ItemListener;
-import java.awt.event.KeyEvent;
-import java.awt.event.KeyListener;
-import java.awt.event.MouseEvent;
-import java.awt.event.MouseListener;
-import javax.swing.BorderFactory;
-import javax.swing.JButton;
-import javax.swing.JComboBox;
-import javax.swing.JFrame;
-import javax.swing.JLabel;
-import javax.swing.JOptionPane;
-import javax.swing.JPanel;
-import javax.swing.JRadioButton;
-import javax.swing.JTextArea;
-import javax.swing.JTextField;
-import javax.swing.JToggleButton;
-import javax.swing.event.DocumentEvent;
-import javax.swing.event.DocumentListener;
-import javax.swing.text.Document;
-import javax.swing.SwingWorker;
-import java.io.File;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import org.apache.commons.math3.special.Erf;
-import java.awt.Font;
-import java.util.concurrent.ExecutionException;
-import java.util.logging.Level;
-import java.util.logging.Logger;
-import javax.swing.JFileChooser;
-import javax.swing.SwingUtilities;
-import javax.swing.UIManager;
-
 import fiji.plugin.imaging_fcs.directCameraReadout.andorsdk2v3.AndorSDK2v3;
 import fiji.plugin.imaging_fcs.directCameraReadout.andorsdk3v2.AndorSDK3v2;
-import fiji.plugin.imaging_fcs.directCameraReadout.hamadcamsdk4.Hamamatsu_DCAM_SDK4;
-import fiji.plugin.imaging_fcs.directCameraReadout.pvcamsdk.Photometrics_PVCAM_SDK;
 import fiji.plugin.imaging_fcs.directCameraReadout.control.FrameCounter;
 import fiji.plugin.imaging_fcs.directCameraReadout.control.FrameCounterX;
-import fiji.plugin.imaging_fcs.directCameraReadout.system.*;
-import fiji.plugin.imaging_fcs.directCameraReadout.image.DisplayImage;
-import static fiji.plugin.imaging_fcs.directCameraReadout.updater.Updater.UpdateDimTextField;
-import static fiji.plugin.imaging_fcs.directCameraReadout.util.Utilities.retMaxAllowablePlotInterval;
-import static fiji.plugin.imaging_fcs.directCameraReadout.util.Utilities.setSizeAandSizeB;
-import static fiji.plugin.imaging_fcs.directCameraReadout.util.Utilities.setSizeRandSizeC;
 import fiji.plugin.imaging_fcs.directCameraReadout.fcs.ImFCSCorrelator;
-import fiji.plugin.imaging_fcs.directCameraReadout.gui.DirectCapturePanel.*;
-import static fiji.plugin.imaging_fcs.directCameraReadout.gui.parameterName.calibrationType.calibrationTypeList;
 import fiji.plugin.imaging_fcs.directCameraReadout.gui.parameterName.liveVideoBinMode;
 import fiji.plugin.imaging_fcs.directCameraReadout.gui.parameterName.liveVideoBinMode.liveVideoBinModeEnum;
 import fiji.plugin.imaging_fcs.directCameraReadout.gui.parameterName.mode;
 import fiji.plugin.imaging_fcs.directCameraReadout.gui.parameterName.mode.modeEnum;
-import static fiji.plugin.imaging_fcs.directCameraReadout.gui.parameterName.modeType.$amode;
-
+import fiji.plugin.imaging_fcs.directCameraReadout.hamadcamsdk4.Hamamatsu_DCAM_SDK4;
 import fiji.plugin.imaging_fcs.directCameraReadout.iccs.ICCS;
+import fiji.plugin.imaging_fcs.directCameraReadout.image.DisplayImage;
+import fiji.plugin.imaging_fcs.directCameraReadout.pvcamsdk.Photometrics_PVCAM_SDK;
+import fiji.plugin.imaging_fcs.directCameraReadout.system.SystemInfo;
 import fiji.plugin.imaging_fcs.directCameraReadout.util.TimeTaggedStorage;
+import ij.IJ;
 import ij.ImageJ;
-import java.awt.Window;
-import java.awt.event.WindowAdapter;
-import java.awt.event.WindowEvent;
-import java.awt.event.WindowListener;
+import ij.ImagePlus;
+import ij.ImageStack;
+import ij.gui.*;
+import ij.process.ShortProcessor;
+import org.apache.commons.math3.special.Erf;
+
+import javax.swing.*;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
+import javax.swing.text.Document;
+import java.awt.*;
+import java.awt.event.*;
+import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.concurrent.ExecutionException;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
+import static fiji.plugin.imaging_fcs.directCameraReadout.gui.parameterName.calibrationType.calibrationTypeList;
+import static fiji.plugin.imaging_fcs.directCameraReadout.gui.parameterName.modeType.$amode;
+import static fiji.plugin.imaging_fcs.directCameraReadout.updater.Updater.UpdateDimTextField;
+import static fiji.plugin.imaging_fcs.directCameraReadout.util.Utilities.*;
 import static fiji.plugin.imaging_fcs.version.VERSION.DCR_VERSION;
 
 public class DirectCapturePanel {
 
-    static boolean DEBUG_TRUE = false; //Debug pane
-
-    private static void printlog(String msg) {
-        if (false) {
-            IJ.log(msg);
-        }
-    }
-
     private final static boolean IsSaveExcel = true;
     private final static boolean IsSaveJson = true;
-    public static String $camera; //Currently programmed "DU860_BV" "DU888_BV" "DU897_BV" "SONA-4BV11" "C11440-22CU" "C11440-22C" "C13440-20CU" "EVOLVE- 512" "GS144BSI" "C13440-20C" "C15550-20UP" "TMP-Kinetix"
+    public static String $camera;
+    //Currently programmed "DU860_BV" "DU888_BV" "DU897_BV" "SONA-4BV11" "C11440-22CU" "C11440-22C"
+    // "C13440-20CU" "EVOLVE- 512" "GS144BSI" "C13440-20C" "C15550-20UP" "TMP-Kinetix"
     public static int cameraint;
-    private static boolean isHamamatsu;
-
     //Main panel
     public static JDirectCaptureComponent JDirectCapturepanelComponentPanel; //extend JFrame
-    private JComboBox<String> cbMode;
-    private JButton btnSave;
-    private JButton btnExit;
-    private JToggleButton tbPixelDimension;
-    private JToggleButton tbSettings;
     public static JToggleButton tbStartStop;
     public static JTextField tfPixelDimension;
-    private JTextField tfPixelBinningSoftware;
-    private JTextField tfCCFdist;
     public static JTextField tfExposureTime;
     public static JTextField tfTotalFrame;
     public static JTextField tfTemperature;
-
     //Dimension panel
     public static JDimensionpanelComponent JDimensionpanelComponentPanel; // extend JFrame
     public static JTextField tfoWidth;
@@ -120,14 +67,50 @@ public class DirectCapturePanel {
     public static JTextField tfoRight;
     public static JTextField tfoTop;
     public static JTextField tfoBottom;
+    public static JTextField tfPlotInterval;
+    public static JTextField tfCumulativeFitStart;
+    public static JTextField tfICCSRoi1Coord; //width, height, left, top // index start from 1
+    public static ICCS iccsObj1; //root
+    //JLiveVideo Pane
+    public static JLiveVideoPanelComponent JLiveVideoPanelComponentPanel;
+    public static JButton btnTest;
+    //DisplayImage
+    public static DisplayImage DisplayImageObj;
+    static boolean DEBUG_TRUE = false; //Debug pane
+    private static boolean isHamamatsu;
+    //Settings panel
+    private static JSettingspanelComponent JSettingspanelComponentPanel; //extend JFrame
+    //JCropMode Pane
+    private static JCropModePanelComponent JCropModePanelComponentPanel;
+    //JCalibration Pane
+    private static JCalibrationPanelComponent JCalibrationPanelComponentPanel;
+    private static JTextField tfNoPtsCalib;
+    //JCumulative Pane
+    private static JCumulativeCFPanelComponent JCumulativeCFPanelComponentPanel;
+    //JICCSMaps Pane
+    private static JICCSPanelComponent JICCSPanelComponentPanel;
+    private static JTextField tfICCSParam; //shiftX, shiftY
+    //JAnalysisModeSelector Pane
+    private static JAcquisitionModePanelComponent JAcquisitionModePanelComponentPanel;
+    //Debugging Pane
+    private static JTESTPanelComponent JTESTPanelComponentPanel;
+    private final String $panelFont = "SansSerif";                            // font and font size of the Panels
+    private final int panelFontSize = 12;
+    //ImageJ window
+    Window imjWindow;
+    WindowListener imjWindowListener;
+    private JComboBox<String> cbMode;
+    private JButton btnSave;
+    private JButton btnExit;
+    private JToggleButton tbPixelDimension;
+    private JToggleButton tbSettings;
+    private JTextField tfPixelBinningSoftware;
+    private JTextField tfCCFdist;
     private JRadioButton rbCustomROI;
     private JButton btnFullFrame;
     private JComboBox<String> cbPixelEncoding;
     private JComboBox<String> cbInCameraBinning;
     private JRadioButton rbCropMode; //is crop mode?
-
-    //Settings panel
-    private static JSettingspanelComponent JSettingspanelComponentPanel; //extend JFrame
     private JComboBox<String> cbBleachCorrection;
     private JComboBox<String> cbCorrelator_p;
     private JTextField tfCorrelator_q;
@@ -148,11 +131,10 @@ public class DirectCapturePanel {
     private JToggleButton tbOverlap_sona; //Sona
     private JComboBox<String> cbReadoutSpeed_ham;//Hamamatsu Orca
     private JComboBox<String> cbSensorMode_ham;//Hamamatsu Orca
-    private JButton btnClearWindow;  // close CF (non-cumulative or cumulative), Intensity, Calibration (intensity), Calibration (amplitude), Calibration (diffusion) graph
+    private JButton btnClearWindow;
+    // close CF (non-cumulative or cumulative), Intensity, Calibration (intensity), Calibration (amplitude),
+    // Calibration (diffusion) graph
     private JComboBox<String> cbReadoutSpeed_photometric;//Photometrics
-
-    //JCropMode Pane
-    private static JCropModePanelComponent JCropModePanelComponentPanel;
     private JComboBox<String> cbCropMode;
     private JTextField tfcWidth;
     private JTextField tfcHeight;
@@ -160,53 +142,1405 @@ public class DirectCapturePanel {
     private JTextField tfcRight;
     private JTextField tfcTop;
     private JTextField tfcBottom;
-
-    //JCalibration Pane
-    private static JCalibrationPanelComponent JCalibrationPanelComponentPanel;
     private JRadioButton rbPlotCalibrationAmplitude;
     private JRadioButton rbPlotCalibrationDiffusion;
     private JRadioButton rbPlotCalibrationIntensity;
     private JButton btnPlotInterval;
     private JToggleButton tbCalibFixScale;
-    private static JTextField tfNoPtsCalib;
-    public static JTextField tfPlotInterval;
-
-    //JCumulative Pane
-    private static JCumulativeCFPanelComponent JCumulativeCFPanelComponentPanel;
-    public static JTextField tfCumulativeFitStart;
-
-    //JICCSMaps Pane
-    private static JICCSPanelComponent JICCSPanelComponentPanel;
-    public static JTextField tfICCSRoi1Coord; //width, height, left, top // index start from 1
-    private static JTextField tfICCSParam; //shiftX, shiftY
-    public static ICCS iccsObj1; //root
-
-    //JAnalysisModeSelector Pane
-    private static JAcquisitionModePanelComponent JAcquisitionModePanelComponentPanel;
     private JToggleButton tbIsNonCumulCF;//if selected, perfrom non-cumulative CF calculation
-    private JToggleButton tbRecordTimePoint;//Store calibration time points to json. Post-process software will exclude these time points during the analyssis. Toggle on before making changes to the microscope; toggle off after making changes. Json saved in a folder along with metadata and tiff stacks
+    private JToggleButton tbRecordTimePoint;
+    //Store calibration time points to json. Post-process software will exclude these time points during the
+    // analyssis. Toggle on before making changes to the microscope; toggle off after making changes. Json
+    // saved in a folder along with metadata and tiff stacks
     private String currentCalibrationType;
     private String otherRemarks;
 
-    //JLiveVideo Pane
-    public static JLiveVideoPanelComponent JLiveVideoPanelComponentPanel;
-
-    //Debugging Pane
-    private static JTESTPanelComponent JTESTPanelComponentPanel;
-    public static JButton btnTest;
-
-    private final String $panelFont = "SansSerif";							// font and font size of the Panels
-    private final int panelFontSize = 12;
-
-    //DisplayImage
-    public static DisplayImage DisplayImageObj;
-
-    //ImageJ window
-    Window imjWindow;
-    WindowListener imjWindowListener;
-
     public DirectCapturePanel() {
         addImageJWindowListener();
+    }
+
+    private static void printlog(String msg) {
+        if (false) {
+            IJ.log(msg);
+        }
+    }
+
+    private static void updateTfFrameCounterV2() {
+        // TO be used with syncrhonizer worker
+
+        SwingWorker<Void, Integer> worker = new SwingWorker<Void, Integer>() {
+            @Override
+            protected Void doInBackground() throws Exception {
+
+                while (!Common.isPrematureTermination) {
+                    if (Common.isPrematureTermination == true) {
+                        break;
+                    }
+                    Thread.sleep(1);
+                    Common.cIsDisplayGUIcounter = false;
+                    synchronized (Common.locker2) {
+                        while (!Common.cIsDisplayGUIcounter) {
+                            Common.locker2.wait();
+                            Common.cIsDisplayGUIcounter = true;
+                        }
+                    }
+                    /*
+                    Start work
+                     */
+                    publish(Common.tempGUIcounter);
+                    /*
+                    End work
+                     */
+                }
+
+                //                while (Common.isAcquisitionRunning) {
+                //                    if (Common.framecounter != null) {
+                //                        publish(Common.framecounter.getCounter());
+                //                    }
+                //                    Thread.sleep(100);
+                //                }
+                //
+                //                tfTotalFrame.setText(Integer.toString(Common.totalFrame));
+                return null;
+            }
+
+            @Override
+            protected void process(List<Integer> chunks) {
+
+                if (Common.isAcquisitionRunning) {
+                    Integer count = chunks.get(chunks.size() - 1);
+                    if (Common.selectedMode == modeEnum.ACQUISITION) {//"Acquisition"
+                        tfTotalFrame.setText(Integer.toString(count) + " / " + Common.totalFrame);
+                    } else {
+                        tfTotalFrame.setText(Integer.toString(count));
+                    }
+                }
+
+            }
+
+            @Override
+            protected void done() {
+                tfTotalFrame.setText(Integer.toString(Common.totalFrame));
+            }
+
+        };
+
+        worker.execute();
+    }
+
+    private static void updateTfFrameCounterV3() {
+
+        // TODO update for new FrameCounter
+        SwingWorker<Void, Integer> worker = new SwingWorker<Void, Integer>() {
+            @Override
+            protected Void doInBackground() throws Exception {
+
+                while (Common.isAcquisitionRunning) {
+                    if (Common.framecounter != null) {
+                        publish(Common.framecounter.getCounter());
+                    }
+                    Thread.sleep(40);
+                }
+
+                tfTotalFrame.setText(Integer.toString(Common.totalFrame));
+                return null;
+            }
+
+            @Override
+            protected void process(List<Integer> chunks) {
+
+                if (Common.isAcquisitionRunning) {
+                    Integer count = chunks.get(chunks.size() - 1);
+                    if (Common.selectedMode == modeEnum.ACQUISITION) {//"Acquisition"
+                        tfTotalFrame.setText(Integer.toString(count) + " / " + Common.totalFrame);
+                    } else {
+                        tfTotalFrame.setText(Integer.toString(count));
+                    }
+                }
+
+            }
+        };
+        worker.execute();
+    }
+
+    private static void makeDefaultPanelSetting() {
+
+    }
+
+    /*
+     * Utilities
+     * checkerBinAndLiveROI:
+     * CCFselectorChecker:
+     * getCenterCoordinate:
+     * getRoiCoordinateFromCorner
+     * getRoiCoordinateFromCenter
+     * istfWHLTValid
+
+     */
+    public static boolean CCFselectorChecker(int oW, int oH, int ShiftX, int ShiftY, int binX, int binY, int px, int py,
+                                             int roiW, int roiH) {
+        int px2 = px + roiW - 1;
+        int py2 = py + roiH - 1;
+
+        //px,py --> coordinate of left top corner
+        //px2,py2 --> coordinate of bottom right corner
+        // px and py index start at 0; left top corner coordinate
+        int mincposx, maxcposx, mincposy, maxcposy, pixelWidthX, pixelHeightY;
+
+        //        pixelWidthX = (int) Math.floor(oW / binX) - 1;
+        //        pixelHeightY = (int) Math.floor(oH / binY) - 1;
+        pixelWidthX = oW - 1;
+        pixelHeightY = oH - 1;
+
+        // set initial, maximum, and minimum cursor positions possible in the image
+        if (ShiftX >= 0) {
+            //            maxcposx = pixelWidthX - (int) Math.ceil(((double) ShiftX - (oW - (pixelWidthX * binX +
+            //            binX))) / binX);
+            maxcposx = pixelWidthX - (int) Math.ceil(((double) ShiftX - (oW - (pixelWidthX * 1 + 1))) / 1);
+            mincposx = 0;
+        } else {
+            maxcposx = pixelWidthX;
+            mincposx = -(int) Math.floor((double) ShiftX / binX);
+        }
+
+        if (ShiftY >= 0) {
+            //            maxcposy = pixelHeightY - (int) Math.ceil(((double) ShiftY - (oH - (pixelHeightY * binY +
+            //            binY))) / binY);
+            maxcposy = pixelHeightY - (int) Math.ceil(((double) ShiftY - (oH - (pixelHeightY * 1 + 1))) / 1);
+            mincposy = 0;
+        } else {
+            maxcposy = pixelHeightY;
+            mincposy = -(int) Math.floor((double) ShiftY / binY);
+        }
+
+        if (px <= maxcposx && px >= mincposx && py <= maxcposy && py >= mincposy && px2 <= maxcposx &&
+                px2 >= mincposx && py2 <= maxcposy && py2 >= mincposy) {
+            return true;
+        } else {
+            IJ.log("CCFselectorChecker: Pixel Out Of Range!");
+            return false;
+
+        }
+
+    }
+
+    public static int[] getRoiCoordinateFromCorner(int leftpx, int toppy, int width, int height, int widthMAX,
+                                                   int heightMAX) {
+        // leftpx and toppy index start from 1
+        int[] result = new int[4];
+        result[0] = leftpx;
+        result[1] = leftpx + width - 1;
+        result[2] = toppy;
+        result[3] = toppy + height - 1;
+
+        if (result[1] > widthMAX) {
+            result[0] = widthMAX - width + 1;
+        }
+        if (result[3] > heightMAX) {
+            result[2] = heightMAX - height + 1;
+        }
+        return result;
+
+    }
+
+    public static int[] getRoiCoordinateFromCenter(int centerpx, int centerpy, int width, int height, int widthMAX,
+                                                   int heightMAX) {
+
+
+        /*
+               widthMAX
+            -----------------------------
+            -                           -
+            -           width           -
+            -         * * * *           -   heightMAX
+            -         * X   * height    -
+            -         * * * *           -
+            -                           -
+            -                           -
+            -                           -   X = (centerpx, centerpy)
+            -                           -   // all index start from 1. for example 128 x 128 dim. index start from 1
+            and end at 128
+            -                           -
+            -----------------------------
+
+
+         */
+        int[] result = new int[4];
+
+        int shiftx = width / 2;
+        int shifty = height / 2;
+        result[0] = centerpx - shiftx;
+        result[1] = centerpx - shiftx + width - 1;
+        result[2] = centerpy - shifty;
+        result[3] = centerpy - shifty + height - 1;
+
+        if (result[0] < 1) {
+            result[0] = 1;
+            result[1] = 1 + width - 1;
+        }
+
+        if (result[1] > widthMAX) {
+            result[1] = widthMAX;
+            result[0] = widthMAX - width + 1;
+        }
+
+        if (result[2] < 1) {
+            result[2] = 1;
+            result[3] = 1 + height - 1;
+        }
+
+        if (result[3] > heightMAX) {
+            result[3] = heightMAX;
+            result[2] = heightMAX - height + 1;
+        }
+        //            IJ.log("fromGetCoordinate; left: " + result[0] + ", right: " + result[1] + ", top: " +
+        //            result[2] + ", bottom: " + result[3]);
+        return result;
+
+    }
+
+    /*
+     * Utilities (ImagePlus/Stack related)
+     * clearImageStackPlus
+     * InitStack
+     * fillImagePlusNonCumul
+     * fillImagePlusCumul
+     * getimp
+
+     */
+    public static void clearImageStackPlus(int mode) {
+        switch (mode) {
+            case 2:
+                Common.ims_cum = null;
+                Common.imp_cum = null;
+                break;
+
+        }
+    }
+
+    public static void fillImagePlusCumul() {
+        Common.imp_cum = new ImagePlus("imp acquisition", Common.ims_cum);
+    }
+
+    /*
+        * Utilities (Calcualtor)
+        // calculation of the observation area; this is used in the Diffusion Law Plot as the y-axis
+        // the calculation of the observation area/volume is provided on our website in CDF files (http://www.dbs.nus
+        * .edu.sg/lab/BFL/index.html)
+
+     */
+    public static double obsvolFCS_ST2D1p(int dim) {
+
+        double pixeldimx = 240 / Math.pow(10, 9);
+        double pixeldimy = 240 / Math.pow(10, 9);
+        double sigma = 0.8;
+        double emlambda = 515;
+        double NA = 1.49;
+        double psfsize = (sigma * emlambda / NA) / Math.pow(10, 9);
+        int cfXshift = 0;
+        int cfYshift = 0;
+        int binningX = 1;
+        int binningY = 1;
+
+        // general parameters
+        double pi = Math.PI;
+        double sqrpi = Math.sqrt(pi);
+        double ax = pixeldimx;
+        //        IJ.log("pixeldimx: " + pixeldimx);
+        double ay = pixeldimy;
+        //        IJ.log("pixeldimy: " + pixeldimy);
+        double s = psfsize;
+        //        IJ.log("psfsize: " + psfsize);
+        double psfz = 2 * emlambda / Math.pow(10, 9.0) * 1.33 / Math.pow(NA, 2.0); // size of PSF in axial direction
+        //        IJ.log("emlambda: " + emlambda + ", NA: " + NA);
+        double rx = ax * cfXshift / binningX;
+        double ry = ay * cfYshift / binningY;
+        //        IJ.log("cfXshift: " + cfXshift);
+        //        IJ.log("cfYshift: " + cfYshift);
+        //        IJ.log("binningX: " + binningX);
+        //        IJ.log("binningY: " + binningY);
+
+        // help variables, for t = 0, to write the full fit function
+        double p00 = s;
+        double p1x0 = ax;
+        double p2x0 = ax;
+        double p1y0 = ay;
+        double p2y0 = ay;
+        double pexpx0 = 2 * Math.exp(-Math.pow(p1x0 / p00, 2)) - 2;
+        double perfx0 = 2 * p1x0 * Erf.erf(p1x0 / p00);
+        double pexpy0 = 2 * Math.exp(-Math.pow(p1y0 / p00, 2)) - 2;
+        double perfy0 = 2 * p1y0 * Erf.erf(p1y0 / p00);
+
+        //return (p00/sqrpi * pexpx0 + perfx0) * (p00/sqrpi * pexpy0 + perfy0) * Math.pow(sz, 2);
+        if (dim == 2) {
+            return 4 * Math.pow(ax * ay, 2) / ((p00 / sqrpi * pexpx0 + perfx0) * (p00 / sqrpi * pexpy0 + perfy0));
+        } else {
+            //return sqrpi * szeff * 4 * Math.pow(ax*ay, 2)/( (p00/sqrpi * pexpx0 + perfx0) * (p00/sqrpi * pexpy0 +
+            // perfy0) );
+            return 4 * Math.pow(ax * ay, 2) / ((p00 / sqrpi * pexpx0 + perfx0) * (p00 / sqrpi * pexpy0 + perfy0));
+
+        }
+
+    }
+
+    /*
+    Mode
+     */
+    private void start_single_capture(boolean isFF) {
+        if (Common.isCropMode == 1) {
+            IJ.showMessage("Switch off Crop Mode to capture a single frame.");
+        } else {
+            clearImageStackPlus(2);
+            APIcall.runThread_SingleCapture(isFF);
+            tbStartStop.setSelected(false);
+        }
+    }
+
+    private void start_live_video() { //deprecated; CALIBRATION mode essentially do the same with additional CF analysis
+        tfExposureTime.setEditable(false);
+        Common.setAutoAdjustImageDynamicRange(true);
+        clearImageStackPlus(2);
+        if (Common.isAcquisitionRunning) {
+            JOptionPane.showMessageDialog(null, "Please press stop or wait for acquisition to complete");
+        } else {
+            APIcall.runThread_LiveVideo();//13/7/21 use version V2)
+            updateTfFrameCounterV2();
+        }
+    }
+
+    private void start_calibration() {
+        tfExposureTime.setEditable(false);
+        Common.setAutoAdjustImageDynamicRange(true);
+        clearImageStackPlus(2);
+        if (Common.isAcquisitionRunning) {
+            JOptionPane.showMessageDialog(null, "Please press stop or wait for acquisition to complete");
+        } else {
+            APIcall.runThread_nonCumulative(); //13/7/21 use version V3
+            updateTfFrameCounterV3();
+        }
+    }
+
+    private void start_acquisition() {
+        tfExposureTime.setEditable(false);
+        tfTotalFrame.setEditable(false);
+        Common.setAutoAdjustImageDynamicRange(false);
+        clearImageStackPlus(2);
+        if (Common.isAcquisitionRunning) {
+            JOptionPane.showMessageDialog(null, "Please press stop or wait for acquisition to complete");
+        } else {
+            APIcall.runThread_Cumulative(); //13/7/21 use version V3
+            updateTfFrameCounterV3();
+        }
+    }
+
+    private void start_iccs_routine() {
+        tfExposureTime.setEditable(false);
+        Common.setAutoAdjustImageDynamicRange(false);
+        clearImageStackPlus(2);
+
+        if (Common.isAcquisitionRunning) {
+            JOptionPane.showMessageDialog(null, "Please press stop or wait for acquisition to complete");
+        } else {
+            Common.isICCSValid = false;
+            APIcall.runThread_ICCScalibration();
+            updateTfFrameCounterV3(); //update framecounter
+        }
+    }
+
+    /*
+     * Methods needed when changes are made in GUI
+     * invoke changes to document from the Event Dispatched Thread
+     * UpdateExpSettings(); Update binning(software) or CFdistance
+     * UpdateDimTextField(); Update ROI textfield (shifted to updater package)
+     * makeDefaultPanelSetting(); not implemented
+     * UpdateCalibParam(): update average point to average for plotting G(0) calibration graph
+     * UpdateICCSSettings(); Make changes to green and red roi, parameter storing green ROI and parameter describing
+     * red ROI
+     */
+    private void UpdateExpSettings(String mode) {
+
+        Runnable doUpdateExpSettings = new Runnable() {
+            @Override
+            public void run() {
+
+                int[] val = new int[2];
+                int memx, memy, tempx, tempy;
+                switch (mode) {
+                    case "SoftBinning":
+                        boolean changesmade = false;
+                        boolean needChanges = false;
+                        boolean invalid = false;
+
+                        memx = Common.BinXSoft;
+                        memy = Common.BinYSoft;
+
+                        val = parserTf(tfPixelBinningSoftware);// parse the binning textfiled
+                        tempx = val[0];
+                        tempy = val[1];
+
+                        //first test
+                        if (tempx < 1 || tempx > Common.oWidth) {
+                            tempx = memx;
+                            invalid = true;
+                        }
+                        if (tempy < 1 || tempy > Common.oHeight) {
+                            tempy = memy;
+                            invalid = true;
+                        }
+
+                        //second test
+                        if (Common.isAcquisitionRunning) {
+                            if (Common.lWidth < tempx) {
+                                needChanges = true;
+                            }
+                            if (Common.lHeight < tempy) {
+                                needChanges = true;
+                            }
+                            if (needChanges) {
+                                changesmade =
+                                        checkerBinAndLiveROI(Common.lWidth, Common.lHeight, Common.lLeft, Common.lTop,
+                                                Common.oWidth, Common.oHeight, Common.CCFdistX, Common.CCFdistY, tempx,
+                                                tempy, Common.isCCFmode);
+                                if (changesmade) {
+                                    Common.lWidth = tempx;
+                                    Common.lHeight = tempy;
+
+                                    if (Common.isCCFmode) {
+                                        Common.impRoiLive = new Roi(Common.lLeft - 1, Common.lTop - 1, Common.lWidth,
+                                                Common.lHeight);
+                                        Common.impRoiLive.setStrokeColor(Color.GREEN);
+                                        Common.imp.setRoi(Common.impRoiLive);
+
+                                        Common.impRoiLive2 = new Roi(Common.lLeft + Common.CCFdistX - 1,
+                                                Common.lTop + Common.CCFdistY - 1, Common.lWidth, Common.lHeight);
+                                        Common.impRoiLive2.setStrokeColor(Color.RED);
+                                        Overlay impov = new Overlay(Common.impRoiLive2);
+                                        Common.imp.setOverlay(impov);
+                                    } else {
+                                        Common.impRoiLive = new Roi(Common.lLeft - 1, Common.lTop - 1, Common.lWidth,
+                                                Common.lHeight);
+                                        Common.impRoiLive.setStrokeColor(Color.GREEN);
+                                        Common.imp.setRoi(Common.impRoiLive);
+
+                                    }
+
+                                } else {
+                                    tempx = memx;
+                                    tempy = memy;
+                                }
+                            }
+                        }
+
+                        Common.BinXSoft = tempx;
+                        Common.BinYSoft = tempy;
+
+                        // Reset textField under these conditions
+                        if (tfPixelBinningSoftware.getText().equals("") || tempx != memx || tempy != memy || invalid) {
+                            tfPixelBinningSoftware.setText(
+                                    Integer.toString(Common.BinXSoft) + " x " + Integer.toString(Common.BinYSoft));
+                        }
+
+                        break;
+                    case "CFDistance":
+
+                        boolean isChangesMade = false;
+                        boolean isCCFselectionOK;
+                        memx = Common.CCFdistX;
+                        memy = Common.CCFdistY;
+
+                        val = parserTf(tfCCFdist);// parse the binning textfiled
+
+                        tempx = val[0];
+                        tempy = val[1];
+
+                        isCCFselectionOK =
+                                CCFselectorChecker(Common.oWidth, Common.oHeight, tempx, tempy, Common.BinXSoft,
+                                        Common.BinYSoft, Common.lLeft - 1, Common.lTop - 1, Common.lWidth,
+                                        Common.lHeight);
+
+                        // checker if user input parameter is valid
+                        if (Common.analysisMode.equals($amode[3])) {//Iccs
+                            if ((Common.lLeft - 1 + tempx + Common.ICCSShiftX + Common.lWidth) > Common.oWidth ||
+                                    (Common.lLeft - 1 + tempx - Common.ICCSShiftX) < 0 ||
+                                    (Common.lTop - 1 + tempy + Common.ICCSShiftY + Common.lHeight) > Common.oHeight ||
+                                    (Common.lTop - 1 + tempy - Common.ICCSShiftY) < 0 ||
+                                    Common.lLeft - 1 + Common.lWidth > Common.oWidth ||
+                                    Common.lTop - 1 + Common.lHeight > Common.oHeight) {
+                                isCCFselectionOK = false;
+                            }
+                        }
+
+                        if (isCCFselectionOK) {
+                            Common.CCFdistX = tempx;
+                            Common.CCFdistY = tempy;
+                            if (memx != Common.CCFdistX || memy != Common.CCFdistY) {
+                                isChangesMade = true;
+                            }
+                        } else {
+                            Common.CCFdistX = memx;
+                            Common.CCFdistY = memy;
+                        }
+
+                        if (Common.analysisMode.equals($amode[3])) {//Iccs
+                            if (Common.CCFdistX != 0 || Common.CCFdistY != 0) {
+                                Common.isCCFmode = true;
+                                if (isChangesMade && Common.isAcquisitionRunning && isCCFselectionOK) {
+
+                                    Common.impRoiLive =
+                                            new Roi(Common.lLeft - 1, Common.lTop - 1, Common.lWidth, Common.lHeight);
+                                    Common.impRoiLive.setStrokeColor(Color.GREEN);
+                                    Common.imp.setRoi(Common.impRoiLive);
+
+                                    Common.impRoiLive2 = new Roi(Common.lLeft + Common.CCFdistX - 1 - Common.ICCSShiftX,
+                                            Common.lTop + Common.CCFdistY - 1 - Common.ICCSShiftY,
+                                            Common.lWidth + (2 * Common.ICCSShiftX),
+                                            Common.lHeight + (2 * Common.ICCSShiftY));
+                                    Common.impRoiLive2.setStrokeColor(Color.RED);
+                                    Overlay impov = new Overlay(Common.impRoiLive2);
+                                    Common.imp.setOverlay(impov);
+
+                                }
+                            } else {
+                                Common.isCCFmode = false;
+                                if (isChangesMade && Common.isAcquisitionRunning) {
+
+                                    Common.impRoiLive =
+                                            new Roi(Common.lLeft - 1, Common.lTop - 1, Common.lWidth, Common.lHeight);
+                                    Common.impRoiLive.setStrokeColor(Color.GREEN);
+                                    Common.imp.setRoi(Common.impRoiLive);
+
+                                    if (Common.imp.getOverlay() != null) {
+                                        Common.imp.getOverlay().clear();
+                                        Common.imp.setOverlay(Common.imp.getOverlay());
+                                    }
+
+                                }
+                            }
+                        }
+
+                        if (!Common.analysisMode.equals($amode[3])) {//not Iccs
+                            if (Common.CCFdistX != 0 || Common.CCFdistY != 0) {
+                                Common.isCCFmode = true;
+                                if (isChangesMade && Common.isAcquisitionRunning && isCCFselectionOK) {
+
+                                    Common.impRoiLive =
+                                            new Roi(Common.lLeft - 1, Common.lTop - 1, Common.lWidth, Common.lHeight);
+                                    Common.impRoiLive.setStrokeColor(Color.GREEN);
+                                    Common.imp.setRoi(Common.impRoiLive);
+
+                                    Common.impRoiLive2 = new Roi(Common.lLeft + Common.CCFdistX - 1,
+                                            Common.lTop + Common.CCFdistY - 1, Common.lWidth, Common.lHeight);
+                                    Common.impRoiLive2.setStrokeColor(Color.RED);
+                                    Overlay impov = new Overlay(Common.impRoiLive2);
+                                    Common.imp.setOverlay(impov);
+
+                                }
+                            } else {
+                                Common.isCCFmode = false;
+                                if (isChangesMade && Common.isAcquisitionRunning) {
+                                    Common.impRoiLive =
+                                            new Roi(Common.lLeft - 1, Common.lTop - 1, Common.lWidth, Common.lHeight);
+                                    Common.impRoiLive.setStrokeColor(Color.GREEN);
+                                    Common.imp.setRoi(Common.impRoiLive);
+
+                                    if (Common.imp.getOverlay() != null) {
+                                        Common.imp.getOverlay().clear();
+                                        Common.imp.setOverlay(Common.imp.getOverlay());
+                                    }
+
+                                }
+                            }
+                        }
+
+                        // Reset textField under these conditions
+                        if (tfCCFdist.getText().equals("") || tempx != memx || tempy != memy) {
+                            tfCCFdist.setText(
+                                    Integer.toString(Common.CCFdistX) + " x " + Integer.toString(Common.CCFdistY));
+                        }
+
+                        break;
+                    default:
+                        throw new java.lang.Error("UpdateExpSettings unmatched case.");
+                }
+
+            }
+
+        };
+        SwingUtilities.invokeLater(doUpdateExpSettings);
+    }
+
+    private void UpdateCalibParam() {
+
+        Runnable doUpdateCalibparam = new Runnable() {
+
+            @Override
+            public void run() {
+                boolean proceed = false;
+                int memint;
+                try {
+                    memint = Integer.parseInt(tfNoPtsCalib.getText());
+                    proceed = true;
+                } catch (NumberFormatException nfe) {
+                    tfNoPtsCalib.setText(Integer.toString(Common.noptsavr));
+                    return;
+                }
+                if (proceed) {
+                    Common.noptsavr = memint;
+                }
+            }
+
+        };
+        SwingUtilities.invokeLater(doUpdateCalibparam);
+    }
+
+    private void UpdateICCSSettigs(String mode) {
+
+        Runnable doUpdateICCSSettings = new Runnable() {
+            @Override
+            public void run() {
+
+                int[] val;
+                boolean changesmade = false;//for ROI draw
+                boolean needChanges = false; //for ROI draw
+                boolean invalid = false;
+
+                switch (mode) {
+                    case "CoordinateGreen":
+                        // read changes, check if valid, update global parameter and draw ROI if changes is valid
+                        int memW, memH, memX, memY, tempW, tempH, tempX, tempY;
+
+                        memW = Common.lWidth;
+                        memH = Common.lHeight;
+                        memX = Common.lLeft; //index start from 1
+                        memY = Common.lTop;
+
+                        val = parserTfICCS(tfICCSRoi1Coord);// parse tf
+
+                        tempW = val[0];
+                        tempH = val[1];
+                        tempX = val[2];
+                        tempY = val[3];
+
+                        if ((tempX - 1 + Common.CCFdistX + Common.ICCSShiftX + tempW) > Common.oWidth ||
+                                (tempX - 1 + Common.CCFdistX - Common.ICCSShiftX) < 0 ||
+                                (tempY - 1 + Common.CCFdistY + Common.ICCSShiftY + tempH) > Common.oHeight ||
+                                (tempY - 1 + Common.CCFdistY - Common.ICCSShiftY) < 0 ||
+                                tempX - 1 + tempW > Common.oWidth || tempY - 1 + tempH > Common.oHeight) {
+                            invalid = true;//invalid parameter
+                        }
+
+                        //                        //check if self-channel correlation
+                        //                        if (tempY + Common.CCFdistY - Common.ICCSShiftY < (Common.oHeight /
+                        //                        2)) {
+                        //                            IJ.log("Warning: self-channel correlation");
+                        //                        }
+                        if (!invalid) {
+                            Common.lWidth = tempW;
+                            Common.lHeight = tempH;
+                            Common.lLeft = tempX;
+                            Common.lTop = tempY;
+                        }
+
+                        if (Common.isAcquisitionRunning && !invalid) {
+
+                            if (Common.isCCFmode) {
+                                Common.impRoiLive =
+                                        new Roi(Common.lLeft - 1, Common.lTop - 1, Common.lWidth, Common.lHeight);
+                                Common.impRoiLive.setStrokeColor(Color.GREEN);
+                                Common.imp.setRoi(Common.impRoiLive);
+
+                                Common.impRoiLive2 = new Roi(Common.lLeft + Common.CCFdistX - 1 - Common.ICCSShiftX,
+                                        Common.lTop + Common.CCFdistY - 1 - Common.ICCSShiftY,
+                                        Common.lWidth + (2 * Common.ICCSShiftX),
+                                        Common.lHeight + (2 * Common.ICCSShiftY));
+                                Common.impRoiLive2.setStrokeColor(Color.RED);
+                                Overlay impov = new Overlay(Common.impRoiLive2);
+                                Common.imp.setOverlay(impov);
+                            } else {
+                                Common.impRoiLive =
+                                        new Roi(Common.lLeft - 1, Common.lTop - 1, Common.lWidth, Common.lHeight);
+                                Common.impRoiLive.setStrokeColor(Color.GREEN);
+                                Common.imp.setRoi(Common.impRoiLive);
+                            }
+                        }
+
+                        // Reset textField under these conditions
+                        if (tfICCSRoi1Coord.getText().equals("") || tempW != memW || tempH != memH || tempX != memX ||
+                                tempY != memY || invalid) {
+                            tfICCSRoi1Coord.setText(
+                                    Integer.toString(Common.lWidth) + " / " + Integer.toString(Common.lHeight) + " / " +
+                                            Integer.toString(Common.lLeft) + " / " + Integer.toString(Common.lTop));
+                        }
+
+                        break;
+                    case "ParamRed":
+                        int memShiftX, memShiftY, tempShiftX, tempShiftY;
+
+                        memShiftX = Common.ICCSShiftX;
+                        memShiftY = Common.ICCSShiftY;
+
+                        val = parserTfICCS(tfICCSParam);// parse tf
+
+                        tempShiftX = val[0];
+                        tempShiftY = val[1];
+
+                        if ((Common.lLeft - 1 + Common.CCFdistX + tempShiftX + Common.lWidth) > Common.oWidth ||
+                                (Common.lLeft - 1 + Common.CCFdistX - tempShiftX) < 0 ||
+                                (Common.lTop - 1 + Common.CCFdistY + tempShiftY + Common.lHeight) > Common.oHeight ||
+                                (Common.lTop - 1 + Common.CCFdistY - tempShiftY) < 0 ||
+                                Common.lLeft - 1 + Common.lWidth > Common.oWidth ||
+                                Common.lTop - 1 + Common.lHeight > Common.oHeight) {
+                            invalid = true;//invalid parameter
+                        }
+
+                        //                        //check if self-channel correlation
+                        //                        if (Common.lTop + Common.CCFdistY - memShiftY < (Common.oHeight /
+                        //                        2)) {
+                        //                            IJ.log("Warning: self-channel correlation");
+                        //                        }
+                        if (!invalid) {
+
+                            if ((tempShiftX != memShiftX) || (tempShiftY != memShiftY)) { // changes made
+                                if (tempShiftX == memShiftX) {
+                                    Common.ICCSShiftX = tempShiftY;
+                                    Common.ICCSShiftY = tempShiftY;
+                                } else {
+                                    Common.ICCSShiftX = tempShiftX;
+                                    Common.ICCSShiftY = tempShiftX;
+                                }
+
+                            }
+
+                        }
+
+                        if (Common.isAcquisitionRunning && !invalid) {
+
+                            if (Common.isCCFmode) {
+                                Common.impRoiLive =
+                                        new Roi(Common.lLeft - 1, Common.lTop - 1, Common.lWidth, Common.lHeight);
+                                Common.impRoiLive.setStrokeColor(Color.GREEN);
+                                Common.imp.setRoi(Common.impRoiLive);
+
+                                Common.impRoiLive2 = new Roi(Common.lLeft + Common.CCFdistX - 1 - Common.ICCSShiftX,
+                                        Common.lTop + Common.CCFdistY - 1 - Common.ICCSShiftY,
+                                        Common.lWidth + (2 * Common.ICCSShiftX),
+                                        Common.lHeight + (2 * Common.ICCSShiftY));
+                                Common.impRoiLive2.setStrokeColor(Color.RED);
+                                Overlay impov = new Overlay(Common.impRoiLive2);
+                                Common.imp.setOverlay(impov);
+                            } else {
+                                Common.impRoiLive =
+                                        new Roi(Common.lLeft - 1, Common.lTop - 1, Common.lWidth, Common.lHeight);
+                                Common.impRoiLive.setStrokeColor(Color.GREEN);
+                                Common.imp.setRoi(Common.impRoiLive);
+                            }
+                        }
+
+                        // Reset textField under these conditions
+                        if (tfICCSParam.getText().equals("") || tempShiftX != memShiftX || tempShiftY != memShiftY ||
+                                invalid) {
+                            tfICCSParam.setText(
+                                    Integer.toString(Common.ICCSShiftX) + " / " + Integer.toString(Common.ICCSShiftY));
+                        }
+
+                        break;
+
+                }
+
+            }
+
+        };
+        SwingUtilities.invokeLater(doUpdateICCSSettings);
+    }
+
+    private boolean UpdateROIwh(boolean isHam) {
+
+        boolean proceed = false;
+        int tempw = 0, temph = 0;
+        int[] oCoordinate;
+
+        try {
+            tempw = Integer.parseInt(tfoWidth.getText());
+            temph = Integer.parseInt(tfoHeight.getText());
+            proceed = true;
+        } catch (NumberFormatException nfe) {
+            return false;
+        }
+
+        if (proceed) {
+
+            if (tempw == Common.oWidth && temph == Common.oHeight) {
+                return false;
+            }
+
+            if (isHam) {
+                boolean isWidthValid = false, isHeightValid = false;
+
+                int w, h;
+
+                // check if width and coordinate (left) is valid
+                for (w = tempw; w >= Common.minHeight; w--) {
+                    oCoordinate = getCenterCoordinate(w, temph, Common.MAXpixelwidth / Common.inCameraBinning,
+                            Common.MAXpixelheight / Common.inCameraBinning);
+                    isWidthValid = istfWHLTValid(oCoordinate[2], oCoordinate[0], Common.inCameraBinning);
+                    if (isWidthValid) {
+                        break;
+                    }
+                }
+
+                // check if height and coordinate (top) is valid
+                for (h = temph; h >= Common.minHeight; h--) {
+                    oCoordinate = getCenterCoordinate(w, h, Common.MAXpixelwidth / Common.inCameraBinning,
+                            Common.MAXpixelheight / Common.inCameraBinning);
+                    isHeightValid = istfWHLTValid(oCoordinate[3], oCoordinate[1], Common.inCameraBinning);
+                    if (isHeightValid) {
+                        break;
+                    }
+                }
+
+                oCoordinate = getCenterCoordinate(w, h, Common.MAXpixelwidth / Common.inCameraBinning,
+                        Common.MAXpixelheight / Common.inCameraBinning);
+
+                Common.oWidth = oCoordinate[0];
+                Common.oHeight = oCoordinate[1];
+                Common.oLeft = oCoordinate[2];
+                Common.oTop = oCoordinate[3];
+                Common.oRight = Common.oLeft + Common.oWidth - 1;
+                Common.oBottom = Common.oTop + Common.oHeight - 1;
+
+            } else {
+                oCoordinate = getCenterCoordinate(tempw, temph, Common.MAXpixelwidth / Common.inCameraBinning,
+                        Common.MAXpixelheight / Common.inCameraBinning);
+
+                Common.oWidth = oCoordinate[0];
+                Common.oHeight = oCoordinate[1];
+                Common.oLeft = oCoordinate[2];
+                Common.oTop = oCoordinate[3];
+                Common.oRight = Common.oLeft + Common.oWidth - 1;
+                Common.oBottom = Common.oTop + Common.oHeight - 1;
+            }
+
+            tfoLeft.setText(Integer.toString(Common.oLeft));
+            tfoRight.setText(Integer.toString(Common.oRight));
+            tfoTop.setText(Integer.toString(Common.oTop));
+            tfoBottom.setText(Integer.toString(Common.oBottom));
+            tfPixelDimension.setText(Integer.toString(Common.oWidth) + " x " + Integer.toString(Common.oHeight));
+            setSizeAandSizeB(Common.oWidth, Common.oHeight, Common.maxE, Common.minPI, Common.maxPI);
+            if (Common.plotInterval > retMaxAllowablePlotInterval(Common.size_a, Common.size_b)) {
+                if (retMaxAllowablePlotInterval(Common.size_a, Common.size_b) > 500) {
+                    Common.plotInterval = 500;
+                } else {
+                    Common.plotInterval = retMaxAllowablePlotInterval(Common.size_a, Common.size_b);
+                }
+                tfPlotInterval.setText(Integer.toString(Common.plotInterval));
+            }
+            return true;
+        } else {
+            return false;
+        }
+
+        //        Runnable doUpdateROI = new Runnable() {
+        //            @Override
+        //            public void run() {
+        //
+        //            }
+        //
+        //        };
+        //        SwingUtilities.invokeLater(doUpdateROI);
+        //            SwingWorker<Void, Void> worker = new SwingWorker<Void, Void>() {
+        //                @Override
+        //                protected Void doInBackground() throws Exception {
+        //
+        //                    return null;
+        //                }
+        //            };
+        //            worker.execute();
+    }
+
+    private boolean UpdateROIlrtb(String type, boolean isHam) {
+        boolean proceed = false;
+        int temp = 0;
+        try {
+            switch (type) {
+                case "l":
+                    temp = Integer.parseInt(tfoLeft.getText());
+                    break;
+                case "r":
+                    temp = Integer.parseInt(tfoRight.getText());
+                    break;
+                case "t":
+                    temp = Integer.parseInt(tfoTop.getText());
+                    break;
+                case "b":
+                    temp = Integer.parseInt(tfoBottom.getText());
+                    break;
+            }
+            proceed = true;
+
+        } catch (NumberFormatException nfe) {
+            return false;
+        }
+
+        if (proceed) {
+            switch (type) {
+                case "l":
+                    if (temp == Common.oLeft) {
+                        return false;
+                    }
+                case "r":
+                    if (temp == Common.oRight) {
+                        return false;
+                    }
+                case "t":
+                    if (temp == Common.oTop) {
+                        return false;
+                    }
+                case "b":
+                    if (temp == Common.oBottom) {
+                        return false;
+                    }
+            }
+
+            if (temp < 1) {
+                temp = 1;
+            }
+            switch (type) {
+                case "l":
+                    if (temp > (Common.MAXpixelwidth / Common.inCameraBinning)) {
+                        temp = Common.MAXpixelwidth / Common.inCameraBinning;
+                    }
+                    if (temp > Common.oRight) {
+                        temp = Common.oRight;
+                    }
+
+                    //check if Left coordinate is valid
+                    if (isHam) {
+                        boolean isValid;
+                        int validValue;
+
+                        for (validValue = temp; validValue >= 1; validValue--) {
+                            isValid = istfWHLTValid(validValue, Common.oRight - validValue + 1, Common.inCameraBinning);
+                            if (isValid) {
+                                break;
+                            }
+                        }
+                        Common.oLeft = validValue;
+                    } else {
+                        Common.oLeft = temp;
+                    }
+
+                    Common.oWidth = Common.oRight - Common.oLeft + 1;
+                    tfoWidth.setText(Integer.toString(Common.oWidth));
+                    break;
+                case "r":
+                    if (temp > (Common.MAXpixelwidth / Common.inCameraBinning)) {
+                        temp = Common.MAXpixelwidth / Common.inCameraBinning;
+                    }
+                    if (temp < Common.oLeft) {
+                        temp = Common.oLeft;
+                    }
+
+                    //check if Right coordinate is valid
+                    if (isHam) {
+                        boolean isValid;
+                        int validValue;
+
+                        for (validValue = temp; validValue <= Common.MAXpixelwidth; validValue++) {
+                            isValid =
+                                    istfWHLTValid(Common.oLeft, validValue - Common.oLeft + 1, Common.inCameraBinning);
+                            if (isValid) {
+                                break;
+                            }
+                        }
+                        Common.oRight = validValue;
+                    } else {
+                        Common.oRight = temp;
+                    }
+
+                    Common.oWidth = Common.oRight - Common.oLeft + 1;
+                    tfoWidth.setText(Integer.toString(Common.oWidth));
+                    break;
+                case "t":
+                    if (temp > (Common.MAXpixelheight / Common.inCameraBinning)) {
+                        temp = Common.MAXpixelheight / Common.inCameraBinning;
+                    }
+                    if (temp > Common.oBottom) {
+                        temp = Common.oBottom;
+                    }
+
+                    //check if Top coordinate is valid
+                    if (isHam) {
+                        boolean isValid;
+                        int validValue;
+
+                        for (validValue = temp; validValue >= 1; validValue--) {
+                            isValid =
+                                    istfWHLTValid(validValue, Common.oBottom - validValue + 1, Common.inCameraBinning);
+                            if (isValid) {
+                                break;
+                            }
+                        }
+                        Common.oTop = validValue;
+                    } else {
+                        Common.oTop = temp;
+                    }
+
+                    Common.oHeight = Common.oBottom - Common.oTop + 1;
+                    tfoHeight.setText(Integer.toString(Common.oWidth));
+                    break;
+                case "b":
+                    if (temp > (Common.MAXpixelheight / Common.inCameraBinning)) {
+                        temp = Common.MAXpixelheight / Common.inCameraBinning;
+                    }
+                    if (temp < Common.oTop) {
+                        temp = Common.oTop;
+                    }
+
+                    //check if Bottom coordinate is valid
+                    if (isHam) {
+                        boolean isValid;
+                        int validValue;
+
+                        for (validValue = temp; validValue <= Common.MAXpixelheight; validValue++) {
+                            isValid = istfWHLTValid(Common.oTop, validValue - Common.oTop + 1, Common.inCameraBinning);
+                            if (isValid) {
+                                break;
+                            }
+                        }
+                        Common.oBottom = validValue;
+                    } else {
+                        Common.oBottom = temp;
+                    }
+
+                    Common.oHeight = Common.oBottom - Common.oTop + 1;
+                    tfoHeight.setText(Integer.toString(Common.oWidth));
+                    break;
+            }
+            tfPixelDimension.setText(Integer.toString(Common.oWidth) + " x " + Integer.toString(Common.oHeight));
+            setSizeAandSizeB(Common.oWidth, Common.oHeight, Common.maxE, Common.minPI, Common.maxPI);
+            if (Common.plotInterval > retMaxAllowablePlotInterval(Common.size_a, Common.size_b)) {
+                if (retMaxAllowablePlotInterval(Common.size_a, Common.size_b) > 500) {
+                    Common.plotInterval = 500;
+                } else {
+                    Common.plotInterval = retMaxAllowablePlotInterval(Common.size_a, Common.size_b);
+                }
+                tfPlotInterval.setText(Integer.toString(Common.plotInterval));
+            }
+            return true;
+        } else {
+            return false;
+        }
+
+    }
+
+    /*
+     * Parser function for:
+     * tfBinning, tfCFDistance
+     * ICCS calibration: ShiftX, ShiftY
+     */
+    private int[] parseSetting(JTextField tfset) {
+
+        int m1;
+        int m2;
+        if (tfset.getDocument() == tfPixelBinningSoftware.getDocument()) {
+            m1 = Common.BinXSoft;
+            m2 = Common.BinYSoft;
+        } else {
+            m1 = Common.CCFdistX;
+            m2 = Common.CCFdistY;
+        }
+
+        int[] val = new int[2];
+        val = parserTf(tfset);
+        // update text field under certain condition only. THis prevent infinite loop
+        if (m1 != val[0] || m2 != val[1] || tfset.getText().equals("")) {
+            tfset.setText(val[0] + " x " + val[1]);
+        }
+
+        return val;
+    }
+
+    private int[] parserTf(JTextField tfset) {
+        // return parsed value: CCFdistance and Binning
+        int m1, m2;
+        if (tfset.getDocument() == tfPixelBinningSoftware.getDocument()) {
+            m1 = Common.BinXSoft;
+            m2 = Common.BinYSoft;
+        } else {
+            m1 = Common.CCFdistX;
+            m2 = Common.CCFdistY;
+        }
+
+        int[] val = new int[2];
+        String str = tfset.getText();
+        String[] strA;
+
+        if (tfset.getDocument() == tfPixelBinningSoftware.getDocument()) {
+            strA = str.replaceAll("[^0-9]+", " ").trim().split(" ");
+        } else {
+            strA = str.replaceAll("[^-?0-9]+", " ").trim().split(" ");
+        }
+
+        try {
+            val[0] = Integer.parseInt(strA[0]);
+            val[1] = Integer.parseInt(strA[1]);
+        } catch (NumberFormatException e) {
+            IJ.log("Binning or CF Distance value incorrect.");
+            val[0] = m1;
+            val[1] = m2;
+        } catch (ArrayIndexOutOfBoundsException aob) {
+            val[0] = m1;
+            val[1] = m2;
+        }
+        return val;
+    }
+
+    private int[] parserTfICCS(JTextField tfset) {
+        // return parsed value: tfICCSRoi1Coord and tfICCSParam
+
+        int[] val = null;
+        String str = tfset.getText();
+        String[] strA;
+
+        int m1, m2, m3, m4;
+
+        if (tfset.getDocument() == tfICCSRoi1Coord.getDocument()) {
+            val = new int[4];
+            m1 = Common.lWidth;
+            m2 = Common.lHeight;
+            m3 = Common.lLeft;
+            m4 = Common.lTop;
+            strA = str.replaceAll("[^0-9]+", " ").trim().split(" ");
+            try {
+                val[0] = Integer.parseInt(strA[0]);
+                val[1] = Integer.parseInt(strA[1]);
+                val[2] = Integer.parseInt(strA[2]);
+                val[3] = Integer.parseInt(strA[3]);
+            } catch (NumberFormatException e) {
+                val[0] = m1;
+                val[1] = m2;
+                val[2] = m3;
+                val[3] = m4;
+            } catch (ArrayIndexOutOfBoundsException aob) {
+                val[0] = m1;
+                val[1] = m2;
+                val[2] = m3;
+                val[3] = m4;
+            }
+
+        } else {//tfset.getDocument() == tfICCSParam.getDocument()
+            val = new int[2];
+            String[] strB;
+            m1 = Common.ICCSShiftX;
+            m2 = Common.ICCSShiftY;
+            strB = str.replaceAll("[^0-9]++", " ").trim().split(" ");
+            try {
+                val[0] = Integer.parseInt(strB[0]);
+                val[1] = Integer.parseInt(strB[1]);
+            } catch (NumberFormatException e) {
+                val[0] = m1;
+                val[1] = m2;
+            } catch (ArrayIndexOutOfBoundsException aob) {
+                val[0] = m1;
+                val[1] = m2;
+            }
+        }
+
+        return val;
+
+    }
+
+    private boolean checkerBinAndLiveROI(int lW, int lH, int lL, int lT, int oW, int oH, int CCFx, int CCFy, int BinX,
+                                         int BinY, boolean isCCF) {
+
+        boolean isNewBinOK = false;
+
+        if (isCCF) {
+            isNewBinOK = CCFselectorChecker(oW, oH, CCFx, CCFy, BinX, BinY, lL - 1, lT - 1, lW, lH);
+
+        } else {
+            if (oW >= (lL + BinX - 1) && oH >= (lT + BinY - 1)) {
+                isNewBinOK = true;
+            }
+        }
+        if (isNewBinOK) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    private int[] getCenterCoordinate(int w, int h, int wmax, int hmax) {
+        //return 0=width, 1=height, 2=left, 3=top
+        int[] res = new int[4];
+        int tempw = w, temph = h;
+        if (tempw < 1) {
+            tempw = 1;
+        }
+        if (tempw > wmax) {
+            tempw = wmax;
+        }
+        if (temph < 1) {
+            temph = 1;
+        }
+        if (temph > hmax) {
+            temph = hmax;
+        }
+        res[0] = tempw;
+        res[1] = temph;
+        res[2] = (wmax - tempw) / 2 + 1;
+        res[3] = (hmax - temph) / 2 + 1;
+        //            for (int i = 0; i < res.length; i++) {
+        //                IJ.log("res[" + i + "]: " + res[i]);
+        //            }
+        return res;
+    }
+
+    private boolean istfWHLTValid(int left, int width, int bin) {
+        // applies to top/height
+        // decide if user entered W and H parameters are valid
+        boolean isValidL, isValidW;
+
+        //check width valid
+        int right = left + width - 1;
+        isValidW = ((right - left + 1) * bin) % 4 == 0;
+
+        //check left valid
+        int scaledleft = (left * bin) - (bin - 1);
+        isValidL = (scaledleft - 1) % 4 == 0;
+
+        return (isValidL && isValidW);
+
+    }
+
+    /*
+     * GUI looks and feel
+     */
+    public void setUIFont(int panelFontSize, String $panelFont) {
+        UIManager.getLookAndFeelDefaults()
+                .put("defaultFont", new java.awt.Font($panelFont, java.awt.Font.PLAIN, panelFontSize));
+        UIManager.put("Button.font", new java.awt.Font($panelFont, java.awt.Font.BOLD, panelFontSize));
+        UIManager.put("ToggleButton.font", new java.awt.Font($panelFont, java.awt.Font.BOLD, panelFontSize));
+        UIManager.put("RadioButton.font", new java.awt.Font($panelFont, java.awt.Font.BOLD, panelFontSize));
+        UIManager.put("Label.font", new java.awt.Font($panelFont, java.awt.Font.ITALIC, panelFontSize));
+        UIManager.put("ComboBox.font", new java.awt.Font($panelFont, java.awt.Font.PLAIN, panelFontSize));
+        UIManager.put("TextField.font", new java.awt.Font($panelFont, java.awt.Font.PLAIN, panelFontSize));
+        UIManager.put("ToolTip.font", new java.awt.Font($panelFont, java.awt.Font.PLAIN, panelFontSize));
+    }
+
+    /*
+     * Update experimental settings:
+     * pixelSize (before in-camera binning), objMag, NA, emlambda, sigmaxy
+     */
+    public boolean GetExpSettingsDialogue() {
+
+        GenericDialog gd = new GenericDialog("Experimental Settings");
+        gd.addNumericField("Pixel size", Common.pixelSize, 1, 4, "\u03BCm");
+        gd.addNumericField("Magnification", Common.objMag, 0, 4, "\u00D7");
+        gd.addNumericField("NA", Common.NA, 1, 4, "");
+        gd.addNumericField("\u03BB (emission)", Common.emlambda, 0, 4, "nm");
+        gd.addNumericField("PSF (xy)", Common.sigmaxy, 1, 4, "");
+        gd.hideCancelButton();
+        gd.setOKLabel​("Set");
+        gd.showDialog();
+
+        if (gd.wasOKed()) {
+            double ps = (double) gd.getNextNumber();
+            int objmag = (int) gd.getNextNumber();
+            double na = (double) gd.getNextNumber();
+            int em = (int) gd.getNextNumber();
+            double sigma = (double) gd.getNextNumber();
+
+            if (!Double.isNaN(ps) && ps > 0) {
+                Common.pixelSize = ps;
+            } else {
+                IJ.log("Invalid Pixel size");
+                return false;
+            }
+
+            if (objmag > 0) {
+                Common.objMag = objmag;
+            } else {
+                IJ.log("Invalid Magnification");
+                return false;
+            }
+
+            if (!Double.isNaN(na) && na > 0) {
+                Common.NA = na;
+            } else {
+                IJ.log("Invalid NA");
+                return false;
+            }
+
+            if (em > 0) {
+                Common.emlambda = em;
+            } else {
+                IJ.log("Invalid Lambda emission");
+                return false;
+            }
+
+            if (!Double.isNaN(sigma) && sigma > 0) {
+                Common.sigmaxy = sigma;
+            } else {
+                IJ.log("Invalid PSF");
+                return false;
+            }
+
+        }
+
+        return true;
+    }
+
+    /*
+    Window Listener
+    // addImageJWindowListener(): Safely turn off camera if user happen to exit Fiji before pressing "Exit" button.
+    More relevant expecially for DU860 without physical off button at the back of the camera.
+     */
+    private void addImageJWindowListener() {
+
+        imjWindowListener = new WindowListener() {
+            @Override
+            public void windowOpened(WindowEvent e) {
+            }
+
+            @Override
+            public void windowClosing(WindowEvent e) {
+                //Check if camera is running; if not stop camera
+                if (Common.isAcquisitionRunning) {
+                    //do something to stop calibration, acquisiton, live, ICCS
+                    Common.isStopPressed = true;
+                    APIcall.setStopMechanism(Common.isStopPressed);
+                }
+
+                //Check if camera is off; if not call exit camera
+                if (Common.isShutSystemPressed == false) {
+                    APIcall.exitDirectCaptureProgram();
+                }
+            }
+
+            @Override
+            public void windowClosed(WindowEvent e) {
+            }
+
+            @Override
+            public void windowIconified(WindowEvent e) {
+            }
+
+            @Override
+            public void windowDeiconified(WindowEvent e) {
+            }
+
+            @Override
+            public void windowActivated(WindowEvent e) {
+            }
+
+            @Override
+            public void windowDeactivated(WindowEvent e) {
+            }
+        };
+
+        imjWindow = ImageJ.getWindows()[0];
+        imjWindow.addWindowListener(imjWindowListener);
     }
 
     public static class Common {
@@ -219,15 +1553,23 @@ public class DirectCapturePanel {
 
         public final static Object locker1 = new Object(); //for LiveVideo
         public final static Object locker2 = new Object(); //for GUI counter
-
+        //4/200 works except sona 2048x2048
+        public final static int maxE = (4 * 2048 * 2048 * 20);
+        public final static int maxPI = 20000;
+        public final static int minPI = 5000;
+        public final static int minAllowableFrame = 100; // minimum frame for ACF
+        public final static int transferFrameInterval = 1; //calibration //live //cumualtive
+        public final static int fps = 25;
+        public final static int dataPtsLastChannel = 100;
+        // for acquisition mode. With 5000 frames, setting 16,8 will calculate 16,8
+        public final static int dataPtsLastChannel_calibration = 1;
+        public final static int zoomFactor = 300; // single capture //live
         public volatile static boolean cIsDisplayLatestFrame;
         public volatile static boolean cIsDisplayGUIcounter;
-
         public volatile static int tempGUIcounter;
-
-        public static int tempWidth; //true width in pixel eg. 128x128 bin 1 = 128x128; 128x128 bin2 = 64x64; 128x128 bin3 = 42x42
+        public static int tempWidth;
+        //true width in pixel eg. 128x128 bin 1 = 128x128; 128x128 bin2 = 64x64; 128x128 bin3 = 42x42
         public static int tempHeight; //true width in pixel
-
         //ixon seris
         public static int isCropMode;//0 false, 1 true
         public static int cWidth;
@@ -236,68 +1578,46 @@ public class DirectCapturePanel {
         public static int cRight;
         public static int cTop;
         public static int cBottom;
-        private static int[][] CornerTetherCropROI;//w, h, l, r, t, b
-
-        //Only iXon series START
-        private static ArrayList<String> VspeedArr;
-        private static ArrayList<String> HspeedArr;
-        private static ArrayList<String> VSAmpArr;
-        private static ArrayList<String> PreAmpGainArr;
-
-        //indexes of selected settings Vertical shift speed(usecs), Horizontal speed/Readout speed (MHz), Vertical Clock Amp, Pre-amp
+        //Only iXon series END
+        //indexes of selected settings Vertical shift speed(usecs), Horizontal speed/Readout speed (MHz), Vertical
+        // Clock Amp, Pre-amp
         public static int iVSpeed;
         public static int iHSpeed;
         public static int iVSamp;
         public static int iPreamp;
-        //Only iXon series END
-
-        private static String $impSavedOR = null;//filename
-        private static String $impPathOR = null;
-        private static String $impSavingFolderPath = null;
-
-        //4/200 works except sona 2048x2048
-        public final static int maxE = (4 * 2048 * 2048 * 20);
-        public final static int maxPI = 20000;
-        public final static int minPI = 5000;
-        public final static int minAllowableFrame = 100; // minimum frame for ACF
         public static int size_a; //calibration //live //cumualtive
         public static int size_b; //calibration //live //cumualtive //2000 works but slow
-        public final static int transferFrameInterval = 1; //calibration //live //cumualtive
-        public final static int fps = 25;
         public static int size_r;
         public static int size_c;
-
-        public static double maximumBytePerStack = 8000000000f; //max bytes per stacks. lets set this to 4 billion bytes/4GB// assume 16-bit images 32x32 maxframe = 4000000000/(2*32*32)
+        public static double maximumBytePerStack = 8000000000f;
+        //max bytes per stacks. lets set this to 4 billion bytes/4GB// assume 16-bit images 32x32 maxframe =
+        // 4000000000/(2*32*32)
         public static boolean isShutSystemPressed;
         public volatile static boolean isAcquisitionRunning;
         public volatile static boolean isPrematureTermination;
         public volatile static boolean isStopPressed;
         public static boolean isPlotACFdone;
         public static boolean isImageReady;
-        private static boolean isSaveDone = true;
         public volatile static boolean isResetCalibPlot = false; //TODO:volatile neede?
-
         public static String $cameraHeadModel;
         public static String $serialNumber;
-//        public volatile static String selectedMode; //TODO:replaced by enum
+        //        public volatile static String selectedMode; //TODO:replaced by enum
         public volatile static modeEnum selectedMode;
         public volatile static String analysisMode;//0-None, 1-NonCumulative, 2-Cumulative, 3-Iccs
-
         //camera acquisition parameters
         public static double exposureTime;
         public static double kineticCycleTime;
         public static int totalFrame;
         public static int plotInterval;
-        public static int cumulativePlotInterval = 10; //setting to 1 will essentially perform calculation back-to back. Increase this number with larger ROI and frame rate
-
+        public static int cumulativePlotInterval = 10;
         public static int BinXSoft;
         public static int BinYSoft;
         public static int inCameraBinning;// 1x1, 2x2, 3x3, 4x4, 8x8 for sona11 and DU860
-
         public static int CCFdistX; //index start from 0
         public static int CCFdistY; //index start from 0
         public static boolean isCCFmode;
-
+        //setting to 1 will essentially perform calculation back-to back. Increase this number with larger
+        // ROI and frame rate
         public static int chipSizeX;
         public static int chipSizeY;
         public static int MAXpixelwidth;
@@ -312,51 +1632,47 @@ public class DirectCapturePanel {
         public static int mem_oHeight;
         public static int mem_oLeft;
         public static int mem_oTop;
-
         public static int minHeight; //6 pixels for ixon860
         public static int EMgain;
-
         public static int temperature;
         public static int mintemp;
         public static int maxtemp;
         public static boolean isCooling;
         public static int[] tempStatus = {
-            0,
-            0
+                0, 0
         }; // 0=detector temp; 1=errorCode
-
         public static String[] FanList;
         public static String FanStatus;
-
         public static String bleachCor;
         public static int polynomDegree;
         public static int correlator_p;
         public static int correlator_q;
-        public final static int dataPtsLastChannel = 100; // for acquisition mode. With 5000 frames, setting 16,8 will calculate 16,8
-        public final static int dataPtsLastChannel_calibration = 1; //for non-cumulative. Make sure setting at 5000 frames setting 16,8 will calculate 16,8
-        public static int background = 1_000_000; //by default is 0; setting background >= 1_000_000 will set min counts as bacgkround. see minDetermination(ImagePlus imp);    //V2
-
+        //for non-cumulative. Make sure setting at 5000 frames setting 16,8 will calculate 16,8
+        public static int background = 1_000_000;
         public static boolean RunLiveReadOutOnGPU;
         public static boolean useGpu;
-
         // Calibration plot
-        public static boolean isCalibFixScale = false; //Setting this to truew ill remove the auto scaling for 3 calibration plot: diffusion, intensity and amplitude   //V2
-
+        public static boolean isCalibFixScale = false;
         //Live video display setting
-        public static int livevideo_displayFramesMode;   //0-display all frames; 1-display odd frames; 2-display even frames
+        public static int livevideo_displayFramesMode;
+        //0-display all frames; 1-display odd frames; 2-display even frames
         public volatile static liveVideoBinModeEnum selected_livevideo_binningMode;
-        public static int livevideo_binningNo;          //number of binned frames for display (either a sum or average operation is done to the binned images before displaying on the screen)
-
+        public static int livevideo_binningNo;
         //PlotCurve display
         public static boolean plotACFCurves;
         public static boolean plotTrace;
+        //by default is 0; setting background >= 1_000_000 will set min counts as bacgkround. see
+        // minDetermination(ImagePlus imp);    //V2
         public static boolean plotAverage; // plot average correlation functions
         public static boolean plotJustCCF; //overlay ACFs when plotting CCF in a single graph
         public static boolean showLiveVideoCumul;   //V2
+        //Setting this to truew ill remove the auto scaling for 3 calibration plot: diffusion, intensity and
+        // amplitude   //V2
         public static boolean plotCalibAmplitude;// Average first few points of correlation for focus finder
         public static boolean plotCalibDiffusion; //Average fit of D for focus finder
         public static boolean plotCalibIntensity;  //Average Intensity for focus finder
-
+        //number of binned frames for display (either a sum or average operation is done to the binned images
+        // before displaying on the screen)
         public static ShortProcessor ip;// live
         public static short[] arraysingleS;//singlescan
         public static ImagePlus imp; //singlescan //live
@@ -365,54 +1681,63 @@ public class DirectCapturePanel {
         public static Roi impRoiLive; //live
         public static Roi impRoiLive2; //live //for CCF mode
         public static double scimp; //live
-        public final static int zoomFactor = 300; // single capture //live
-
         public static ImageStack ims_nonCumGreen;
         public static ImageStack ims_nonCumRed;
-
         public static ImageStack ims_cum;
         public static ImagePlus imp_cum;
-
         public static int arraysize; //calibration //live //cumualtive
-        public volatile static short[] bufferArray1D; //live //rseplacing array1Ds  [size_b * size_a * w * h] //V2 //in Java short is signed max value is 32767 instead of 65534. Any counts above 32767 register as 0. Solution is to replace with int[] at expense of doubling RAM usage
-
+        public volatile static short[] bufferArray1D;
         public static FrameCounterX framecounterIMSX; //cumulative
         public static FrameCounter framecounter;
-
         public static int lWidth = 6; //index start from 1
         public static int lHeight = 6; //index start from 1
         public static int lLeft = 1; //index start from 1
         public static int lTop = 1; //index start from 1
-
         // focus-finder
-        public static int noptsavr = 3; // no of correlation points to be averaged (excluding zero time lag) for amplitude & diffusion focus finder analysis
-
+        public static int noptsavr = 3;
         // Cumulative CF
         public static int fitStartCumulative = 1;
-
         //ICCS //TODO (initizlie param at the start when starting camera)
         public static int ICCSShiftX = 0; // x-span = ICCSShiftX*2 +1
+        //live //rseplacing array1Ds  [size_b * size_a * w * h] //V2 //in Java short is signed max value is
+        // 32767 instead of 65534. Any counts above 32767 register as 0. Solution is to replace with int[] at
+        // expense of doubling RAM usage
         public static int ICCSShiftY = 0;  // y-span = ICCSShiftY*2 +1 // currently only allows shift X = shift Y
-        public volatile static boolean isICCSValid; // evaluate to true once user make selection on the screen//TODO: volatile neede
-
+        public volatile static boolean isICCSValid;
         public static ImFCSCorrelator fromImFCSobj1; // for non-cumul CF display
         public static ImFCSCorrelator fromImFCSobj2; // for cumulative CF display
-
         //Experimental parameter for CF data fitting on the fly
         public static double pixelSize = 24; // pixel size in micrometer before in camera pixel binning (if any)
         public static int objMag = 100;
         public static double NA = 1.50;
+        // no of correlation points to be averaged (excluding zero time lag) for amplitude & diffusion focus
+        // finder analysis
         public static int emlambda = 583;
         public static double sigmaxy = 0.8;
-
-        //json time tagged
-        private static TimeTaggedStorage ttsObj;
-
         //autoadjust graph scale
         public static boolean isAutoAdjustACFintensityTraceScale = true; //reset scale by default
-        //whether to reset dynamic range every single frame; Setting to true might causes suddent flash when there is sudden change in max or min counts; setting to false allow user to use built in Fiji brightness tool
-        private static boolean isAutoAdjustLiveImagesDynamicRange = true; //Default settings are as follows; Live video/Calibration mode: true; CF acquisition mode: false; ICCS mode: false
+        private static int[][] CornerTetherCropROI;//w, h, l, r, t, b
+        // evaluate to true once user make selection on the screen//TODO: volatile neede
+        //Only iXon series START
+        private static ArrayList<String> VspeedArr;
+        private static ArrayList<String> HspeedArr;
+        private static ArrayList<String> VSAmpArr;
+        private static ArrayList<String> PreAmpGainArr;
+        private static String $impSavedOR = null;//filename
+        private static String $impPathOR = null;
+        private static String $impSavingFolderPath = null;
+        private static boolean isSaveDone = true;
+        //json time tagged
+        private static TimeTaggedStorage ttsObj;
+        //whether to reset dynamic range every single frame; Setting to true might causes suddent flash when there is
+        // sudden change in max or min counts; setting to false allow user to use built in Fiji brightness tool
+        private static boolean isAutoAdjustLiveImagesDynamicRange = true;
+        //Default settings are as follows; Live video/Calibration mode: true; CF acquisition mode: false;
+        // ICCS mode: false
 
+        public static boolean getAutoAdjustImageDynamicRange() {
+            return isAutoAdjustLiveImagesDynamicRange;
+        }
 
         /*
         Evaluated end
@@ -423,10 +1748,6 @@ public class DirectCapturePanel {
          */
         public static void setAutoAdjustImageDynamicRange(boolean isAutoAdjust) {
             isAutoAdjustLiveImagesDynamicRange = isAutoAdjust;
-        }
-
-        public static boolean getAutoAdjustImageDynamicRange() {
-            return isAutoAdjustLiveImagesDynamicRange;
         }
     }
 
@@ -545,7 +1866,7 @@ public class DirectCapturePanel {
                     break;
 
             }
-//            IJ.log("Temperature min: " + res[0] + ",max: " + res[1]);
+            //            IJ.log("Temperature min: " + res[0] + ",max: " + res[1]);
             return res;
 
         }
@@ -891,7 +2212,9 @@ public class DirectCapturePanel {
                 Common.tempHeight = Common.oHeight;
             }
 
-//            IJ.log("ICCS cropMode: " + Common.isCropMode + ", tempWidth: " + Common.tempWidth + ", tempHeight: " + Common.tempHeight + ", oWidth: " + Common.oWidth + ", oHeight: " + Common.oHeight + ", incameraBin: " + Common.inCameraBinning);
+            //            IJ.log("ICCS cropMode: " + Common.isCropMode + ", tempWidth: " + Common.tempWidth + ",
+            //            tempHeight: " + Common.tempHeight + ", oWidth: " + Common.oWidth + ", oHeight: " + Common
+            //            .oHeight + ", incameraBin: " + Common.inCameraBinning);
             switch ($camera) {
                 case "DU860_BV":
                     AndorSDK2v3.runThread_ICCS();
@@ -1064,102 +2387,128 @@ public class DirectCapturePanel {
 
     }
 
-    private static void updateTfFrameCounterV2() {
-        // TO be used with syncrhonizer worker
+    /*
+    Snap: single capture
 
-        SwingWorker<Void, Integer> worker = new SwingWorker<Void, Integer>() {
-            @Override
-            protected Void doInBackground() throws Exception {
+     */
+    /*
+     * Utilities (Control flow)
+     * checkCumulativeReady
 
-                while (!Common.isPrematureTermination) {
-                    if (Common.isPrematureTermination == true) {
-                        break;
-                    }
-                    Thread.sleep(1);
-                    Common.cIsDisplayGUIcounter = false;
-                    synchronized (Common.locker2) {
-                        while (!Common.cIsDisplayGUIcounter) {
-                            Common.locker2.wait();
-                            Common.cIsDisplayGUIcounter = true;
-                        }
-                    }
-                    /*
-                    Start work
-                     */
-                    publish(Common.tempGUIcounter);
-                    /*
-                    End work
-                     */
+     */
+    public static class checkCumulativeReady {
+
+        private static int previousFC;
+
+        public static void resetPreviousFC() {
+            previousFC = 0;
+        }
+
+        public static boolean isImageReady(int frameInterval, int plotInterval, int frameCounterStack) {
+            if (!Common.analysisMode.equals($amode[2])) {//not cumulative
+                return false;
+            }
+            if (frameCounterStack == 0) {
+                return false;
+            }
+            if (frameCounterStack < 100) {
+                return false;
+            }
+            double test = (double) frameCounterStack / (double) plotInterval;
+            if ((test % 1) == 0) {
+                if (previousFC == frameCounterStack) {
+                    return false;
+                } else {
+                    previousFC = frameCounterStack;
+                    return true;
                 }
-
-//                while (Common.isAcquisitionRunning) {
-//                    if (Common.framecounter != null) {
-//                        publish(Common.framecounter.getCounter());
-//                    }
-//                    Thread.sleep(100);
-//                }
-//
-//                tfTotalFrame.setText(Integer.toString(Common.totalFrame));
-                return null;
             }
-
-            @Override
-            protected void process(List<Integer> chunks) {
-
-                if (Common.isAcquisitionRunning) {
-                    Integer count = chunks.get(chunks.size() - 1);
-                    if (Common.selectedMode == modeEnum.ACQUISITION) {//"Acquisition"
-                        tfTotalFrame.setText(Integer.toString(count) + " / " + Common.totalFrame);
-                    } else {
-                        tfTotalFrame.setText(Integer.toString(count));
-                    }
-                }
-
-            }
-
-            @Override
-            protected void done() {
-                tfTotalFrame.setText(Integer.toString(Common.totalFrame));
-            }
-
-        };
-
-        worker.execute();
+            return false;
+            //            //alternative, step-by-step
+            //            double divisor = (double) plotInterval / (double) frameInterval;
+            //            double runner = (double) frameCounterStack / (double) frameInterval;
+            //            return ((runner / divisor) % 1 == 0);
+        }
     }
 
-    private static void updateTfFrameCounterV3() {
+    public static class multiTauCorrelatorCalculator {
 
-        // TODO update for new FrameCounter
-        SwingWorker<Void, Integer> worker = new SwingWorker<Void, Integer>() {
-            @Override
-            protected Void doInBackground() throws Exception {
-
-                while (Common.isAcquisitionRunning) {
-                    if (Common.framecounter != null) {
-                        publish(Common.framecounter.getCounter());
-                    }
-                    Thread.sleep(40);
-                }
-
-                tfTotalFrame.setText(Integer.toString(Common.totalFrame));
-                return null;
+        // get timelag of last correlation channel
+        public static double getTimeLag(double frametime, int corr_p, int corr_q) {
+            //            double p1 = (double) (corr_p - 1); // include zero timelag in first p correlator
+            double p1 = (double) (corr_p); // exclude zero timelag
+            double p2 = 0;
+            for (int i = 1; i < corr_q; i++) {
+                p2 += corr_p * Math.pow(2, i) / 2;
             }
+            //IJ.log("getTimeLag: " + frametime * (p1 + p2));
+            return (frametime * (p1 + p2));
+        }
 
-            @Override
-            protected void process(List<Integer> chunks) {
+        // get minimum frame (independent of frametime)
+        // last = min data points in last channel
+        public static int getMinFrame(double frametime, int corr_p, int corr_q, int last) {
+            double p = frametime * last * Math.pow(2, corr_q -
+                    1); // given min point of last channel= 1 & include zero timelag, (16,2) = 33 not 31; (16,8) =
+            // 2175 not 2047
+            //IJ.log("getMinFrame: " + (int) Math.ceil((p + getTimeLag(frametime, corr_p, corr_q)) / frametime));
+            return (int) Math.ceil((p + getTimeLag(frametime, corr_p, corr_q)) / frametime);
+        }
 
-                if (Common.isAcquisitionRunning) {
-                    Integer count = chunks.get(chunks.size() - 1);
-                    if (Common.selectedMode == modeEnum.ACQUISITION) {//"Acquisition"
-                        tfTotalFrame.setText(Integer.toString(count) + " / " + Common.totalFrame);
-                    } else {
-                        tfTotalFrame.setText(Integer.toString(count));
-                    }
-                }
+        //tauD = Aeff/(4D)
+        public static double getTauD(double D) { // D in um2/s
+            //            IJ.log("getTauD: " + obsvolFCS_ST2D1p(2) / (4 * D / Math.pow(10, 12)));
+            return obsvolFCS_ST2D1p(2) / (4 * D / Math.pow(10, 12));
+        }
 
+        // get upper tauD (Fix: var = 4Dt)
+        public static double getTauDupper(double D, int cl) { //cl = confidence itnerval cl 3 = 99.7% coverage
+            double tdmean = getTauD(D);
+            double tdupper = Math.pow((cl * Math.sqrt(4 * D * tdmean)), 2) / (4 * D);
+            //            IJ.log("getTauDupper(correct): " + tdupper);
+            return tdupper;
+        }
+
+        //find minimum q (Fix: var = 4Dt)
+        public static int find_q(double D, double frametime, int p, int cl) {
+            double upperTauD = getTauDupper(D, cl);
+            int tempQ = 1;
+            while (getTimeLag(frametime, p, tempQ) < upperTauD) {
+                tempQ++;
             }
-        };
-        worker.execute();
+            return tempQ;
+        }
+
+        // find D
+        public static double find_D(double D, int p, int q, double frametime, int cl) {
+            double maxlag = getTimeLag(frametime, p, q);
+            double tauD = maxlag / Math.pow(cl, 2); // tdmean
+            //            IJ.log("tauD: " + tauD);
+            //            IJ.log("obsvolFCS_ST2D1p(2) * Math.pow(10, 12): " + obsvolFCS_ST2D1p(2) * Math.pow(10, 12));
+
+            return obsvolFCS_ST2D1p(2) * Math.pow(10, 12) / (4 * tauD);
+        }
+
+        public static int getMinFrame(int frameTime, int corr_p, int corr_q, int dataPtsLastCorChannel) {
+            double p = frameTime * dataPtsLastCorChannel * Math.pow(2, (corr_q - 1));
+            return (int) ((p + getTimeLag(frameTime, corr_p, corr_q)) / frameTime);
+        }
+
+        //return q value given number of frame available
+        public static int getQgivenFrame(int p, int q, int noframe, int dataPtsLastCorChannel) {
+            if (getMinFrame(0.001, p, 1, dataPtsLastCorChannel) > noframe) {
+                return 1;
+            }
+            int TempQ = q;
+            while (getMinFrame(0.001, p, TempQ, dataPtsLastCorChannel) > noframe) {
+                TempQ = TempQ - 1;
+            }
+            //            if (TempQ == 0){
+            //                return 1;
+            //            }
+            return TempQ;
+        }
+
     }
 
     public class ORpanel {
@@ -1183,7 +2532,10 @@ public class DirectCapturePanel {
             }
             resetUIparameter();
             //DisplayImage object creation
-            isHamamatsu = DirectCapturePanel.$camera.equals("C11440-22CU") || DirectCapturePanel.$camera.equals("C11440-22C") || DirectCapturePanel.$camera.equals("C13440-20CU") || DirectCapturePanel.$camera.equals("C13440-20C") || DirectCapturePanel.$camera.equals("C15550-20UP");
+            isHamamatsu = DirectCapturePanel.$camera.equals("C11440-22CU") ||
+                    DirectCapturePanel.$camera.equals("C11440-22C") ||
+                    DirectCapturePanel.$camera.equals("C13440-20CU") ||
+                    DirectCapturePanel.$camera.equals("C13440-20C") || DirectCapturePanel.$camera.equals("C15550-20UP");
             DisplayImageObj = new DisplayImage(isHamamatsu);
 
             createDirectCapturePanel();
@@ -1272,7 +2624,8 @@ public class DirectCapturePanel {
                     count = 3;
                     cameraConstant.Common_SONA.listPixelEncoding = new String[count];//exclude Mono32
                     for (int i = 0; i < count; i++) {
-                        cameraConstant.Common_SONA.listPixelEncoding[i] = AndorSDK3v2.GetEnumStringByIndexSDK3("PixelEncoding", i);
+                        cameraConstant.Common_SONA.listPixelEncoding[i] =
+                                AndorSDK3v2.GetEnumStringByIndexSDK3("PixelEncoding", i);
                     }
                     cameraConstant.Common_SONA.PixelEncoding = 1; //Monopacked12 by default
                     cameraConstant.Common_SONA.isOverlap = 1;
@@ -1298,10 +2651,13 @@ public class DirectCapturePanel {
                     cameraConstant.Common_Orca.readoutSpeedArr = new String[2];
                     cameraConstant.Common_Orca.readoutSpeedArr[0] = "Ultra-quiet";
                     cameraConstant.Common_Orca.readoutSpeedArr[1] = "Standard scan";
-                    cameraConstant.Common_Orca.readoutSpeed = 1; //0-DCAMPROP_READOUTSPEED__SLOWEST; 1-DCAMPROP_READOUTSPEED__FASTEST (default for both orca flash and orca quest)
+                    cameraConstant.Common_Orca.readoutSpeed =
+                            1; //0-DCAMPROP_READOUTSPEED__SLOWEST; 1-DCAMPROP_READOUTSPEED__FASTEST (default for both
+                    // orca flash and orca quest)
                     cameraConstant.Common_Orca.sensorModeArr = new String[1];
                     cameraConstant.Common_Orca.sensorModeArr[0] = "Area";
-                    cameraConstant.Common_Orca.sensorMode = 0;//0-DCAMPROP_SENSORMODE__AREA (default and only mode for flash)
+                    cameraConstant.Common_Orca.sensorMode =
+                            0;//0-DCAMPROP_SENSORMODE__AREA (default and only mode for flash)
                     break;
                 case "C15550-20UP":
                     Common.minHeight = cameraConstant.Common_Orca.minHeight;
@@ -1315,11 +2671,14 @@ public class DirectCapturePanel {
                     cameraConstant.Common_Orca.readoutSpeedArr = new String[2];
                     cameraConstant.Common_Orca.readoutSpeedArr[0] = "Ultra-quiet";
                     cameraConstant.Common_Orca.readoutSpeedArr[1] = "Standard scan";
-                    cameraConstant.Common_Orca.readoutSpeed = 1; //0-DCAMPROP_READOUTSPEED__SLOWEST; 1-DCAMPROP_READOUTSPEED__FASTEST (default for both orca flash and orca quest)
+                    cameraConstant.Common_Orca.readoutSpeed =
+                            1; //0-DCAMPROP_READOUTSPEED__SLOWEST; 1-DCAMPROP_READOUTSPEED__FASTEST (default for both
+                    // orca flash and orca quest)
                     cameraConstant.Common_Orca.sensorModeArr = new String[2];
                     cameraConstant.Common_Orca.sensorModeArr[0] = "Area";
                     cameraConstant.Common_Orca.sensorModeArr[1] = "Photon counting";
-                    cameraConstant.Common_Orca.sensorMode = 0;//0-DCAMPROP_SENSORMODE__AREA; 1-DCAMPROP_SENSORMODE__PHOTONNUMBERRESOLVING
+                    cameraConstant.Common_Orca.sensorMode =
+                            0;//0-DCAMPROP_SENSORMODE__AREA; 1-DCAMPROP_SENSORMODE__PHOTONNUMBERRESOLVING
                     break;
                 case "EVOLVE- 512":
                 case "GS144BSI":
@@ -1344,11 +2703,19 @@ public class DirectCapturePanel {
                         int speedCount = Photometrics_PVCAM_SDK.getSpeedCount(i);
                         for (int j = 0; j < speedCount; j++) {
                             Photometrics_PVCAM_SDK.setPortAndSpeedPair(i, j);
-                            cameraConstant.Common_Photometrics.readoutSpeedDescription[counter][0] = Integer.toString(i); //port index
-                            cameraConstant.Common_Photometrics.readoutSpeedDescription[counter][1] = Integer.toString(j); //speed index
-                            cameraConstant.Common_Photometrics.readoutSpeedDescription[counter][2] = Double.toString(Photometrics_PVCAM_SDK.getDoubleValuePVCAM("readoutFrequency")); //readout speed (MHz)
-                            cameraConstant.Common_Photometrics.readoutSpeedDescription[counter][3] = Double.toString(Photometrics_PVCAM_SDK.getDoubleValuePVCAM("BIT_DEPTH")); //bit depth
-                            cameraConstant.Common_Photometrics.readoutSpeedDescription[counter][4] = cameraConstant.Common_Photometrics.readoutSpeedDescription[counter][2] + " MHz " + cameraConstant.Common_Photometrics.readoutSpeedDescription[counter][3] + "-bit"; //descriptin
+                            cameraConstant.Common_Photometrics.readoutSpeedDescription[counter][0] =
+                                    Integer.toString(i); //port index
+                            cameraConstant.Common_Photometrics.readoutSpeedDescription[counter][1] =
+                                    Integer.toString(j); //speed index
+                            cameraConstant.Common_Photometrics.readoutSpeedDescription[counter][2] = Double.toString(
+                                    Photometrics_PVCAM_SDK.getDoubleValuePVCAM(
+                                            "readoutFrequency")); //readout speed (MHz)
+                            cameraConstant.Common_Photometrics.readoutSpeedDescription[counter][3] = Double.toString(
+                                    Photometrics_PVCAM_SDK.getDoubleValuePVCAM("BIT_DEPTH")); //bit depth
+                            cameraConstant.Common_Photometrics.readoutSpeedDescription[counter][4] =
+                                    cameraConstant.Common_Photometrics.readoutSpeedDescription[counter][2] + " MHz " +
+                                            cameraConstant.Common_Photometrics.readoutSpeedDescription[counter][3] +
+                                            "-bit"; //descriptin
 
                             counter++;
                         }
@@ -1363,7 +2730,8 @@ public class DirectCapturePanel {
 
             Common.inCameraBinning = 1;
 
-            int[] temp = getCenterCoordinate(Common.minHeight, Common.minHeight, Common.MAXpixelwidth / Common.inCameraBinning, Common.MAXpixelheight / Common.inCameraBinning);
+            int[] temp = getCenterCoordinate(Common.minHeight, Common.minHeight,
+                    Common.MAXpixelwidth / Common.inCameraBinning, Common.MAXpixelheight / Common.inCameraBinning);
             Common.oWidth = temp[0];
             Common.oHeight = temp[1];
             Common.oLeft = temp[2];
@@ -1501,10 +2869,171 @@ public class DirectCapturePanel {
 
     public class JDirectCaptureComponent extends JFrame {
 
-        final int DCpanelPosX = 425;										// control panel, "ImFCS", position and dimensions
+        final int DCpanelPosX = 425;
+        // control panel, "ImFCS", position and dimensions
         final int DCpanelPosY = 125;
         final int DCpanelDimX = 270;
         final int DCpanelDimY = 280;
+        // DocumentLsitener to act on textfield changes
+        DocumentListener tfBinChanged = new DocumentListener() {
+            @Override
+            public void insertUpdate(DocumentEvent e) {
+                UpdateExpSettings("SoftBinning");
+            }
+
+            @Override
+            public void removeUpdate(DocumentEvent e) {
+                UpdateExpSettings("SoftBinning");
+            }
+
+            @Override
+            public void changedUpdate(DocumentEvent e) {
+                UpdateExpSettings("SoftBinning");
+            }
+        };
+        // DocumentLsitener to act on textfield changes
+        DocumentListener tfCCFdistChanged = new DocumentListener() {
+            @Override
+            public void insertUpdate(DocumentEvent e) {
+                UpdateExpSettings("CFDistance");
+            }
+
+            @Override
+            public void removeUpdate(DocumentEvent e) {
+                UpdateExpSettings("CFDistance");
+            }
+
+            @Override
+            public void changedUpdate(DocumentEvent e) {
+                UpdateExpSettings("CFDistance");
+            }
+        };
+        ActionListener btnSavePressed = (ActionEvent event) -> {
+
+            if (Common.isAcquisitionRunning) {
+                JOptionPane.showMessageDialog(null, "Please press stop or wait for acquisition to finish");
+            } else {
+                if (Common.ims_cum != null) {
+                    if (Common.isSaveDone) {
+                        int ret = DisplaySavedImageDialogue();
+                        if (ret == 1 || ret == 2) {
+                            ImagePlus tempPlus = new ImagePlus("Unsaved images", Common.ims_cum); //pass-by-reference
+                            if (tempPlus.getSizeInBytes() > Common.maximumBytePerStack) {
+                                // Dialog box whether user would like to split the images? tend to very slow
+                                boolean check = false;
+                                while (!check) {
+                                    check = SavingSizePerStackDialog(tempPlus);
+                                }
+                            }
+                            IJ.log("Saving in progress..." + Common.maximumBytePerStack);
+
+                            runSaveMechanism(Common.isSaveDone, tempPlus, ret);
+                        }
+
+                    } else {
+                        IJ.showMessage("Be patient... (let us know for file saving issue)");
+                    }
+                } else {
+                    IJ.showMessage("No images available, start acquisition mode");
+                }
+            }
+        };
+        ActionListener btnExitPressed = (ActionEvent event) -> {
+            JDirectCapturepanelComponentPanel.setVisible(true);
+            if (Common.isAcquisitionRunning) {
+                JOptionPane.showMessageDialog(null, "Please press stop or wait for acquisition to finish");
+            } else {
+                int someval = ExitDialogue();
+                if (someval == 1 || someval == 2) {
+                    if (someval == 1) {
+                        IJ.log("saving acquisition settings to config file...");
+                    }
+                    if (Common.isShutSystemPressed == false) {
+                        APIcall.exitDirectCaptureProgram();
+                    }
+                }
+            }
+
+        };
+        ActionListener btnPixelBinningSoftwarePressed = (ActionEvent event) -> {
+            SoftwarePixelBinningDialogue();
+        };
+        ActionListener btnCCFdistPressed = (ActionEvent event) -> {
+            CCFdistDialogue();
+        };
+        ActionListener cbModeChanged = (ActionEvent event) -> {
+
+            if (cbMode.getSelectedItem().toString().equals(mode.getStringValue(modeEnum.SINGLECAPTURE.getValue()))) {
+                Common.selectedMode = modeEnum.SINGLECAPTURE;//single capture
+                Common.analysisMode = $amode[0];//None
+                tfTotalFrame.setEditable(false);
+                JCalibrationPanelComponentPanel.setVisible(false);
+                JICCSPanelComponentPanel.setVisible(false);
+                JAcquisitionModePanelComponentPanel.setVisible(false);
+                JCumulativeCFPanelComponentPanel.setVisible(false);
+                JLiveVideoPanelComponentPanel.setVisible(false);
+            }
+
+            if (cbMode.getSelectedItem().toString().equals(mode.getStringValue(modeEnum.LIVEVIDEO.getValue()))) {
+                Common.selectedMode = modeEnum.LIVEVIDEO;//live video
+                Common.analysisMode = $amode[0];//None
+                tfTotalFrame.setEditable(false);
+                JCalibrationPanelComponentPanel.setVisible(false);
+                JICCSPanelComponentPanel.setVisible(false);
+                JAcquisitionModePanelComponentPanel.setVisible(false);
+                JCumulativeCFPanelComponentPanel.setVisible(false);
+                JLiveVideoPanelComponentPanel.setVisible(false);
+            }
+
+            if (cbMode.getSelectedItem().toString().equals(mode.getStringValue(modeEnum.CALIBRATION.getValue()))) {
+                Common.selectedMode = modeEnum.CALIBRATION;//calibration
+                Common.analysisMode = $amode[1];//Non-cumulative
+                tfTotalFrame.setEditable(false);
+                if (Common.plotACFCurves) {
+                    JCalibrationPanelComponentPanel.setVisible(true);
+                }
+                JICCSPanelComponentPanel.setVisible(false);
+                JAcquisitionModePanelComponentPanel.setVisible(false);
+                JCumulativeCFPanelComponentPanel.setVisible(false);
+                JLiveVideoPanelComponentPanel.setVisible(true);
+            }
+
+            if (cbMode.getSelectedItem().toString().equals(mode.getStringValue(modeEnum.ACQUISITION.getValue()))) {
+                Common.selectedMode = modeEnum.ACQUISITION;//acquisition
+                Common.analysisMode = tbIsNonCumulCF.getText();
+                tfTotalFrame.setEditable(true);
+
+                // make sure reset cumulative mode
+                Common.analysisMode = $amode[2];//cumulative
+                tbIsNonCumulCF.setText($amode[2]);
+                tbIsNonCumulCF.setSelected(false);
+                JCalibrationPanelComponentPanel.setVisible(false);
+                if (Common.plotACFCurves) {
+                    JCumulativeCFPanelComponentPanel.setVisible(true);
+                }
+
+                JICCSPanelComponentPanel.setVisible(false);
+                if (Common.plotACFCurves) {
+                    JAcquisitionModePanelComponentPanel.setVisible(true);
+                } else {
+                    JAcquisitionModePanelComponentPanel.setVisible(false);
+                }
+
+                JLiveVideoPanelComponentPanel.setVisible(true);
+            }
+
+            if (cbMode.getSelectedItem().toString().equals(mode.getStringValue(modeEnum.ICCS.getValue()))) {
+                Common.selectedMode = modeEnum.ICCS;//iccs
+                Common.analysisMode = $amode[3];//iccs
+                tfTotalFrame.setEditable(false);
+                JCalibrationPanelComponentPanel.setVisible(false);
+                JICCSPanelComponentPanel.resetParam();
+                JICCSPanelComponentPanel.setVisible(true);
+                JAcquisitionModePanelComponentPanel.setVisible(false);
+                JCumulativeCFPanelComponentPanel.setVisible(false);
+                JLiveVideoPanelComponentPanel.setVisible(true);
+            }
+        };
 
         public JDirectCaptureComponent() {
             //JPanel
@@ -1534,12 +3063,15 @@ public class DirectCapturePanel {
             tfPixelDimension.setEditable(false);
             tfPixelBinningSoftware = new JTextField("" + Common.BinXSoft + " x " + Common.BinYSoft + "", 8);
             tfPixelBinningSoftware.setEditable(true);
-            tfPixelBinningSoftware.setToolTipText("Pixel binning used in live evaluation of ACF(s). NOTE: Go to ROI for in-camera binning option.");
+            tfPixelBinningSoftware.setToolTipText(
+                    "Pixel binning used in live evaluation of ACF(s). NOTE: Go to ROI for in-camera binning option.");
             tfCCFdist = new JTextField("" + Common.CCFdistX + " x " + Common.CCFdistY + "", 8);
             tfCCFdist.setEditable(true);
             tfCCFdist.setToolTipText("Pixel shift for correlation curve. 0 x 0 implies autocorrelation");
             tfExposureTime = new JTextField(Double.toString(Common.exposureTime), 8);
-            tfExposureTime.setToolTipText("Set exposure time per frame. NOTE: Upon pressing 'Start' time per frame will update accordingly depending on camera settings.");
+            tfExposureTime.setToolTipText(
+                    "Set exposure time per frame. NOTE: Upon pressing 'Start' time per frame will update accordingly " +
+                            "depending on camera settings.");
             tfExposureTime.setEditable(true);
             tfTotalFrame = new JTextField(Integer.toString(Common.totalFrame), 8);
             tfTotalFrame.setToolTipText("Set total number of frame. Only applicable in acquisition mode.");
@@ -1552,11 +3084,11 @@ public class DirectCapturePanel {
             for (int i = 0; i < mode.size(); i++) {
                 cbMode.addItem(mode.getStringValue(i));
             }
-//            cbMode.addItem(mode.getStringValue(mode.modeEnum.SINGLECAPTURE.getValue()));
-//            cbMode.addItem(mode.getStringValue(mode.modeEnum.LIVEVIDEO.getValue()));
-//            cbMode.addItem(mode.getStringValue(mode.modeEnum.CALIBRATION.getValue()));
-//            cbMode.addItem(mode.getStringValue(mode.modeEnum.ACQUISITION.getValue()));
-//            cbMode.addItem(mode.getStringValue(mode.modeEnum.ICCS.getValue()));
+            //            cbMode.addItem(mode.getStringValue(mode.modeEnum.SINGLECAPTURE.getValue()));
+            //            cbMode.addItem(mode.getStringValue(mode.modeEnum.LIVEVIDEO.getValue()));
+            //            cbMode.addItem(mode.getStringValue(mode.modeEnum.CALIBRATION.getValue()));
+            //            cbMode.addItem(mode.getStringValue(mode.modeEnum.ACQUISITION.getValue()));
+            //            cbMode.addItem(mode.getStringValue(mode.modeEnum.ICCS.getValue()));
 
             Common.selectedMode = modeEnum.getEnum(cbMode.getSelectedItem().toString());
 
@@ -1649,7 +3181,7 @@ public class DirectCapturePanel {
 
                     SystemInfo.explicitGC();
 
-//                    tbStartStop.setBorderPainted(true);
+                    //                    tbStartStop.setBorderPainted(true);
                     tbStartStop.setForeground(Color.red);
                     tbStartStop.setText("Stop");
                     cbMode.setEnabled(false);
@@ -1658,7 +3190,8 @@ public class DirectCapturePanel {
                         case SINGLECAPTURE:
                             start_single_capture(false);
                             break;
-                        case LIVEVIDEO: //deprecated; CALIBRATION mode essentially do the same with additional CF analysis
+                        case LIVEVIDEO: //deprecated; CALIBRATION mode essentially do the same with additional CF
+                            // analysis
                             start_live_video();
                             break;
                         case CALIBRATION:
@@ -1734,22 +3267,28 @@ public class DirectCapturePanel {
                         needChanges = true;
                     }
                     if (needChanges) {
-                        changesmade = checkerBinAndLiveROI(Common.lWidth, Common.lHeight, Common.lLeft, Common.lTop, Common.oWidth, Common.oHeight, Common.CCFdistX, Common.CCFdistY, tempx, tempy, Common.isCCFmode);
+                        changesmade = checkerBinAndLiveROI(Common.lWidth, Common.lHeight, Common.lLeft, Common.lTop,
+                                Common.oWidth, Common.oHeight, Common.CCFdistX, Common.CCFdistY, tempx, tempy,
+                                Common.isCCFmode);
                         if (changesmade) {
                             Common.lWidth = tempx;
                             Common.lHeight = tempy;
 
                             if (Common.isCCFmode) {
-                                Common.impRoiLive = new Roi(Common.lLeft - 1, Common.lTop - 1, Common.lWidth, Common.lHeight);
+                                Common.impRoiLive =
+                                        new Roi(Common.lLeft - 1, Common.lTop - 1, Common.lWidth, Common.lHeight);
                                 Common.impRoiLive.setStrokeColor(Color.GREEN);
                                 Common.imp.setRoi(Common.impRoiLive);
 
-                                Common.impRoiLive2 = new Roi(Common.lLeft + Common.CCFdistX - 1, Common.lTop + Common.CCFdistY - 1, Common.lWidth, Common.lHeight);
+                                Common.impRoiLive2 =
+                                        new Roi(Common.lLeft + Common.CCFdistX - 1, Common.lTop + Common.CCFdistY - 1,
+                                                Common.lWidth, Common.lHeight);
                                 Common.impRoiLive2.setStrokeColor(Color.RED);
                                 Overlay impov = new Overlay(Common.impRoiLive2);
                                 Common.imp.setOverlay(impov);
                             } else {
-                                Common.impRoiLive = new Roi(Common.lLeft - 1, Common.lTop - 1, Common.lWidth, Common.lHeight);
+                                Common.impRoiLive =
+                                        new Roi(Common.lLeft - 1, Common.lTop - 1, Common.lWidth, Common.lHeight);
                                 Common.impRoiLive.setStrokeColor(Color.GREEN);
                                 Common.imp.setRoi(Common.impRoiLive);
 
@@ -1764,7 +3303,8 @@ public class DirectCapturePanel {
 
                 Common.BinXSoft = tempx;
                 Common.BinYSoft = tempy;
-                tfPixelBinningSoftware.setText(Integer.toString(Common.BinXSoft) + " x " + Integer.toString(Common.BinYSoft));
+                tfPixelBinningSoftware.setText(
+                        Integer.toString(Common.BinXSoft) + " x " + Integer.toString(Common.BinYSoft));
             }
         }
 
@@ -1782,7 +3322,8 @@ public class DirectCapturePanel {
 
                 int tempx = (int) gd.getNextNumber();
                 int tempy = (int) gd.getNextNumber();
-                isCCFselectionOK = CCFselectorChecker(Common.oWidth, Common.oHeight, tempx, tempy, Common.BinXSoft, Common.BinYSoft, Common.lLeft - 1, Common.lTop - 1, Common.lWidth, Common.lHeight);
+                isCCFselectionOK = CCFselectorChecker(Common.oWidth, Common.oHeight, tempx, tempy, Common.BinXSoft,
+                        Common.BinYSoft, Common.lLeft - 1, Common.lTop - 1, Common.lWidth, Common.lHeight);
                 if (isCCFselectionOK) {
                     Common.CCFdistX = tempx;
                     Common.CCFdistY = tempy;
@@ -1802,7 +3343,9 @@ public class DirectCapturePanel {
                         Common.impRoiLive.setStrokeColor(Color.GREEN);
                         Common.imp.setRoi(Common.impRoiLive);
 
-                        Common.impRoiLive2 = new Roi(Common.lLeft + Common.CCFdistX - 1, Common.lTop + Common.CCFdistY - 1, Common.lWidth, Common.lHeight);
+                        Common.impRoiLive2 =
+                                new Roi(Common.lLeft + Common.CCFdistX - 1, Common.lTop + Common.CCFdistY - 1,
+                                        Common.lWidth, Common.lHeight);
                         Common.impRoiLive2.setStrokeColor(Color.RED);
                         Overlay impov = new Overlay(Common.impRoiLive2);
                         Common.imp.setOverlay(impov);
@@ -1827,7 +3370,8 @@ public class DirectCapturePanel {
 
         private int ExitDialogue() {
             int val;
-            int result = JOptionPane.showConfirmDialog(null, "Do you wish to save acquisition settings?", "Save Configuration", JOptionPane.YES_NO_CANCEL_OPTION, JOptionPane.QUESTION_MESSAGE);
+            int result = JOptionPane.showConfirmDialog(null, "Do you wish to save acquisition settings?",
+                    "Save Configuration", JOptionPane.YES_NO_CANCEL_OPTION, JOptionPane.QUESTION_MESSAGE);
             switch (result) {
                 case JOptionPane.YES_OPTION:
                     val = 1;
@@ -1848,7 +3392,8 @@ public class DirectCapturePanel {
 
         private int DisplaySavedImageDialogue() {
             int val;
-            int result = JOptionPane.showConfirmDialog(null, "Display saved-images in Fiji?", null, JOptionPane.YES_NO_CANCEL_OPTION, JOptionPane.QUESTION_MESSAGE);
+            int result = JOptionPane.showConfirmDialog(null, "Display saved-images in Fiji?", null,
+                    JOptionPane.YES_NO_CANCEL_OPTION, JOptionPane.QUESTION_MESSAGE);
             switch (result) {
                 case JOptionPane.YES_OPTION:
                     val = 1;
@@ -1903,7 +3448,8 @@ public class DirectCapturePanel {
                 return true;
             }
 
-            //splitting TODO: some user finds out operation can be slow in their CPU. Find faster way; currenctly splitting can be disabled by setting Common.maximumBytePerStack to a large number say 16 GB
+            //splitting TODO: some user finds out operation can be slow in their CPU. Find faster way; currenctly
+            // splitting can be disabled by setting Common.maximumBytePerStack to a large number say 16 GB
             int numframeperstack = (int) Math.floor(max / (2 * width * height));
             for (int i = 0; i < numimages; i++) {
                 printlog("i: " + i);
@@ -1921,7 +3467,8 @@ public class DirectCapturePanel {
                     for (int y = 0; y < height; y++) {
                         for (int x = 0; x < width; x++) {
                             ip.putPixel(x, y, fullimp.getImageStack().getProcessor(f).get(x, y));
-//                        ip.putPixel(x, y, (int) fullimp.getImageStack().getVoxel(x, y, f - 1));
+                            //                        ip.putPixel(x, y, (int) fullimp.getImageStack().getVoxel(x, y,
+                            //                        f - 1));
                         }
                     }
                     ims.addSlice(ip);
@@ -1983,7 +3530,8 @@ public class DirectCapturePanel {
 
                         Common.$impSavedOR = getFileName(fc);//Check filename to prevent file overwritting
                         Common.$impSavingFolderPath = fc.getSelectedFile().getParent();
-                        Common.$impPathOR = Common.$impSavingFolderPath + "\\" + Common.$impSavedOR;//fc.getSelectedFile().getAbsolutePath();
+                        Common.$impPathOR = Common.$impSavingFolderPath + "\\" +
+                                Common.$impSavedOR;//fc.getSelectedFile().getAbsolutePath();
 
                         //Saving tif stacks
                         if (res.size() == 1) {
@@ -2063,178 +3611,12 @@ public class DirectCapturePanel {
             return fileName;
         }
 
-        // DocumentLsitener to act on textfield changes
-        DocumentListener tfBinChanged = new DocumentListener() {
-            @Override
-            public void insertUpdate(DocumentEvent e) {
-                UpdateExpSettings("SoftBinning");
-            }
-
-            @Override
-            public void removeUpdate(DocumentEvent e) {
-                UpdateExpSettings("SoftBinning");
-            }
-
-            @Override
-            public void changedUpdate(DocumentEvent e) {
-                UpdateExpSettings("SoftBinning");
-            }
-        };
-
-        // DocumentLsitener to act on textfield changes
-        DocumentListener tfCCFdistChanged = new DocumentListener() {
-            @Override
-            public void insertUpdate(DocumentEvent e) {
-                UpdateExpSettings("CFDistance");
-            }
-
-            @Override
-            public void removeUpdate(DocumentEvent e) {
-                UpdateExpSettings("CFDistance");
-            }
-
-            @Override
-            public void changedUpdate(DocumentEvent e) {
-                UpdateExpSettings("CFDistance");
-            }
-        };
-
-        ActionListener btnSavePressed = (ActionEvent event) -> {
-
-            if (Common.isAcquisitionRunning) {
-                JOptionPane.showMessageDialog(null, "Please press stop or wait for acquisition to finish");
-            } else {
-                if (Common.ims_cum != null) {
-                    if (Common.isSaveDone) {
-                        int ret = DisplaySavedImageDialogue();
-                        if (ret == 1 || ret == 2) {
-                            ImagePlus tempPlus = new ImagePlus("Unsaved images", Common.ims_cum); //pass-by-reference
-                            if (tempPlus.getSizeInBytes() > Common.maximumBytePerStack) {
-                                // Dialog box whether user would like to split the images? tend to very slow
-                                boolean check = false;
-                                while (!check) {
-                                    check = SavingSizePerStackDialog(tempPlus);
-                                }
-                            }
-                            IJ.log("Saving in progress..." + Common.maximumBytePerStack);
-
-                            runSaveMechanism(Common.isSaveDone, tempPlus, ret);
-                        }
-
-                    } else {
-                        IJ.showMessage("Be patient... (let us know for file saving issue)");
-                    }
-                } else {
-                    IJ.showMessage("No images available, start acquisition mode");
-                }
-            }
-        };
-
-        ActionListener btnExitPressed = (ActionEvent event) -> {
-            JDirectCapturepanelComponentPanel.setVisible(true);
-            if (Common.isAcquisitionRunning) {
-                JOptionPane.showMessageDialog(null, "Please press stop or wait for acquisition to finish");
-            } else {
-                int someval = ExitDialogue();
-                if (someval == 1 || someval == 2) {
-                    if (someval == 1) {
-                        IJ.log("saving acquisition settings to config file...");
-                    }
-                    if (Common.isShutSystemPressed == false) {
-                        APIcall.exitDirectCaptureProgram();
-                    }
-                }
-            }
-
-        };
-
-        ActionListener btnPixelBinningSoftwarePressed = (ActionEvent event) -> {
-            SoftwarePixelBinningDialogue();
-        };
-
-        ActionListener btnCCFdistPressed = (ActionEvent event) -> {
-            CCFdistDialogue();
-        };
-
-        ActionListener cbModeChanged = (ActionEvent event) -> {
-
-            if (cbMode.getSelectedItem().toString().equals(mode.getStringValue(modeEnum.SINGLECAPTURE.getValue()))) {
-                Common.selectedMode = modeEnum.SINGLECAPTURE;//single capture
-                Common.analysisMode = $amode[0];//None
-                tfTotalFrame.setEditable(false);
-                JCalibrationPanelComponentPanel.setVisible(false);
-                JICCSPanelComponentPanel.setVisible(false);
-                JAcquisitionModePanelComponentPanel.setVisible(false);
-                JCumulativeCFPanelComponentPanel.setVisible(false);
-                JLiveVideoPanelComponentPanel.setVisible(false);
-            }
-
-            if (cbMode.getSelectedItem().toString().equals(mode.getStringValue(modeEnum.LIVEVIDEO.getValue()))) {
-                Common.selectedMode = modeEnum.LIVEVIDEO;//live video
-                Common.analysisMode = $amode[0];//None
-                tfTotalFrame.setEditable(false);
-                JCalibrationPanelComponentPanel.setVisible(false);
-                JICCSPanelComponentPanel.setVisible(false);
-                JAcquisitionModePanelComponentPanel.setVisible(false);
-                JCumulativeCFPanelComponentPanel.setVisible(false);
-                JLiveVideoPanelComponentPanel.setVisible(false);
-            }
-
-            if (cbMode.getSelectedItem().toString().equals(mode.getStringValue(modeEnum.CALIBRATION.getValue()))) {
-                Common.selectedMode = modeEnum.CALIBRATION;//calibration
-                Common.analysisMode = $amode[1];//Non-cumulative
-                tfTotalFrame.setEditable(false);
-                if (Common.plotACFCurves) {
-                    JCalibrationPanelComponentPanel.setVisible(true);
-                }
-                JICCSPanelComponentPanel.setVisible(false);
-                JAcquisitionModePanelComponentPanel.setVisible(false);
-                JCumulativeCFPanelComponentPanel.setVisible(false);
-                JLiveVideoPanelComponentPanel.setVisible(true);
-            }
-
-            if (cbMode.getSelectedItem().toString().equals(mode.getStringValue(modeEnum.ACQUISITION.getValue()))) {
-                Common.selectedMode = modeEnum.ACQUISITION;//acquisition
-                Common.analysisMode = tbIsNonCumulCF.getText();
-                tfTotalFrame.setEditable(true);
-
-                // make sure reset cumulative mode
-                Common.analysisMode = $amode[2];//cumulative
-                tbIsNonCumulCF.setText($amode[2]);
-                tbIsNonCumulCF.setSelected(false);
-                JCalibrationPanelComponentPanel.setVisible(false);
-                if (Common.plotACFCurves) {
-                    JCumulativeCFPanelComponentPanel.setVisible(true);
-                }
-
-                JICCSPanelComponentPanel.setVisible(false);
-                if (Common.plotACFCurves) {
-                    JAcquisitionModePanelComponentPanel.setVisible(true);
-                } else {
-                    JAcquisitionModePanelComponentPanel.setVisible(false);
-                }
-
-                JLiveVideoPanelComponentPanel.setVisible(true);
-            }
-
-            if (cbMode.getSelectedItem().toString().equals(mode.getStringValue(modeEnum.ICCS.getValue()))) {
-                Common.selectedMode = modeEnum.ICCS;//iccs
-                Common.analysisMode = $amode[3];//iccs
-                tfTotalFrame.setEditable(false);
-                JCalibrationPanelComponentPanel.setVisible(false);
-                JICCSPanelComponentPanel.resetParam();
-                JICCSPanelComponentPanel.setVisible(true);
-                JAcquisitionModePanelComponentPanel.setVisible(false);
-                JCumulativeCFPanelComponentPanel.setVisible(false);
-                JLiveVideoPanelComponentPanel.setVisible(true);
-            }
-        };
-
     }
 
     public class JDimensionpanelComponent extends JFrame {
 
-        final int DimpanelPosX = 700;										// control panel, "ImFCS", position and dimensions
+        final int DimpanelPosX = 700;
+        // control panel, "ImFCS", position and dimensions
         final int DimpanelPosY = 125;
         final int DimpanelDimX = 405;
         final int DimpanelDimY = 225;
@@ -2244,6 +3626,406 @@ public class DirectCapturePanel {
 
         // Private variables of the GUI components
         JTextArea tArea;
+        ActionListener btnFullFramePressed = (ActionEvent event) -> {
+            Common.oWidth = Common.MAXpixelwidth / Common.inCameraBinning;
+            tfoWidth.setText(Integer.toString(Common.oWidth));
+            Common.oHeight = Common.MAXpixelheight / Common.inCameraBinning;
+            tfoHeight.setText(Integer.toString(Common.oHeight));
+            Common.oLeft = 1;
+            tfoLeft.setText(Integer.toString(Common.oLeft));
+            Common.oTop = 1;
+            tfoTop.setText(Integer.toString(Common.oTop));
+            Common.oRight = Common.MAXpixelwidth / Common.inCameraBinning;
+            tfoRight.setText(Integer.toString(Common.oRight));
+            Common.oBottom = Common.MAXpixelheight / Common.inCameraBinning;
+            tfoBottom.setText(Integer.toString(Common.oBottom));
+            DisplayImageObj.performROIselection(Common.oLeft - 1, Common.oTop - 1, Common.oWidth, Common.oHeight);
+            tfPixelDimension.setText(Integer.toString(Common.oWidth) + " x " + Integer.toString(Common.oHeight));
+            setSizeAandSizeB(Common.oWidth, Common.oHeight, Common.maxE, Common.minPI, Common.maxPI);
+            if (Common.plotInterval > retMaxAllowablePlotInterval(Common.size_a, Common.size_b)) {
+                if (retMaxAllowablePlotInterval(Common.size_a, Common.size_b) > 500) {
+                    Common.plotInterval = 500;
+                } else {
+                    Common.plotInterval = retMaxAllowablePlotInterval(Common.size_a, Common.size_b);
+                }
+                tfPlotInterval.setText(Integer.toString(Common.plotInterval));
+            }
+        };
+        ActionListener rbCustomROIChanged = new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+
+                if (rbCustomROI.isSelected() == true) {
+                    tfoLeft.setEditable(true);
+                    tfoRight.setEditable(true);
+                    tfoTop.setEditable(true);
+                    tfoBottom.setEditable(true);
+                    tfoWidth.setEditable(false);
+                    tfoHeight.setEditable(false);
+
+                } else {
+                    tfoLeft.setEditable(false);
+                    tfoRight.setEditable(false);
+                    tfoTop.setEditable(false);
+                    tfoBottom.setEditable(false);
+                    tfoWidth.setEditable(true);
+                    tfoHeight.setEditable(true);
+                }
+            }
+        };
+        // update when tfoWidth or tfoHeight changed
+        DocumentListener dimTfoWHchanged = new DocumentListener() {
+            @Override
+            public void insertUpdate(DocumentEvent e) {
+                if (!rbCustomROI.isSelected() && TriggerDimTfKeyListener) {
+                    boolean redrawSelection = UpdateROIwh(isHamamatsu);
+                    if (redrawSelection) {
+                        DisplayImageObj.performROIselection(Common.oLeft - 1, Common.oTop - 1, Common.oWidth,
+                                Common.oHeight);
+                    }
+                }
+            }
+
+            @Override
+            public void removeUpdate(DocumentEvent e) {
+                if (!rbCustomROI.isSelected() && TriggerDimTfKeyListener) {
+                    boolean redrawSelection = UpdateROIwh(isHamamatsu);
+                    if (redrawSelection) {
+                        DisplayImageObj.performROIselection(Common.oLeft - 1, Common.oTop - 1, Common.oWidth,
+                                Common.oHeight);
+                    }
+                }
+            }
+
+            @Override
+            public void changedUpdate(DocumentEvent e) {
+                if (!rbCustomROI.isSelected() && TriggerDimTfKeyListener) {
+                    boolean redrawSelection = UpdateROIwh(isHamamatsu);
+                    if (redrawSelection) {
+                        DisplayImageObj.performROIselection(Common.oLeft - 1, Common.oTop - 1, Common.oWidth,
+                                Common.oHeight);
+                    }
+                }
+            }
+        };
+        KeyListener dimTfoWHCursorMove = new KeyListener() {
+            @Override
+            public void keyTyped(KeyEvent e) {
+            }
+
+            @Override
+            public void keyPressed(KeyEvent e) {
+                int keyInt = e.getKeyCode();
+
+                if (e.getSource() == tfoWidth) {
+                    if (keyInt == KeyEvent.VK_RIGHT) {
+                        tfoHeight.requestFocus();
+                        tfoHeight.setCaretPosition(tfoHeight.getText().length());
+                        UpdateDimTextField();
+                    }
+                }
+
+                if (e.getSource() == tfoHeight) {
+                    if (keyInt == KeyEvent.VK_LEFT) {
+                        tfoWidth.requestFocus();
+                        tfoWidth.setCaretPosition(tfoWidth.getText().length());
+                        UpdateDimTextField();
+                    }
+                }
+            }
+
+            @Override
+            public void keyReleased(KeyEvent e) {
+                int keyInt = e.getKeyCode();
+
+                if (e.getSource() == tfoWidth) {
+                    //                    tfoWidth.setText(Integer.toString(Common.oWidth));
+                }
+
+                if (e.getSource() == tfoHeight) {
+                    //                    tfoHeight.setText(Integer.toString(Common.oHeight));
+                }
+            }
+        };
+        DocumentListener dimTfoLRTBchanged = new DocumentListener() {
+            @Override
+            public void insertUpdate(DocumentEvent e) {
+                if (rbCustomROI.isSelected() && TriggerDimTfKeyListener) {
+                    boolean redrawSelection = false;
+                    Document doc = e.getDocument();
+                    if (doc == tfoLeft.getDocument()) {
+                        redrawSelection = UpdateROIlrtb("l", isHamamatsu);
+                    }
+                    if (doc == tfoRight.getDocument()) {
+                        redrawSelection = UpdateROIlrtb("r", isHamamatsu);
+                    }
+                    if (doc == tfoTop.getDocument()) {
+                        redrawSelection = UpdateROIlrtb("t", isHamamatsu);
+                    }
+                    if (doc == tfoBottom.getDocument()) {
+                        redrawSelection = UpdateROIlrtb("b", isHamamatsu);
+                    }
+                    if (redrawSelection) {
+                        DisplayImageObj.performROIselection(Common.oLeft - 1, Common.oTop - 1, Common.oWidth,
+                                Common.oHeight);
+                    }
+                }
+            }
+
+            @Override
+            public void removeUpdate(DocumentEvent e) {
+                if (rbCustomROI.isSelected() && TriggerDimTfKeyListener) {
+                    boolean redrawSelection = false;
+                    Document doc = e.getDocument();
+                    if (doc == tfoLeft.getDocument()) {
+                        redrawSelection = UpdateROIlrtb("l", isHamamatsu);
+                    }
+                    if (doc == tfoRight.getDocument()) {
+                        redrawSelection = UpdateROIlrtb("r", isHamamatsu);
+                    }
+                    if (doc == tfoTop.getDocument()) {
+                        redrawSelection = UpdateROIlrtb("t", isHamamatsu);
+                    }
+                    if (doc == tfoBottom.getDocument()) {
+                        redrawSelection = UpdateROIlrtb("b", isHamamatsu);
+                    }
+                    if (redrawSelection) {
+                        DisplayImageObj.performROIselection(Common.oLeft - 1, Common.oTop - 1, Common.oWidth,
+                                Common.oHeight);
+                    }
+                }
+            }
+
+            @Override
+            public void changedUpdate(DocumentEvent e) {
+                if (rbCustomROI.isSelected() && TriggerDimTfKeyListener) {
+                    boolean redrawSelection = false;
+                    Document doc = e.getDocument();
+                    if (doc == tfoLeft.getDocument()) {
+                        redrawSelection = UpdateROIlrtb("l", isHamamatsu);
+                    }
+                    if (doc == tfoRight.getDocument()) {
+                        redrawSelection = UpdateROIlrtb("r", isHamamatsu);
+                    }
+                    if (doc == tfoTop.getDocument()) {
+                        redrawSelection = UpdateROIlrtb("t", isHamamatsu);
+                    }
+                    if (doc == tfoBottom.getDocument()) {
+                        redrawSelection = UpdateROIlrtb("b", isHamamatsu);
+                    }
+                    if (redrawSelection) {
+                        DisplayImageObj.performROIselection(Common.oLeft - 1, Common.oTop - 1, Common.oWidth,
+                                Common.oHeight);
+                    }
+                }
+            }
+        };
+        KeyListener dimTfoLRTBCursorMove = new KeyListener() {
+            @Override
+            public void keyTyped(KeyEvent e) {
+            }
+
+            @Override
+            public void keyPressed(KeyEvent e) {
+                int keyInt = e.getKeyCode();
+
+                if (e.getSource() == tfoLeft) {
+                    if (keyInt == KeyEvent.VK_RIGHT) {
+                        tfoRight.requestFocus();
+                        tfoRight.setCaretPosition(tfoRight.getText().length());
+                        UpdateDimTextField();
+                    }
+                    if (keyInt == KeyEvent.VK_DOWN) {
+                        tfoTop.requestFocus();
+                        tfoTop.setCaretPosition(tfoTop.getText().length());
+                        UpdateDimTextField();
+                    }
+                }
+
+                if (e.getSource() == tfoRight) {
+                    if (keyInt == KeyEvent.VK_LEFT) {
+                        tfoLeft.requestFocus();
+                        tfoLeft.setCaretPosition(tfoLeft.getText().length());
+                        UpdateDimTextField();
+                    }
+                    if (keyInt == KeyEvent.VK_DOWN) {
+                        tfoBottom.requestFocus();
+                        tfoBottom.setCaretPosition(tfoBottom.getText().length());
+                        UpdateDimTextField();
+                    }
+                }
+
+                if (e.getSource() == tfoTop) {
+                    if (keyInt == KeyEvent.VK_UP) {
+                        tfoLeft.requestFocus();
+                        tfoLeft.setCaretPosition(tfoLeft.getText().length());
+                        UpdateDimTextField();
+                    }
+                    if (keyInt == KeyEvent.VK_RIGHT) {
+                        tfoBottom.requestFocus();
+                        tfoBottom.setCaretPosition(tfoBottom.getText().length());
+                        UpdateDimTextField();
+                    }
+                }
+
+                if (e.getSource() == tfoBottom) {
+                    if (keyInt == KeyEvent.VK_UP) {
+                        tfoRight.requestFocus();
+                        tfoRight.setCaretPosition(tfoRight.getText().length());
+                        UpdateDimTextField();
+                    }
+                    if (keyInt == KeyEvent.VK_LEFT) {
+                        tfoTop.requestFocus();
+                        tfoTop.setCaretPosition(tfoTop.getText().length());
+                        UpdateDimTextField();
+                    }
+                }
+            }
+
+            @Override
+            public void keyReleased(KeyEvent e) {
+                int keyInt = e.getKeyCode();
+
+                if (e.getSource() == tfoLeft) {
+                }
+
+                if (e.getSource() == tfoRight) {
+                }
+
+                if (e.getSource() == tfoTop) {
+                }
+
+                if (e.getSource() == tfoBottom) {
+                }
+
+            }
+        };
+        MouseListener DimoTfMouseUsed = new MouseListener() {
+            @Override
+            public void mouseClicked(MouseEvent arg0) {
+            }
+
+            @Override
+            public void mousePressed(MouseEvent arg0) {
+            }
+
+            @Override
+            public void mouseReleased(MouseEvent arg0) {
+            }
+
+            @Override
+            public void mouseEntered(MouseEvent arg0) {
+                UpdateDimTextField();
+            }
+
+            @Override
+            public void mouseExited(MouseEvent arg0) {
+                UpdateDimTextField();
+            }
+        };
+        ActionListener cbPixelEncodingChanged = new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent arg0) {
+                String selectedPixEncd = cbPixelEncoding.getSelectedItem().toString();
+                for (int i = 0; i < cameraConstant.Common_SONA.listPixelEncoding.length; i++) {
+                    if (selectedPixEncd.equals(cameraConstant.Common_SONA.listPixelEncoding[i])) {
+                        cameraConstant.Common_SONA.PixelEncoding = i;
+                    }
+                }
+            }
+        };
+        ActionListener cbInCameraBinningChanged = new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent arg0) {
+                String selectedInBin = cbInCameraBinning.getSelectedItem().toString();
+                Common.inCameraBinning = Integer.parseInt(String.valueOf(selectedInBin.charAt(0)));
+                int index = DisplayImageObj.getIndexOfBin(DisplayImageObj.aListArrayBuffer, Common.inCameraBinning);
+
+                if (Common.isCropMode == 0) {
+                    int[] temp = getCenterCoordinate(Common.minHeight, Common.minHeight,
+                            Common.MAXpixelwidth / Common.inCameraBinning,
+                            Common.MAXpixelheight / Common.inCameraBinning);
+                    Common.oWidth = temp[0];
+                    Common.oHeight = temp[1];
+                    Common.oLeft = temp[2];
+                    Common.oTop = temp[3];
+                    Common.oRight = Common.oLeft + Common.oWidth - 1;
+                    Common.oBottom = Common.oTop + Common.oHeight - 1;
+
+                } else {
+                    setODimtoCDim(Common.inCameraBinning);
+                }
+                DisplayImageObj.updateImage(DisplayImageObj.aListArrayBuffer.get(1).get(index), Common.inCameraBinning,
+                        Common.MAXpixelwidth, Common.MAXpixelheight, Common.isCropMode);
+                DisplayImageObj.performROIselection(Common.oLeft - 1, Common.oTop - 1, Common.oWidth, Common.oHeight);
+                JDimensionpanelComponentPanel.TriggerDimTfKeyListener = false;
+                UpdateDimTextField();
+                JDimensionpanelComponentPanel.TriggerDimTfKeyListener = true;
+
+            }
+        };
+        ActionListener rbCropModeChanged = new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+
+                if (rbCropMode.isSelected() == true) {
+                    JCropModePanelComponentPanel.setVisible(true);
+                    Common.isCropMode = 1;
+                    btnFullFrame.setEnabled(false);
+
+                    setODimtoCDim(Common.inCameraBinning);
+                    DisplayImageObj.performROIselection(Common.oLeft - 1, Common.oTop - 1, Common.oWidth,
+                            Common.oHeight);
+
+                    if (rbCustomROI.isSelected() == true) {
+                        tfoLeft.setEditable(false);
+                        tfoRight.setEditable(false);
+                        tfoTop.setEditable(false);
+                        tfoBottom.setEditable(false);
+                    } else {
+                        tfoWidth.setEditable(false);
+                        tfoHeight.setEditable(false);
+                    }
+                } else {
+                    JCropModePanelComponentPanel.setVisible(false);
+                    Common.isCropMode = 0;
+                    btnFullFrame.setEnabled(true);
+                    if (rbCustomROI.isSelected() == true) {
+                        tfoLeft.setEditable(true);
+                        tfoRight.setEditable(true);
+                        tfoTop.setEditable(true);
+                        tfoBottom.setEditable(true);
+                    } else {
+                        tfoWidth.setEditable(true);
+                        tfoHeight.setEditable(true);
+                    }
+                }
+
+                if (rbCropMode.isSelected() == true) {
+                    IJ.log("1345 unimplemented");
+                } else {
+                    //Update DisplayImage
+                    int index = DisplayImageObj.getIndexOfBin(DisplayImageObj.aListArrayBuffer, Common.inCameraBinning);
+                    int[] temp = getCenterCoordinate(Common.minHeight, Common.minHeight,
+                            Common.MAXpixelwidth / Common.inCameraBinning,
+                            Common.MAXpixelheight / Common.inCameraBinning);
+                    Common.oWidth = temp[0];
+                    Common.oHeight = temp[1];
+                    Common.oLeft = temp[2];
+                    Common.oTop = temp[3];
+                    Common.oRight = Common.oLeft + Common.oWidth - 1;
+                    Common.oBottom = Common.oTop + Common.oHeight - 1;
+                    DisplayImageObj.updateImage(DisplayImageObj.aListArrayBuffer.get(1).get(index),
+                            Common.inCameraBinning, Common.MAXpixelwidth, Common.MAXpixelheight, Common.isCropMode);
+                    DisplayImageObj.performROIselection(Common.oLeft - 1, Common.oTop - 1, Common.oWidth,
+                            Common.oHeight);
+                    JDimensionpanelComponentPanel.TriggerDimTfKeyListener = false;
+                    UpdateDimTextField();
+                    JDimensionpanelComponentPanel.TriggerDimTfKeyListener = true;
+                }
+
+            }
+        };
 
         public JDimensionpanelComponent() {
             // JPanel for the text fields
@@ -2258,19 +4040,39 @@ public class DirectCapturePanel {
 
             //initialize
             tfoWidth = new JTextField(Integer.toString(Common.oWidth), 8);
-            tfoWidth.setToolTipText("Width of centralized ROI is set and retrieved in units of super-pixels Therefore, when binning is in use, the Width value will always indicate the number of data pixels that each row of the image data contains and not the number of pixels read off the sensor NOTE: de-select 'Custom' to automatically centralized ROI.");
+            tfoWidth.setToolTipText(
+                    "Width of centralized ROI is set and retrieved in units of super-pixels Therefore, when binning " +
+                            "is in use, the Width value will always indicate the number of data pixels that each row " +
+                            "of the " +
+                            "image data contains and not the number of pixels read off the sensor NOTE: de-select " +
+                            "'Custom' " + "to automatically centralized ROI.");
             tfoHeight = new JTextField(Integer.toString(Common.oHeight), 8);
-            tfoHeight.setToolTipText("Width of centralized ROI is set and retrieved in units of super-pixels Therefore, when binning is in use, the Width value will always indicate the number of data pixels that each row of the image data contains and not the number of pixels read off the sensor NOTE: de-select 'Custom' to automatically centralized ROI.");
+            tfoHeight.setToolTipText(
+                    "Width of centralized ROI is set and retrieved in units of super-pixels Therefore, when binning " +
+                            "is in use, the Width value will always indicate the number of data pixels that each row " +
+                            "of the " +
+                            "image data contains and not the number of pixels read off the sensor NOTE: de-select " +
+                            "'Custom' " + "to automatically centralized ROI.");
             tfoLeft = new JTextField(Integer.toString(Common.oLeft), 8);
-            tfoLeft.setToolTipText("Coordinates are specified in units of super-pixels not sensor pixels being read off (index start at 1). NOTE: select 'Custom' to enable customize ROI position.");
+            tfoLeft.setToolTipText(
+                    "Coordinates are specified in units of super-pixels not sensor pixels being read off (index start" +
+                            " at 1). NOTE: select 'Custom' to enable customize ROI position.");
             tfoTop = new JTextField(Integer.toString(Common.oTop), 8);
-            tfoTop.setToolTipText("Coordinates are specified in units of super-pixels not sensor pixels being read off (index start at 1). NOTE: select 'Custom' to enable customize ROI position.");
+            tfoTop.setToolTipText(
+                    "Coordinates are specified in units of super-pixels not sensor pixels being read off (index start" +
+                            " at 1). NOTE: select 'Custom' to enable customize ROI position.");
             tfoRight = new JTextField(Integer.toString(Common.oRight), 8);
-            tfoRight.setToolTipText("Coordinates are specified in units of super-pixels not sensor pixels being read off (index start at 1). NOTE: select 'Custom' to enable customize ROI position.");
+            tfoRight.setToolTipText(
+                    "Coordinates are specified in units of super-pixels not sensor pixels being read off (index start" +
+                            " at 1). NOTE: select 'Custom' to enable customize ROI position.");
             tfoBottom = new JTextField(Integer.toString(Common.oBottom), 8);
-            tfoBottom.setToolTipText("Coordinates are specified in units of super-pixels not sensor pixels being read off (index start at 1). NOTE: select 'Custom' to enable customize ROI position.");
+            tfoBottom.setToolTipText(
+                    "Coordinates are specified in units of super-pixels not sensor pixels being read off (index start" +
+                            " at 1). NOTE: select 'Custom' to enable customize ROI position.");
             rbCustomROI = new JRadioButton("Custom");
-            rbCustomROI.setToolTipText("Select customiziable ROI or automatically cenralized ROI. NOTE: one could draw ROI directly from image window.");
+            rbCustomROI.setToolTipText(
+                    "Select customiziable ROI or automatically cenralized ROI. NOTE: one could draw ROI directly from" +
+                            " image window.");
             btnFullFrame = new JButton("Full");
             btnFullFrame.setToolTipText("Setting maximum allowable ROI.");
 
@@ -2282,7 +4084,10 @@ public class DirectCapturePanel {
             switch ($camera) {
                 case "DU860_BV":
                     cbInCameraBinning = new JComboBox<>();
-                    cbInCameraBinning.setToolTipText("Configure the amount of binning in each direction. Achieved by combining multiple sensor pixels into a single data pixel by binning the values from each sensor pixel together.");
+                    cbInCameraBinning.setToolTipText(
+                            "Configure the amount of binning in each direction. Achieved by combining multiple sensor" +
+                                    " pixels into a single data pixel by binning the values from each sensor pixel " +
+                                    "together.");
                     cbInCameraBinning.addItem("1 x 1");
                     cbInCameraBinning.addItem("2 x 2");
                     cbInCameraBinning.addItem("3 x 3");
@@ -2292,7 +4097,10 @@ public class DirectCapturePanel {
                     break;
                 case "DU888_BV":
                     cbInCameraBinning = new JComboBox<>();
-                    cbInCameraBinning.setToolTipText("Configure the amount of binning in each direction. Achieved by combining multiple sensor pixels into a single data pixel by binning the values from each sensor pixel together.");
+                    cbInCameraBinning.setToolTipText(
+                            "Configure the amount of binning in each direction. Achieved by combining multiple sensor" +
+                                    " pixels into a single data pixel by binning the values from each sensor pixel " +
+                                    "together.");
                     cbInCameraBinning.addItem("1 x 1");
                     cbInCameraBinning.addItem("2 x 2");
                     cbInCameraBinning.addItem("3 x 3");
@@ -2302,7 +4110,10 @@ public class DirectCapturePanel {
                     break;
                 case "DU897_BV":
                     cbInCameraBinning = new JComboBox<>();
-                    cbInCameraBinning.setToolTipText("Configure the amount of binning in each direction. Achieved by combining multiple sensor pixels into a single data pixel by binning the values from each sensor pixel together.");
+                    cbInCameraBinning.setToolTipText(
+                            "Configure the amount of binning in each direction. Achieved by combining multiple sensor" +
+                                    " pixels into a single data pixel by binning the values from each sensor pixel " +
+                                    "together.");
                     cbInCameraBinning.addItem("1 x 1");
                     cbInCameraBinning.addItem("2 x 2");
                     cbInCameraBinning.addItem("3 x 3");
@@ -2319,7 +4130,10 @@ public class DirectCapturePanel {
                     cbPixelEncoding.setSelectedIndex(cameraConstant.Common_SONA.PixelEncoding);
 
                     cbInCameraBinning = new JComboBox<>();
-                    cbInCameraBinning.setToolTipText("Configure the amount of binning in each direction. Achieved by combining multiple sensor pixels into a single data pixel by binning the values from each sensor pixel together.");
+                    cbInCameraBinning.setToolTipText(
+                            "Configure the amount of binning in each direction. Achieved by combining multiple sensor" +
+                                    " pixels into a single data pixel by binning the values from each sensor pixel " +
+                                    "together.");
                     cbInCameraBinning.addItem("1 x 1");
                     cbInCameraBinning.addItem("2 x 2");
                     cbInCameraBinning.addItem("3 x 3");
@@ -2333,7 +4147,10 @@ public class DirectCapturePanel {
                 case "C13440-20C":
                 case "C15550-20UP":
                     cbInCameraBinning = new JComboBox<>();
-                    cbInCameraBinning.setToolTipText("Configure the amount of binning in each direction. Achieved by combining multiple sensor pixels into a single data pixel by binning the values from each sensor pixel together.");
+                    cbInCameraBinning.setToolTipText(
+                            "Configure the amount of binning in each direction. Achieved by combining multiple sensor" +
+                                    " pixels into a single data pixel by binning the values from each sensor pixel " +
+                                    "together.");
                     cbInCameraBinning.addItem("1 x 1");
                     cbInCameraBinning.addItem("2 x 2");
                     cbInCameraBinning.addItem("4 x 4");
@@ -2343,7 +4160,10 @@ public class DirectCapturePanel {
                 case "GS144BSI":
                 case "TMP-Kinetix":
                     cbInCameraBinning = new JComboBox<>();
-                    cbInCameraBinning.setToolTipText("Configure the amount of binning in each direction. Achieved by combining multiple sensor pixels into a single data pixel by binning the values from each sensor pixel together.");
+                    cbInCameraBinning.setToolTipText(
+                            "Configure the amount of binning in each direction. Achieved by combining multiple sensor" +
+                                    " pixels into a single data pixel by binning the values from each sensor pixel " +
+                                    "together.");
                     cbInCameraBinning.addItem("1 x 1");
                     cbInCameraBinning.addItem("2 x 2");
                     cbInCameraBinning.addItem("4 x 4");
@@ -2558,410 +4378,159 @@ public class DirectCapturePanel {
             TriggerDimTfKeyListener = true;
         }
 
-        ActionListener btnFullFramePressed = (ActionEvent event) -> {
-            Common.oWidth = Common.MAXpixelwidth / Common.inCameraBinning;
-            tfoWidth.setText(Integer.toString(Common.oWidth));
-            Common.oHeight = Common.MAXpixelheight / Common.inCameraBinning;
-            tfoHeight.setText(Integer.toString(Common.oHeight));
-            Common.oLeft = 1;
-            tfoLeft.setText(Integer.toString(Common.oLeft));
-            Common.oTop = 1;
-            tfoTop.setText(Integer.toString(Common.oTop));
-            Common.oRight = Common.MAXpixelwidth / Common.inCameraBinning;
-            tfoRight.setText(Integer.toString(Common.oRight));
-            Common.oBottom = Common.MAXpixelheight / Common.inCameraBinning;
-            tfoBottom.setText(Integer.toString(Common.oBottom));
-            DisplayImageObj.performROIselection(Common.oLeft - 1, Common.oTop - 1, Common.oWidth, Common.oHeight);
-            tfPixelDimension.setText(Integer.toString(Common.oWidth) + " x " + Integer.toString(Common.oHeight));
-            setSizeAandSizeB(Common.oWidth, Common.oHeight, Common.maxE, Common.minPI, Common.maxPI);
-            if (Common.plotInterval > retMaxAllowablePlotInterval(Common.size_a, Common.size_b)) {
-                if (retMaxAllowablePlotInterval(Common.size_a, Common.size_b) > 500) {
-                    Common.plotInterval = 500;
-                } else {
-                    Common.plotInterval = retMaxAllowablePlotInterval(Common.size_a, Common.size_b);
-                }
-                tfPlotInterval.setText(Integer.toString(Common.plotInterval));
-            }
-        };
-
-        ActionListener rbCustomROIChanged = new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-
-                if (rbCustomROI.isSelected() == true) {
-                    tfoLeft.setEditable(true);
-                    tfoRight.setEditable(true);
-                    tfoTop.setEditable(true);
-                    tfoBottom.setEditable(true);
-                    tfoWidth.setEditable(false);
-                    tfoHeight.setEditable(false);
-
-                } else {
-                    tfoLeft.setEditable(false);
-                    tfoRight.setEditable(false);
-                    tfoTop.setEditable(false);
-                    tfoBottom.setEditable(false);
-                    tfoWidth.setEditable(true);
-                    tfoHeight.setEditable(true);
-                }
-            }
-        };
-
-        // update when tfoWidth or tfoHeight changed
-        DocumentListener dimTfoWHchanged = new DocumentListener() {
-            @Override
-            public void insertUpdate(DocumentEvent e) {
-                if (!rbCustomROI.isSelected() && TriggerDimTfKeyListener) {
-                    boolean redrawSelection = UpdateROIwh(isHamamatsu);
-                    if (redrawSelection) {
-                        DisplayImageObj.performROIselection(Common.oLeft - 1, Common.oTop - 1, Common.oWidth, Common.oHeight);
-                    }
-                }
-            }
-
-            @Override
-            public void removeUpdate(DocumentEvent e) {
-                if (!rbCustomROI.isSelected() && TriggerDimTfKeyListener) {
-                    boolean redrawSelection = UpdateROIwh(isHamamatsu);
-                    if (redrawSelection) {
-                        DisplayImageObj.performROIselection(Common.oLeft - 1, Common.oTop - 1, Common.oWidth, Common.oHeight);
-                    }
-                }
-            }
-
-            @Override
-            public void changedUpdate(DocumentEvent e) {
-                if (!rbCustomROI.isSelected() && TriggerDimTfKeyListener) {
-                    boolean redrawSelection = UpdateROIwh(isHamamatsu);
-                    if (redrawSelection) {
-                        DisplayImageObj.performROIselection(Common.oLeft - 1, Common.oTop - 1, Common.oWidth, Common.oHeight);
-                    }
-                }
-            }
-        };
-
-        KeyListener dimTfoWHCursorMove = new KeyListener() {
-            @Override
-            public void keyTyped(KeyEvent e) {
-            }
-
-            @Override
-            public void keyPressed(KeyEvent e) {
-                int keyInt = e.getKeyCode();
-
-                if (e.getSource() == tfoWidth) {
-                    if (keyInt == KeyEvent.VK_RIGHT) {
-                        tfoHeight.requestFocus();
-                        tfoHeight.setCaretPosition(tfoHeight.getText().length());
-                        UpdateDimTextField();
-                    }
-                }
-
-                if (e.getSource() == tfoHeight) {
-                    if (keyInt == KeyEvent.VK_LEFT) {
-                        tfoWidth.requestFocus();
-                        tfoWidth.setCaretPosition(tfoWidth.getText().length());
-                        UpdateDimTextField();
-                    }
-                }
-            }
-
-            @Override
-            public void keyReleased(KeyEvent e) {
-                int keyInt = e.getKeyCode();
-
-                if (e.getSource() == tfoWidth) {
-//                    tfoWidth.setText(Integer.toString(Common.oWidth));
-                }
-
-                if (e.getSource() == tfoHeight) {
-//                    tfoHeight.setText(Integer.toString(Common.oHeight));
-                }
-            }
-        };
-
-        DocumentListener dimTfoLRTBchanged = new DocumentListener() {
-            @Override
-            public void insertUpdate(DocumentEvent e) {
-                if (rbCustomROI.isSelected() && TriggerDimTfKeyListener) {
-                    boolean redrawSelection = false;
-                    Document doc = e.getDocument();
-                    if (doc == tfoLeft.getDocument()) {
-                        redrawSelection = UpdateROIlrtb("l", isHamamatsu);
-                    }
-                    if (doc == tfoRight.getDocument()) {
-                        redrawSelection = UpdateROIlrtb("r", isHamamatsu);
-                    }
-                    if (doc == tfoTop.getDocument()) {
-                        redrawSelection = UpdateROIlrtb("t", isHamamatsu);
-                    }
-                    if (doc == tfoBottom.getDocument()) {
-                        redrawSelection = UpdateROIlrtb("b", isHamamatsu);
-                    }
-                    if (redrawSelection) {
-                        DisplayImageObj.performROIselection(Common.oLeft - 1, Common.oTop - 1, Common.oWidth, Common.oHeight);
-                    }
-                }
-            }
-
-            @Override
-            public void removeUpdate(DocumentEvent e) {
-                if (rbCustomROI.isSelected() && TriggerDimTfKeyListener) {
-                    boolean redrawSelection = false;
-                    Document doc = e.getDocument();
-                    if (doc == tfoLeft.getDocument()) {
-                        redrawSelection = UpdateROIlrtb("l", isHamamatsu);
-                    }
-                    if (doc == tfoRight.getDocument()) {
-                        redrawSelection = UpdateROIlrtb("r", isHamamatsu);
-                    }
-                    if (doc == tfoTop.getDocument()) {
-                        redrawSelection = UpdateROIlrtb("t", isHamamatsu);
-                    }
-                    if (doc == tfoBottom.getDocument()) {
-                        redrawSelection = UpdateROIlrtb("b", isHamamatsu);
-                    }
-                    if (redrawSelection) {
-                        DisplayImageObj.performROIselection(Common.oLeft - 1, Common.oTop - 1, Common.oWidth, Common.oHeight);
-                    }
-                }
-            }
-
-            @Override
-            public void changedUpdate(DocumentEvent e) {
-                if (rbCustomROI.isSelected() && TriggerDimTfKeyListener) {
-                    boolean redrawSelection = false;
-                    Document doc = e.getDocument();
-                    if (doc == tfoLeft.getDocument()) {
-                        redrawSelection = UpdateROIlrtb("l", isHamamatsu);
-                    }
-                    if (doc == tfoRight.getDocument()) {
-                        redrawSelection = UpdateROIlrtb("r", isHamamatsu);
-                    }
-                    if (doc == tfoTop.getDocument()) {
-                        redrawSelection = UpdateROIlrtb("t", isHamamatsu);
-                    }
-                    if (doc == tfoBottom.getDocument()) {
-                        redrawSelection = UpdateROIlrtb("b", isHamamatsu);
-                    }
-                    if (redrawSelection) {
-                        DisplayImageObj.performROIselection(Common.oLeft - 1, Common.oTop - 1, Common.oWidth, Common.oHeight);
-                    }
-                }
-            }
-        };
-
-        KeyListener dimTfoLRTBCursorMove = new KeyListener() {
-            @Override
-            public void keyTyped(KeyEvent e) {
-            }
-
-            @Override
-            public void keyPressed(KeyEvent e) {
-                int keyInt = e.getKeyCode();
-
-                if (e.getSource() == tfoLeft) {
-                    if (keyInt == KeyEvent.VK_RIGHT) {
-                        tfoRight.requestFocus();
-                        tfoRight.setCaretPosition(tfoRight.getText().length());
-                        UpdateDimTextField();
-                    }
-                    if (keyInt == KeyEvent.VK_DOWN) {
-                        tfoTop.requestFocus();
-                        tfoTop.setCaretPosition(tfoTop.getText().length());
-                        UpdateDimTextField();
-                    }
-                }
-
-                if (e.getSource() == tfoRight) {
-                    if (keyInt == KeyEvent.VK_LEFT) {
-                        tfoLeft.requestFocus();
-                        tfoLeft.setCaretPosition(tfoLeft.getText().length());
-                        UpdateDimTextField();
-                    }
-                    if (keyInt == KeyEvent.VK_DOWN) {
-                        tfoBottom.requestFocus();
-                        tfoBottom.setCaretPosition(tfoBottom.getText().length());
-                        UpdateDimTextField();
-                    }
-                }
-
-                if (e.getSource() == tfoTop) {
-                    if (keyInt == KeyEvent.VK_UP) {
-                        tfoLeft.requestFocus();
-                        tfoLeft.setCaretPosition(tfoLeft.getText().length());
-                        UpdateDimTextField();
-                    }
-                    if (keyInt == KeyEvent.VK_RIGHT) {
-                        tfoBottom.requestFocus();
-                        tfoBottom.setCaretPosition(tfoBottom.getText().length());
-                        UpdateDimTextField();
-                    }
-                }
-
-                if (e.getSource() == tfoBottom) {
-                    if (keyInt == KeyEvent.VK_UP) {
-                        tfoRight.requestFocus();
-                        tfoRight.setCaretPosition(tfoRight.getText().length());
-                        UpdateDimTextField();
-                    }
-                    if (keyInt == KeyEvent.VK_LEFT) {
-                        tfoTop.requestFocus();
-                        tfoTop.setCaretPosition(tfoTop.getText().length());
-                        UpdateDimTextField();
-                    }
-                }
-            }
-
-            @Override
-            public void keyReleased(KeyEvent e) {
-                int keyInt = e.getKeyCode();
-
-                if (e.getSource() == tfoLeft) {
-                }
-
-                if (e.getSource() == tfoRight) {
-                }
-
-                if (e.getSource() == tfoTop) {
-                }
-
-                if (e.getSource() == tfoBottom) {
-                }
-
-            }
-        };
-
-        MouseListener DimoTfMouseUsed = new MouseListener() {
-            @Override
-            public void mouseClicked(MouseEvent arg0) {
-            }
-
-            @Override
-            public void mousePressed(MouseEvent arg0) {
-            }
-
-            @Override
-            public void mouseReleased(MouseEvent arg0) {
-            }
-
-            @Override
-            public void mouseEntered(MouseEvent arg0) {
-                UpdateDimTextField();
-            }
-
-            @Override
-            public void mouseExited(MouseEvent arg0) {
-                UpdateDimTextField();
-            }
-        };
-
-        ActionListener cbPixelEncodingChanged = new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent arg0) {
-                String selectedPixEncd = cbPixelEncoding.getSelectedItem().toString();
-                for (int i = 0; i < cameraConstant.Common_SONA.listPixelEncoding.length; i++) {
-                    if (selectedPixEncd.equals(cameraConstant.Common_SONA.listPixelEncoding[i])) {
-                        cameraConstant.Common_SONA.PixelEncoding = i;
-                    }
-                }
-            }
-        };
-
-        ActionListener cbInCameraBinningChanged = new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent arg0) {
-                String selectedInBin = cbInCameraBinning.getSelectedItem().toString();
-                Common.inCameraBinning = Integer.parseInt(String.valueOf(selectedInBin.charAt(0)));
-                int index = DisplayImageObj.getIndexOfBin(DisplayImageObj.aListArrayBuffer, Common.inCameraBinning);
-
-                if (Common.isCropMode == 0) {
-                    int[] temp = getCenterCoordinate(Common.minHeight, Common.minHeight, Common.MAXpixelwidth / Common.inCameraBinning, Common.MAXpixelheight / Common.inCameraBinning);
-                    Common.oWidth = temp[0];
-                    Common.oHeight = temp[1];
-                    Common.oLeft = temp[2];
-                    Common.oTop = temp[3];
-                    Common.oRight = Common.oLeft + Common.oWidth - 1;
-                    Common.oBottom = Common.oTop + Common.oHeight - 1;
-
-                } else {
-                    setODimtoCDim(Common.inCameraBinning);
-                }
-                DisplayImageObj.updateImage(DisplayImageObj.aListArrayBuffer.get(1).get(index), Common.inCameraBinning, Common.MAXpixelwidth, Common.MAXpixelheight, Common.isCropMode);
-                DisplayImageObj.performROIselection(Common.oLeft - 1, Common.oTop - 1, Common.oWidth, Common.oHeight);
-                JDimensionpanelComponentPanel.TriggerDimTfKeyListener = false;
-                UpdateDimTextField();
-                JDimensionpanelComponentPanel.TriggerDimTfKeyListener = true;
-
-            }
-        };
-
-        ActionListener rbCropModeChanged = new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-
-                if (rbCropMode.isSelected() == true) {
-                    JCropModePanelComponentPanel.setVisible(true);
-                    Common.isCropMode = 1;
-                    btnFullFrame.setEnabled(false);
-
-                    setODimtoCDim(Common.inCameraBinning);
-                    DisplayImageObj.performROIselection(Common.oLeft - 1, Common.oTop - 1, Common.oWidth, Common.oHeight);
-
-                    if (rbCustomROI.isSelected() == true) {
-                        tfoLeft.setEditable(false);
-                        tfoRight.setEditable(false);
-                        tfoTop.setEditable(false);
-                        tfoBottom.setEditable(false);
-                    } else {
-                        tfoWidth.setEditable(false);
-                        tfoHeight.setEditable(false);
-                    }
-                } else {
-                    JCropModePanelComponentPanel.setVisible(false);
-                    Common.isCropMode = 0;
-                    btnFullFrame.setEnabled(true);
-                    if (rbCustomROI.isSelected() == true) {
-                        tfoLeft.setEditable(true);
-                        tfoRight.setEditable(true);
-                        tfoTop.setEditable(true);
-                        tfoBottom.setEditable(true);
-                    } else {
-                        tfoWidth.setEditable(true);
-                        tfoHeight.setEditable(true);
-                    }
-                }
-
-                if (rbCropMode.isSelected() == true) {
-                    IJ.log("1345 unimplemented");
-                } else {
-                    //Update DisplayImage
-                    int index = DisplayImageObj.getIndexOfBin(DisplayImageObj.aListArrayBuffer, Common.inCameraBinning);
-                    int[] temp = getCenterCoordinate(Common.minHeight, Common.minHeight, Common.MAXpixelwidth / Common.inCameraBinning, Common.MAXpixelheight / Common.inCameraBinning);
-                    Common.oWidth = temp[0];
-                    Common.oHeight = temp[1];
-                    Common.oLeft = temp[2];
-                    Common.oTop = temp[3];
-                    Common.oRight = Common.oLeft + Common.oWidth - 1;
-                    Common.oBottom = Common.oTop + Common.oHeight - 1;
-                    DisplayImageObj.updateImage(DisplayImageObj.aListArrayBuffer.get(1).get(index), Common.inCameraBinning, Common.MAXpixelwidth, Common.MAXpixelheight, Common.isCropMode);
-                    DisplayImageObj.performROIselection(Common.oLeft - 1, Common.oTop - 1, Common.oWidth, Common.oHeight);
-                    JDimensionpanelComponentPanel.TriggerDimTfKeyListener = false;
-                    UpdateDimTextField();
-                    JDimensionpanelComponentPanel.TriggerDimTfKeyListener = true;
-                }
-
-            }
-        };
-
     }
 
     public class JSettingspanelComponent extends JFrame {
 
-        JPanel CameraPane;
-
-        final int SettingpanelPosX = 425;										// control panel, "ImFCS", position and dimensions
+        final int SettingpanelPosX = 425;
+        // control panel, "ImFCS", position and dimensions
         final int SettingpanelPosY = 410;
+        JPanel CameraPane;
+        ActionListener btnTemperaturePressed = (ActionEvent event) -> {
+            if (Common.isAcquisitionRunning) {
+                JOptionPane.showMessageDialog(null, "Please press stop or wait for acquisition to finish");
+            } else {
+                TemperatureDialogue();
+            }
+
+        };
+        ActionListener btnFanPressed = (ActionEvent event) -> {
+            if (Common.isAcquisitionRunning) {
+                JOptionPane.showMessageDialog(null, "Please press stop or wait for acquisition to finish");
+            } else {
+                FanDialogue();
+            }
+
+        };
+        ActionListener btnEmGainPressed = (ActionEvent event) -> {
+            if (Common.isAcquisitionRunning) {
+                JOptionPane.showMessageDialog(null, "Please press stop or wait for acquisition to finish");
+            } else {
+                EmGainDialogue();
+            }
+
+        };
+        ActionListener cbVspeedChanged = (ActionEvent event) -> {
+            Common.iVSpeed = cbVspeed.getSelectedIndex();
+        };
+        ActionListener cbVSAmpChanged = (ActionEvent event) -> {
+            Common.iVSamp = cbVSAmp.getSelectedIndex();
+        };
+        ActionListener cbHspeedChanged = (ActionEvent event) -> {
+            Common.iHSpeed = cbHspeed.getSelectedIndex();
+        };
+        ActionListener cbPreAmpGainChanged = (ActionEvent event) -> {
+            Common.iPreamp = cbPreAmpGain.getSelectedIndex();
+        };
+        ItemListener tbMechanicalShutterPressed = (ItemEvent ev) -> {
+            if (Common.isAcquisitionRunning) {
+                JOptionPane.showMessageDialog(null, "Please press stop or wait for acquisition to finish");
+                tbMechanicalShutter.setSelected(false);
+            } else {
+                if (ev.getStateChange() == ItemEvent.SELECTED) {
+                    tbMechanicalShutter.setText("Shutter On");
+                    APIcall.ShutterControl(false);
+
+                } else {
+                    tbMechanicalShutter.setText("Shutter Off");
+                    APIcall.ShutterControl(true);
+                }
+            }
+
+        };
+        ActionListener cbBleacCorrectionChanged = (ActionEvent event) -> {
+            if (cbBleachCorrection.getSelectedItem().toString().equals("Polynomial")) {
+                PolynomialOrderDialogue();
+            }
+
+            Common.bleachCor = (String) cbBleachCorrection.getSelectedItem();
+        };
+        ActionListener cbCorrelator_pChanged = (ActionEvent event) -> {
+            Common.correlator_p = Integer.parseInt(cbCorrelator_p.getSelectedItem().toString());
+            cbCorrelator_p.setSelectedItem(cbCorrelator_p.getSelectedItem());
+        };
+        ActionListener btnCorrelator_qPressed = (ActionEvent event) -> {
+            CorrelatorQDialogue();
+        };
+        ActionListener btnOptionPressed = (ActionEvent event) -> {
+            OptionsDialogue();
+        };
+        ActionListener rbGPUonChanged = new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                if (rbGPUon.isSelected() == true) {
+                    if (Common.useGpu) {
+                        Common.RunLiveReadOutOnGPU = true;
+                        rbGPUon.setSelected(true);
+                    } else {
+                        rbGPUon.setSelected(false);
+                        IJ.showMessage("NVIDIA not available. running on CPU mode");
+                    }
+
+                } else {
+                    Common.RunLiveReadOutOnGPU = false;
+                    rbGPUon.setSelected(false);
+                }
+            }
+        };
+        ActionListener cbOutputTrigger_hamChanged = (ActionEvent event) -> {
+            cameraConstant.Common_Orca.OutputTriggerKind =
+                    Arrays.asList(cameraConstant.Common_Orca.OutputTriggerKindArr)
+                            .indexOf(cbOutputTrigger_ham.getSelectedItem().toString());
+
+            if (cameraConstant.Common_Orca.OutputTriggerKind == 1) { //Programmable
+                OutputTriggerDialogue();
+            }
+        };
+        ActionListener cbReadoutSpeed_hamChanged = (ActionEvent event) -> {
+            cameraConstant.Common_Orca.readoutSpeed = Arrays.asList(cameraConstant.Common_Orca.readoutSpeedArr)
+                    .indexOf(cbReadoutSpeed_ham.getSelectedItem().toString());
+        };
+        ActionListener cbSensorMode_hamChanged = (ActionEvent event) -> {
+            cameraConstant.Common_Orca.sensorMode = Arrays.asList(cameraConstant.Common_Orca.sensorModeArr)
+                    .indexOf(cbSensorMode_ham.getSelectedItem().toString());
+
+            if (cameraConstant.Common_Orca.sensorMode == 1) {
+                cameraConstant.Common_Orca.readoutSpeed = 0;
+                cbReadoutSpeed_ham.setSelectedIndex(cameraConstant.Common_Orca.readoutSpeed);
+                cbReadoutSpeed_ham.setEnabled(false);
+            } else {
+                cbReadoutSpeed_ham.setEnabled(true);
+            }
+
+        };
+        ActionListener cbOutputTrigger_sonaChanged = (ActionEvent event) -> {
+            cameraConstant.Common_SONA.OutputTriggerKind =
+                    Arrays.asList(cameraConstant.Common_SONA.OutputTriggerKindArr)
+                            .indexOf(cbOutputTrigger_sona.getSelectedItem().toString());
+        };
+        ActionListener cbReadoutSpeed_photometricsChanged = (ActionEvent event) -> {
+            int idx = cbReadoutSpeed_photometric.getSelectedIndex();
+
+            cameraConstant.Common_Photometrics.readoutPortIndex =
+                    Integer.valueOf(cameraConstant.Common_Photometrics.readoutSpeedDescription[idx][0]);
+            cameraConstant.Common_Photometrics.readoutSpeedIndex =
+                    Integer.valueOf(cameraConstant.Common_Photometrics.readoutSpeedDescription[idx][1]);
+        };
+        ActionListener btnClearWindowPressed = (ActionEvent event) -> {
+            if (Common.fromImFCSobj1 != null) {
+                Common.fromImFCSobj1.closeWindowsAll();
+            }
+
+            if (Common.fromImFCSobj2 != null) {
+                Common.fromImFCSobj2.closeWindowsAll();
+            }
+        };
+        ItemListener tbOverlap_sonaPressed = (ItemEvent ev) -> {
+            if (ev.getStateChange() == ItemEvent.SELECTED) {
+                tbOverlap_sona.setText("Overlap Off");
+                cameraConstant.Common_SONA.isOverlap = 0;
+
+            } else {
+                tbOverlap_sona.setText("Overlap On");
+                cameraConstant.Common_SONA.isOverlap = 1;
+            }
+        };
 
         public JSettingspanelComponent() {
             //JPanel
@@ -3010,7 +4579,9 @@ public class DirectCapturePanel {
 
             //initialize
             cbBleachCorrection = new JComboBox<>();
-            cbBleachCorrection.setToolTipText("Select or de-select bleach correction. NOTE: bleach correction algorithm segment total trace into 1000 equal interval for performance purposes.");
+            cbBleachCorrection.setToolTipText(
+                    "Select or de-select bleach correction. NOTE: bleach correction algorithm segment total trace " +
+                            "into 1000 equal interval for performance purposes.");
             cbBleachCorrection.addItem("none");
             cbBleachCorrection.addItem("Polynomial");
             cbBleachCorrection.setSelectedItem(Common.bleachCor);
@@ -3022,7 +4593,8 @@ public class DirectCapturePanel {
             cbCorrelator_p.addItem("128");
             cbCorrelator_p.setSelectedItem(Common.correlator_p);
             btnCorrelator_q = new JButton("q:");
-            btnCorrelator_q.setToolTipText("q correlator scheme. We recommend setting q = 8. NOTE: increase q to observe slower dynamics.");
+            btnCorrelator_q.setToolTipText(
+                    "q correlator scheme. We recommend setting q = 8. NOTE: increase q to observe slower dynamics.");
             tfCorrelator_q = new JTextField(Integer.toString(Common.correlator_q), 8);
             tfCorrelator_q.setEditable(false);
             rbGPUon = new JRadioButton("GPU", Common.RunLiveReadOutOnGPU);
@@ -3047,21 +4619,27 @@ public class DirectCapturePanel {
                 tbMechanicalShutter.setToolTipText("Open/close shutter.");
 
                 cbVspeed = new JComboBox<>();
-                cbVspeed.setToolTipText("Speed at which each row on the CCD is shifted vertically into the Shift Register.");
+                cbVspeed.setToolTipText(
+                        "Speed at which each row on the CCD is shifted vertically into the Shift Register.");
                 for (int i = 0; i < Common.VspeedArr.size(); i++) {
                     cbVspeed.addItem(Common.VspeedArr.get(i).toString());
                 }
                 cbVspeed.setSelectedIndex(Common.iVSpeed);
 
                 cbVSAmp = new JComboBox<>();
-                cbVSAmp.setToolTipText("Higher clocking voltages may result in increased clock-induced charge (noise) in your signal. In general only the very highest vertical clocking speeds (a low readout time) is likely to benefit from increased vertical clock voltage amplitude.");
+                cbVSAmp.setToolTipText(
+                        "Higher clocking voltages may result in increased clock-induced charge (noise) in your signal" +
+                                ". In general only the very highest vertical clocking speeds (a low readout time) is " +
+                                "likely " + "to benefit from increased vertical clock voltage amplitude.");
                 for (int i = 0; i < Common.VSAmpArr.size(); i++) {
                     cbVSAmp.addItem(Common.VSAmpArr.get(i).toString());
                 }
                 cbVSAmp.setSelectedIndex(Common.iVSamp);
 
                 cbHspeed = new JComboBox<>();
-                cbHspeed.setToolTipText("Speed at which the pixels are shifted into the output node during the readout phase of an acquisition.");
+                cbHspeed.setToolTipText(
+                        "Speed at which the pixels are shifted into the output node during the readout phase of an " +
+                                "acquisition.");
                 for (int i = 0; i < Common.HspeedArr.size(); i++) {
                     cbHspeed.addItem(Common.HspeedArr.get(i).toString());
                 }
@@ -3109,7 +4687,8 @@ public class DirectCapturePanel {
 
                     //Readout speed
                     cbReadoutSpeed_ham = new JComboBox<>();
-                    cbReadoutSpeed_ham.setToolTipText("Configure readout speed: faster scan comes at expense of higher readout noise");
+                    cbReadoutSpeed_ham.setToolTipText(
+                            "Configure readout speed: faster scan comes at expense of higher readout noise");
                     for (String elem : cameraConstant.Common_Orca.readoutSpeedArr) {
                         cbReadoutSpeed_ham.addItem(elem);
                     }
@@ -3132,14 +4711,17 @@ public class DirectCapturePanel {
                     cbReadoutSpeed_photometric.setToolTipText("Configure readout speed");
 
                     // loop over total port * total speed per port
-                    for (String[] readoutSpeedDescription : cameraConstant.Common_Photometrics.readoutSpeedDescription) {
+                    for (String[] readoutSpeedDescription :
+                     cameraConstant.Common_Photometrics.readoutSpeedDescription) {
                         cbReadoutSpeed_photometric.addItem(readoutSpeedDescription[4]);
                     }
 
                     int defaultPortSpeedIdx = 0;
                     cbReadoutSpeed_photometric.setSelectedIndex(defaultPortSpeedIdx);
-                    cameraConstant.Common_Photometrics.readoutPortIndex = Integer.valueOf(cameraConstant.Common_Photometrics.readoutSpeedDescription[defaultPortSpeedIdx][0]);
-                    cameraConstant.Common_Photometrics.readoutSpeedIndex = Integer.valueOf(cameraConstant.Common_Photometrics.readoutSpeedDescription[defaultPortSpeedIdx][1]);
+                    cameraConstant.Common_Photometrics.readoutPortIndex = Integer.valueOf(
+                            cameraConstant.Common_Photometrics.readoutSpeedDescription[defaultPortSpeedIdx][0]);
+                    cameraConstant.Common_Photometrics.readoutSpeedIndex = Integer.valueOf(
+                            cameraConstant.Common_Photometrics.readoutSpeedDescription[defaultPortSpeedIdx][1]);
 
 
                     break;
@@ -3271,13 +4853,15 @@ public class DirectCapturePanel {
                 @Override
                 public void windowClosing(WindowEvent we) {//overrode to show message
                     super.windowClosing(we);
-                    JOptionPane.showMessageDialog(we.getComponent(), "Toggle off Settings on main panel to hide panel.");
+                    JOptionPane.showMessageDialog(we.getComponent(),
+                            "Toggle off Settings on main panel to hide panel.");
                 }
 
                 @Override
                 public void windowIconified(WindowEvent we) {
                     setState(JFrame.NORMAL);
-                    JOptionPane.showMessageDialog(we.getComponent(), "Toggle off Settings on main panel to hide panel.");
+                    JOptionPane.showMessageDialog(we.getComponent(),
+                            "Toggle off Settings on main panel to hide panel.");
                 }
             };
         }
@@ -3478,160 +5062,6 @@ public class DirectCapturePanel {
             return true;
         }
 
-        ActionListener btnTemperaturePressed = (ActionEvent event) -> {
-            if (Common.isAcquisitionRunning) {
-                JOptionPane.showMessageDialog(null, "Please press stop or wait for acquisition to finish");
-            } else {
-                TemperatureDialogue();
-            }
-
-        };
-
-        ActionListener btnFanPressed = (ActionEvent event) -> {
-            if (Common.isAcquisitionRunning) {
-                JOptionPane.showMessageDialog(null, "Please press stop or wait for acquisition to finish");
-            } else {
-                FanDialogue();
-            }
-
-        };
-
-        ActionListener btnEmGainPressed = (ActionEvent event) -> {
-            if (Common.isAcquisitionRunning) {
-                JOptionPane.showMessageDialog(null, "Please press stop or wait for acquisition to finish");
-            } else {
-                EmGainDialogue();
-            }
-
-        };
-
-        ActionListener cbVspeedChanged = (ActionEvent event) -> {
-            Common.iVSpeed = cbVspeed.getSelectedIndex();
-        };
-        ActionListener cbVSAmpChanged = (ActionEvent event) -> {
-            Common.iVSamp = cbVSAmp.getSelectedIndex();
-        };
-
-        ActionListener cbHspeedChanged = (ActionEvent event) -> {
-            Common.iHSpeed = cbHspeed.getSelectedIndex();
-        };
-        ActionListener cbPreAmpGainChanged = (ActionEvent event) -> {
-            Common.iPreamp = cbPreAmpGain.getSelectedIndex();
-        };
-        ItemListener tbMechanicalShutterPressed = (ItemEvent ev) -> {
-            if (Common.isAcquisitionRunning) {
-                JOptionPane.showMessageDialog(null, "Please press stop or wait for acquisition to finish");
-                tbMechanicalShutter.setSelected(false);
-            } else {
-                if (ev.getStateChange() == ItemEvent.SELECTED) {
-                    tbMechanicalShutter.setText("Shutter On");
-                    APIcall.ShutterControl(false);
-
-                } else {
-                    tbMechanicalShutter.setText("Shutter Off");
-                    APIcall.ShutterControl(true);
-                }
-            }
-
-        };
-
-        ActionListener cbBleacCorrectionChanged = (ActionEvent event) -> {
-            if (cbBleachCorrection.getSelectedItem().toString().equals("Polynomial")) {
-                PolynomialOrderDialogue();
-            }
-
-            Common.bleachCor = (String) cbBleachCorrection.getSelectedItem();
-        };
-
-        ActionListener cbCorrelator_pChanged = (ActionEvent event) -> {
-            Common.correlator_p = Integer.parseInt(cbCorrelator_p.getSelectedItem().toString());
-            cbCorrelator_p.setSelectedItem(cbCorrelator_p.getSelectedItem());
-        };
-
-        ActionListener btnCorrelator_qPressed = (ActionEvent event) -> {
-            CorrelatorQDialogue();
-        };
-
-        ActionListener btnOptionPressed = (ActionEvent event) -> {
-            OptionsDialogue();
-        };
-
-        ActionListener rbGPUonChanged = new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                if (rbGPUon.isSelected() == true) {
-                    if (Common.useGpu) {
-                        Common.RunLiveReadOutOnGPU = true;
-                        rbGPUon.setSelected(true);
-                    } else {
-                        rbGPUon.setSelected(false);
-                        IJ.showMessage("NVIDIA not available. running on CPU mode");
-                    }
-
-                } else {
-                    Common.RunLiveReadOutOnGPU = false;
-                    rbGPUon.setSelected(false);
-                }
-            }
-        };
-
-        ActionListener cbOutputTrigger_hamChanged = (ActionEvent event) -> {
-            cameraConstant.Common_Orca.OutputTriggerKind = Arrays.asList(cameraConstant.Common_Orca.OutputTriggerKindArr).indexOf(cbOutputTrigger_ham.getSelectedItem().toString());
-
-            if (cameraConstant.Common_Orca.OutputTriggerKind == 1) { //Programmable
-                OutputTriggerDialogue();
-            }
-        };
-
-        ActionListener cbReadoutSpeed_hamChanged = (ActionEvent event) -> {
-            cameraConstant.Common_Orca.readoutSpeed = Arrays.asList(cameraConstant.Common_Orca.readoutSpeedArr).indexOf(cbReadoutSpeed_ham.getSelectedItem().toString());
-        };
-
-        ActionListener cbSensorMode_hamChanged = (ActionEvent event) -> {
-            cameraConstant.Common_Orca.sensorMode = Arrays.asList(cameraConstant.Common_Orca.sensorModeArr).indexOf(cbSensorMode_ham.getSelectedItem().toString());
-
-            if (cameraConstant.Common_Orca.sensorMode == 1) {
-                cameraConstant.Common_Orca.readoutSpeed = 0;
-                cbReadoutSpeed_ham.setSelectedIndex(cameraConstant.Common_Orca.readoutSpeed);
-                cbReadoutSpeed_ham.setEnabled(false);
-            } else {
-                cbReadoutSpeed_ham.setEnabled(true);
-            }
-
-        };
-
-        ActionListener cbOutputTrigger_sonaChanged = (ActionEvent event) -> {
-            cameraConstant.Common_SONA.OutputTriggerKind = Arrays.asList(cameraConstant.Common_SONA.OutputTriggerKindArr).indexOf(cbOutputTrigger_sona.getSelectedItem().toString());
-        };
-
-        ActionListener cbReadoutSpeed_photometricsChanged = (ActionEvent event) -> {
-            int idx = cbReadoutSpeed_photometric.getSelectedIndex();
-
-            cameraConstant.Common_Photometrics.readoutPortIndex = Integer.valueOf(cameraConstant.Common_Photometrics.readoutSpeedDescription[idx][0]);
-            cameraConstant.Common_Photometrics.readoutSpeedIndex = Integer.valueOf(cameraConstant.Common_Photometrics.readoutSpeedDescription[idx][1]);
-        };
-
-        ActionListener btnClearWindowPressed = (ActionEvent event) -> {
-            if (Common.fromImFCSobj1 != null) {
-                Common.fromImFCSobj1.closeWindowsAll();
-            }
-
-            if (Common.fromImFCSobj2 != null) {
-                Common.fromImFCSobj2.closeWindowsAll();
-            }
-        };
-
-        ItemListener tbOverlap_sonaPressed = (ItemEvent ev) -> {
-            if (ev.getStateChange() == ItemEvent.SELECTED) {
-                tbOverlap_sona.setText("Overlap Off");
-                cameraConstant.Common_SONA.isOverlap = 0;
-
-            } else {
-                tbOverlap_sona.setText("Overlap On");
-                cameraConstant.Common_SONA.isOverlap = 1;
-            }
-        };
-
     }
 
     public class JCropModePanelComponent extends JFrame {
@@ -3640,11 +5070,101 @@ public class DirectCapturePanel {
         JPanel JCropDimPane;
 
         boolean DeactivateTFDocListener = true;
+        ActionListener cbCropModeChanged = new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+
+                //update cropMode Pane
+                int idx = cbCropMode.getSelectedIndex();
+                boolean status = updateCropModeParam(idx);
+                DeactivateTFDocListener = true;
+                UpdateCropModeDimTextField();
+                DeactivateTFDocListener = false;
+
+                if (idx < Common.CornerTetherCropROI.length) {// if not custom top-left corner tethered
+                    JDimensionpanelComponentPanel.setODimtoCDim(Common.inCameraBinning);
+                    DisplayImageObj.performROIselection(Common.oLeft - 1, Common.oTop - 1, Common.oWidth,
+                            Common.oHeight);
+                } else {
+                    JDimensionpanelComponentPanel.setODimtoCDim(Common.inCameraBinning);
+                    DisplayImageObj.performROIselection(Common.oLeft - 1, Common.oTop - 1, Common.oWidth,
+                            Common.oHeight);
+                }
+
+            }
+        };
+        DocumentListener dimTfcWHchanged = new DocumentListener() {
+            @Override
+            public void insertUpdate(DocumentEvent e) {
+                if (!DeactivateTFDocListener) {
+                    boolean updateDisplyIm =
+                            updateCustomCropMode(); //update crop textfield and global cropped coordinate
+                    JDimensionpanelComponentPanel.setODimtoCDim(Common.inCameraBinning);
+                    DisplayImageObj.performROIselection(Common.oLeft - 1, Common.oTop - 1, Common.oWidth,
+                            Common.oHeight);
+                    if (updateDisplyIm) {
+                        IJ.log("3893 unimplemented");
+                    }
+                }
+            }
+
+            @Override
+            public void removeUpdate(DocumentEvent e) {
+                if (!DeactivateTFDocListener) {
+                    boolean updateDisplyIm =
+                            updateCustomCropMode(); //update crop textfield and global cropped coordinate
+                    if (updateDisplyIm) {
+                        IJ.log("3893 unimplemented");
+                    }
+                }
+            }
+
+            @Override
+            public void changedUpdate(DocumentEvent e) {
+                if (!DeactivateTFDocListener) {
+                    boolean updateDisplyIm =
+                            updateCustomCropMode(); //update crop textfield and global cropped coordinate
+                    if (updateDisplyIm) {
+                        IJ.log("3893 unimplemented");
+                    }
+                }
+            }
+        };
+        MouseListener dimTfcWHMouseUsed = new MouseListener() {
+            @Override
+            public void mouseClicked(MouseEvent arg0) {
+            }
+
+            @Override
+            public void mousePressed(MouseEvent arg0) {
+            }
+
+            @Override
+            public void mouseReleased(MouseEvent arg0) {
+            }
+
+            @Override
+            public void mouseEntered(MouseEvent arg0) {
+                DeactivateTFDocListener = true;
+                tfcWidth.setText(Integer.toString(Common.cWidth));
+                tfcHeight.setText(Integer.toString(Common.cHeight));
+                DeactivateTFDocListener = false;
+            }
+
+            @Override
+            public void mouseExited(MouseEvent arg0) {
+                DeactivateTFDocListener = true;
+                tfcWidth.setText(Integer.toString(Common.cWidth));
+                tfcHeight.setText(Integer.toString(Common.cHeight));
+                DeactivateTFDocListener = false;
+            }
+        };
 
         public JCropModePanelComponent() {
 
             JROIselectionPane = new JPanel(new GridLayout(1, 2));
-            JROIselectionPane.setBorder(BorderFactory.createTitledBorder("Centered or Top-Left Tethered ROI Selection"));
+            JROIselectionPane.setBorder(
+                    BorderFactory.createTitledBorder("Centered or Top-Left Tethered ROI Selection"));
 
             JCropDimPane = new JPanel(new GridLayout(6, 2));
             JCropDimPane.setBorder(BorderFactory.createTitledBorder("Crop Dimension"));
@@ -3791,111 +5311,93 @@ public class DirectCapturePanel {
                 return false;
             }
         }
-
-        ActionListener cbCropModeChanged = new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-
-                //update cropMode Pane
-                int idx = cbCropMode.getSelectedIndex();
-                boolean status = updateCropModeParam(idx);
-                DeactivateTFDocListener = true;
-                UpdateCropModeDimTextField();
-                DeactivateTFDocListener = false;
-
-                if (idx < Common.CornerTetherCropROI.length) {// if not custom top-left corner tethered
-                    JDimensionpanelComponentPanel.setODimtoCDim(Common.inCameraBinning);
-                    DisplayImageObj.performROIselection(Common.oLeft - 1, Common.oTop - 1, Common.oWidth, Common.oHeight);
-                } else {
-                    JDimensionpanelComponentPanel.setODimtoCDim(Common.inCameraBinning);
-                    DisplayImageObj.performROIselection(Common.oLeft - 1, Common.oTop - 1, Common.oWidth, Common.oHeight);
-                }
-
-            }
-        };
-
-        DocumentListener dimTfcWHchanged = new DocumentListener() {
-            @Override
-            public void insertUpdate(DocumentEvent e) {
-                if (!DeactivateTFDocListener) {
-                    boolean updateDisplyIm = updateCustomCropMode(); //update crop textfield and global cropped coordinate
-                    JDimensionpanelComponentPanel.setODimtoCDim(Common.inCameraBinning);
-                    DisplayImageObj.performROIselection(Common.oLeft - 1, Common.oTop - 1, Common.oWidth, Common.oHeight);
-                    if (updateDisplyIm) {
-                        IJ.log("3893 unimplemented");
-                    }
-                }
-            }
-
-            @Override
-            public void removeUpdate(DocumentEvent e) {
-                if (!DeactivateTFDocListener) {
-                    boolean updateDisplyIm = updateCustomCropMode(); //update crop textfield and global cropped coordinate
-                    if (updateDisplyIm) {
-                        IJ.log("3893 unimplemented");
-                    }
-                }
-            }
-
-            @Override
-            public void changedUpdate(DocumentEvent e) {
-                if (!DeactivateTFDocListener) {
-                    boolean updateDisplyIm = updateCustomCropMode(); //update crop textfield and global cropped coordinate
-                    if (updateDisplyIm) {
-                        IJ.log("3893 unimplemented");
-                    }
-                }
-            }
-        };
-
-        MouseListener dimTfcWHMouseUsed = new MouseListener() {
-            @Override
-            public void mouseClicked(MouseEvent arg0) {
-            }
-
-            @Override
-            public void mousePressed(MouseEvent arg0) {
-            }
-
-            @Override
-            public void mouseReleased(MouseEvent arg0) {
-            }
-
-            @Override
-            public void mouseEntered(MouseEvent arg0) {
-                DeactivateTFDocListener = true;
-                tfcWidth.setText(Integer.toString(Common.cWidth));
-                tfcHeight.setText(Integer.toString(Common.cHeight));
-                DeactivateTFDocListener = false;
-            }
-
-            @Override
-            public void mouseExited(MouseEvent arg0) {
-                DeactivateTFDocListener = true;
-                tfcWidth.setText(Integer.toString(Common.cWidth));
-                tfcHeight.setText(Integer.toString(Common.cHeight));
-                DeactivateTFDocListener = false;
-            }
-        };
     }
 
     public class JCalibrationPanelComponent extends JFrame {
 
-        JPanel FocusFinderPane;
-        final int CalibpanelPosX = 700;										// control panel, "ImFCS", position and dimensions
+        final int CalibpanelPosX = 700;
+        // control panel, "ImFCS", position and dimensions
         final int CalibpanelPosY = 355;
         final int CalibpanelDimX = 250;
         final int CalibpanelDimY = 150;
+        JPanel FocusFinderPane;
+        ActionListener btnPlotIntervalPressed = (ActionEvent event) -> {
+            boolean changedpi = PlotIntervalDialogue();
+        };
+        ActionListener rbPlotCalibrationAmplitudeChanged = new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                if (rbPlotCalibrationAmplitude.isSelected() == true) {
+                    Common.plotCalibAmplitude = true;
+                    rbPlotCalibrationAmplitude.setSelected(true);
+
+                } else {
+                    Common.plotCalibAmplitude = false;
+                    rbPlotCalibrationAmplitude.setSelected(false);
+                }
+            }
+        };
+        ActionListener rbPlotCalibrationIntensityChanged = new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                if (rbPlotCalibrationIntensity.isSelected() == true) {
+                    Common.plotCalibIntensity = true;
+                    rbPlotCalibrationIntensity.setSelected(true);
+
+                } else {
+                    Common.plotCalibIntensity = false;
+                    rbPlotCalibrationIntensity.setSelected(false);
+                }
+            }
+        };
+        ActionListener rbPlotCalibrationDiffusionChanged = new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                if (rbPlotCalibrationDiffusion.isSelected() == true) {
+                    Common.plotCalibDiffusion = true;
+                    rbPlotCalibrationDiffusion.setSelected(true);
+
+                } else {
+                    Common.plotCalibDiffusion = false;
+                    rbPlotCalibrationDiffusion.setSelected(false);
+                }
+            }
+        };
+        DocumentListener tfNoPtsCalibChanged = new DocumentListener() {
+            @Override
+            public void insertUpdate(DocumentEvent e) {
+                UpdateCalibParam();
+            }
+
+            @Override
+            public void removeUpdate(DocumentEvent e) {
+                UpdateCalibParam();
+            }
+
+            @Override
+            public void changedUpdate(DocumentEvent e) {
+                UpdateCalibParam();
+            }
+        };
+        ItemListener tbCalibFixScaleChanged = (ItemEvent ev) -> {
+            if (ev.getStateChange() == ItemEvent.SELECTED) {
+                tbCalibFixScale.setText("Fix Scale");
+                Common.isCalibFixScale = true; //deactivate autoscaling
+            } else {
+                tbCalibFixScale.setText("Free Scale");
+                Common.isCalibFixScale = false;//activate autoscaling
+            }
+        };
 
         public JCalibrationPanelComponent() {
             FocusFinderPane = new JPanel(new GridLayout(4, 2));
             FocusFinderPane.setBorder(BorderFactory.createTitledBorder("Non-cumulative CF"));
 
-//            OptoSplitStaticAlignPane = new JPanel(new GridLayout(1, 2));
-//            OptoSplitStaticAlignPane.setBorder(BorderFactory.createTitledBorder("S.A."));
-//
-//            OptoSplitDynamicAlignPane = new JPanel(new GridLayout(1, 2));
-//            OptoSplitDynamicAlignPane.setBorder(BorderFactory.createTitledBorder("D.A."));
+            //            OptoSplitStaticAlignPane = new JPanel(new GridLayout(1, 2));
+            //            OptoSplitStaticAlignPane.setBorder(BorderFactory.createTitledBorder("S.A."));
+            //
+            //            OptoSplitDynamicAlignPane = new JPanel(new GridLayout(1, 2));
+            //            OptoSplitDynamicAlignPane.setBorder(BorderFactory.createTitledBorder("D.A."));
             //initialize
             rbPlotCalibrationAmplitude = new JRadioButton("Plot Amplitude", Common.plotCalibAmplitude);
             rbPlotCalibrationAmplitude.setToolTipText("activate Amplitude trace");
@@ -3905,7 +5407,9 @@ public class DirectCapturePanel {
             rbPlotCalibrationIntensity.setToolTipText("activate Intensity trace");
             btnPlotInterval = new JButton("Plot Interval:");
             tfPlotInterval = new JTextField(Integer.toString(Common.plotInterval), 8);
-            tfPlotInterval.setToolTipText("Set number of frame used in ACF(s) plotting. Only applicable in calibration mode. NOTE: reducing ROI would improve the maximum allowable plot interval.");
+            tfPlotInterval.setToolTipText(
+                    "Set number of frame used in ACF(s) plotting. Only applicable in calibration mode. NOTE: reducing" +
+                            " ROI would improve the maximum allowable plot interval.");
             tfPlotInterval.setEditable(false);
             tfNoPtsCalib = new JTextField(Integer.toString(Common.noptsavr), 8);
             tfNoPtsCalib.setToolTipText("Set number of correlation points to be averaged for focus-finder algorithm");
@@ -3922,18 +5426,18 @@ public class DirectCapturePanel {
             FocusFinderPane.add(rbPlotCalibrationDiffusion);
             FocusFinderPane.add(tbCalibFixScale);
 
-//            //OptoSplitStaticAlignPane (center panel)
-//            OptoSplitStaticAlignPane.add(new JLabel(""));
-//            OptoSplitStaticAlignPane.add(new JLabel(""));
-//
-//            //OptoSplitDynamicAlignPane (bottom panel)
-//            OptoSplitDynamicAlignPane.add(new JLabel(""));
-//            OptoSplitDynamicAlignPane.add(new JLabel(""));
+            //            //OptoSplitStaticAlignPane (center panel)
+            //            OptoSplitStaticAlignPane.add(new JLabel(""));
+            //            OptoSplitStaticAlignPane.add(new JLabel(""));
+            //
+            //            //OptoSplitDynamicAlignPane (bottom panel)
+            //            OptoSplitDynamicAlignPane.add(new JLabel(""));
+            //            OptoSplitDynamicAlignPane.add(new JLabel(""));
             Container cp = this.getContentPane();
             cp.setLayout(new BorderLayout(1, 1));
             cp.add(FocusFinderPane, BorderLayout.CENTER);
-//            cp.add(OptoSplitStaticAlignPane, BorderLayout.CENTER);
-//            cp.add(OptoSplitDynamicAlignPane, BorderLayout.SOUTH);
+            //            cp.add(OptoSplitStaticAlignPane, BorderLayout.CENTER);
+            //            cp.add(OptoSplitDynamicAlignPane, BorderLayout.SOUTH);
 
             //add listener
             btnPlotInterval.addActionListener(btnPlotIntervalPressed);
@@ -3946,7 +5450,7 @@ public class DirectCapturePanel {
             setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
             setUndecorated(false);
             addWindowListener(getWindowAdapter());
-//            setTitle("Calibration Panel");
+            //            setTitle("Calibration Panel");
             setSize(CalibpanelDimX, CalibpanelDimY);
             setLocation(new Point(CalibpanelPosX, CalibpanelPosY));
             setFocusable(true);
@@ -3957,19 +5461,20 @@ public class DirectCapturePanel {
 
         private boolean PlotIntervalDialogue() {
             GenericDialog gd = new GenericDialog("Calibration Plot Interval");
-//            gd.addNumericField("Plot Interval: ", Common.plotInterval, 0);
+            //            gd.addNumericField("Plot Interval: ", Common.plotInterval, 0);
             gd.addStringField("Plot Interval: ", Integer.toString(Common.plotInterval), 0);
             gd.showDialog();
 
             if (gd.wasOKed()) {
                 try {
                     int tempPI = Integer.parseInt(gd.getNextString());
-//                    int tempPI = (int) gd.getNextNumber();
+                    //                    int tempPI = (int) gd.getNextNumber();
                     int maxpi = retMaxAllowablePlotInterval(Common.size_a, Common.size_b);
                     if (tempPI < maxpi) {
                         Common.plotInterval = tempPI;
                     } else {
-                        IJ.showMessage("Maximum allowable Plot Interval: " + maxpi + " frames. Reduce ROI to expand Plot Interval range");
+                        IJ.showMessage("Maximum allowable Plot Interval: " + maxpi +
+                                " frames. Reduce ROI to expand Plot Interval range");
                         Common.plotInterval = maxpi;
                     }
                     if (tempPI < Common.minAllowableFrame) {
@@ -3993,7 +5498,7 @@ public class DirectCapturePanel {
             return new WindowAdapter() {
                 @Override
                 public void windowClosing(WindowEvent we) {//overrode to show message
-//                    super.windowClosing(we);
+                    //                    super.windowClosing(we);
                 }
 
                 @Override
@@ -4003,100 +5508,90 @@ public class DirectCapturePanel {
             };
         }
 
-        ActionListener btnPlotIntervalPressed = (ActionEvent event) -> {
-            boolean changedpi = PlotIntervalDialogue();
-        };
-
-        ActionListener rbPlotCalibrationAmplitudeChanged = new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                if (rbPlotCalibrationAmplitude.isSelected() == true) {
-                    Common.plotCalibAmplitude = true;
-                    rbPlotCalibrationAmplitude.setSelected(true);
-
-                } else {
-                    Common.plotCalibAmplitude = false;
-                    rbPlotCalibrationAmplitude.setSelected(false);
-                }
-            }
-        };
-
-        ActionListener rbPlotCalibrationIntensityChanged = new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                if (rbPlotCalibrationIntensity.isSelected() == true) {
-                    Common.plotCalibIntensity = true;
-                    rbPlotCalibrationIntensity.setSelected(true);
-
-                } else {
-                    Common.plotCalibIntensity = false;
-                    rbPlotCalibrationIntensity.setSelected(false);
-                }
-            }
-        };
-
-        ActionListener rbPlotCalibrationDiffusionChanged = new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                if (rbPlotCalibrationDiffusion.isSelected() == true) {
-                    Common.plotCalibDiffusion = true;
-                    rbPlotCalibrationDiffusion.setSelected(true);
-
-                } else {
-                    Common.plotCalibDiffusion = false;
-                    rbPlotCalibrationDiffusion.setSelected(false);
-                }
-            }
-        };
-
-        DocumentListener tfNoPtsCalibChanged = new DocumentListener() {
-            @Override
-            public void insertUpdate(DocumentEvent e) {
-                UpdateCalibParam();
-            }
-
-            @Override
-            public void removeUpdate(DocumentEvent e) {
-                UpdateCalibParam();
-            }
-
-            @Override
-            public void changedUpdate(DocumentEvent e) {
-                UpdateCalibParam();
-            }
-        };
-
-        ItemListener tbCalibFixScaleChanged = (ItemEvent ev) -> {
-            if (ev.getStateChange() == ItemEvent.SELECTED) {
-                tbCalibFixScale.setText("Fix Scale");
-                Common.isCalibFixScale = true; //deactivate autoscaling
-            } else {
-                tbCalibFixScale.setText("Free Scale");
-                Common.isCalibFixScale = false;//activate autoscaling
-            }
-        };
-
     }
 
     public class JICCSPanelComponent extends JFrame {
 
-        final int ICCSpanelPosX = 700;										// control panel, "ImFCS", position and dimensions
+        final int ICCSpanelPosX = 700;
+        // control panel, "ImFCS", position and dimensions
         final int ICCSpanelPosY = 355;
         final int ICCSpanelDimX = 320;
         final int ICCSpanelDimY = 170;
-        JPanel ICCSPane;
-        JToggleButton tbFitICCS;
         //reset index
         final int indexXYCCF = 0;
+        JPanel ICCSPane;
+        JToggleButton tbFitICCS;
+        //Document Listener
+        DocumentListener tfICCSCoordChanged = new DocumentListener() {
+            @Override
+            public void insertUpdate(DocumentEvent e) {
+                UpdateICCSSettigs("CoordinateGreen");
+            }
+
+            @Override
+            public void removeUpdate(DocumentEvent e) {
+                UpdateICCSSettigs("CoordinateGreen");
+            }
+
+            @Override
+            public void changedUpdate(DocumentEvent e) {
+                UpdateICCSSettigs("CoordinateGreen");
+            }
+        };
+        DocumentListener tfICCSParamChanged = new DocumentListener() {
+            @Override
+            public void insertUpdate(DocumentEvent e) {
+                UpdateICCSSettigs("ParamRed");
+            }
+
+            @Override
+            public void removeUpdate(DocumentEvent e) {
+                UpdateICCSSettigs("ParamRed");
+            }
+
+            @Override
+            public void changedUpdate(DocumentEvent e) {
+                UpdateICCSSettigs("ParamRed");
+            }
+        };
+        ItemListener tbFitICCSPressed = (ItemEvent ev) -> {
+            if (ev.getStateChange() == ItemEvent.SELECTED) {
+                if (iccsObj1 != null) {
+                    tbFitICCS.setText("Fit on");
+                    iccsObj1.isFittingICCS = true;
+                    //                    iccsObj1.hideUnhidePlot(true);
+                } else {
+                    tbFitICCS.setBorderPainted(false);
+                    tbFitICCS.setSelected(false);
+                }
+
+            } else {
+
+                if (iccsObj1 != null) {
+                    tbFitICCS.setText("Fit off");
+                    iccsObj1.isFittingICCS = false;
+                    //                    iccsObj1.hideUnhidePlot(false);
+                } else {
+                    tbFitICCS.setBorderPainted(false);
+                    tbFitICCS.setSelected(false);
+                }
+
+            }
+
+        };
 
         public JICCSPanelComponent() {
             ICCSPane = new JPanel(new GridLayout(5, 2));
             tbFitICCS = new JToggleButton("Fit off");
             ICCSPane.setBorder(BorderFactory.createTitledBorder("ICCS maps"));
             //initialize
-            tfICCSRoi1Coord = new JTextField(Integer.toString(Common.lWidth) + " / " + Integer.toString(Common.lHeight) + " / " + Integer.toString(Common.lLeft) + " / " + Integer.toString(Common.lTop), 8);
+            tfICCSRoi1Coord = new JTextField(
+                    Integer.toString(Common.lWidth) + " / " + Integer.toString(Common.lHeight) + " / " +
+                            Integer.toString(Common.lLeft) + " / " + Integer.toString(Common.lTop), 8);
             tfICCSRoi1Coord.setToolTipText("Setting coordinate of green channel to be correlated");
-            tfICCSParam = new JTextField(Integer.toString(Common.ICCSShiftX) + " / " + Integer.toString(Common.ICCSShiftY), 8);
+            tfICCSParam =
+                    new JTextField(Integer.toString(Common.ICCSShiftX) + " / " + Integer.toString(Common.ICCSShiftY),
+                            8);
             tfICCSParam.setToolTipText("Setting parameters of red channel to be correlated");
             //Panel
             ICCSPane.add(new JLabel("ROI (Intensity-map) :"));
@@ -4136,7 +5631,7 @@ public class DirectCapturePanel {
 
                 @Override
                 public void windowClosing(WindowEvent we) {//overrode to show message
-//                    super.windowClosing(we);
+                    //                    super.windowClosing(we);
                 }
 
                 @Override
@@ -4154,82 +5649,69 @@ public class DirectCapturePanel {
         }
 
         public void resetParam() {
-            tfICCSRoi1Coord.setText(Integer.toString(Common.lWidth) + " / " + Integer.toString(Common.lHeight) + " / " + Integer.toString(Common.lLeft) + " / " + Integer.toString(Common.lTop));
+            tfICCSRoi1Coord.setText(Integer.toString(Common.lWidth) + " / " + Integer.toString(Common.lHeight) + " / " +
+                    Integer.toString(Common.lLeft) + " / " + Integer.toString(Common.lTop));
             tfICCSParam.setText(Integer.toString(0) + " / " + Integer.toString(0));
             tfCCFdist.setText(Integer.toString(Common.CCFdistX) + " x " + Integer.toString(Common.CCFdistY));
         }
-
-        //Document Listener
-        DocumentListener tfICCSCoordChanged = new DocumentListener() {
-            @Override
-            public void insertUpdate(DocumentEvent e) {
-                UpdateICCSSettigs("CoordinateGreen");
-            }
-
-            @Override
-            public void removeUpdate(DocumentEvent e) {
-                UpdateICCSSettigs("CoordinateGreen");
-            }
-
-            @Override
-            public void changedUpdate(DocumentEvent e) {
-                UpdateICCSSettigs("CoordinateGreen");
-            }
-        };
-
-        DocumentListener tfICCSParamChanged = new DocumentListener() {
-            @Override
-            public void insertUpdate(DocumentEvent e) {
-                UpdateICCSSettigs("ParamRed");
-            }
-
-            @Override
-            public void removeUpdate(DocumentEvent e) {
-                UpdateICCSSettigs("ParamRed");
-            }
-
-            @Override
-            public void changedUpdate(DocumentEvent e) {
-                UpdateICCSSettigs("ParamRed");
-            }
-        };
-
-        ItemListener tbFitICCSPressed = (ItemEvent ev) -> {
-            if (ev.getStateChange() == ItemEvent.SELECTED) {
-                if (iccsObj1 != null) {
-                    tbFitICCS.setText("Fit on");
-                    iccsObj1.isFittingICCS = true;
-//                    iccsObj1.hideUnhidePlot(true);
-                } else {
-                    tbFitICCS.setBorderPainted(false);
-                    tbFitICCS.setSelected(false);
-                }
-
-            } else {
-
-                if (iccsObj1 != null) {
-                    tbFitICCS.setText("Fit off");
-                    iccsObj1.isFittingICCS = false;
-//                    iccsObj1.hideUnhidePlot(false);
-                } else {
-                    tbFitICCS.setBorderPainted(false);
-                    tbFitICCS.setSelected(false);
-                }
-
-            }
-
-        };
     }
 
     public class JAcquisitionModePanelComponent extends JFrame {
 
-        JPanel JAcqModePane;
-        JTextField tfCalibrationType;
-
-        final int AcqModepanelPosX = 700;										// control panel, "ImFCS", position and dimensions
+        final int AcqModepanelPosX = 700;
+        // control panel, "ImFCS", position and dimensions
         final int AcqModepanelPosY = 125;
         final int AcqModepanelDimX = 330;
         final int AcqModepanelDimY = 170;
+        JPanel JAcqModePane;
+        JTextField tfCalibrationType;
+        ItemListener tbIsNonCumulCFChanged = (ItemEvent ev) -> {
+            if (ev.getStateChange() == ItemEvent.SELECTED) {
+                Common.analysisMode = $amode[1];//non-cumulative
+                tbIsNonCumulCF.setText($amode[1]);
+                JCalibrationPanelComponentPanel.setVisible(true);
+                JCumulativeCFPanelComponentPanel.setVisible(false);
+
+            } else {
+                // Reset fitstart to the latest available frame index
+                if (Common.isAcquisitionRunning && Common.framecounter != null && Common.framecounterIMSX != null) {
+                    Common.fitStartCumulative = Common.framecounterIMSX.getCount();
+                    tfCumulativeFitStart.setText(Integer.toString(Common.fitStartCumulative));
+                }
+
+                Common.analysisMode = $amode[2];//cumulative
+                tbIsNonCumulCF.setText($amode[2]);
+                JCalibrationPanelComponentPanel.setVisible(false);
+                JCumulativeCFPanelComponentPanel.setVisible(true);
+            }
+        };
+        ActionListener tbRecordTimePointChanged = (ActionEvent ev) -> {
+            if (Common.isAcquisitionRunning) {
+                if (tbRecordTimePoint.isSelected()) {
+                    if (CalibrationTypeSelectionDialogue()) {
+
+                        if (currentCalibrationType.equals(calibrationTypeList[calibrationTypeList.length - 1])) {
+                            Common.ttsObj.fillOtherRemarksFrameIdx(otherRemarks,
+                                    Common.framecounter.getCounter()); //update other user remarks and time stamp
+                            toggleOnOff(false);
+                        } else {
+                            Common.ttsObj.fillCalibrationFrameIdx(retCalibIdx(currentCalibrationType),
+                                    Common.framecounter.getCounter());//update calib start index
+                            toggleOnOff(true);
+                        }
+
+                    } else {
+                        toggleOnOff(false);
+                    }
+                } else {
+                    Common.ttsObj.fillCalibrationFrameIdx(retCalibIdx(currentCalibrationType),
+                            Common.framecounter.getCounter());//update calib end index
+                    toggleOnOff(false);
+                }
+            } else {
+                toggleOnOff(false);
+            }
+        };
 
         public JAcquisitionModePanelComponent() {
             JAcqModePane = new JPanel(new GridLayout(5, 2));
@@ -4239,7 +5721,9 @@ public class DirectCapturePanel {
             tbIsNonCumulCF.setToolTipText("Toggle between cumulative or non-cumulative correlation functions.");
             Common.analysisMode = $amode[2];//cumulative
             tbRecordTimePoint = new JToggleButton("Off");
-            tbRecordTimePoint.setToolTipText("Toggle On to indicate time points in which changes to the microscope were made. Toggle Off once instrument stabilized. Information saved as a json file.");
+            tbRecordTimePoint.setToolTipText(
+                    "Toggle On to indicate time points in which changes to the microscope were made. Toggle Off once " +
+                            "instrument stabilized. Information saved as a json file.");
             tbRecordTimePoint.setForeground(Color.blue);
 
             currentCalibrationType = calibrationTypeList[0];
@@ -4327,67 +5811,25 @@ public class DirectCapturePanel {
                 @Override
                 public void windowIconified(WindowEvent we) {
                     setState(JFrame.NORMAL);
-//                    JOptionPane.showMessageDialog(we.getComponent(), "Can't Minimize");
+                    //                    JOptionPane.showMessageDialog(we.getComponent(), "Can't Minimize");
                 }
             };
         }
-
-        ItemListener tbIsNonCumulCFChanged = (ItemEvent ev) -> {
-            if (ev.getStateChange() == ItemEvent.SELECTED) {
-                Common.analysisMode = $amode[1];//non-cumulative
-                tbIsNonCumulCF.setText($amode[1]);
-                JCalibrationPanelComponentPanel.setVisible(true);
-                JCumulativeCFPanelComponentPanel.setVisible(false);
-
-            } else {
-                // Reset fitstart to the latest available frame index
-                if (Common.isAcquisitionRunning && Common.framecounter != null && Common.framecounterIMSX != null) {
-                    Common.fitStartCumulative = Common.framecounterIMSX.getCount();
-                    tfCumulativeFitStart.setText(Integer.toString(Common.fitStartCumulative));
-                }
-
-                Common.analysisMode = $amode[2];//cumulative
-                tbIsNonCumulCF.setText($amode[2]);
-                JCalibrationPanelComponentPanel.setVisible(false);
-                JCumulativeCFPanelComponentPanel.setVisible(true);
-            }
-        };
-
-        ActionListener tbRecordTimePointChanged = (ActionEvent ev) -> {
-            if (Common.isAcquisitionRunning) {
-                if (tbRecordTimePoint.isSelected()) {
-                    if (CalibrationTypeSelectionDialogue()) {
-
-                        if (currentCalibrationType.equals(calibrationTypeList[calibrationTypeList.length - 1])) {
-                            Common.ttsObj.fillOtherRemarksFrameIdx(otherRemarks, Common.framecounter.getCounter()); //update other user remarks and time stamp
-                            toggleOnOff(false);
-                        } else {
-                            Common.ttsObj.fillCalibrationFrameIdx(retCalibIdx(currentCalibrationType), Common.framecounter.getCounter());//update calib start index
-                            toggleOnOff(true);
-                        }
-
-                    } else {
-                        toggleOnOff(false);
-                    }
-                } else {
-                    Common.ttsObj.fillCalibrationFrameIdx(retCalibIdx(currentCalibrationType), Common.framecounter.getCounter());//update calib end index
-                    toggleOnOff(false);
-                }
-            } else {
-                toggleOnOff(false);
-            }
-        };
 
     }
 
     public class JCumulativeCFPanelComponent extends JFrame {
 
-        JPanel CumulativeCFPane;
-        JButton btnCumulativeFitStart;
-        final int CumulativepanelPosX = 700;										// control panel, "ImFCS", position and dimensions
+        final int CumulativepanelPosX = 700;
+        // control panel, "ImFCS", position and dimensions
         final int CumulativepanelPosY = 355;
         final int CumulativepanelDimX = 250;
         final int CumulativepanelDimY = 150;
+        JPanel CumulativeCFPane;
+        JButton btnCumulativeFitStart;
+        ActionListener btnFitStartPressed = (ActionEvent event) -> {
+            boolean changedfs = FitStartDialogue();
+        };
 
         public JCumulativeCFPanelComponent() {
             CumulativeCFPane = new JPanel(new GridLayout(4, 2));
@@ -4420,7 +5862,7 @@ public class DirectCapturePanel {
             setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
             setUndecorated(false);
             addWindowListener(getWindowAdapter());
-//            setTitle("Cumulative CF");
+            //            setTitle("Cumulative CF");
             setSize(CumulativepanelDimX, CumulativepanelDimY);
             setLocation(new Point(CumulativepanelPosX, CumulativepanelPosY));
             setFocusable(true);
@@ -4428,15 +5870,11 @@ public class DirectCapturePanel {
             setVisible(false);
         }
 
-        ActionListener btnFitStartPressed = (ActionEvent event) -> {
-            boolean changedfs = FitStartDialogue();
-        };
-
         private WindowAdapter getWindowAdapter() {
             return new WindowAdapter() {
                 @Override
                 public void windowClosing(WindowEvent we) {//overrode to show message
-//                    super.windowClosing(we);
+                    //                    super.windowClosing(we);
                 }
 
                 @Override
@@ -4492,6 +5930,97 @@ public class DirectCapturePanel {
         JRadioButton rbSetEvenFrames;   //to display only even frames (useful for PIE Imaging FCCS)
         JComboBox<String> cbDisplayTimeBinningMode;    //binning mode: no binning, sum, or average
         JTextField tfTimeBinSize;       //number of frames for eitehr sum or average binning
+        //Listener definitions
+        ActionListener rbSetAllFramesChanged = new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+
+                if (rbSetAllFrames.isSelected() == true) {
+                    Common.livevideo_displayFramesMode = 0;
+                    rbSetEvenFrames.setSelected(false);
+                    rbSetOddFrames.setSelected(false);
+                } else {
+                    rbSetAllFrames.setSelected(true);
+                }
+            }
+        };
+        ActionListener rbSetOddFramesChanged = new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+
+                if (rbSetOddFrames.isSelected() == true) {
+                    Common.livevideo_displayFramesMode = 1;
+                    rbSetEvenFrames.setSelected(false);
+                    rbSetAllFrames.setSelected(false);
+                } else {
+                    rbSetOddFrames.setSelected(true);
+                }
+            }
+        };
+        ActionListener rbSetEvenFramesChanged = new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+
+                if (rbSetEvenFrames.isSelected() == true) {
+                    Common.livevideo_displayFramesMode = 2;
+                    rbSetOddFrames.setSelected(false);
+                    rbSetAllFrames.setSelected(false);
+                } else {
+                    rbSetEvenFrames.setSelected(true);
+                }
+            }
+        };
+        DocumentListener tfTimeBinSizeChanged = new DocumentListener() {
+            @Override
+            public void insertUpdate(DocumentEvent e) {
+                UpdateLiveVideoBinNumber();
+            }
+
+            @Override
+            public void removeUpdate(DocumentEvent e) {
+                UpdateLiveVideoBinNumber();
+            }
+
+            @Override
+            public void changedUpdate(DocumentEvent e) {
+            }
+        };
+        ActionListener cbDisplayTimeBinningModeChanged =
+                new ActionListener() {//cbDisplayTimeBinningMode.getSelectedItem().toString().equals(Common
+                    // .$livevideo_binningMode[0]
+                    @Override
+                    public void actionPerformed(
+                            ActionEvent e) {//(cbMode.getSelectedItem().toString().equals(mode.getStringValue
+                        // (modeEnum.SINGLECAPTURE.getValue()))
+
+                        // No binning
+                        if (cbDisplayTimeBinningMode.getSelectedItem()
+                                .toString()
+                                .equals(liveVideoBinMode.getStringValue(liveVideoBinModeEnum.NO_BINNING.getValue()))) {
+                            tfTimeBinSize.setText(Integer.toString(1));
+                            tfTimeBinSize.setEditable(false);
+                            Common.selected_livevideo_binningMode = liveVideoBinModeEnum.NO_BINNING;
+                        }
+
+                        // Average binning
+                        if (cbDisplayTimeBinningMode.getSelectedItem()
+                                .toString()
+                                .equals(liveVideoBinMode.getStringValue(
+                                        liveVideoBinModeEnum.AVERAGE_BINNING.getValue()))) {
+                            tfTimeBinSize.setEditable(true);
+                            Common.selected_livevideo_binningMode = liveVideoBinModeEnum.AVERAGE_BINNING;
+                        }
+
+                        // Sum binning
+                        if (cbDisplayTimeBinningMode.getSelectedItem()
+                                .toString()
+                                .equals(liveVideoBinMode.getStringValue(liveVideoBinModeEnum.SUM_BINNING.getValue()))) {
+                            tfTimeBinSize.setEditable(true);
+                            Common.selected_livevideo_binningMode = liveVideoBinModeEnum.SUM_BINNING;
+                        }
+
+                    }
+                };
 
         public JLiveVideoPanelComponent() {
 
@@ -4510,7 +6039,8 @@ public class DirectCapturePanel {
             for (int i = 0; i < liveVideoBinMode.size(); i++) {
                 cbDisplayTimeBinningMode.addItem(liveVideoBinMode.getStringValue(i));
             }
-            Common.selected_livevideo_binningMode = liveVideoBinModeEnum.getEnum(cbDisplayTimeBinningMode.getSelectedItem().toString());
+            Common.selected_livevideo_binningMode =
+                    liveVideoBinModeEnum.getEnum(cbDisplayTimeBinningMode.getSelectedItem().toString());
 
             tfTimeBinSize = new JTextField(Integer.toString(Common.livevideo_binningNo), 4);
             tfTimeBinSize.setEditable(false);
@@ -4581,1433 +6111,6 @@ public class DirectCapturePanel {
             SwingUtilities.invokeLater(doUpdateLiveVideoBinNumber);
         }
 
-        //Listener definitions
-        ActionListener rbSetAllFramesChanged = new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-
-                if (rbSetAllFrames.isSelected() == true) {
-                    Common.livevideo_displayFramesMode = 0;
-                    rbSetEvenFrames.setSelected(false);
-                    rbSetOddFrames.setSelected(false);
-                } else {
-                    rbSetAllFrames.setSelected(true);
-                }
-            }
-        };
-
-        ActionListener rbSetOddFramesChanged = new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-
-                if (rbSetOddFrames.isSelected() == true) {
-                    Common.livevideo_displayFramesMode = 1;
-                    rbSetEvenFrames.setSelected(false);
-                    rbSetAllFrames.setSelected(false);
-                } else {
-                    rbSetOddFrames.setSelected(true);
-                }
-            }
-        };
-
-        ActionListener rbSetEvenFramesChanged = new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-
-                if (rbSetEvenFrames.isSelected() == true) {
-                    Common.livevideo_displayFramesMode = 2;
-                    rbSetOddFrames.setSelected(false);
-                    rbSetAllFrames.setSelected(false);
-                } else {
-                    rbSetEvenFrames.setSelected(true);
-                }
-            }
-        };
-
-        DocumentListener tfTimeBinSizeChanged = new DocumentListener() {
-            @Override
-            public void insertUpdate(DocumentEvent e) {
-                UpdateLiveVideoBinNumber();
-            }
-
-            @Override
-            public void removeUpdate(DocumentEvent e) {
-                UpdateLiveVideoBinNumber();
-            }
-
-            @Override
-            public void changedUpdate(DocumentEvent e) {
-            }
-        };
-
-        ActionListener cbDisplayTimeBinningModeChanged = new ActionListener() {//cbDisplayTimeBinningMode.getSelectedItem().toString().equals(Common.$livevideo_binningMode[0]
-            @Override
-            public void actionPerformed(ActionEvent e) {//(cbMode.getSelectedItem().toString().equals(mode.getStringValue(modeEnum.SINGLECAPTURE.getValue()))
-
-                // No binning
-                if (cbDisplayTimeBinningMode.getSelectedItem().toString().equals(liveVideoBinMode.getStringValue(liveVideoBinModeEnum.NO_BINNING.getValue()))) {
-                    tfTimeBinSize.setText(Integer.toString(1));
-                    tfTimeBinSize.setEditable(false);
-                    Common.selected_livevideo_binningMode = liveVideoBinModeEnum.NO_BINNING;
-                }
-
-                // Average binning
-                if (cbDisplayTimeBinningMode.getSelectedItem().toString().equals(liveVideoBinMode.getStringValue(liveVideoBinModeEnum.AVERAGE_BINNING.getValue()))) {
-                    tfTimeBinSize.setEditable(true);
-                    Common.selected_livevideo_binningMode = liveVideoBinModeEnum.AVERAGE_BINNING;
-                }
-
-                // Sum binning
-                if (cbDisplayTimeBinningMode.getSelectedItem().toString().equals(liveVideoBinMode.getStringValue(liveVideoBinModeEnum.SUM_BINNING.getValue()))) {
-                    tfTimeBinSize.setEditable(true);
-                    Common.selected_livevideo_binningMode = liveVideoBinModeEnum.SUM_BINNING;
-                }
-
-            }
-        };
-
-    }
-
-    /*
-    Mode
-     */
-    private void start_single_capture(boolean isFF) {
-        if (Common.isCropMode == 1) {
-            IJ.showMessage("Switch off Crop Mode to capture a single frame.");
-        } else {
-            clearImageStackPlus(2);
-            APIcall.runThread_SingleCapture(isFF);
-            tbStartStop.setSelected(false);
-        }
-    }
-
-    private void start_live_video() { //deprecated; CALIBRATION mode essentially do the same with additional CF analysis
-        tfExposureTime.setEditable(false);
-        Common.setAutoAdjustImageDynamicRange(true);
-        clearImageStackPlus(2);
-        if (Common.isAcquisitionRunning) {
-            JOptionPane.showMessageDialog(null, "Please press stop or wait for acquisition to complete");
-        } else {
-            APIcall.runThread_LiveVideo();//13/7/21 use version V2)
-            updateTfFrameCounterV2();
-        }
-    }
-
-    private void start_calibration() {
-        tfExposureTime.setEditable(false);
-        Common.setAutoAdjustImageDynamicRange(true);
-        clearImageStackPlus(2);
-        if (Common.isAcquisitionRunning) {
-            JOptionPane.showMessageDialog(null, "Please press stop or wait for acquisition to complete");
-        } else {
-            APIcall.runThread_nonCumulative(); //13/7/21 use version V3
-            updateTfFrameCounterV3();
-        }
-    }
-
-    private void start_acquisition() {
-        tfExposureTime.setEditable(false);
-        tfTotalFrame.setEditable(false);
-        Common.setAutoAdjustImageDynamicRange(false);
-        clearImageStackPlus(2);
-        if (Common.isAcquisitionRunning) {
-            JOptionPane.showMessageDialog(null, "Please press stop or wait for acquisition to complete");
-        } else {
-            APIcall.runThread_Cumulative(); //13/7/21 use version V3
-            updateTfFrameCounterV3();
-        }
-    }
-
-    private void start_iccs_routine() {
-        tfExposureTime.setEditable(false);
-        Common.setAutoAdjustImageDynamicRange(false);
-        clearImageStackPlus(2);
-
-        if (Common.isAcquisitionRunning) {
-            JOptionPane.showMessageDialog(null, "Please press stop or wait for acquisition to complete");
-        } else {
-            Common.isICCSValid = false;
-            APIcall.runThread_ICCScalibration();
-            updateTfFrameCounterV3(); //update framecounter
-        }
-    }
-
-    /*
-        * Methods needed when changes are made in GUI
-        * invoke changes to document from the Event Dispatched Thread
-        * UpdateExpSettings(); Update binning(software) or CFdistance
-        * UpdateDimTextField(); Update ROI textfield (shifted to updater package)
-        * makeDefaultPanelSetting(); not implemented
-        * UpdateCalibParam(): update average point to average for plotting G(0) calibration graph
-        * UpdateICCSSettings(); Make changes to green and red roi, parameter storing green ROI and parameter describing red ROI
-     */
-    private void UpdateExpSettings(String mode) {
-
-        Runnable doUpdateExpSettings = new Runnable() {
-            @Override
-            public void run() {
-
-                int[] val = new int[2];
-                int memx, memy, tempx, tempy;
-                switch (mode) {
-                    case "SoftBinning":
-                        boolean changesmade = false;
-                        boolean needChanges = false;
-                        boolean invalid = false;
-
-                        memx = Common.BinXSoft;
-                        memy = Common.BinYSoft;
-
-                        val = parserTf(tfPixelBinningSoftware);// parse the binning textfiled
-                        tempx = val[0];
-                        tempy = val[1];
-
-                        //first test
-                        if (tempx < 1 || tempx > Common.oWidth) {
-                            tempx = memx;
-                            invalid = true;
-                        }
-                        if (tempy < 1 || tempy > Common.oHeight) {
-                            tempy = memy;
-                            invalid = true;
-                        }
-
-                        //second test
-                        if (Common.isAcquisitionRunning) {
-                            if (Common.lWidth < tempx) {
-                                needChanges = true;
-                            }
-                            if (Common.lHeight < tempy) {
-                                needChanges = true;
-                            }
-                            if (needChanges) {
-                                changesmade = checkerBinAndLiveROI(Common.lWidth, Common.lHeight, Common.lLeft, Common.lTop, Common.oWidth, Common.oHeight, Common.CCFdistX, Common.CCFdistY, tempx, tempy, Common.isCCFmode);
-                                if (changesmade) {
-                                    Common.lWidth = tempx;
-                                    Common.lHeight = tempy;
-
-                                    if (Common.isCCFmode) {
-                                        Common.impRoiLive = new Roi(Common.lLeft - 1, Common.lTop - 1, Common.lWidth, Common.lHeight);
-                                        Common.impRoiLive.setStrokeColor(Color.GREEN);
-                                        Common.imp.setRoi(Common.impRoiLive);
-
-                                        Common.impRoiLive2 = new Roi(Common.lLeft + Common.CCFdistX - 1, Common.lTop + Common.CCFdistY - 1, Common.lWidth, Common.lHeight);
-                                        Common.impRoiLive2.setStrokeColor(Color.RED);
-                                        Overlay impov = new Overlay(Common.impRoiLive2);
-                                        Common.imp.setOverlay(impov);
-                                    } else {
-                                        Common.impRoiLive = new Roi(Common.lLeft - 1, Common.lTop - 1, Common.lWidth, Common.lHeight);
-                                        Common.impRoiLive.setStrokeColor(Color.GREEN);
-                                        Common.imp.setRoi(Common.impRoiLive);
-
-                                    }
-
-                                } else {
-                                    tempx = memx;
-                                    tempy = memy;
-                                }
-                            }
-                        }
-
-                        Common.BinXSoft = tempx;
-                        Common.BinYSoft = tempy;
-
-                        // Reset textField under these conditions
-                        if (tfPixelBinningSoftware.getText().equals("") || tempx != memx || tempy != memy || invalid) {
-                            tfPixelBinningSoftware.setText(Integer.toString(Common.BinXSoft) + " x " + Integer.toString(Common.BinYSoft));
-                        }
-
-                        break;
-                    case "CFDistance":
-
-                        boolean isChangesMade = false;
-                        boolean isCCFselectionOK;
-                        memx = Common.CCFdistX;
-                        memy = Common.CCFdistY;
-
-                        val = parserTf(tfCCFdist);// parse the binning textfiled
-
-                        tempx = val[0];
-                        tempy = val[1];
-
-                        isCCFselectionOK = CCFselectorChecker(Common.oWidth, Common.oHeight, tempx, tempy, Common.BinXSoft, Common.BinYSoft, Common.lLeft - 1, Common.lTop - 1, Common.lWidth, Common.lHeight);
-
-                        // checker if user input parameter is valid
-                        if (Common.analysisMode.equals($amode[3])) {//Iccs
-                            if ((Common.lLeft - 1 + tempx + Common.ICCSShiftX + Common.lWidth) > Common.oWidth || (Common.lLeft - 1 + tempx - Common.ICCSShiftX) < 0 || (Common.lTop - 1 + tempy + Common.ICCSShiftY + Common.lHeight) > Common.oHeight || (Common.lTop - 1 + tempy - Common.ICCSShiftY) < 0 || Common.lLeft - 1 + Common.lWidth > Common.oWidth || Common.lTop - 1 + Common.lHeight > Common.oHeight) {
-                                isCCFselectionOK = false;
-                            }
-                        }
-
-                        if (isCCFselectionOK) {
-                            Common.CCFdistX = tempx;
-                            Common.CCFdistY = tempy;
-                            if (memx != Common.CCFdistX || memy != Common.CCFdistY) {
-                                isChangesMade = true;
-                            }
-                        } else {
-                            Common.CCFdistX = memx;
-                            Common.CCFdistY = memy;
-                        }
-
-                        if (Common.analysisMode.equals($amode[3])) {//Iccs
-                            if (Common.CCFdistX != 0 || Common.CCFdistY != 0) {
-                                Common.isCCFmode = true;
-                                if (isChangesMade && Common.isAcquisitionRunning && isCCFselectionOK) {
-
-                                    Common.impRoiLive = new Roi(Common.lLeft - 1, Common.lTop - 1, Common.lWidth, Common.lHeight);
-                                    Common.impRoiLive.setStrokeColor(Color.GREEN);
-                                    Common.imp.setRoi(Common.impRoiLive);
-
-                                    Common.impRoiLive2 = new Roi(Common.lLeft + Common.CCFdistX - 1 - Common.ICCSShiftX, Common.lTop + Common.CCFdistY - 1 - Common.ICCSShiftY, Common.lWidth + (2 * Common.ICCSShiftX), Common.lHeight + (2 * Common.ICCSShiftY));
-                                    Common.impRoiLive2.setStrokeColor(Color.RED);
-                                    Overlay impov = new Overlay(Common.impRoiLive2);
-                                    Common.imp.setOverlay(impov);
-
-                                }
-                            } else {
-                                Common.isCCFmode = false;
-                                if (isChangesMade && Common.isAcquisitionRunning) {
-
-                                    Common.impRoiLive = new Roi(Common.lLeft - 1, Common.lTop - 1, Common.lWidth, Common.lHeight);
-                                    Common.impRoiLive.setStrokeColor(Color.GREEN);
-                                    Common.imp.setRoi(Common.impRoiLive);
-
-                                    if (Common.imp.getOverlay() != null) {
-                                        Common.imp.getOverlay().clear();
-                                        Common.imp.setOverlay(Common.imp.getOverlay());
-                                    }
-
-                                }
-                            }
-                        }
-
-                        if (!Common.analysisMode.equals($amode[3])) {//not Iccs
-                            if (Common.CCFdistX != 0 || Common.CCFdistY != 0) {
-                                Common.isCCFmode = true;
-                                if (isChangesMade && Common.isAcquisitionRunning && isCCFselectionOK) {
-
-                                    Common.impRoiLive = new Roi(Common.lLeft - 1, Common.lTop - 1, Common.lWidth, Common.lHeight);
-                                    Common.impRoiLive.setStrokeColor(Color.GREEN);
-                                    Common.imp.setRoi(Common.impRoiLive);
-
-                                    Common.impRoiLive2 = new Roi(Common.lLeft + Common.CCFdistX - 1, Common.lTop + Common.CCFdistY - 1, Common.lWidth, Common.lHeight);
-                                    Common.impRoiLive2.setStrokeColor(Color.RED);
-                                    Overlay impov = new Overlay(Common.impRoiLive2);
-                                    Common.imp.setOverlay(impov);
-
-                                }
-                            } else {
-                                Common.isCCFmode = false;
-                                if (isChangesMade && Common.isAcquisitionRunning) {
-                                    Common.impRoiLive = new Roi(Common.lLeft - 1, Common.lTop - 1, Common.lWidth, Common.lHeight);
-                                    Common.impRoiLive.setStrokeColor(Color.GREEN);
-                                    Common.imp.setRoi(Common.impRoiLive);
-
-                                    if (Common.imp.getOverlay() != null) {
-                                        Common.imp.getOverlay().clear();
-                                        Common.imp.setOverlay(Common.imp.getOverlay());
-                                    }
-
-                                }
-                            }
-                        }
-
-                        // Reset textField under these conditions
-                        if (tfCCFdist.getText().equals("") || tempx != memx || tempy != memy) {
-                            tfCCFdist.setText(Integer.toString(Common.CCFdistX) + " x " + Integer.toString(Common.CCFdistY));
-                        }
-
-                        break;
-                    default:
-                        throw new java.lang.Error("UpdateExpSettings unmatched case.");
-                }
-
-            }
-
-        };
-        SwingUtilities.invokeLater(doUpdateExpSettings);
-    }
-
-    private void UpdateCalibParam() {
-
-        Runnable doUpdateCalibparam = new Runnable() {
-
-            @Override
-            public void run() {
-                boolean proceed = false;
-                int memint;
-                try {
-                    memint = Integer.parseInt(tfNoPtsCalib.getText());
-                    proceed = true;
-                } catch (NumberFormatException nfe) {
-                    tfNoPtsCalib.setText(Integer.toString(Common.noptsavr));
-                    return;
-                }
-                if (proceed) {
-                    Common.noptsavr = memint;
-                }
-            }
-
-        };
-        SwingUtilities.invokeLater(doUpdateCalibparam);
-    }
-
-    private void UpdateICCSSettigs(String mode) {
-
-        Runnable doUpdateICCSSettings = new Runnable() {
-            @Override
-            public void run() {
-
-                int[] val;
-                boolean changesmade = false;//for ROI draw
-                boolean needChanges = false; //for ROI draw
-                boolean invalid = false;
-
-                switch (mode) {
-                    case "CoordinateGreen":
-                        // read changes, check if valid, update global parameter and draw ROI if changes is valid
-                        int memW,
-                         memH,
-                         memX,
-                         memY,
-                         tempW,
-                         tempH,
-                         tempX,
-                         tempY;
-
-                        memW = Common.lWidth;
-                        memH = Common.lHeight;
-                        memX = Common.lLeft; //index start from 1
-                        memY = Common.lTop;
-
-                        val = parserTfICCS(tfICCSRoi1Coord);// parse tf
-
-                        tempW = val[0];
-                        tempH = val[1];
-                        tempX = val[2];
-                        tempY = val[3];
-
-                        if ((tempX - 1 + Common.CCFdistX + Common.ICCSShiftX + tempW) > Common.oWidth || (tempX - 1 + Common.CCFdistX - Common.ICCSShiftX) < 0 || (tempY - 1 + Common.CCFdistY + Common.ICCSShiftY + tempH) > Common.oHeight || (tempY - 1 + Common.CCFdistY - Common.ICCSShiftY) < 0 || tempX - 1 + tempW > Common.oWidth || tempY - 1 + tempH > Common.oHeight) {
-                            invalid = true;//invalid parameter
-                        }
-
-//                        //check if self-channel correlation
-//                        if (tempY + Common.CCFdistY - Common.ICCSShiftY < (Common.oHeight / 2)) {
-//                            IJ.log("Warning: self-channel correlation");
-//                        }
-                        if (!invalid) {
-                            Common.lWidth = tempW;
-                            Common.lHeight = tempH;
-                            Common.lLeft = tempX;
-                            Common.lTop = tempY;
-                        }
-
-                        if (Common.isAcquisitionRunning && !invalid) {
-
-                            if (Common.isCCFmode) {
-                                Common.impRoiLive = new Roi(Common.lLeft - 1, Common.lTop - 1, Common.lWidth, Common.lHeight);
-                                Common.impRoiLive.setStrokeColor(Color.GREEN);
-                                Common.imp.setRoi(Common.impRoiLive);
-
-                                Common.impRoiLive2 = new Roi(Common.lLeft + Common.CCFdistX - 1 - Common.ICCSShiftX, Common.lTop + Common.CCFdistY - 1 - Common.ICCSShiftY, Common.lWidth + (2 * Common.ICCSShiftX), Common.lHeight + (2 * Common.ICCSShiftY));
-                                Common.impRoiLive2.setStrokeColor(Color.RED);
-                                Overlay impov = new Overlay(Common.impRoiLive2);
-                                Common.imp.setOverlay(impov);
-                            } else {
-                                Common.impRoiLive = new Roi(Common.lLeft - 1, Common.lTop - 1, Common.lWidth, Common.lHeight);
-                                Common.impRoiLive.setStrokeColor(Color.GREEN);
-                                Common.imp.setRoi(Common.impRoiLive);
-                            }
-                        }
-
-                        // Reset textField under these conditions
-                        if (tfICCSRoi1Coord.getText().equals("") || tempW != memW || tempH != memH || tempX != memX || tempY != memY || invalid) {
-                            tfICCSRoi1Coord.setText(Integer.toString(Common.lWidth) + " / " + Integer.toString(Common.lHeight) + " / " + Integer.toString(Common.lLeft) + " / " + Integer.toString(Common.lTop));
-                        }
-
-                        break;
-                    case "ParamRed":
-                        int memShiftX,
-                         memShiftY,
-                         tempShiftX,
-                         tempShiftY;
-
-                        memShiftX = Common.ICCSShiftX;
-                        memShiftY = Common.ICCSShiftY;
-
-                        val = parserTfICCS(tfICCSParam);// parse tf
-
-                        tempShiftX = val[0];
-                        tempShiftY = val[1];
-
-                        if ((Common.lLeft - 1 + Common.CCFdistX + tempShiftX + Common.lWidth) > Common.oWidth || (Common.lLeft - 1 + Common.CCFdistX - tempShiftX) < 0 || (Common.lTop - 1 + Common.CCFdistY + tempShiftY + Common.lHeight) > Common.oHeight || (Common.lTop - 1 + Common.CCFdistY - tempShiftY) < 0 || Common.lLeft - 1 + Common.lWidth > Common.oWidth || Common.lTop - 1 + Common.lHeight > Common.oHeight) {
-                            invalid = true;//invalid parameter
-                        }
-
-//                        //check if self-channel correlation
-//                        if (Common.lTop + Common.CCFdistY - memShiftY < (Common.oHeight / 2)) {
-//                            IJ.log("Warning: self-channel correlation");
-//                        }
-                        if (!invalid) {
-
-                            if ((tempShiftX != memShiftX) || (tempShiftY != memShiftY)) { // changes made
-                                if (tempShiftX == memShiftX) {
-                                    Common.ICCSShiftX = tempShiftY;
-                                    Common.ICCSShiftY = tempShiftY;
-                                } else {
-                                    Common.ICCSShiftX = tempShiftX;
-                                    Common.ICCSShiftY = tempShiftX;
-                                }
-
-                            }
-
-                        }
-
-                        if (Common.isAcquisitionRunning && !invalid) {
-
-                            if (Common.isCCFmode) {
-                                Common.impRoiLive = new Roi(Common.lLeft - 1, Common.lTop - 1, Common.lWidth, Common.lHeight);
-                                Common.impRoiLive.setStrokeColor(Color.GREEN);
-                                Common.imp.setRoi(Common.impRoiLive);
-
-                                Common.impRoiLive2 = new Roi(Common.lLeft + Common.CCFdistX - 1 - Common.ICCSShiftX, Common.lTop + Common.CCFdistY - 1 - Common.ICCSShiftY, Common.lWidth + (2 * Common.ICCSShiftX), Common.lHeight + (2 * Common.ICCSShiftY));
-                                Common.impRoiLive2.setStrokeColor(Color.RED);
-                                Overlay impov = new Overlay(Common.impRoiLive2);
-                                Common.imp.setOverlay(impov);
-                            } else {
-                                Common.impRoiLive = new Roi(Common.lLeft - 1, Common.lTop - 1, Common.lWidth, Common.lHeight);
-                                Common.impRoiLive.setStrokeColor(Color.GREEN);
-                                Common.imp.setRoi(Common.impRoiLive);
-                            }
-                        }
-
-                        // Reset textField under these conditions
-                        if (tfICCSParam.getText().equals("") || tempShiftX != memShiftX || tempShiftY != memShiftY || invalid) {
-                            tfICCSParam.setText(Integer.toString(Common.ICCSShiftX) + " / " + Integer.toString(Common.ICCSShiftY));
-                        }
-
-                        break;
-
-                }
-
-            }
-
-        };
-        SwingUtilities.invokeLater(doUpdateICCSSettings);
-    }
-
-    private boolean UpdateROIwh(boolean isHam) {
-
-        boolean proceed = false;
-        int tempw = 0, temph = 0;
-        int[] oCoordinate;
-
-        try {
-            tempw = Integer.parseInt(tfoWidth.getText());
-            temph = Integer.parseInt(tfoHeight.getText());
-            proceed = true;
-        } catch (NumberFormatException nfe) {
-            return false;
-        }
-
-        if (proceed) {
-
-            if (tempw == Common.oWidth && temph == Common.oHeight) {
-                return false;
-            }
-
-            if (isHam) {
-                boolean isWidthValid = false, isHeightValid = false;
-
-                int w, h;
-
-                // check if width and coordinate (left) is valid
-                for (w = tempw; w >= Common.minHeight; w--) {
-                    oCoordinate = getCenterCoordinate(w, temph, Common.MAXpixelwidth / Common.inCameraBinning, Common.MAXpixelheight / Common.inCameraBinning);
-                    isWidthValid = istfWHLTValid(oCoordinate[2], oCoordinate[0], Common.inCameraBinning);
-                    if (isWidthValid) {
-                        break;
-                    }
-                }
-
-                // check if height and coordinate (top) is valid
-                for (h = temph; h >= Common.minHeight; h--) {
-                    oCoordinate = getCenterCoordinate(w, h, Common.MAXpixelwidth / Common.inCameraBinning, Common.MAXpixelheight / Common.inCameraBinning);
-                    isHeightValid = istfWHLTValid(oCoordinate[3], oCoordinate[1], Common.inCameraBinning);
-                    if (isHeightValid) {
-                        break;
-                    }
-                }
-
-                oCoordinate = getCenterCoordinate(w, h, Common.MAXpixelwidth / Common.inCameraBinning, Common.MAXpixelheight / Common.inCameraBinning);
-
-                Common.oWidth = oCoordinate[0];
-                Common.oHeight = oCoordinate[1];
-                Common.oLeft = oCoordinate[2];
-                Common.oTop = oCoordinate[3];
-                Common.oRight = Common.oLeft + Common.oWidth - 1;
-                Common.oBottom = Common.oTop + Common.oHeight - 1;
-
-            } else {
-                oCoordinate = getCenterCoordinate(tempw, temph, Common.MAXpixelwidth / Common.inCameraBinning, Common.MAXpixelheight / Common.inCameraBinning);
-
-                Common.oWidth = oCoordinate[0];
-                Common.oHeight = oCoordinate[1];
-                Common.oLeft = oCoordinate[2];
-                Common.oTop = oCoordinate[3];
-                Common.oRight = Common.oLeft + Common.oWidth - 1;
-                Common.oBottom = Common.oTop + Common.oHeight - 1;
-            }
-
-            tfoLeft.setText(Integer.toString(Common.oLeft));
-            tfoRight.setText(Integer.toString(Common.oRight));
-            tfoTop.setText(Integer.toString(Common.oTop));
-            tfoBottom.setText(Integer.toString(Common.oBottom));
-            tfPixelDimension.setText(Integer.toString(Common.oWidth) + " x " + Integer.toString(Common.oHeight));
-            setSizeAandSizeB(Common.oWidth, Common.oHeight, Common.maxE, Common.minPI, Common.maxPI);
-            if (Common.plotInterval > retMaxAllowablePlotInterval(Common.size_a, Common.size_b)) {
-                if (retMaxAllowablePlotInterval(Common.size_a, Common.size_b) > 500) {
-                    Common.plotInterval = 500;
-                } else {
-                    Common.plotInterval = retMaxAllowablePlotInterval(Common.size_a, Common.size_b);
-                }
-                tfPlotInterval.setText(Integer.toString(Common.plotInterval));
-            }
-            return true;
-        } else {
-            return false;
-        }
-
-//        Runnable doUpdateROI = new Runnable() {
-        //            @Override
-        //            public void run() {
-        //
-        //            }
-        //
-        //        };
-        //        SwingUtilities.invokeLater(doUpdateROI);
-        //            SwingWorker<Void, Void> worker = new SwingWorker<Void, Void>() {
-        //                @Override
-        //                protected Void doInBackground() throws Exception {
-        //
-        //                    return null;
-        //                }
-        //            };
-        //            worker.execute();
-    }
-
-    private boolean UpdateROIlrtb(String type, boolean isHam) {
-        boolean proceed = false;
-        int temp = 0;
-        try {
-            switch (type) {
-                case "l":
-                    temp = Integer.parseInt(tfoLeft.getText());
-                    break;
-                case "r":
-                    temp = Integer.parseInt(tfoRight.getText());
-                    break;
-                case "t":
-                    temp = Integer.parseInt(tfoTop.getText());
-                    break;
-                case "b":
-                    temp = Integer.parseInt(tfoBottom.getText());
-                    break;
-            }
-            proceed = true;
-
-        } catch (NumberFormatException nfe) {
-            return false;
-        }
-
-        if (proceed) {
-            switch (type) {
-                case "l":
-                    if (temp == Common.oLeft) {
-                        return false;
-                    }
-                case "r":
-                    if (temp == Common.oRight) {
-                        return false;
-                    }
-                case "t":
-                    if (temp == Common.oTop) {
-                        return false;
-                    }
-                case "b":
-                    if (temp == Common.oBottom) {
-                        return false;
-                    }
-            }
-
-            if (temp < 1) {
-                temp = 1;
-            }
-            switch (type) {
-                case "l":
-                    if (temp > (Common.MAXpixelwidth / Common.inCameraBinning)) {
-                        temp = Common.MAXpixelwidth / Common.inCameraBinning;
-                    }
-                    if (temp > Common.oRight) {
-                        temp = Common.oRight;
-                    }
-
-                    //check if Left coordinate is valid
-                    if (isHam) {
-                        boolean isValid;
-                        int validValue;
-
-                        for (validValue = temp; validValue >= 1; validValue--) {
-                            isValid = istfWHLTValid(validValue, Common.oRight - validValue + 1, Common.inCameraBinning);
-                            if (isValid) {
-                                break;
-                            }
-                        }
-                        Common.oLeft = validValue;
-                    } else {
-                        Common.oLeft = temp;
-                    }
-
-                    Common.oWidth = Common.oRight - Common.oLeft + 1;
-                    tfoWidth.setText(Integer.toString(Common.oWidth));
-                    break;
-                case "r":
-                    if (temp > (Common.MAXpixelwidth / Common.inCameraBinning)) {
-                        temp = Common.MAXpixelwidth / Common.inCameraBinning;
-                    }
-                    if (temp < Common.oLeft) {
-                        temp = Common.oLeft;
-                    }
-
-                    //check if Right coordinate is valid
-                    if (isHam) {
-                        boolean isValid;
-                        int validValue;
-
-                        for (validValue = temp; validValue <= Common.MAXpixelwidth; validValue++) {
-                            isValid = istfWHLTValid(Common.oLeft, validValue - Common.oLeft + 1, Common.inCameraBinning);
-                            if (isValid) {
-                                break;
-                            }
-                        }
-                        Common.oRight = validValue;
-                    } else {
-                        Common.oRight = temp;
-                    }
-
-                    Common.oWidth = Common.oRight - Common.oLeft + 1;
-                    tfoWidth.setText(Integer.toString(Common.oWidth));
-                    break;
-                case "t":
-                    if (temp > (Common.MAXpixelheight / Common.inCameraBinning)) {
-                        temp = Common.MAXpixelheight / Common.inCameraBinning;
-                    }
-                    if (temp > Common.oBottom) {
-                        temp = Common.oBottom;
-                    }
-
-                    //check if Top coordinate is valid
-                    if (isHam) {
-                        boolean isValid;
-                        int validValue;
-
-                        for (validValue = temp; validValue >= 1; validValue--) {
-                            isValid = istfWHLTValid(validValue, Common.oBottom - validValue + 1, Common.inCameraBinning);
-                            if (isValid) {
-                                break;
-                            }
-                        }
-                        Common.oTop = validValue;
-                    } else {
-                        Common.oTop = temp;
-                    }
-
-                    Common.oHeight = Common.oBottom - Common.oTop + 1;
-                    tfoHeight.setText(Integer.toString(Common.oWidth));
-                    break;
-                case "b":
-                    if (temp > (Common.MAXpixelheight / Common.inCameraBinning)) {
-                        temp = Common.MAXpixelheight / Common.inCameraBinning;
-                    }
-                    if (temp < Common.oTop) {
-                        temp = Common.oTop;
-                    }
-
-                    //check if Bottom coordinate is valid
-                    if (isHam) {
-                        boolean isValid;
-                        int validValue;
-
-                        for (validValue = temp; validValue <= Common.MAXpixelheight; validValue++) {
-                            isValid = istfWHLTValid(Common.oTop, validValue - Common.oTop + 1, Common.inCameraBinning);
-                            if (isValid) {
-                                break;
-                            }
-                        }
-                        Common.oBottom = validValue;
-                    } else {
-                        Common.oBottom = temp;
-                    }
-
-                    Common.oHeight = Common.oBottom - Common.oTop + 1;
-                    tfoHeight.setText(Integer.toString(Common.oWidth));
-                    break;
-            }
-            tfPixelDimension.setText(Integer.toString(Common.oWidth) + " x " + Integer.toString(Common.oHeight));
-            setSizeAandSizeB(Common.oWidth, Common.oHeight, Common.maxE, Common.minPI, Common.maxPI);
-            if (Common.plotInterval > retMaxAllowablePlotInterval(Common.size_a, Common.size_b)) {
-                if (retMaxAllowablePlotInterval(Common.size_a, Common.size_b) > 500) {
-                    Common.plotInterval = 500;
-                } else {
-                    Common.plotInterval = retMaxAllowablePlotInterval(Common.size_a, Common.size_b);
-                }
-                tfPlotInterval.setText(Integer.toString(Common.plotInterval));
-            }
-            return true;
-        } else {
-            return false;
-        }
-
-    }
-
-    private static void makeDefaultPanelSetting() {
-
-    }
-
-    /*
-        * Parser function for:
-        * tfBinning, tfCFDistance
-        * ICCS calibration: ShiftX, ShiftY
-     */
-    private int[] parseSetting(JTextField tfset) {
-
-        int m1;
-        int m2;
-        if (tfset.getDocument() == tfPixelBinningSoftware.getDocument()) {
-            m1 = Common.BinXSoft;
-            m2 = Common.BinYSoft;
-        } else {
-            m1 = Common.CCFdistX;
-            m2 = Common.CCFdistY;
-        }
-
-        int[] val = new int[2];
-        val = parserTf(tfset);
-        // update text field under certain condition only. THis prevent infinite loop
-        if (m1 != val[0] || m2 != val[1] || tfset.getText().equals("")) {
-            tfset.setText(val[0] + " x " + val[1]);
-        }
-
-        return val;
-    }
-
-    private int[] parserTf(JTextField tfset) {
-        // return parsed value: CCFdistance and Binning
-        int m1, m2;
-        if (tfset.getDocument() == tfPixelBinningSoftware.getDocument()) {
-            m1 = Common.BinXSoft;
-            m2 = Common.BinYSoft;
-        } else {
-            m1 = Common.CCFdistX;
-            m2 = Common.CCFdistY;
-        }
-
-        int[] val = new int[2];
-        String str = tfset.getText();
-        String[] strA;
-
-        if (tfset.getDocument() == tfPixelBinningSoftware.getDocument()) {
-            strA = str.replaceAll("[^0-9]+", " ").trim().split(" ");
-        } else {
-            strA = str.replaceAll("[^-?0-9]+", " ").trim().split(" ");
-        }
-
-        try {
-            val[0] = Integer.parseInt(strA[0]);
-            val[1] = Integer.parseInt(strA[1]);
-        } catch (NumberFormatException e) {
-            IJ.log("Binning or CF Distance value incorrect.");
-            val[0] = m1;
-            val[1] = m2;
-        } catch (ArrayIndexOutOfBoundsException aob) {
-            val[0] = m1;
-            val[1] = m2;
-        }
-        return val;
-    }
-
-    private int[] parserTfICCS(JTextField tfset) {
-        // return parsed value: tfICCSRoi1Coord and tfICCSParam
-
-        int[] val = null;
-        String str = tfset.getText();
-        String[] strA;
-
-        int m1, m2, m3, m4;
-
-        if (tfset.getDocument() == tfICCSRoi1Coord.getDocument()) {
-            val = new int[4];
-            m1 = Common.lWidth;
-            m2 = Common.lHeight;
-            m3 = Common.lLeft;
-            m4 = Common.lTop;
-            strA = str.replaceAll("[^0-9]+", " ").trim().split(" ");
-            try {
-                val[0] = Integer.parseInt(strA[0]);
-                val[1] = Integer.parseInt(strA[1]);
-                val[2] = Integer.parseInt(strA[2]);
-                val[3] = Integer.parseInt(strA[3]);
-            } catch (NumberFormatException e) {
-                val[0] = m1;
-                val[1] = m2;
-                val[2] = m3;
-                val[3] = m4;
-            } catch (ArrayIndexOutOfBoundsException aob) {
-                val[0] = m1;
-                val[1] = m2;
-                val[2] = m3;
-                val[3] = m4;
-            }
-
-        } else {//tfset.getDocument() == tfICCSParam.getDocument()
-            val = new int[2];
-            String[] strB;
-            m1 = Common.ICCSShiftX;
-            m2 = Common.ICCSShiftY;
-            strB = str.replaceAll("[^0-9]++", " ").trim().split(" ");
-            try {
-                val[0] = Integer.parseInt(strB[0]);
-                val[1] = Integer.parseInt(strB[1]);
-            } catch (NumberFormatException e) {
-                val[0] = m1;
-                val[1] = m2;
-            } catch (ArrayIndexOutOfBoundsException aob) {
-                val[0] = m1;
-                val[1] = m2;
-            }
-        }
-
-        return val;
-
-    }
-
-    /*
-        * Utilities
-        * checkerBinAndLiveROI:
-        * CCFselectorChecker:
-        * getCenterCoordinate:
-        * getRoiCoordinateFromCorner
-        * getRoiCoordinateFromCenter
-        * istfWHLTValid
-
-     */
-    public static boolean CCFselectorChecker(int oW, int oH, int ShiftX, int ShiftY, int binX, int binY, int px, int py, int roiW, int roiH) {
-        int px2 = px + roiW - 1;
-        int py2 = py + roiH - 1;
-
-        //px,py --> coordinate of left top corner
-        //px2,py2 --> coordinate of bottom right corner
-        // px and py index start at 0; left top corner coordinate
-        int mincposx, maxcposx, mincposy, maxcposy, pixelWidthX, pixelHeightY;
-
-//        pixelWidthX = (int) Math.floor(oW / binX) - 1;
-//        pixelHeightY = (int) Math.floor(oH / binY) - 1;
-        pixelWidthX = oW - 1;
-        pixelHeightY = oH - 1;
-
-        // set initial, maximum, and minimum cursor positions possible in the image
-        if (ShiftX >= 0) {
-//            maxcposx = pixelWidthX - (int) Math.ceil(((double) ShiftX - (oW - (pixelWidthX * binX + binX))) / binX);
-            maxcposx = pixelWidthX - (int) Math.ceil(((double) ShiftX - (oW - (pixelWidthX * 1 + 1))) / 1);
-            mincposx = 0;
-        } else {
-            maxcposx = pixelWidthX;
-            mincposx = -(int) Math.floor((double) ShiftX / binX);
-        }
-
-        if (ShiftY >= 0) {
-//            maxcposy = pixelHeightY - (int) Math.ceil(((double) ShiftY - (oH - (pixelHeightY * binY + binY))) / binY);
-            maxcposy = pixelHeightY - (int) Math.ceil(((double) ShiftY - (oH - (pixelHeightY * 1 + 1))) / 1);
-            mincposy = 0;
-        } else {
-            maxcposy = pixelHeightY;
-            mincposy = -(int) Math.floor((double) ShiftY / binY);
-        }
-
-        if (px <= maxcposx && px >= mincposx && py <= maxcposy && py >= mincposy && px2 <= maxcposx && px2 >= mincposx && py2 <= maxcposy && py2 >= mincposy) {
-            return true;
-        } else {
-            IJ.log("CCFselectorChecker: Pixel Out Of Range!");
-            return false;
-
-        }
-
-    }
-
-    private boolean checkerBinAndLiveROI(int lW, int lH, int lL, int lT, int oW, int oH, int CCFx, int CCFy, int BinX, int BinY, boolean isCCF) {
-
-        boolean isNewBinOK = false;
-
-        if (isCCF) {
-            isNewBinOK = CCFselectorChecker(oW, oH, CCFx, CCFy, BinX, BinY, lL - 1, lT - 1, lW, lH);
-
-        } else {
-            if (oW >= (lL + BinX - 1) && oH >= (lT + BinY - 1)) {
-                isNewBinOK = true;
-            }
-        }
-        if (isNewBinOK) {
-            return true;
-        } else {
-            return false;
-        }
-    }
-
-    private int[] getCenterCoordinate(int w, int h, int wmax, int hmax) {
-        //return 0=width, 1=height, 2=left, 3=top
-        int[] res = new int[4];
-        int tempw = w, temph = h;
-        if (tempw < 1) {
-            tempw = 1;
-        }
-        if (tempw > wmax) {
-            tempw = wmax;
-        }
-        if (temph < 1) {
-            temph = 1;
-        }
-        if (temph > hmax) {
-            temph = hmax;
-        }
-        res[0] = tempw;
-        res[1] = temph;
-        res[2] = (wmax - tempw) / 2 + 1;
-        res[3] = (hmax - temph) / 2 + 1;
-//            for (int i = 0; i < res.length; i++) {
-//                IJ.log("res[" + i + "]: " + res[i]);
-//            }
-        return res;
-    }
-
-    public static int[] getRoiCoordinateFromCorner(int leftpx, int toppy, int width, int height, int widthMAX, int heightMAX) {
-        // leftpx and toppy index start from 1
-        int[] result = new int[4];
-        result[0] = leftpx;
-        result[1] = leftpx + width - 1;
-        result[2] = toppy;
-        result[3] = toppy + height - 1;
-
-        if (result[1] > widthMAX) {
-            result[0] = widthMAX - width + 1;
-        }
-        if (result[3] > heightMAX) {
-            result[2] = heightMAX - height + 1;
-        }
-        return result;
-
-    }
-
-    public static int[] getRoiCoordinateFromCenter(int centerpx, int centerpy, int width, int height, int widthMAX, int heightMAX) {
-
-
-        /*
-               widthMAX
-            -----------------------------
-            -                           -
-            -           width           -
-            -         * * * *           -   heightMAX
-            -         * X   * height    -
-            -         * * * *           -
-            -                           -
-            -                           -
-            -                           -   X = (centerpx, centerpy)
-            -                           -   // all index start from 1. for example 128 x 128 dim. index start from 1 and end at 128
-            -                           -
-            -----------------------------
-
-
-         */
-        int[] result = new int[4];
-
-        int shiftx = width / 2;
-        int shifty = height / 2;
-        result[0] = centerpx - shiftx;
-        result[1] = centerpx - shiftx + width - 1;
-        result[2] = centerpy - shifty;
-        result[3] = centerpy - shifty + height - 1;
-
-        if (result[0] < 1) {
-            result[0] = 1;
-            result[1] = 1 + width - 1;
-        }
-
-        if (result[1] > widthMAX) {
-            result[1] = widthMAX;
-            result[0] = widthMAX - width + 1;
-        }
-
-        if (result[2] < 1) {
-            result[2] = 1;
-            result[3] = 1 + height - 1;
-        }
-
-        if (result[3] > heightMAX) {
-            result[3] = heightMAX;
-            result[2] = heightMAX - height + 1;
-        }
-//            IJ.log("fromGetCoordinate; left: " + result[0] + ", right: " + result[1] + ", top: " + result[2] + ", bottom: " + result[3]);
-        return result;
-
-    }
-
-    private boolean istfWHLTValid(int left, int width, int bin) {
-        // applies to top/height
-        // decide if user entered W and H parameters are valid
-        boolean isValidL, isValidW;
-
-        //check width valid
-        int right = left + width - 1;
-        isValidW = ((right - left + 1) * bin) % 4 == 0;
-
-        //check left valid
-        int scaledleft = (left * bin) - (bin - 1);
-        isValidL = (scaledleft - 1) % 4 == 0;
-
-        return (isValidL && isValidW);
-
-    }
-
-    /*
-        * Utilities (ImagePlus/Stack related)
-        * clearImageStackPlus
-        * InitStack
-        * fillImagePlusNonCumul
-        * fillImagePlusCumul
-        * getimp
-
-     */
-    public static void clearImageStackPlus(int mode) {
-        switch (mode) {
-            case 2:
-                Common.ims_cum = null;
-                Common.imp_cum = null;
-                break;
-
-        }
-    }
-
-    public static void fillImagePlusCumul() {
-        Common.imp_cum = new ImagePlus("imp acquisition", Common.ims_cum);
-    }
-
-    /*
-    Snap: single capture
-
-     */
- /*
-        * Utilities (Control flow)
-        * checkCumulativeReady
-
-     */
-    public static class checkCumulativeReady {
-
-        private static int previousFC;
-
-        public static void resetPreviousFC() {
-            previousFC = 0;
-        }
-
-        public static boolean isImageReady(int frameInterval, int plotInterval, int frameCounterStack) {
-            if (!Common.analysisMode.equals($amode[2])) {//not cumulative
-                return false;
-            }
-            if (frameCounterStack == 0) {
-                return false;
-            }
-            if (frameCounterStack < 100) {
-                return false;
-            }
-            double test = (double) frameCounterStack / (double) plotInterval;
-            if ((test % 1) == 0) {
-                if (previousFC == frameCounterStack) {
-                    return false;
-                } else {
-                    previousFC = frameCounterStack;
-                    return true;
-                }
-            }
-            return false;
-//            //alternative, step-by-step
-//            double divisor = (double) plotInterval / (double) frameInterval;
-//            double runner = (double) frameCounterStack / (double) frameInterval;
-//            return ((runner / divisor) % 1 == 0);
-        }
-    }
-
-    /*
-        * Utilities (Calcualtor)
-        // calculation of the observation area; this is used in the Diffusion Law Plot as the y-axis
-        // the calculation of the observation area/volume is provided on our website in CDF files (http://www.dbs.nus.edu.sg/lab/BFL/index.html)
-
-     */
-    public static double obsvolFCS_ST2D1p(int dim) {
-
-        double pixeldimx = 240 / Math.pow(10, 9);
-        double pixeldimy = 240 / Math.pow(10, 9);
-        double sigma = 0.8;
-        double emlambda = 515;
-        double NA = 1.49;
-        double psfsize = (sigma * emlambda / NA) / Math.pow(10, 9);
-        int cfXshift = 0;
-        int cfYshift = 0;
-        int binningX = 1;
-        int binningY = 1;
-
-        // general parameters
-        double pi = Math.PI;
-        double sqrpi = Math.sqrt(pi);
-        double ax = pixeldimx;
-//        IJ.log("pixeldimx: " + pixeldimx);
-        double ay = pixeldimy;
-//        IJ.log("pixeldimy: " + pixeldimy);
-        double s = psfsize;
-//        IJ.log("psfsize: " + psfsize);
-        double psfz = 2 * emlambda / Math.pow(10, 9.0) * 1.33 / Math.pow(NA, 2.0); // size of PSF in axial direction
-//        IJ.log("emlambda: " + emlambda + ", NA: " + NA);
-        double rx = ax * cfXshift / binningX;
-        double ry = ay * cfYshift / binningY;
-//        IJ.log("cfXshift: " + cfXshift);
-//        IJ.log("cfYshift: " + cfYshift);
-//        IJ.log("binningX: " + binningX);
-//        IJ.log("binningY: " + binningY);
-
-        // help variables, for t = 0, to write the full fit function
-        double p00 = s;
-        double p1x0 = ax;
-        double p2x0 = ax;
-        double p1y0 = ay;
-        double p2y0 = ay;
-        double pexpx0 = 2 * Math.exp(-Math.pow(p1x0 / p00, 2)) - 2;
-        double perfx0 = 2 * p1x0 * Erf.erf(p1x0 / p00);
-        double pexpy0 = 2 * Math.exp(-Math.pow(p1y0 / p00, 2)) - 2;
-        double perfy0 = 2 * p1y0 * Erf.erf(p1y0 / p00);
-
-        //return (p00/sqrpi * pexpx0 + perfx0) * (p00/sqrpi * pexpy0 + perfy0) * Math.pow(sz, 2);
-        if (dim == 2) {
-            return 4 * Math.pow(ax * ay, 2) / ((p00 / sqrpi * pexpx0 + perfx0) * (p00 / sqrpi * pexpy0 + perfy0));
-        } else {
-            //return sqrpi * szeff * 4 * Math.pow(ax*ay, 2)/( (p00/sqrpi * pexpx0 + perfx0) * (p00/sqrpi * pexpy0 + perfy0) );
-            return 4 * Math.pow(ax * ay, 2) / ((p00 / sqrpi * pexpx0 + perfx0) * (p00 / sqrpi * pexpy0 + perfy0));
-
-        }
-
-    }
-
-    public static class multiTauCorrelatorCalculator {
-
-        // get timelag of last correlation channel
-        public static double getTimeLag(double frametime, int corr_p, int corr_q) {
-//            double p1 = (double) (corr_p - 1); // include zero timelag in first p correlator
-            double p1 = (double) (corr_p); // exclude zero timelag
-            double p2 = 0;
-            for (int i = 1; i < corr_q; i++) {
-                p2 += corr_p * Math.pow(2, i) / 2;
-            }
-            //IJ.log("getTimeLag: " + frametime * (p1 + p2));
-            return (frametime * (p1 + p2));
-        }
-
-        // get minimum frame (independent of frametime)
-        // last = min data points in last channel
-        public static int getMinFrame(double frametime, int corr_p, int corr_q, int last) {
-            double p = frametime * last * Math.pow(2, corr_q - 1); // given min point of last channel= 1 & include zero timelag, (16,2) = 33 not 31; (16,8) = 2175 not 2047
-            //IJ.log("getMinFrame: " + (int) Math.ceil((p + getTimeLag(frametime, corr_p, corr_q)) / frametime));
-            return (int) Math.ceil((p + getTimeLag(frametime, corr_p, corr_q)) / frametime);
-        }
-
-        //tauD = Aeff/(4D)
-        public static double getTauD(double D) { // D in um2/s
-//            IJ.log("getTauD: " + obsvolFCS_ST2D1p(2) / (4 * D / Math.pow(10, 12)));
-            return obsvolFCS_ST2D1p(2) / (4 * D / Math.pow(10, 12));
-        }
-
-        // get upper tauD (Fix: var = 4Dt)
-        public static double getTauDupper(double D, int cl) { //cl = confidence itnerval cl 3 = 99.7% coverage
-            double tdmean = getTauD(D);
-            double tdupper = Math.pow((cl * Math.sqrt(4 * D * tdmean)), 2) / (4 * D);
-//            IJ.log("getTauDupper(correct): " + tdupper);
-            return tdupper;
-        }
-
-        //find minimum q (Fix: var = 4Dt)
-        public static int find_q(double D, double frametime, int p, int cl) {
-            double upperTauD = getTauDupper(D, cl);
-            int tempQ = 1;
-            while (getTimeLag(frametime, p, tempQ) < upperTauD) {
-                tempQ++;
-            }
-            return tempQ;
-        }
-
-        // find D
-        public static double find_D(double D, int p, int q, double frametime, int cl) {
-            double maxlag = getTimeLag(frametime, p, q);
-            double tauD = maxlag / Math.pow(cl, 2); // tdmean
-//            IJ.log("tauD: " + tauD);
-//            IJ.log("obsvolFCS_ST2D1p(2) * Math.pow(10, 12): " + obsvolFCS_ST2D1p(2) * Math.pow(10, 12));
-
-            return obsvolFCS_ST2D1p(2) * Math.pow(10, 12) / (4 * tauD);
-        }
-
-        public static int getMinFrame(int frameTime, int corr_p, int corr_q, int dataPtsLastCorChannel) {
-            double p = frameTime * dataPtsLastCorChannel * Math.pow(2, (corr_q - 1));
-            return (int) ((p + getTimeLag(frameTime, corr_p, corr_q)) / frameTime);
-        }
-
-        //return q value given number of frame available
-        public static int getQgivenFrame(int p, int q, int noframe, int dataPtsLastCorChannel) {
-            if (getMinFrame(0.001, p, 1, dataPtsLastCorChannel) > noframe) {
-                return 1;
-            }
-            int TempQ = q;
-            while (getMinFrame(0.001, p, TempQ, dataPtsLastCorChannel) > noframe) {
-                TempQ = TempQ - 1;
-            }
-//            if (TempQ == 0){
-//                return 1;
-//            }
-            return TempQ;
-        }
-
-    }
-
-    /*
-    * GUI looks and feel
-     */
-    public void setUIFont(int panelFontSize, String $panelFont) {
-        UIManager.getLookAndFeelDefaults().put("defaultFont", new java.awt.Font($panelFont, java.awt.Font.PLAIN, panelFontSize));
-        UIManager.put("Button.font", new java.awt.Font($panelFont, java.awt.Font.BOLD, panelFontSize));
-        UIManager.put("ToggleButton.font", new java.awt.Font($panelFont, java.awt.Font.BOLD, panelFontSize));
-        UIManager.put("RadioButton.font", new java.awt.Font($panelFont, java.awt.Font.BOLD, panelFontSize));
-        UIManager.put("Label.font", new java.awt.Font($panelFont, java.awt.Font.ITALIC, panelFontSize));
-        UIManager.put("ComboBox.font", new java.awt.Font($panelFont, java.awt.Font.PLAIN, panelFontSize));
-        UIManager.put("TextField.font", new java.awt.Font($panelFont, java.awt.Font.PLAIN, panelFontSize));
-        UIManager.put("ToolTip.font", new java.awt.Font($panelFont, java.awt.Font.PLAIN, panelFontSize));
-    }
-
-    /*
-        * Update experimental settings:
-        * pixelSize (before in-camera binning), objMag, NA, emlambda, sigmaxy
-     */
-    public boolean GetExpSettingsDialogue() {
-
-        GenericDialog gd = new GenericDialog("Experimental Settings");
-        gd.addNumericField("Pixel size", Common.pixelSize, 1, 4, "\u03BCm");
-        gd.addNumericField("Magnification", Common.objMag, 0, 4, "\u00D7");
-        gd.addNumericField("NA", Common.NA, 1, 4, "");
-        gd.addNumericField("\u03BB (emission)", Common.emlambda, 0, 4, "nm");
-        gd.addNumericField("PSF (xy)", Common.sigmaxy, 1, 4, "");
-        gd.hideCancelButton();
-        gd.setOKLabel​("Set");
-        gd.showDialog();
-
-        if (gd.wasOKed()) {
-            double ps = (double) gd.getNextNumber();
-            int objmag = (int) gd.getNextNumber();
-            double na = (double) gd.getNextNumber();
-            int em = (int) gd.getNextNumber();
-            double sigma = (double) gd.getNextNumber();
-
-            if (!Double.isNaN(ps) && ps > 0) {
-                Common.pixelSize = ps;
-            } else {
-                IJ.log("Invalid Pixel size");
-                return false;
-            }
-
-            if (objmag > 0) {
-                Common.objMag = objmag;
-            } else {
-                IJ.log("Invalid Magnification");
-                return false;
-            }
-
-            if (!Double.isNaN(na) && na > 0) {
-                Common.NA = na;
-            } else {
-                IJ.log("Invalid NA");
-                return false;
-            }
-
-            if (em > 0) {
-                Common.emlambda = em;
-            } else {
-                IJ.log("Invalid Lambda emission");
-                return false;
-            }
-
-            if (!Double.isNaN(sigma) && sigma > 0) {
-                Common.sigmaxy = sigma;
-            } else {
-                IJ.log("Invalid PSF");
-                return false;
-            }
-
-        }
-
-        return true;
-    }
-
-    /*
-    Window Listener
-    // addImageJWindowListener(): Safely turn off camera if user happen to exit Fiji before pressing "Exit" button. More relevant expecially for DU860 without physical off button at the back of the camera.
-     */
-    private void addImageJWindowListener() {
-
-        imjWindowListener = new WindowListener() {
-            @Override
-            public void windowOpened(WindowEvent e) {
-            }
-
-            @Override
-            public void windowClosing(WindowEvent e) {
-                //Check if camera is running; if not stop camera
-                if (Common.isAcquisitionRunning) {
-                    //do something to stop calibration, acquisiton, live, ICCS
-                    Common.isStopPressed = true;
-                    APIcall.setStopMechanism(Common.isStopPressed);
-                }
-
-                //Check if camera is off; if not call exit camera
-                if (Common.isShutSystemPressed == false) {
-                    APIcall.exitDirectCaptureProgram();
-                }
-            }
-
-            @Override
-            public void windowClosed(WindowEvent e) {
-            }
-
-            @Override
-            public void windowIconified(WindowEvent e) {
-            }
-
-            @Override
-            public void windowDeiconified(WindowEvent e) {
-            }
-
-            @Override
-            public void windowActivated(WindowEvent e) {
-            }
-
-            @Override
-            public void windowDeactivated(WindowEvent e) {
-            }
-        };
-
-        imjWindow = ImageJ.getWindows()[0];
-        imjWindow.addWindowListener(imjWindowListener);
     }
 
 }
