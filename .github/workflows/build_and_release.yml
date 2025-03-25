@@ -42,16 +42,36 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Configure and Build for Windows
+      - name: Install CUDA Toolkit via Chocolatey
+        shell: powershell
+        run: choco install cuda --version=12.8.1.572 -y
+
+      - name: Set CUDA Environment Variables
+        shell: powershell
         run: |
-          cmake -B .src/main/cpp/build -DCMAKE_CXX_COMPILER=cl -DCMAKE_C_COMPILER=cl -DCMAKE_BUILD_TYPE=Release -S ./src/main/cpp
-          cmake --build .src/main/cpp/build --config Release
+          $env:CUDAToolkit_ROOT = "C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.8"
+          $env:PATH = "$env:CUDAToolkit_ROOT\bin;" + $env:PATH
+          Write-Host "CUDAToolkit_ROOT is set to $env:CUDAToolkit_ROOT"
+
+      - name: Configure and Build for Windows
+        shell: powershell
+        run: |
+          cmake -B ./src/main/cpp/build `
+              -DCMAKE_CUDA_COMPILER="$env:CUDAToolkit_ROOT\bin\nvcc.exe" `
+              -DCUDAToolkit_ROOT="$env:CUDAToolkit_ROOT" `
+              -DCUDA_TOOLKIT_ROOT_DIR="$env:CUDAToolkit_ROOT" `
+              -DCMAKE_CXX_COMPILER=cl `
+              -DCMAKE_C_COMPILER=cl `
+              -G "Visual Studio 17 2022" `
+              -A x64 `
+              -S ./src/main/cpp
+          cmake --build ./src/main/cpp/build --config Release
 
       - name: Upload Windows Libraries
         uses: actions/upload-artifact@v4
         with:
           name: windows-libs
-          path: .src/main/cpp/build/**/*.dll
+          path: ./src/main/cpp/build/Release/**/*.dll
 
   build-jar:
     runs-on: ubuntu-latest
