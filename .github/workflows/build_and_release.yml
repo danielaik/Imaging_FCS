@@ -3,7 +3,7 @@ name: Build
 on:
   push:
     branches:
-      - "main"
+      - "*"
     tags:
       - 'v*'
 
@@ -50,23 +50,21 @@ jobs:
         shell: powershell
         run: |
           $env:CUDAToolkit_ROOT = "C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v12.8"
-          $env:PATH = "$env:CUDAToolkit_ROOT\bin;" + $env:PATH
-          Write-Host "CUDAToolkit_ROOT is set to $env:CUDAToolkit_ROOT"
+          echo "CUDAToolkit_ROOT=$env:CUDAToolkit_ROOT" >> $env:GITHUB_ENV
+          echo "CudaToolkitDir=$env:CUDAToolkit_ROOT" >> $env:GITHUB_ENV
+          echo "PATH=$env:CUDAToolkit_ROOT\bin;$env:PATH" >> $env:GITHUB_ENV
 
       - name: Configure and Build for Windows
         shell: powershell
         run: |
-          cmake -B ./src/main/cpp/build `
-              -DCMAKE_CUDA_COMPILER="$env:CUDAToolkit_ROOT/bin/nvcc.exe" `
-              -G "Visual Studio 17 2022" `
-              -S ./src/main/cpp
+          cmake -S src/main/cpp -B build -G "Visual Studio 17 2022" -A x64 -DCMAKE_BUILD_TYPE=Release
           cmake --build build --config Release
 
       - name: Upload Windows Libraries
         uses: actions/upload-artifact@v4
         with:
           name: windows-libs
-          path: ./build/Release/**/*.dll
+          path: ./build/**/*.dll
 
   build-jar:
     runs-on: ubuntu-latest
