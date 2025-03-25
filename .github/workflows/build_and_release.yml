@@ -11,7 +11,7 @@ jobs:
   build-libs-ubuntu:
     runs-on: ubuntu-latest
     container:
-      image: nvidia/cuda:12.3.1-devel-ubuntu22.04
+      image: nvidia/cuda:12.8.1-devel-ubuntu24.04
     steps:
       - uses: actions/checkout@v4
 
