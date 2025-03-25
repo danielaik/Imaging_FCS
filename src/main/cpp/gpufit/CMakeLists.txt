@@ -64,10 +64,6 @@ add_library(agpufit SHARED
     lm_fit.h
     )
 
-if (WIN32)
-    target_compile_definitions(agpufit PRIVATE USE_CUBLAS)
-endif()
-
-target_link_libraries(agpufit PRIVATE CUDA::cudart CUDA::cublas)
+target_link_libraries(agpufit PRIVATE CUDA::cudart_static)
 
 set_target_properties(agpufit PROPERTIES CUDA_ARCHITECTURES "52;61;75;86")
