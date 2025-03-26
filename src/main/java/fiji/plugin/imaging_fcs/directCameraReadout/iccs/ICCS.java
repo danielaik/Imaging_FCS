@@ -1,7 +1,7 @@
 package fiji.plugin.imaging_fcs.directCameraReadout.iccs;
 
 import fiji.plugin.imaging_fcs.directCameraReadout.gui.DirectCapturePanel.Common;
-import fiji.plugin.imaging_fcs.new_imfcs.utils.ApplyCustomLUT;
+import fiji.plugin.imaging_fcs.imfcs.utils.ApplyCustomLUT;
 import ij.IJ;
 import ij.ImagePlus;
 import ij.gui.ImageWindow;
