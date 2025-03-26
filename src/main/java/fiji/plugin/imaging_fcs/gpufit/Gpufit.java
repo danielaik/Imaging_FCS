@@ -1,6 +1,5 @@
 package fiji.plugin.imaging_fcs.gpufit;
 
-import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
 
@@ -21,24 +20,15 @@ public class Gpufit {
      */
     public static final String VERSION = "1.2.0";
 
-    static {
-        /*
-         * Need to load Gpufit first, otherwise the call to loadLibrary with GpufitJNI will throw an exception
-         * on Windows.
-         * java.lang.UnsatisfiedLinkError: GpufitJNI.dll: Can't find dependent libraries
-         */
-        System.loadLibrary("Gpufit");
-        System.loadLibrary("GpufitJNI");
-    }
-
     /**
-     * Native method. More of less calls gpufit() in the gpufit C interface directly. Used only internally.
+     * Native method. More of less calls gpufit() in the gpufit C interface
+     * directly. Used only internally.
      */
     private static native int fit(int numberFits, int numberPoints, FloatBuffer data, FloatBuffer weights, int model_id,
                                   FloatBuffer initialParameters, float tolerance, int maxNumberIterations,
-                                  IntBuffer parametersToFit, int estimatorID, int userInfoSize, ByteBuffer userInfo,
-                                  FloatBuffer outputParameters, IntBuffer outputStates, FloatBuffer outputChiSquares,
-                                  IntBuffer outputNumberIterations);
+                                  int numValidCoefs, IntBuffer parametersToFit, int estimatorID, int userInfoSize,
+                                  FloatBuffer userInfo, FloatBuffer outputParameters, IntBuffer outputStates,
+                                  FloatBuffer outputChiSquares, IntBuffer outputNumberIterations);
 
     /**
      * Use this method to perform a parallel fit of many single fits of the same Function model and the same
@@ -52,7 +42,7 @@ public class Gpufit {
      * @param fitResult Fit result (could be old one which is reused) or null
      * @return Fit result
      */
-    public static FitResult fit(FitModel fitModel, FitResult fitResult) {
+    public static FitResult fit(GpuFitModel fitModel, FitResult fitResult) {
 
         // Should we reuse fitResult?
         if (null == fitResult) {
@@ -66,8 +56,8 @@ public class Gpufit {
         long t0 = System.currentTimeMillis();
         int status = Gpufit.fit(fitModel.numberFits, fitModel.numberPoints, fitModel.data, fitModel.weights,
                 fitModel.model.id, fitModel.initialParameters, fitModel.tolerance, fitModel.maxNumberIterations,
-                fitModel.parametersToFit, fitModel.estimator.id, fitModel.userInfo.capacity(), fitModel.userInfo,
-                fitResult.parameters, fitResult.states, fitResult.chiSquares, fitResult.numberIterations);
+                fitModel.numValidCoefs, fitModel.parametersToFit, fitModel.estimator.id, fitModel.userInfo.capacity(),
+                fitModel.userInfo, fitResult.parameters, fitResult.states, fitResult.chiSquares, fitResult.numberIterations);
         long t1 = System.currentTimeMillis();
         fitResult.fitDuration = (float) (t1 - t0) / 1000;
 
@@ -87,7 +77,7 @@ public class Gpufit {
      * @param fitModel Fit data including the model
      * @return Fit result
      */
-    public static FitResult fit(FitModel fitModel) {
+    public static FitResult fit(GpuFitModel fitModel) {
         return fit(fitModel, null);
     }
 

@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.8 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.18 FATAL_ERROR)
 project(agpufit LANGUAGES CXX CUDA)
 
 set(CMAKE_CUDA_STANDARD 11)
@@ -6,9 +6,10 @@ set(CMAKE_CUDA_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-find_package(CUDA REQUIRED)
-include_directories(${CUDA_INCLUDE_DIRS})
+find_package(CUDAToolkit REQUIRED)
+include_directories(${CUDAToolkit_INCLUDE_DIRS})
 
+include_directories(cuda_utils)
 include_directories(estimators)
 include_directories(models)
 
@@ -32,18 +33,26 @@ add_library(agpufit SHARED
     models/gauss_2d.cuh
     models/linear_1d.cuh
     models/models.cuh
+    acf_input_params_wrapper.cpp
+    acf_input_params_wrapper.h
     constants.h
     cuda_gaussjordan.cu
     cuda_gaussjordan.cuh
     cuda_kernels.cu
     cuda_kernels.cuh
+    cuda_fcs_kernels.cu
+    cuda_fcs_kernels.cuh
     definitions.h
     gpu_data.cu
     gpu_data.cuh
     gpufit.cpp
     gpufit.h
-    fiji_plugin_imaging_fcs_gpufitImFCS_GpufitImFCS.cu
-    fiji_plugin_imaging_fcs_gpufitImFCS_GpufitImFCS.h
+    fiji_plugin_imaging_fcs_new_imfcs_gpu_GpuCorrelator.cu
+    fiji_plugin_imaging_fcs_new_imfcs_gpu_GpuCorrelator.h
+    fiji_plugin_imaging_fcs_new_imfcs_gpu_GpuParameters.cu
+    fiji_plugin_imaging_fcs_new_imfcs_gpu_GpuParameters.h
+    fiji_plugin_imaging_fcs_gpufit_Gpufit.cu
+    fiji_plugin_imaging_fcs_gpufit_Gpufit.h
     info.cpp
     info.cu
     info.h
@@ -55,8 +64,6 @@ add_library(agpufit SHARED
     lm_fit.h
     )
 
-if (WIN32)
-    target_compile_definitions(agpufit PRIVATE USE_CUBLAS)
-endif()
+target_link_libraries(agpufit PRIVATE CUDA::cudart_static)
 
-target_link_libraries(agpufit ${CUDA_LIBRARIES})
+set_target_properties(agpufit PROPERTIES CUDA_ARCHITECTURES "52;61;75;86")

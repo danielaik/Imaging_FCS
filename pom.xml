@@ -187,12 +187,32 @@
 
                                         <exec executable="javac">
                                             <arg value="-classpath"/>
-                                            <arg value="${project.build.directory}/classes"/>
+                                            <arg value="${project.build.directory}/classes${path.separator}${compile.classpath}"/>
                                             <arg value="-d"/>
                                             <arg value="${project.build.directory}/classes"/>
                                             <arg value="-h"/>
                                             <arg value="src/main/cpp/gpufit"/>
-                                            <arg value="src/main/java/fiji/plugin/imaging_fcs/gpufitImFCS/GpufitImFCS.java"/>
+                                            <arg value="src/main/java/fiji/plugin/imaging_fcs/gpufit/Gpufit.java"/>
+                                        </exec>
+
+                                        <exec executable="javac">
+                                            <arg value="-classpath"/>
+                                            <arg value="${project.build.directory}/classes${path.separator}${compile.classpath}"/>
+                                            <arg value="-d"/>
+                                            <arg value="${project.build.directory}/classes"/>
+                                            <arg value="-h"/>
+                                            <arg value="src/main/cpp/gpufit"/>
+                                            <arg value="src/main/java/fiji/plugin/imaging_fcs/new_imfcs/gpu/GpuParameters.java"/>
+                                        </exec>
+
+                                        <exec executable="javac">
+                                            <arg value="-classpath"/>
+                                            <arg value="${project.build.directory}/classes${path.separator}${compile.classpath}"/>
+                                            <arg value="-d"/>
+                                            <arg value="${project.build.directory}/classes"/>
+                                            <arg value="-h"/>
+                                            <arg value="src/main/cpp/gpufit"/>
+                                            <arg value="src/main/java/fiji/plugin/imaging_fcs/new_imfcs/gpu/GpuCorrelator.java"/>
                                         </exec>
 
                                         <exec executable="javac">

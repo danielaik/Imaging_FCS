@@ -32,6 +32,14 @@ JNIEXPORT jboolean JNICALL Java_fiji_plugin_imaging_1fcs_gpufitImFCS_GpufitImFCS
   (JNIEnv *, jclass);
 
 /*
+ * Class:     fiji_plugin_imaging_fcs_new_imfcs_model_HardwareModel
+ * Method:    isCudaAvailableInt
+ * Signature: ()Z
+ */
+JNIEXPORT jboolean JNICALL Java_fiji_plugin_imaging_1fcs_new_1imfcs_model_HardwareModel_isCudaAvailableInt
+  (JNIEnv *, jclass);
+
+/*
  * Class:     fiji_plugin_imaging_fcs_gpufitImFCS_GpufitImFCS
  * Method:    getCudaVersionAsArray
  * Signature: ()[I

@@ -11,6 +11,10 @@ import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
 import java.nio.file.Files;
+
+import fiji.plugin.imaging_fcs.gpufit.GpuFitModel;
+import fiji.plugin.imaging_fcs.new_imfcs.gpu.GpuParameters;
+
 import static fiji.plugin.imaging_fcs.version.VERSION.GPUFIT_VERSION;
 
 /**
@@ -364,12 +368,57 @@ public class GpufitImFCS {
     }
 
     /**
+     * Use this method to perform a parallel fit of many single fits of the same
+     * Function model and the same fit data size in parallel. The input is given
+     * as a {@link FitModel}, the output as a {@link FitResult}. If null is
+     * passed for fitResult, a new output structure is created, otherwise the
+     * results overwrite the existent content (size is checked for compatibility
+     * before).
+     *
+     * A call to Gpufit is performed. If an error is encountered, a runtime
+     * exception is thrown.
+     *
+     * @param fitModel Fit data including the model
+     * @param fitResult Fit result (could be old one which is reused) or null
+     * @return Fit result
+     */
+    public static fiji.plugin.imaging_fcs.gpufit.FitResult fit(GpuFitModel fitModel, fiji.plugin.imaging_fcs.gpufit.FitResult fitResult) {
+
+        // Should we reuse fitResult?
+        if (null == fitResult) {
+            fitResult = new fiji.plugin.imaging_fcs.gpufit.FitResult(fitModel.numberFits, fitModel.model.numberParameters);
+        } else {
+            // check sizes
+            fitResult.isCompatible(fitModel.numberFits, fitModel.model.numberParameters);
+        }
+
+        // call into native code to perform a fit
+        long t0 = System.currentTimeMillis();
+        int status = GpufitImFCS.fit(fitModel.numberFits, fitModel.numberPoints, fitModel.data, fitModel.weights, fitModel.model.id, fitModel.initialParameters, fitModel.tolerance, fitModel.maxNumberIterations, fitModel.numValidCoefs, fitModel.parametersToFit, fitModel.estimator.id, fitModel.userInfo.capacity(), fitModel.userInfo, fitResult.parameters, fitResult.states, fitResult.chiSquares, fitResult.numberIterations);
+        long t1 = System.currentTimeMillis();
+        fitResult.fitDuration = (float) (t1 - t0) / 1000;
+
+        // check status
+        if (status != Status.OK.id) {
+            String message = getLastError();
+            throw new RuntimeException(String.format("status = %s, message = %s", status, message));
+        }
+
+        // return results
+        return fitResult;
+    }
+
+    /**
      * Convenience method. Calls fit with only a FitModel. Returns the result.
      *
      * @param fitModel Fit data including the model
      * @return Fit result
      */
     public static FitResult fit(FitModel fitModel) {
+        return fit(fitModel, null);
+    }
+
+    public static fiji.plugin.imaging_fcs.gpufit.FitResult fit(GpuFitModel fitModel) {
         return fit(fitModel, null);
     }
 
@@ -502,6 +551,8 @@ public class GpufitImFCS {
      */
     public static native void calcDataBleachCorrection(float[] pixels, float[] outdata, ACFParameters ACFInputParams);
 
+    public static native void calcDataBleachCorrection(float[] pixels, float[] outdata, GpuParameters ACFInputParams);
+
     /**
      * Native method. Find if GPU memory is sufficient to perform binning.
      *
@@ -510,6 +561,8 @@ public class GpufitImFCS {
      * @return true is memory is sufficient, false otherwise.
      */
     public static native boolean isBinningMemorySufficient(ACFParameters ACFInputParams);
+
+    public static native boolean isBinningMemorySufficient(GpuParameters ACFInputParams);
 
     /**
      * Native method. Do binning given a 1D array.
@@ -520,6 +573,8 @@ public class GpufitImFCS {
      * @param ACFInputParams Values pixbinX, pixbinY are required.
      */
     public static native void calcBinning(float[] indata, float[] outdata, ACFParameters ACFInputParams);
+
+    public static native void calcBinning(float[] indata, float[] outdata, GpuParameters ACFInputParams);
 
     /**
      * Native method. Indicates if memory is sufficient to run calcacf2 and
@@ -536,6 +591,11 @@ public class GpufitImFCS {
             double[] NBmeanGPU, double[] NBcovarianceGPU,
             double[] blocked1D, double[] bleachcorr_params,
             double[] samp, int[] lag, ACFParameters ACFInputParams);
+
+    public static native void calcACF(float[] pixels, double[] pixels1, double[] blockvararray,
+            double[] NBmeanGPU, double[] NBcovarianceGPU,
+            double[] blocked1D, double[] bleachcorr_params,
+            double[] samp, int[] lag, GpuParameters ACFInputParams);
 
     public static native void resetDevice();
 

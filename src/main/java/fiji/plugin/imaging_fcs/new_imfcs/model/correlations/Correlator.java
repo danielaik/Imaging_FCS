@@ -334,7 +334,7 @@ public class Correlator {
      *
      * @param numFrames The number of frames.
      */
-    private void calculateParameters(int numFrames) {
+    public void calculateParameters(int numFrames) {
         lags = new int[settings.getChannelNumber()];
         lagTimes = new double[settings.getChannelNumber()];
         sampleTimes = new int[settings.getChannelNumber()];
@@ -986,12 +986,20 @@ public class Correlator {
         this.pixelModels = pixelModels;
     }
 
+    public int[] getLags() {
+        return lags;
+    }
+
     public double[] getLagTimes() {
         return lagTimes;
     }
 
     public void setLagTimes(double[] lagTimes) {
         this.lagTimes = lagTimes;
+    }
+
+    public int[] getNumSamples() {
+        return numSamples;
     }
 
     public int[] getSampleTimes() {

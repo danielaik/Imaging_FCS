@@ -1,10 +1,15 @@
 package fiji.plugin.imaging_fcs.new_imfcs.model;
 
+import fiji.plugin.imaging_fcs.new_imfcs.gpu.GpuCorrelator;
+import fiji.plugin.imaging_fcs.new_imfcs.gpu.GpuParameters;
+import fiji.plugin.imaging_fcs.new_imfcs.model.correlations.Correlator;
+import fiji.plugin.imaging_fcs.new_imfcs.utils.Range;
 import ij.IJ;
 import ij.ImagePlus;
 import ij.process.ImageProcessor;
 
 import java.util.function.BiConsumer;
+import java.util.stream.IntStream;
 
 /**
  * The NBModel class represents the model for performing number and brightness (N&B) analysis.
@@ -14,6 +19,7 @@ public final class NBModel {
     private final ExpSettingsModel settings;
     private final OptionsModel options;
     private final BleachCorrectionModel bleachCorrectionModel;
+    private final Correlator correlator;
 
     private double[][] NBB, NBN;
 
@@ -26,13 +32,15 @@ public final class NBModel {
      * @param settings              The experimental settings model.
      * @param options               The options model containing analysis options.
      * @param bleachCorrectionModel The bleach correction model.
+     * @param correlator            The correlator to get lags on GPU mode.
      */
     public NBModel(ImageModel imageModel, ExpSettingsModel settings, OptionsModel options,
-                   BleachCorrectionModel bleachCorrectionModel) {
+                   BleachCorrectionModel bleachCorrectionModel, Correlator correlator) {
         this.imageModel = imageModel;
         this.bleachCorrectionModel = bleachCorrectionModel;
         this.settings = settings;
         this.options = options;
+        this.correlator = correlator;
     }
 
     /**
@@ -59,8 +67,63 @@ public final class NBModel {
         createNBImages(img, showImage);
     }
 
+    /**
+     * Performs GPU-based analysis of the fluorescence image.
+     *
+     * @param img The ImagePlus object representing the input image.
+     */
     private void performGpuAnalysis(ImagePlus img) {
-        // TODO: implement me
+        int width = img.getWidth();
+        int height = img.getHeight();
+
+        try {
+            Range fullXRange = new Range(0, width - 1, 1);
+            Range fullYRange = new Range(0, height - 1, 1);
+
+            // Initialize GpuParameters directly
+            GpuParameters gpuParams =
+                    new GpuParameters(settings, bleachCorrectionModel, imageModel, null,  // No FitModel needed for N&B
+                            true,  // isNBcalculation
+                            correlator, fullXRange, fullYRange);
+
+            float[] pixels = gpuParams.getIntensityData(fullXRange, fullYRange, false);
+            double[] bleachCorrectionParams = gpuParams.calculateBleachCorrectionParams(pixels);
+
+            // Prepare output arrays
+            int arraySize = width * height * gpuParams.chanum;
+            double[] pixels1 = new double[arraySize];
+            double[] blockVarianceArray = new double[arraySize];
+            double[] blocked1D = new double[arraySize];
+            double[] nbMean = new double[width * height];
+            double[] nbCorrelation = new double[width * height];
+
+            // Perform GPU calculation using the native method from GpuCorrelator
+            GpuCorrelator.calcACF(pixels, pixels1, blockVarianceArray, nbMean, nbCorrelation, blocked1D,
+                    bleachCorrectionParams, IntStream.of(correlator.getSampleTimes()).asDoubleStream().toArray(),
+                    correlator.getLags(), gpuParams);
+
+            // Process results
+            for (int i = 0; i < width; i++) {
+                for (int j = 0; j < height; j++) {
+                    if (imageModel.isPixelFiltered(i, j)) {
+                        NBB[i][j] = Double.NaN;
+                        NBN[i][j] = Double.NaN;
+                    } else {
+                        int index = j * width + i;
+                        double mean = nbMean[index];
+
+                        // Calculate N&B values
+                        double covariance = nbCorrelation[index];
+                        NBB[i][j] = (covariance - imageModel.getBackgroundCovariance(i, j)) / mean;
+                        NBN[i][j] = mean / NBB[i][j];
+                    }
+                }
+            }
+
+        } catch (Exception e) {
+            IJ.log("GPU calculation failed: " + e.getMessage());
+            performCpuAnalysis(img);
+        }
     }
 
     /**

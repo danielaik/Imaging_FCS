@@ -595,20 +595,16 @@ public class Plots {
     }
 
     /**
-     * Sets all pixel values in the given image to NaN within the specified dimensions.
+     * Sets all pixel values in the given image to NaN.
      *
      * @param img       The ImagePlus object representing the image.
-     * @param dimension The dimensions of the image in which to set pixel values to NaN.
      */
-    public static void setAllPixelToNaN(ImagePlus img, Dimension dimension) {
-        IntStream.range(1, img.getStackSize() + 1).forEach(slice -> {
+    public static void setAllPixelToNaN(ImagePlus img) {
+        for (int slice = 1; slice <= img.getStackSize(); slice++) {
             ImageProcessor ip = img.getStack().getProcessor(slice);
-            for (int x = 0; x < dimension.width; x++) {
-                for (int y = 0; y < dimension.height; y++) {
-                    ip.putPixelValue(x, y, Double.NaN);
-                }
-            }
-        });
+            ip.setValue(Double.NaN);
+            ip.fill();
+        }
     }
 
     /**
@@ -677,7 +673,7 @@ public class Plots {
         ImagePlus img = IJ.createImage("Maps", "GRAY32", dimension.width, dimension.height, totalParamsLength);
 
         // Set all pixel values to NaN
-        setAllPixelToNaN(img, dimension);
+        setAllPixelToNaN(img);
 
         if (mouseListener != null) {
             showParameterMaps(img, mouseListener);
@@ -808,19 +804,28 @@ public class Plots {
             initImg = true;
         } else {
             // Set all pixel values to NaN
-            setAllPixelToNaN(imgParam, dimension);
+            setAllPixelToNaN(imgParam);
         }
 
-        for (int x = 0; x < pixelModels.length; x++) {
-            for (int y = 0; y < pixelModels[0].length; y++) {
-                PixelModel currentPixelModel = pixelModels[x][y];
-                Point binningPoint = convertPointToBinning.apply(new Point(x, y));
+        // Disable display updates during processing
+        imgParam.setIgnoreFlush(true);
 
-                if (currentPixelModel != null && currentPixelModel.isFitted() &&
-                        !fitController.needToFilter(currentPixelModel, binningPoint.x, binningPoint.y)) {
-                    updateParameterMapsValue(imgParam, binningPoint, currentPixelModel, initImg, FCCSDisp);
+        try {
+            for (int x = 0; x < pixelModels.length; x++) {
+                for (int y = 0; y < pixelModels[0].length; y++) {
+                    PixelModel currentPixelModel = pixelModels[x][y];
+                    Point binningPoint = convertPointToBinning.apply(new Point(x, y));
+
+                    if (currentPixelModel != null && currentPixelModel.isFitted() &&
+                            !fitController.needToFilter(currentPixelModel, binningPoint.x, binningPoint.y)) {
+                        updateParameterMapsValue(imgParam, binningPoint, currentPixelModel, initImg, FCCSDisp);
+                        initImg = false;
+                    }
                 }
             }
+        } finally {
+            imgParam.setIgnoreFlush(false);
+            imgParam.updateAndDraw();
         }
 
         IJ.run(imgParam, "Enhance Contrast", "satured=0.35");

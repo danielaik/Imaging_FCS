@@ -102,9 +102,10 @@ public final class MainPanelController {
 
         this.simulationController = new SimulationController(imageController, settings);
 
-        this.nbController = new NBController(imageModel, settings, optionsModel, bleachCorrectionModel);
+        this.nbController = new NBController(imageModel, settings, optionsModel, bleachCorrectionModel, correlator);
 
-        this.diffusionLawController = new DiffusionLawController(settings, imageModel, fitModel, bleachCorrectionModel);
+        this.diffusionLawController =
+                new DiffusionLawController(settings, optionsModel, imageModel, fitModel, bleachCorrectionModel);
         imageController.setSetDiffusionLawRange(diffusionLawController::setDefaultRange);
 
         this.filteringController =

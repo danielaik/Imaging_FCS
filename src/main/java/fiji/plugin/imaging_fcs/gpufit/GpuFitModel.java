@@ -1,6 +1,5 @@
 package fiji.plugin.imaging_fcs.gpufit;
 
-import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
 
@@ -17,7 +16,9 @@ import java.nio.IntBuffer;
  * <p>
  * Optional variables are weights, initialParameters, tolerance, maxNumberIterations, parametersToFit.
  */
-public class FitModel {
+public class GpuFitModel {
+    public static final int FIT_MAX_ITERATIONS = 2000;
+    public static final float TOLERANCE = 1e-16f;
 
     /**
      * Number of fits, i.e. number of independent data sets
@@ -52,6 +53,11 @@ public class FitModel {
      */
     public final int maxNumberIterations;
     /**
+    * Max number of coefficients to fit. Used mainly for linear_1d
+    * polynomial fit.
+    */
+    public final int numValidCoefs;
+    /**
      * Indication which parameters should be fitted (value 1) and which should be kept constant (value 0).
      */
     public final IntBuffer parametersToFit;
@@ -62,7 +68,7 @@ public class FitModel {
     /**
      * Additional user info (optional).
      */
-    public final ByteBuffer userInfo;
+    public final FloatBuffer userInfo;
 
     /**
      * Provide a number of input arguments for the fit.
@@ -86,8 +92,8 @@ public class FitModel {
      * @param estimator           Fit estimator enum (if null, a default value is chosen)
      * @param userInfoSize        If positive, userInfo is pre-allocated with userInfoSize as capacity, otherwise not
      */
-    public FitModel(int numberFits, int numberPoints, boolean withWeights, Model model, Float tolerance,
-                    Integer maxNumberIterations, Boolean[] parametersToFit, Estimator estimator, int userInfoSize) {
+    public GpuFitModel(int numberFits, int numberPoints, boolean withWeights, Model model, Float tolerance,
+                    Integer maxNumberIterations, Integer numValidCoefs, Boolean[] parametersToFit, Estimator estimator, int userInfoSize) {
 
         this.numberFits = numberFits;
         this.numberPoints = numberPoints;
@@ -97,6 +103,7 @@ public class FitModel {
         this.initialParameters = GpufitUtils.allocateDirectFloatBuffer(numberFits * model.numberParameters);
         this.tolerance = tolerance == null ? 1e-4f : tolerance;
         this.maxNumberIterations = maxNumberIterations == null ? 25 : maxNumberIterations;
+        this.numValidCoefs = numValidCoefs;
         this.parametersToFit = GpufitUtils.allocateDirectIntBuffer(model.numberParameters);
         if (null == parametersToFit) {
             // fill with ones
@@ -110,6 +117,6 @@ public class FitModel {
             }
         }
         this.estimator = estimator == null ? Estimator.LSE : estimator;
-        this.userInfo = GpufitUtils.allocateDirectByteBuffer(Math.max(0, userInfoSize));
+        this.userInfo = GpufitUtils.allocateDirectFloatBuffer(Math.max(0, userInfoSize));
     }
 }

@@ -8,10 +8,9 @@ public enum Model {
 
     GAUSS_1D(0, 4),
     GAUSS_2D(1, 5),
-    GAUSS_2D_ELLIPTIC(2, 6),
-    GAUSS_2D_ROTATED(3, 7),
-    CAUCHY_2D_ELLIPTIC(4, 6),
-    LINEAR_1D(5, 2);
+    ACF_1D(2, 20),
+    LINEAR_1D(3, 11),
+    ACF_NUMERICAL_3D(4, 22);
 
     public final int id, numberParameters;
 
