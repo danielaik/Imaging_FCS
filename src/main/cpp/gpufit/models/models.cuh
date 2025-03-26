@@ -59,7 +59,7 @@ void configure_model(ModelID const model_id, int &n_parameters,
         n_dimensions = 1;
         break;
     case ACF_NUMERICAL_3D:
-        n_parameters = 20;
+        n_parameters = 22;
         n_dimensions = 1;
         break; // DAN
     default:
