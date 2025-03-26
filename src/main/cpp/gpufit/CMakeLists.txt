@@ -47,10 +47,10 @@ add_library(agpufit SHARED
     gpu_data.cuh
     gpufit.cpp
     gpufit.h
-    fiji_plugin_imaging_fcs_new_imfcs_gpu_GpuCorrelator.cu
-    fiji_plugin_imaging_fcs_new_imfcs_gpu_GpuCorrelator.h
-    fiji_plugin_imaging_fcs_new_imfcs_gpu_GpuParameters.cu
-    fiji_plugin_imaging_fcs_new_imfcs_gpu_GpuParameters.h
+    fiji_plugin_imaging_fcs_imfcs_gpu_GpuCorrelator.cu
+    fiji_plugin_imaging_fcs_imfcs_gpu_GpuCorrelator.h
+    fiji_plugin_imaging_fcs_imfcs_gpu_GpuParameters.cu
+    fiji_plugin_imaging_fcs_imfcs_gpu_GpuParameters.h
     fiji_plugin_imaging_fcs_gpufit_Gpufit.cu
     fiji_plugin_imaging_fcs_gpufit_Gpufit.h
     info.cpp

@@ -5,7 +5,7 @@
 #include "cuda_fcs_kernels.cuh"
 #include "cuda_utils/cuda_device_ptr.h"
 #include "definitions.h"
-#include "fiji_plugin_imaging_fcs_new_imfcs_gpu_GpuCorrelator.h"
+#include "fiji_plugin_imaging_fcs_imfcs_gpu_GpuCorrelator.h"
 #include "java_array.h"
 
 void NBCalculationFunction(JNIEnv *env, ACFInputParamsWrapper &p, jfloat *Cpixels, jdouble *Cbleachcorr_p,
@@ -321,7 +321,7 @@ void ACFCalculationFunction(JNIEnv *env, ACFInputParamsWrapper &p, jfloat *Cpixe
     env->SetDoubleArrayRegion(blocked1D, 0, size1, Cblocked1D.data());
 }
 
-void JNICALL Java_fiji_plugin_imaging_1fcs_new_1imfcs_gpu_GpuCorrelator_calcACF(
+void JNICALL Java_fiji_plugin_imaging_1fcs_imfcs_gpu_GpuCorrelator_calcACF(
     JNIEnv *env, jclass cls, jfloatArray pixels, jdoubleArray pixels1, jdoubleArray blockvararray,
     jdoubleArray NBmeanGPU, jdoubleArray NBcovarianceGPU, jdoubleArray blocked1D, jdoubleArray bleachcorr_p,
     jdoubleArray samp, jintArray lag, jobject ACFInputParams)

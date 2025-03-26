@@ -4,11 +4,11 @@
 #include "acf_input_params_wrapper.h"
 #include "cuda_fcs_kernels.cuh"
 #include "cuda_utils/cuda_device_ptr.h"
-#include "fiji_plugin_imaging_fcs_new_imfcs_gpu_GpuParameters.h"
+#include "fiji_plugin_imaging_fcs_imfcs_gpu_GpuParameters.h"
 #include "gpufit.h"
 #include "java_array.h"
 
-jboolean JNICALL Java_fiji_plugin_imaging_1fcs_new_1imfcs_gpu_GpuParameters_isBinningMemorySufficient(
+jboolean JNICALL Java_fiji_plugin_imaging_1fcs_imfcs_gpu_GpuParameters_isBinningMemorySufficient(
     JNIEnv *env, jclass cls, jobject ACFInputParams)
 {
     try
@@ -50,7 +50,7 @@ jboolean JNICALL Java_fiji_plugin_imaging_1fcs_new_1imfcs_gpu_GpuParameters_isBi
  * Method:    calcBinning
  * Signature: ([F[FLgpufitImFCS/GpufitImFCS/ACFParameters;)V
  */
-void JNICALL Java_fiji_plugin_imaging_1fcs_new_1imfcs_gpu_GpuParameters_calcBinning(JNIEnv *env, jclass cls,
+void JNICALL Java_fiji_plugin_imaging_1fcs_imfcs_gpu_GpuParameters_calcBinning(JNIEnv *env, jclass cls,
                                                                                     jfloatArray indata,
                                                                                     jfloatArray outdata,
                                                                                     jobject ACFInputParams)
@@ -114,7 +114,7 @@ void JNICALL Java_fiji_plugin_imaging_1fcs_new_1imfcs_gpu_GpuParameters_calcBinn
     }
 }
 
-void JNICALL Java_fiji_plugin_imaging_1fcs_new_1imfcs_gpu_GpuParameters_calcDataBleachCorrection(
+void JNICALL Java_fiji_plugin_imaging_1fcs_imfcs_gpu_GpuParameters_calcDataBleachCorrection(
     JNIEnv *env, jclass cls, jfloatArray pixels, jfloatArray outdata, jobject ACFInputParams)
 {
     try
