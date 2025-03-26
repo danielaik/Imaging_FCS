@@ -1,9 +1,9 @@
 package fiji.plugin.imaging_fcs.imfcs.model;
 
 import fiji.plugin.imaging_fcs.imfcs.utils.CheckOS;
+import fiji.plugin.imaging_fcs.imfcs.utils.LibraryLoader;
 
-import java.io.*;
-import java.nio.file.Files;
+import java.io.IOException;
 
 import static fiji.plugin.imaging_fcs.gpufit.Gpufit.isCudaAvailable;
 
@@ -37,38 +37,7 @@ public final class HardwareModel {
         }
 
         String libName = (osType == CheckOS.OperatingSystem.WINDOWS) ? "agpufit.dll" : "libagpufit.so";
-
-        // Create a temporary directory for the libraries
-        File tmpDir = Files.createTempDirectory("gpufitImFCS-lib").toFile();
-        // Mark for deletion on exit
-        tmpDir.deleteOnExit();
-
-        // Write and load your custom GPU library
-        writeLibraryFile(tmpDir, libName);
-        System.load(new File(tmpDir, libName).getAbsolutePath()); // Load the custom GPU library
-    }
-
-    /**
-     * Writes the GPU library file to the specified directory.
-     *
-     * @param directory the directory to write the library file to.
-     * @param libName   the name of the library to write.
-     * @throws IOException if writing the library file fails.
-     */
-    private static void writeLibraryFile(File directory, String libName) throws IOException {
-        try (InputStream in = HardwareModel.class.getResourceAsStream(
-                "/libs/gpufit/" + libName); FileOutputStream out = new FileOutputStream(new File(directory, libName))) {
-
-            if (in == null) {
-                throw new FileNotFoundException("Library " + libName + " not found in resources");
-            }
-
-            byte[] buffer = new byte[1024];
-            int bytesRead;
-            while ((bytesRead = in.read(buffer)) != -1) {
-                out.write(buffer, 0, bytesRead);
-            }
-        }
+        LibraryLoader.loadNativeLibraries("/libs/gpufit/", libName);
     }
 
     /**
