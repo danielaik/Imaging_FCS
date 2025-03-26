@@ -1,5 +1,6 @@
 package fiji.plugin.imaging_fcs.new_imfcs.controller;
 
+import fiji.plugin.imaging_fcs.directCameraReadout.DirectCapture;
 import fiji.plugin.imaging_fcs.new_imfcs.enums.BleachCorrectionMethod;
 import fiji.plugin.imaging_fcs.new_imfcs.enums.DccfDirection;
 import fiji.plugin.imaging_fcs.new_imfcs.enums.FilterMode;
@@ -892,7 +893,8 @@ public final class MainPanelController {
     public ActionListener btnDirectCameraReadoutPressed() {
         return (ActionEvent ev) -> {
             if (CheckOS.getCurrentOS() == CheckOS.OperatingSystem.WINDOWS) {
-                // TODO: call the Camera READOUT
+                DirectCapture directCapture = new DirectCapture(optionsModel.isUseGpu());
+                directCapture.check();
             } else {
                 IJ.showMessage("Direct capture is only supported on Windows.");
             }

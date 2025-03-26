@@ -447,7 +447,7 @@ Java_fiji_plugin_imaging_1fcs_directCameraReadout_pvcamsdk_Photometrics_1PVCAM_1
            && "1Darraysize mismatch");
 
     static jclass framecounter_class = env->FindClass(
-        "directCameraReadout/control/FrameCounter"); // method caching
+        "fiji/plugin/imaging_fcs/directCameraReadout/control/FrameCounter"); // method caching
     static jmethodID increment_id =
         env->GetMethodID(framecounter_class, "increment", "()V"); // cached
     static jfieldID time1_id =

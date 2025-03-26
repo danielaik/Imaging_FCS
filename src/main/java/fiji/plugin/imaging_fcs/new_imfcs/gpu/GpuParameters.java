@@ -55,6 +55,14 @@ public class GpuParameters {
     private ImageModel imageModel;
 
     /**
+     * Constructs GPU parameters for camera fitting
+     * TODO: This should be deleted when the camera code is refactor.
+     */
+    public GpuParameters() {
+
+    }
+
+    /**
      * Constructs GPU parameters from experimental settings, bleach correction model, image model,
      * fit model, and additional parameters.
      *
@@ -139,7 +147,7 @@ public class GpuParameters {
      *                       input values.
      * @return true is memory is sufficient, false otherwise.
      */
-    private static native boolean isBinningMemorySufficient(GpuParameters ACFInputParams);
+    public static native boolean isBinningMemorySufficient(GpuParameters ACFInputParams);
 
     /**
      * Native method. Do binning given a 1D array.
@@ -149,7 +157,7 @@ public class GpuParameters {
      * @param outdata        output data, by reference.
      * @param ACFInputParams Values pixbinX, pixbinY are required.
      */
-    private static native void calcBinning(float[] indata, float[] outdata, GpuParameters ACFInputParams);
+    public static native void calcBinning(float[] indata, float[] outdata, GpuParameters ACFInputParams);
 
     /**
      * Native method. Get data bleach correction given the 1D pixels values.
@@ -159,7 +167,7 @@ public class GpuParameters {
      * @param ACFInputParams Values nopit, ave, cfXDistance, cfYDistance, width
      *                       and height are required
      */
-    private static native void calcDataBleachCorrection(float[] pixels, float[] outdata, GpuParameters ACFInputParams);
+    public static native void calcDataBleachCorrection(float[] pixels, float[] outdata, GpuParameters ACFInputParams);
 
     /**
      * Retrieves intensity data from the image model.

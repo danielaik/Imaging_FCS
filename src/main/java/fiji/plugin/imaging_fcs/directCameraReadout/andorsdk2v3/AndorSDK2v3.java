@@ -955,7 +955,7 @@ public class AndorSDK2v3 {
         try {
             //NOTE: include package name, which becomes the folder name in .jar file.'
             InputStream in = ClassLoader.class
-                    .getResourceAsStream("/directCameraReadout/andorsdk2v3/" + LibName);
+                    .getResourceAsStream("/libs/camera_readout/sdk2/" + LibName);
             if (in == null) {
                 throw new FileNotFoundException("Library " + LibName + " is not available");
             }

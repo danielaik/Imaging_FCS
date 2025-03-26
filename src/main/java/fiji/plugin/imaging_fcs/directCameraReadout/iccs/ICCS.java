@@ -1,54 +1,41 @@
 package fiji.plugin.imaging_fcs.directCameraReadout.iccs;
 
 import fiji.plugin.imaging_fcs.directCameraReadout.gui.DirectCapturePanel.Common;
+import fiji.plugin.imaging_fcs.new_imfcs.utils.ApplyCustomLUT;
 import ij.IJ;
 import ij.ImagePlus;
 import ij.gui.ImageWindow;
 import ij.gui.Plot;
 import ij.gui.PlotWindow;
 import ij.process.FloatProcessor;
-import java.awt.Rectangle;
-import java.util.ArrayList;
-import java.util.Collections;
 import org.apache.commons.math3.fitting.leastsquares.LeastSquaresOptimizer;
 import org.apache.commons.math3.stat.correlation.PearsonsCorrelation;
 
+import java.awt.*;
+import java.util.ArrayList;
+import java.util.Collections;
+
 public class ICCS {
 
+    public volatile boolean isFittingICCS = false; //volatile needed GUI acessing flag
     int oW;
     int oH;
-
     ImagePlus imp; // Intensity image
-
     //ICCS heatmap
     ImageWindow impICCSmapWin;
     FloatProcessor ipICCS;
     ImagePlus impICCS;
-
     //Pearson plot
     Plot iplot;
     PlotWindow pearsonScatterWindow;
-
-    private Rectangle rect1;
-    private int CCFx;
-    private int CCFy;
-    private int shiftX;
-    private int shiftY;
-
-    private double valICCS[][];//[2*shifty + 1][2*shiftx + 1]contain CCF value
-    private int listICCSCoordinate[][][]; //[2*shifty + 1][2*shiftx + 1][j or y corrdinate] index start from 0
     double[] optimalValues; //2D gauss fitted parameter
     int data_width_;
-
     boolean isPlotICCSmap = true;
     boolean isPlotScatterPearson = true;
-    public volatile boolean isFittingICCS = false; //volatile needed GUI acessing flag
     boolean isVisualCentroid = true;
-
     // Array to store fitted MeanX and MeanY
     ArrayList<ArrayList<Double>> tempCentroidArr = null;
     int nopar = 3; //0 xaxis, 1 meanX, 2 meanY
-
     //Plot window
     Plot MeanXYPlot; //Mean X, Mean Y plot
     PlotWindow MeanXYWindow;
@@ -57,14 +44,19 @@ public class ICCS {
     int MeanXYWindowPosY = 590;
     int MeanXYDimX = 250;
     int MeanXYDimY = 100;
-
     int ICCSWindowPosX = 700;
     int ICCSWindowPosY = 565;
-
     int ScatterPearsonWindowDimX = 200;
     int ScatterPearsonWindowDimY = 200;
     int ScatterPearsonWindowPosX = 1505;
     int ScatterPearsonWindowPosY = 590;
+    private Rectangle rect1;
+    private int CCFx;
+    private int CCFy;
+    private int shiftX;
+    private int shiftY;
+    private double valICCS[][];//[2*shifty + 1][2*shiftx + 1]contain CCF value
+    private int listICCSCoordinate[][][]; //[2*shifty + 1][2*shiftx + 1][j or y corrdinate] index start from 0
 
     public ICCS(int oW, int oH) {
         this.oW = oW;
@@ -86,7 +78,11 @@ public class ICCS {
         this.shiftY = pys;
 
         boolean isvalid = true;
-        if (((int) rect1.getX() + ccfx + pxs + (int) rect1.getWidth()) > oW || ((int) rect1.getX() - 1 + ccfx - pxs) < 0 || ((int) rect1.getY() - 1 + ccfy + pys + (int) rect1.getHeight()) > oH || ((int) rect1.getY() - 1 + ccfy - pys) < 0 || (int) rect1.getX() - 1 + (int) rect1.getWidth() > oW || (int) rect1.getY() - 1 + (int) rect1.getWidth() > oH) {
+        if (((int) rect1.getX() + ccfx + pxs + (int) rect1.getWidth()) > oW ||
+                ((int) rect1.getX() - 1 + ccfx - pxs) < 0 ||
+                ((int) rect1.getY() - 1 + ccfy + pys + (int) rect1.getHeight()) > oH ||
+                ((int) rect1.getY() - 1 + ccfy - pys) < 0 || (int) rect1.getX() - 1 + (int) rect1.getWidth() > oW ||
+                (int) rect1.getY() - 1 + (int) rect1.getWidth() > oH) {
             isvalid = false;
         }
         if (!Common.isICCSValid) {
@@ -121,14 +117,14 @@ public class ICCS {
                 isReset = true;
             }
         }
-//        IJ.log("isReset= " + isReset + ", shiftX: " + shiftX + ", shiftY: " + shiftY);
+        //        IJ.log("isReset= " + isReset + ", shiftX: " + shiftX + ", shiftY: " + shiftY);
 
         // calculating spatial correlation at defined shift
         if (isPlotICCSmap) {
             calcICCS(valICCS, rect1, oW);
             // plot correlation maps
             plotICCSMap(valICCS, isReset);
-//            IJ.log("in ICCS fitOn: " + isFittingICCS);
+            //            IJ.log("in ICCS fitOn: " + isFittingICCS);
             if (isFittingICCS) {//fit 2D correlation with gaussian true
 
                 boolean fitsuccess = fitGauss2D(valICCS);
@@ -149,7 +145,8 @@ public class ICCS {
 
     private void fillMeanXYValue() {
         int midpoint = (int) data_width_ / 2;
-//        IJ.log("Misalignment res X: " + (optimalValues[1] - midpoint) + ", res Y: " + (optimalValues[2] - midpoint));
+        //        IJ.log("Misalignment res X: " + (optimalValues[1] - midpoint) + ", res Y: " + (optimalValues[2] -
+        //        midpoint));
 
         // If window closed or window not open, clear arraylist and append value. Otherwise append arraylist
         if (MeanXYWindow == null || MeanXYWindow.isClosed() == true) {//window closed or null
@@ -181,8 +178,10 @@ public class ICCS {
         double minxx;
 
         if (MeanXYWindow == null || MeanXYWindow.isClosed() == true) {//(double) Collections.min(tempCentroidArr.get(1))
-            minamp = Math.min((double) Collections.min(tempCentroidArr.get(1)), (double) Collections.min(tempCentroidArr.get(2)));
-            maxamp = Math.max((double) Collections.max(tempCentroidArr.get(1)), (double) Collections.max(tempCentroidArr.get(2)));
+            minamp = Math.min((double) Collections.min(tempCentroidArr.get(1)),
+                    (double) Collections.min(tempCentroidArr.get(2)));
+            maxamp = Math.max((double) Collections.max(tempCentroidArr.get(1)),
+                    (double) Collections.max(tempCentroidArr.get(2)));
 
             minamp -= 3;
             maxamp += 3;
@@ -201,16 +200,19 @@ public class ICCS {
         MeanXYPlot = new Plot($MeanXYWindowTitle, "Instance", "Deviation (Pixel)");
         MeanXYPlot.setColor(java.awt.Color.BLUE);
         MeanXYPlot.addPoints(tempCentroidArr.get(0), tempCentroidArr.get(1), MeanXYPlot.CONNECTED_CIRCLES);
-        MeanXYPlot.addLabel(0.05, 0.20, "X= " + IJ.d2s(tempCentroidArr.get(1).get(tempCentroidArr.get(1).size() - 1), 2));
+        MeanXYPlot.addLabel(0.05, 0.20,
+                "X= " + IJ.d2s(tempCentroidArr.get(1).get(tempCentroidArr.get(1).size() - 1), 2));
         MeanXYPlot.setColor(java.awt.Color.MAGENTA);
         MeanXYPlot.addPoints(tempCentroidArr.get(0), tempCentroidArr.get(2), MeanXYPlot.CONNECTED_CIRCLES);
-        MeanXYPlot.addLabel(0.25, 0.20, "Y= " + IJ.d2s(tempCentroidArr.get(2).get(tempCentroidArr.get(2).size() - 1), 2));
+        MeanXYPlot.addLabel(0.25, 0.20,
+                "Y= " + IJ.d2s(tempCentroidArr.get(2).get(tempCentroidArr.get(2).size() - 1), 2));
         MeanXYPlot.setFrameSize(MeanXYDimX, MeanXYDimY);
         MeanXYPlot.setLimits(minxx, tempCentroidArr.get(0).get(tempCentroidArr.get(0).size() - 1), minamp, maxamp);
         MeanXYPlot.setJustification(Plot.CENTER);
         MeanXYPlot.draw();
 
-        if (MeanXYWindow == null || MeanXYWindow.isClosed() == true) {	// create new plot if window doesn't exist, or reuse existing window
+        if (MeanXYWindow == null || MeanXYWindow.isClosed() ==
+                true) {    // create new plot if window doesn't exist, or reuse existing window
             MeanXYWindow = MeanXYPlot.show();
             MeanXYWindow.setLocation(MeanXYWindowPosX, MeanXYWindowPosY);
 
@@ -269,7 +271,7 @@ public class ICCS {
 
             }
         }
-//        IJ.log("max PCC: " + maxPCC);
+        //        IJ.log("max PCC: " + maxPCC);
     }
 
     private double getPCC(int nrow, int ncol, Rectangle rect1, int width) {
@@ -384,7 +386,9 @@ public class ICCS {
         ipICCS.resetMinAndMax();
         impICCS.updateAndDraw();
         if (!impICCSmapWin.isVisible()) {
-            impICCSmapWin.setVisible(true);// Problematic: startle settings combobox when called sequentially at fast rate; threfore is the if statement
+            impICCSmapWin.setVisible(
+                    true);// Problematic: startle settings combobox when called sequentially at fast rate; threfore
+            // is the if statement
         }
 
     }
@@ -412,20 +416,15 @@ public class ICCS {
         boolean isFitSuccess;
         TwoDGaussFunction tdgauss;
         double[] InitParam_ = { //initial fit parameters
-            255,
-            1,
-            1,
-            1,
-            1,
-            1
+                                255, 1, 1, 1, 1, 1
         };
         double[] data_; // flatten double [][] row by row // Contains data to be fitted // support n x n dimension
         // Set initial fit parameters automatically
         double[] maxVal = {//value, x coor, y coor
-            0, 0, 0
+                           0, 0, 0
         };
         double[] minVal = {//value, x coor, y coor
-            10000, 0, 0
+                           10000, 0, 0
         };
 
         // supports n x n dimension currently
@@ -462,7 +461,9 @@ public class ICCS {
         // 2D to 1D
         data_ = flattenArr(res);
 
-        printlog("Init Amplitude: " + InitParam_[0] + ", Init MeanX: " + InitParam_[1] + ", Init MeanY: " + InitParam_[2] + ", Init SigmaX: " + InitParam_[3] + ", Init SigmaY: " + InitParam_[4] + ", Init Offset: " + InitParam_[5]);
+        printlog("Init Amplitude: " + InitParam_[0] + ", Init MeanX: " + InitParam_[1] + ", Init MeanY: " +
+                InitParam_[2] + ", Init SigmaX: " + InitParam_[3] + ", Init SigmaY: " + InitParam_[4] +
+                ", Init Offset: " + InitParam_[5]);
 
         tdgauss = new TwoDGaussFunction(data_, InitParam_, data_width_, new int[]{1000, 100});//10000,1000
 
@@ -471,13 +472,13 @@ public class ICCS {
             LeastSquaresOptimizer.Optimum opt = tdgauss.fit2dGauss();
             optimalValues = opt.getPoint().toArray(); //Fitted result
 
-//            //fill textfield UI
-//            tfAmplitude.setText(Double.toString(optimalValues[0]));
-//            tfMeanX.setText(Double.toString(optimalValues[1]));
-//            tfMeanY.setText(Double.toString(optimalValues[2]));
-//            tfSigmaX.setText(Double.toString(optimalValues[3]));
-//            tfSigmaY.setText(Double.toString(optimalValues[4]));
-//            tfOffset.setText(Double.toString(optimalValues[5]));
+            //            //fill textfield UI
+            //            tfAmplitude.setText(Double.toString(optimalValues[0]));
+            //            tfMeanX.setText(Double.toString(optimalValues[1]));
+            //            tfMeanY.setText(Double.toString(optimalValues[2]));
+            //            tfSigmaX.setText(Double.toString(optimalValues[3]));
+            //            tfSigmaY.setText(Double.toString(optimalValues[4]));
+            //            tfOffset.setText(Double.toString(optimalValues[5]));
             //output data
             printlog("v0: " + optimalValues[0]);
             printlog("v1: " + optimalValues[1]);
@@ -488,7 +489,11 @@ public class ICCS {
             printlog("Iteration number: " + opt.getIterations());
             printlog("Evaluation number: " + opt.getEvaluations());
 
-            isFitSuccess = !(optimalValues[0] < 0 || optimalValues[1] < 0 || optimalValues[2] < 0 || optimalValues[3] < 0 || optimalValues[4] < 0 || optimalValues[1] > data_width_ || optimalValues[2] > data_width_ || optimalValues[3] > data_width_ || optimalValues[4] > data_width_ || optimalValues[5] > maxVal[0]);
+            isFitSuccess =
+                    !(optimalValues[0] < 0 || optimalValues[1] < 0 || optimalValues[2] < 0 || optimalValues[3] < 0 ||
+                            optimalValues[4] < 0 || optimalValues[1] > data_width_ || optimalValues[2] > data_width_ ||
+                            optimalValues[3] > data_width_ || optimalValues[4] > data_width_ ||
+                            optimalValues[5] > maxVal[0]);
 
         } catch (Exception e) {
             for (int i = 0; i < 6; i++) {
@@ -541,12 +546,13 @@ public class ICCS {
         int sizeX = (int) Math.floor(wid);
         int sizeY = (int) Math.floor(hei);
         double scimp = 30000 * Math.pow(sizeX, -1);
-        IJ.run(impICCS, "HiLo", "");	// apply LUT to correlelogram
-        IJ.run(impICCS, "Original Scale", ""); 	//first set image to original scale
-        IJ.run(impICCS, "Set... ", "zoom=" + scimp + " x=" + (int) Math.floor(sizeX / 2) + " y=" + (int) Math.floor(sizeY / 2));//then zoom to fit within application
-        IJ.run("In [+]", ""); 	// This needs to be used since ImageJ 1.48v to set the window to the right size;
+        ApplyCustomLUT.applyCustomLUT(impICCS, "HiLo"); // apply LUT to correlelogram
+        IJ.run(impICCS, "Original Scale", "");    //first set image to original scale
+        IJ.run(impICCS, "Set... ", "zoom=" + scimp + " x=" + (int) Math.floor(sizeX / 2) + " y=" +
+                (int) Math.floor(sizeY / 2));//then zoom to fit within application
+        IJ.run("In [+]", "");    // This needs to be used since ImageJ 1.48v to set the window to the right size;
         // this might be a bug and is an ad hoc solution for the moment; before only the "Set" command was necessary
-        IJ.run(impICCS, "Enhance Contrast", "saturated=0.35");	//autoscaling the contrast for slice 1
+        IJ.run(impICCS, "Enhance Contrast", "saturated=0.35");    //autoscaling the contrast for slice 1
     }
 
     private void plotScatterPearsonCenterPix(Rectangle rect) {
@@ -554,7 +560,7 @@ public class ICCS {
         // find x,y coordinate of center pixel
         int midH = (int) valICCS.length / 2;
         int midW = (int) valICCS[0].length / 2;
-//        IJ.log("Center PCC val(maximize this value): " + valICCS[midH][midW]);
+        //        IJ.log("Center PCC val(maximize this value): " + valICCS[midH][midW]);
 
         int sizetocor = (int) rect.getWidth() * (int) rect.getHeight();
         ArrayList<double[]> arrayToCorrelate = new ArrayList<double[]>(2); //0 - green, 1 - red
@@ -568,7 +574,7 @@ public class ICCS {
         iplot.setColor(java.awt.Color.BLACK);
         iplot.addPoints(arrayToCorrelate.get(0), arrayToCorrelate.get(1), iplot.CIRCLE);
         iplot.setFrameSize(ScatterPearsonWindowDimX, ScatterPearsonWindowDimY);
-//        iplot.setLimits(iminsx, imaxsx, iminsc, imaxsc);
+        //        iplot.setLimits(iminsx, imaxsx, iminsc, imaxsc);
         iplot.setJustification(Plot.LEFT);
         iplot.setColor(java.awt.Color.BLUE);
         iplot.addLabel(0.1, 0.1, IJ.d2s(valICCS[midH][midW], 2));
