@@ -471,8 +471,10 @@ public final class ImageController {
 
         if (options.isPlotIntensityCurves() && isImageLoaded()) {
             Point p2 = cursorPositions[1];
-            bleachCorrectionModel.calcIntensityTrace(imageModel.getImage(), p.x, p.y, p2.x, p2.y,
-                    settings.getFirstFrame(), settings.getLastFrame());
+            if (bleachCorrectionModel.getIntensityTrace1() == null) {
+                correlator.correlatePixelModel(pixelModel, imageModel.getImage(), p.x, p.y, p2.x, p2.y,
+                        settings.getFirstFrame(), settings.getLastFrame());
+            }
             Plots.plotIntensityTrace(bleachCorrectionModel.getIntensityTrace1(),
                     bleachCorrectionModel.getIntensityTrace2(), bleachCorrectionModel.getIntensityTime(),
                     cursorPositions);
