@@ -370,7 +370,8 @@ public final class ImageController {
             return;
         }
 
-        if (options.isUseGpu()) {
+        // GPU fitting is not supported for DC-FCCS_2D model
+        if (options.isUseGpu() && settings.getFitModel() != FitFunctions.DC_FCCS_2D) {
             GpuCorrelator gpuCorrelator =
                     new GpuCorrelator(settings, bleachCorrectionModel, imageModel, fitController.getModel(), false,
                             correlator, xRange, yRange);
