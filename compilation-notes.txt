@@ -6,6 +6,8 @@ mvn clean package -DgenerateJniHeaders=true
 
 mvn clean package -DcompileLibs=true -e
 
+mvn test
+
 ***
 
 *** log 
