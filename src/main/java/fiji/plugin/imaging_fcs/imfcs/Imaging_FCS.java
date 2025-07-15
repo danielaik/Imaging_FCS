@@ -2144,7 +2144,6 @@ public class Imaging_FCS implements PlugIn {
 
     ActionListener btnLoadNewPressed = (ActionEvent ev) -> {
 
-//          imp = IJ.openImage();
         imp = ImageLoader.openImagePlusWithDialog();
         if (imp != null) {
             imp.show();
@@ -6704,6 +6703,7 @@ public class Imaging_FCS implements PlugIn {
         String[] paramsave = new String[nofpv];
 
         String $sfile = sfile.toString();
+
         int dotind = $sfile.lastIndexOf('.');
         if (dotind != -1) {
             $sfile = $sfile.substring(0, dotind);
@@ -7592,8 +7592,8 @@ public class Imaging_FCS implements PlugIn {
         // Loading the imagestack from the filepath if image is not already loaded
         if (!setImp || !$fileName
                 .equals($loadfile.substring($loadfile.lastIndexOf(File.separator) + 1, $loadfile.length()))) {
-            imp = IJ.openImage($loadfile);
-            imp = IJ.openImage($loadfile);
+
+            imp = ImageLoader.openImagePlusWithoutDialog($loadfile);
 
             if (imp != null) {
                 imp.show();
@@ -8666,6 +8666,7 @@ public class Imaging_FCS implements PlugIn {
             try {
                 $imagePath = imp.getOriginalFileInfo().directory;
                 $fileName = imp.getOriginalFileInfo().fileName;
+
             } catch (NullPointerException ne) {
                 IJ.log("No file path resolved");
             } // avoids exception if a simulation file is re-used
@@ -10400,7 +10401,8 @@ public class Imaging_FCS implements PlugIn {
             File[] files = batchfc.getSelectedFiles();
             numOfFiles = files.length;
             for (File currentFile : files) {
-                imp = IJ.openImage(currentFile.getAbsolutePath());
+
+                imp = ImageLoader.openImagePlusWithoutDialog(currentFile.getAbsolutePath());
                 imp.show();
                 obtainImage(false);
                 setParameters();

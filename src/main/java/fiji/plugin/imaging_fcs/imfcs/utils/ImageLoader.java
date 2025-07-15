@@ -46,4 +46,15 @@ public class ImageLoader {
         // If the user cancels or no valid file is chosen, return null
         return null;
     }
+
+    /**
+     * Opens the selected image and returns the ImagePlus from path.
+     *
+     * @return ImagePlus object
+     */
+    public static ImagePlus openImagePlusWithoutDialog(String absolutPath) {
+
+        return new Opener().openImage(absolutPath);
+
+    }
 }
