@@ -1,3 +1,4 @@
+
 package fiji.plugin.imaging_fcs.imfcs;
 
 import ai.onnxruntime.OnnxTensor;
@@ -117,6 +118,7 @@ import javax.swing.JPanel;
 import static fiji.plugin.imaging_fcs.version.VERSION.*;
 
 import fiji.plugin.imaging_fcs.imfcs.TimerFit;
+import fiji.plugin.imaging_fcs.imfcs.utils.ImageLoader;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 
@@ -2141,7 +2143,9 @@ public class Imaging_FCS implements PlugIn {
     };
 
     ActionListener btnLoadNewPressed = (ActionEvent ev) -> {
-        imp = IJ.openImage();
+
+//          imp = IJ.openImage();
+        imp = ImageLoader.openImagePlusWithDialog();
         if (imp != null) {
             imp.show();
             obtainImage(true);
