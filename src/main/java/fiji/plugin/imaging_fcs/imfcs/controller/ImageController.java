@@ -251,7 +251,7 @@ public final class ImageController {
         fitController.fit(pixelModel, settings.getFitModel(), correlator.getLagTimes(),
                 correlator.getRegularizedCovarianceMatrix(), x, y);
 
-        if (pixelModel.isFitted()) {
+        if (pixelModel.isAtLeastOneFitted()) {
             fitController.updateThresholds(pixelModel);
             refreshThresholdView.run();
         }
@@ -402,7 +402,7 @@ public final class ImageController {
 
                             SwingUtilities.invokeLater(() -> plotFittedParams(points));
                         }
-                    } catch (Exception e) {
+                   } catch (Exception e) {
                         IJ.log(String.format("Fail to correlate points for x=%d, y=%d with error: %s", x, y,
                                 e.getMessage()));
                     }
@@ -500,8 +500,8 @@ public final class ImageController {
                     settings.isFCCSDisp());
         }
 
-        if (options.isPlotResCurves() && pixelModel.isFitted() && pixelModel.getResiduals() != null) {
-            Plots.plotResiduals(pixelModel.getResiduals(), correlator.getLagTimes(), p);
+        if (options.isPlotResCurves() && pixelModel.isAtLeastOneFitted()) {
+            Plots.plotResiduals(pixelModel, correlator.getLagTimes(), p, settings.isFCCSDisp());
         }
     }
 
@@ -521,7 +521,7 @@ public final class ImageController {
 
         Point binningPoint = settings.convertPointToBinning(p);
 
-        if (pixelModel.isFitted() && !fitController.needToFilter(pixelModel, binningPoint.x, binningPoint.y)) {
+        if (pixelModel.isAtLeastOneFitted() && !fitController.needToFilter(pixelModel, binningPoint.x, binningPoint.y)) {
 
             Plots.plotParameterMaps(pixelModel, binningPoint, settings.getConvertedImageDimension(getImageDimension()),
                     imageParamClicked(), settings.isFCCSDisp());
@@ -647,11 +647,6 @@ public final class ImageController {
 
                     int x = canvas.offScreenX(event.getX());
                     int y = canvas.offScreenY(event.getY());
-
-                    // The pixel is not correlated on this pixel
-                    if (Double.isNaN(img.getStack().getProcessor(1).getPixelValue(x, y))) {
-                        return;
-                    }
 
                     Point pixelBinning = settings.getPixelBinning();
                     Point minimumPosition = settings.getMinCursorPosition();
