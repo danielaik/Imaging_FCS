@@ -115,6 +115,10 @@ This version includes ImFCSNet and FCSNet inference. ImFCSNet predicts
 diffusion coefficient directly from intensity traces. FCSNet predicts diffusion
 coefficient from autocorrelation function.
 
+v2.0.4 fixes some compatibility issues with the latest Java 21 versions of Fiji.
+GPU fitting in end-of-life Linux distributions like CentOS 7 and Ubuntu 18.04 is
+no longer supported.
+
 ## ImFCS documentation 1_62.pdf
 
 This manual contains the basic instructions on using the program, the
