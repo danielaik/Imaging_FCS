@@ -1,6 +1,6 @@
 <project xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xmlns="http://maven.apache.org/POM/4.0.0"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    xmlns="http://maven.apache.org/POM/4.0.0"
+    xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>imagej.new_imfcs</groupId>
@@ -97,6 +97,14 @@
     </properties>
 
     <dependencies>
+
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>4.13.2</version>
+            <scope>test</scope>
+        </dependency>
+
         <dependency>
             <groupId>com.github.pjfanning</groupId>
             <artifactId>excel-streaming-reader</artifactId>
@@ -166,81 +174,99 @@
                                 <configuration>
                                     <target>
                                         <path id="compile.classpath">
-                                            <path path="${project.build.directory}/classes"/>
+                                            <path path="${project.build.directory}/classes" />
                                             <fileset dir="${project.build.directory}/dependencies">
-                                                <include name="**/*.jar"/>
+                                                <include name="**/*.jar" />
                                             </fileset>
                                         </path>
-                                        <property name="compile.classpath" refid="compile.classpath"/>
+                                        <property name="compile.classpath" refid="compile.classpath" />
 
                                         <exec executable="javac">
-                                            <arg value="-classpath"/>
-                                            <arg value="${project.build.directory}/classes${path.separator}${compile.classpath}"/>
-                                            <arg value="-d"/>
-                                            <arg value="${project.build.directory}/classes"/>
-                                            <arg value="-h"/>
-                                            <arg value="src/main/cpp/gpufit"/>
-                                            <arg value="src/main/java/fiji/plugin/imaging_fcs/gpufit/Gpufit.java"/>
+                                            <arg value="-classpath" />
+                                            <arg
+                                                value="${project.build.directory}/classes${path.separator}${compile.classpath}" />
+                                            <arg value="-d" />
+                                            <arg value="${project.build.directory}/classes" />
+                                            <arg value="-h" />
+                                            <arg value="src/main/cpp/gpufit" />
+                                            <arg
+                                                value="src/main/java/fiji/plugin/imaging_fcs/gpufit/Gpufit.java" />
                                         </exec>
 
                                         <exec executable="javac">
-                                            <arg value="-classpath"/>
-                                            <arg value="${project.build.directory}/classes${path.separator}${compile.classpath}"/>
-                                            <arg value="-d"/>
-                                            <arg value="${project.build.directory}/classes"/>
-                                            <arg value="-h"/>
-                                            <arg value="src/main/cpp/gpufit"/>
-                                            <arg value="src/main/java/fiji/plugin/imaging_fcs/new_imfcs/gpu/GpuParameters.java"/>
+                                            <arg value="-classpath" />
+                                            <arg
+                                                value="${project.build.directory}/classes${path.separator}${compile.classpath}" />
+                                            <arg value="-d" />
+                                            <arg value="${project.build.directory}/classes" />
+                                            <arg value="-h" />
+                                            <arg value="src/main/cpp/gpufit" />
+                                            <arg
+                                                value="src/main/java/fiji/plugin/imaging_fcs/new_imfcs/gpu/GpuParameters.java" />
                                         </exec>
 
                                         <exec executable="javac">
-                                            <arg value="-classpath"/>
-                                            <arg value="${project.build.directory}/classes${path.separator}${compile.classpath}"/>
-                                            <arg value="-d"/>
-                                            <arg value="${project.build.directory}/classes"/>
-                                            <arg value="-h"/>
-                                            <arg value="src/main/cpp/gpufit"/>
-                                            <arg value="src/main/java/fiji/plugin/imaging_fcs/new_imfcs/gpu/GpuCorrelator.java"/>
+                                            <arg value="-classpath" />
+                                            <arg
+                                                value="${project.build.directory}/classes${path.separator}${compile.classpath}" />
+                                            <arg value="-d" />
+                                            <arg value="${project.build.directory}/classes" />
+                                            <arg value="-h" />
+                                            <arg value="src/main/cpp/gpufit" />
+                                            <arg
+                                                value="src/main/java/fiji/plugin/imaging_fcs/new_imfcs/gpu/GpuCorrelator.java" />
                                         </exec>
 
                                         <exec executable="javac">
-                                            <arg value="-classpath"/>
-                                            <arg value="${project.build.directory}/classes${path.separator}${compile.classpath}"/>
-                                            <arg value="-d"/>
-                                            <arg value="${project.build.directory}/classes"/>
-                                            <arg value="-h"/>
-                                            <arg value="src/main/cpp/cameras/sdk2/dependencies/include"/>
-                                            <arg value="src/main/java/fiji/plugin/imaging_fcs/directCameraReadout/andorsdk2v3/AndorSDK2v3.java"/>
+                                            <arg value="-classpath" />
+                                            <arg
+                                                value="${project.build.directory}/classes${path.separator}${compile.classpath}" />
+                                            <arg value="-d" />
+                                            <arg value="${project.build.directory}/classes" />
+                                            <arg value="-h" />
+                                            <arg
+                                                value="src/main/cpp/cameras/sdk2/dependencies/include" />
+                                            <arg
+                                                value="src/main/java/fiji/plugin/imaging_fcs/directCameraReadout/andorsdk2v3/AndorSDK2v3.java" />
                                         </exec>
 
                                         <exec executable="javac">
-                                            <arg value="-classpath"/>
-                                            <arg value="${project.build.directory}/classes${path.separator}${compile.classpath}"/>
-                                            <arg value="-d"/>
-                                            <arg value="${project.build.directory}/classes"/>
-                                            <arg value="-h"/>
-                                            <arg value="src/main/cpp/cameras/sdk3/dependencies/include"/>
-                                            <arg value="src/main/java/fiji/plugin/imaging_fcs/directCameraReadout/andorsdk3v2/AndorSDK3v2.java"/>
+                                            <arg value="-classpath" />
+                                            <arg
+                                                value="${project.build.directory}/classes${path.separator}${compile.classpath}" />
+                                            <arg value="-d" />
+                                            <arg value="${project.build.directory}/classes" />
+                                            <arg value="-h" />
+                                            <arg
+                                                value="src/main/cpp/cameras/sdk3/dependencies/include" />
+                                            <arg
+                                                value="src/main/java/fiji/plugin/imaging_fcs/directCameraReadout/andorsdk3v2/AndorSDK3v2.java" />
                                         </exec>
 
                                         <exec executable="javac">
-                                            <arg value="-classpath"/>
-                                            <arg value="${project.build.directory}/classes${path.separator}${compile.classpath}"/>
-                                            <arg value="-d"/>
-                                            <arg value="${project.build.directory}/classes"/>
-                                            <arg value="-h"/>
-                                            <arg value="src/main/cpp/cameras/dcam/dependencies/include"/>
-                                            <arg value="src/main/java/fiji/plugin/imaging_fcs/directCameraReadout/hamadcamsdk4/Hamamatsu_DCAM_SDK4.java"/>
+                                            <arg value="-classpath" />
+                                            <arg
+                                                value="${project.build.directory}/classes${path.separator}${compile.classpath}" />
+                                            <arg value="-d" />
+                                            <arg value="${project.build.directory}/classes" />
+                                            <arg value="-h" />
+                                            <arg
+                                                value="src/main/cpp/cameras/dcam/dependencies/include" />
+                                            <arg
+                                                value="src/main/java/fiji/plugin/imaging_fcs/directCameraReadout/hamadcamsdk4/Hamamatsu_DCAM_SDK4.java" />
                                         </exec>
 
                                         <exec executable="javac">
-                                            <arg value="-classpath"/>
-                                            <arg value="${project.build.directory}/classes${path.separator}${compile.classpath}"/>
-                                            <arg value="-d"/>
-                                            <arg value="${project.build.directory}/classes"/>
-                                            <arg value="-h"/>
-                                            <arg value="src/main/cpp/cameras/pvcam/dependencies/include"/>
-                                            <arg value="src/main/java/fiji/plugin/imaging_fcs/directCameraReadout/pvcamsdk/Photometrics_PVCAM_SDK.java"/>
+                                            <arg value="-classpath" />
+                                            <arg
+                                                value="${project.build.directory}/classes${path.separator}${compile.classpath}" />
+                                            <arg value="-d" />
+                                            <arg value="${project.build.directory}/classes" />
+                                            <arg value="-h" />
+                                            <arg
+                                                value="src/main/cpp/cameras/pvcam/dependencies/include" />
+                                            <arg
+                                                value="src/main/java/fiji/plugin/imaging_fcs/directCameraReadout/pvcamsdk/Photometrics_PVCAM_SDK.java" />
                                         </exec>
                                     </target>
                                 </configuration>
