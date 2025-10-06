@@ -1,4 +1,3 @@
-
 package fiji.plugin.imaging_fcs.imfcs;
 
 import ai.onnxruntime.OnnxTensor;
@@ -1138,7 +1137,7 @@ public class Imaging_FCS implements PlugIn {
     public Imaging_FCS() {
         try {
             JFrame.setDefaultLookAndFeelDecorated(false);
-            UIManager.setLookAndFeel(UIManager.getCrossPlatformLookAndFeelClassName());
+            UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
         } catch (Exception e) {
         }
 
