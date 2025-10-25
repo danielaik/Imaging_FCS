@@ -5,7 +5,7 @@
 
     <groupId>imagej.imfcs</groupId>
     <artifactId>Imaging_FCS</artifactId>
-    <version>1_64_da</version>
+    <version>1_6_5_da-beta</version>
 
     <properties>
         <java.version>1.8</java.version>
@@ -27,7 +27,7 @@
             <version>4.13.2</version>
             <scope>test</scope>
         </dependency>
-        
+
         <dependency>
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-math3</artifactId>
