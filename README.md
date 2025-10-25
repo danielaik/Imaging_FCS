@@ -1,6 +1,6 @@
 # About This Repository
 
-This repository is based on [v1_631](https://github.com/Biophysical-Fluorescence-Laboratory/Imaging_FCS.git) with additional fixes and modifications for specific use cases. It was created as a stable alternative while [v2](https://github.com/Biophysical-Fluorescence-Laboratory/Imaging_FCS.git) was under development. Note that experimental features from [v1_62_2](https://github.com/danielaik/Imaging_FCS_1_6x_GitHubRepo.git) (direct-camera-readout testing) are not up-to-date in this version.
+This repository is based on [v1_631](https://github.com/Biophysical-Fluorescence-Laboratory/Imaging_FCS.git) with additional fixes and modifications for specific use cases. It was created as a stable alternative while [v2](https://github.com/Biophysical-Fluorescence-Laboratory/Imaging_FCS.git) was under development. Note that experimental features from [v1_62_2](https://github.com/danielaik/Imaging_FCS_1_6x_GitHubRepo.git) (direct-camera-readout testing) are not up-to-date in this version. Useful features and improvements from this fork will eventually be integrated into v2, with v1 being phased out entirely.
 
 # What is Imaging FCS
 
